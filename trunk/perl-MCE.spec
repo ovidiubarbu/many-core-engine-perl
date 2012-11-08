@@ -54,6 +54,8 @@ rm -rf $RPM_BUILD_ROOT
 %{_mandir}/man3/*
 
 %changelog
+* Thu Nov 08 2012 Mario Roy 1.002-1
+- Renamed continue method to next 
 * Wed Nov 07 2012 Mario Roy 1.001-1
 - Added perl-MCE.spec to trunk
   http://code.google.com/p/many-core-engine-perl/source/browse/trunk/

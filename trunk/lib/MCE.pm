@@ -99,7 +99,7 @@ INIT {
 use strict;
 use warnings;
 
-our $VERSION = '1.001';
+our $VERSION = '1.002';
 $VERSION = eval $VERSION;
 
 use Fcntl qw( :flock O_CREAT O_TRUNC O_RDWR O_RDONLY );
@@ -885,21 +885,6 @@ sub abort {
    return;
 }
 
-## Worker continues to next chunk.
-
-sub continue {
-
-   my MCE $self = $_[0];
-
-   @_ = ();
-
-   if ($self->wid() > 0) {
-      $self->{_continue}() if (defined $self->{_continue});
-   }
-
-   return;
-}
-
 ## Worker exits current job.
 
 sub exit {
@@ -932,7 +917,7 @@ sub exit {
    return;
 }
 
-## Worker breaks out of chunking loop.
+## Worker immediately exits the chunking loop.
 
 sub last {
 
@@ -941,7 +926,22 @@ sub last {
    @_ = ();
 
    if ($self->wid() > 0) {
-      $self->{_last}() if (defined $self->{_last});
+      $self->{_last_jmp}() if (defined $self->{_last_jmp});
+   }
+
+   return;
+}
+
+## Worker starts the next iteration of the chunking loop.
+
+sub next {
+
+   my MCE $self = $_[0];
+
+   @_ = ();
+
+   if ($self->wid() > 0) {
+      $self->{_next_jmp}() if (defined $self->{_next_jmp});
    }
 
    return;
@@ -1805,10 +1805,10 @@ sub _worker_read_handle {
 
    ## -------------------------------------------------------------------------
 
-   $self->{_continue} = sub { goto _WORKER_READ_HANDLE__CONTINUE; };
-   $self->{_last}     = sub { goto _WORKER_READ_HANDLE__LAST; };
+   $self->{_next_jmp} = sub { goto _WORKER_READ_HANDLE__NEXT; };
+   $self->{_last_jmp} = sub { goto _WORKER_READ_HANDLE__LAST; };
 
-   _WORKER_READ_HANDLE__CONTINUE:
+   _WORKER_READ_HANDLE__NEXT:
 
    while (1) {
 
@@ -1936,10 +1936,10 @@ sub _worker_request_chunk {
 
    ## -------------------------------------------------------------------------
 
-   $self->{_continue} = sub { goto _WORKER_REQUEST_CHUNK__CONTINUE; };
-   $self->{_last}     = sub { goto _WORKER_REQUEST_CHUNK__LAST; };
+   $self->{_next_jmp} = sub { goto _WORKER_REQUEST_CHUNK__NEXT; };
+   $self->{_last_jmp} = sub { goto _WORKER_REQUEST_CHUNK__LAST; };
 
-   _WORKER_REQUEST_CHUNK__CONTINUE:
+   _WORKER_REQUEST_CHUNK__NEXT:
 
    while (1) {
 
@@ -2057,8 +2057,8 @@ sub _worker_do {
       $_user_func->($self);
    }
 
-   undef $self->{_continue} if (defined $self->{_continue});
-   undef $self->{_last}     if (defined $self->{_last});
+   undef $self->{_next_jmp} if (defined $self->{_next_jmp});
+   undef $self->{_last_jmp} if (defined $self->{_last_jmp});
 
    ## Call user_end if defined.
    $_user_end->($self) if ($_user_end);
@@ -2549,38 +2549,12 @@ the next n elements from the input stream to the next available worker.
     $self->do('display_result', \@wk_result, $chunk_id);
  });
 
-=head2 CONTINUE & LAST METHODS
+=head2 LAST & NEXT METHODS
 
- ## Both continue and last methods work inside foreach, forchunk,
- ## and user_func code blocks and processing input_data.
+ ## Both last and next methods work inside foreach, forchunk,
+ ## and user_func code blocks.
 
- ## Worker continues on to the next chunk.
-
- my @list = (1..80);
-
- $mce->forchunk(\@list, { chunk_size => 4 }, sub {
-
-    my ($self, $chunk_ref, $chunk_id) = @_;
-
-    $self->continue if ($chunk_id < 20);
-
-    my @output = ();
-
-    for my $rec ( @{ $chunk_ref } ) {
-       push @output, $rec, "\n";
-    }
-
-    $self->sendto('stdout', \@output);
- });
-
- -- Output (each chunk above consists of 4 elements)
-
- 77
- 78
- 79
- 80
-
- ## Worker breaks out of chunking loop.
+ ## ->last: Worker immediately exits the chunking loop
 
  my @list = (1..80);
 
@@ -2609,6 +2583,32 @@ the next n elements from the input stream to the next available worker.
  6
  7
  8
+
+ ## ->next: Worker starts the next iteration of the chunking loop
+
+ my @list = (1..80);
+
+ $mce->forchunk(\@list, { chunk_size => 4 }, sub {
+
+    my ($self, $chunk_ref, $chunk_id) = @_;
+
+    $self->next if ($chunk_id < 20);
+
+    my @output = ();
+
+    for my $rec ( @{ $chunk_ref } ) {
+       push @output, $rec, "\n";
+    }
+
+    $self->sendto('stdout', \@output);
+ });
+
+ -- Output (each chunk above consists of 4 elements)
+
+ 77
+ 78
+ 79
+ 80
 
 =head2 MISCELLANEOUS METHODS
 
