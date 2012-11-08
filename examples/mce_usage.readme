@@ -361,17 +361,84 @@
    });
 
    --------------------------------------------------------------------------
+   CONTINUE & LAST METHODS
+   --------------------------------------------------------------------------
+
+   ## Both continue and last methods work inside foreach, forchunk,
+   ## and user_func code blocks and processing input_data.
+
+   ## Worker continues on to the next chunk.
+
+   my @list = (1..80);
+
+   $mce->forchunk(\@list, { chunk_size => 4 }, sub {
+
+      my ($self, $chunk_ref, $chunk_id) = @_;
+
+      $self->continue if ($chunk_id < 20);
+
+      my @output = ();
+
+      for my $rec ( @{ $chunk_ref } ) {
+         push @output, $rec, "\n";
+      }
+
+      $self->sendto('stdout', \@output);
+   });
+
+   -- Output (each chunk above consists of 4 elements)
+
+   77
+   78
+   79
+   80
+
+   ## Worker breaks out of chunking loop.
+
+   my @list = (1..80);
+
+   $mce->forchunk(\@list, { chunk_size => 2 }, sub {
+
+      my ($self, $chunk_ref, $chunk_id) = @_;
+
+      $self->last if ($chunk_id > 4);
+
+      my @output = ();
+
+      for my $rec ( @{ $chunk_ref } ) {
+         push @output, $rec, "\n";
+      }
+
+      $self->sendto('stdout', \@output);
+   });
+
+   -- Output (each chunk above consists of 2 elements)
+
+   1
+   2
+   3
+   4
+   5
+   6
+   7
+   8
+
+   --------------------------------------------------------------------------
    MISCELLANEOUS METHODS
    --------------------------------------------------------------------------
 
    ## Notifies workers to abort after processing the current chunk. The
    ## abort method is only meaningful when processing input_data.
 
-   $self->abort();
+      $self->abort();
+
+   ## Worker exits current job.
+
+      $self->exit();
 
    ## Returns worker ID of worker.
 
-   $self->wid();
+      $self->wid();
 
    --------------------------------------------------------------------------
    DO & SENDTO METHODS

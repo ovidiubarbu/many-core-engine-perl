@@ -1,5 +1,12 @@
 Revision history for Perl extension MCE.
 
+1.001 Wed Nov 07 23:58:20 2012
+- Added perl-MCE.spec to trunk
+  http://code.google.com/p/many-core-engine-perl/source/browse/trunk/
+- Added CREDITS
+- Added 3 new methods to MCE.pm: continue, last, and exit
+- Both foreach & forchunk now call run(1, {...}) to auto-shutdown workers
+
 1.000 Mon Nov 05 10:00:00 2012
-	- First release
+- First release
 

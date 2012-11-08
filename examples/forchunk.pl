@@ -80,7 +80,6 @@ my $mce = MCE->new(
    chunk_size  => $chunk_size
 );
 
-$mce->spawn();
 $start = time();
 
 ## Below, $chunk_ref is a reference to an array containing the next
@@ -99,7 +98,6 @@ $mce->forchunk(\@input_data, sub {
 });
 
 $end = time();
-$mce->shutdown();
 
 printf STDERR "\n## Compute time: %0.03f\n\n",  $end - $start;
 
