@@ -99,7 +99,7 @@ INIT {
 use strict;
 use warnings;
 
-our $VERSION = '1.000';
+our $VERSION = '1.001';
 $VERSION = eval $VERSION;
 
 use Fcntl qw( :flock O_CREAT O_TRUNC O_RDWR O_RDONLY );
@@ -136,8 +136,10 @@ use constant {
    QUE_TEMPLATE     => $_que_template,   ## Pack template for queue socket
    QUE_READ_SIZE    => $_que_read_size,  ## Read size
 
-   OUTPUT_W_DNE     => ':W~DNE',         ## Worker has completed
-   OUTPUT_W_END     => ':W~END',         ## Worker has ended
+   OUTPUT_W_EXT     => ':W~EXT',         ## Worker has exited job
+   OUTPUT_W_DNE     => ':W~DNE',         ## Worker has completed job
+   OUTPUT_W_END     => ':W~END',         ## Worker has ended prematurely
+
    OUTPUT_A_ARY     => ':A~ARY',         ## Array  << Array
    OUTPUT_S_GLB     => ':S~GLB',         ## Scalar << Glob FH
    OUTPUT_A_CBK     => ':A~CBK',         ## Callback (/w arguments)
@@ -180,7 +182,7 @@ my %_valid_fields = map { $_ => 1 } qw(
 );
 
 my %_params_allowed_args = map { $_ => 1 } qw(
-   chunk_size job_delay spawn_delay submit_delay use_slurpio
+   chunk_size input_data job_delay spawn_delay submit_delay use_slurpio
    user_begin user_end user_func user_error user_output
    flush_stderr flush_stdout stderr_file stdout_file
 );
@@ -429,7 +431,7 @@ sub spawn {
       $_wid += 1;
 
       if (defined $_use_threads && $_use_threads == 1) {
-         my $_thr = threads->create( \&_worker_main, $self, $_wid);
+         my $_thr = threads->create(\&_worker_main, $self, $_wid);
          push @{ $self->{_pids} }, $_thr if (defined $_thr);
       }
       else {
@@ -480,8 +482,8 @@ sub foreach {
    my ($_user_func, $_params_ref);
 
    if (ref $_[2] eq 'HASH') {
-      $_params_ref = $_[2];
       $_user_func  = $_[3];
+      $_params_ref = $_[2];
    }
    else {
       $_user_func  = $_[2];
@@ -490,10 +492,16 @@ sub foreach {
 
    @_ = ();
 
+   _croak(ILLEGAL_STATE . ": 'input_data' is not specified")
+      unless (defined $_input_data);
+   _croak(ILLEGAL_STATE . ": 'code_block' is not specified")
+      unless (defined $_user_func);
+
    $_params_ref->{chunk_size} = 1;
+   $_params_ref->{input_data} = $_input_data;
    $_params_ref->{user_func}  = $_user_func;
 
-   $self->process($_input_data, $_params_ref);
+   $self->run(1, $_params_ref);
 
    return $self;
 }
@@ -512,8 +520,8 @@ sub forchunk {
    my ($_user_func, $_params_ref);
 
    if (ref $_[2] eq 'HASH') {
-      $_params_ref = $_[2];
       $_user_func  = $_[3];
+      $_params_ref = $_[2];
    }
    else {
       $_user_func  = $_[2];
@@ -522,8 +530,15 @@ sub forchunk {
 
    @_ = ();
 
-   $_params_ref->{user_func} = $_user_func;
-   $self->process($_input_data, $_params_ref);
+   _croak(ILLEGAL_STATE . ": 'input_data' is not specified")
+      unless (defined $_input_data);
+   _croak(ILLEGAL_STATE . ": 'code_block' is not specified")
+      unless (defined $_user_func);
+
+   $_params_ref->{input_data} = $_input_data;
+   $_params_ref->{user_func}  = $_user_func;
+
+   $self->run(1, $_params_ref);
 
    return $self;
 }
@@ -544,7 +559,7 @@ sub process {
 
    ## Set input data.
    if (defined $_input_data) {
-      $self->{input_data} = $_input_data;
+      $_params_ref->{input_data} = $_input_data;
    }
    else {
       _croak(ILLEGAL_STATE . ": 'input_data' is not specified")
@@ -569,8 +584,8 @@ sub run {
    my ($_auto_shutdown, $_params_ref);
 
    if (ref $_[1] eq 'HASH') {
-      $_params_ref    = $_[1];
       $_auto_shutdown = (defined $_[2]) ? $_[2] : 1;
+      $_params_ref    = $_[1];
    }
    else {
       $_auto_shutdown = (defined $_[1]) ? $_[1] : 1;
@@ -735,9 +750,11 @@ sub run {
    ## Remove the last message from the queue.
    unless ($_run_mode eq 'nodata') {
       unlink "$_sess_dir/_store.db" if ($_run_mode eq 'array');
-      local $/ = $LF;
-      my $_QUE_R_SOCK = $self->{_que_r_sock};
-      my $_next; read $_QUE_R_SOCK, $_next, QUE_READ_SIZE;
+      if (defined $self->{_que_r_sock}) {
+         local $/ = $LF;
+         my $_next; my $_QUE_R_SOCK = $self->{_que_r_sock};
+         read $_QUE_R_SOCK, $_next, QUE_READ_SIZE;
+      }
    }
 
    ## Shutdown workers.
@@ -863,6 +880,68 @@ sub abort {
       local $\ = undef; local $/ = $LF;
       my $_next; read $_QUE_R_SOCK, $_next, QUE_READ_SIZE;
       print $_QUE_W_SOCK pack(QUE_TEMPLATE, 0, $_abort_msg);
+   }
+
+   return;
+}
+
+## Worker continues to next chunk.
+
+sub continue {
+
+   my MCE $self = $_[0];
+
+   @_ = ();
+
+   if ($self->wid() > 0) {
+      $self->{_continue}() if (defined $self->{_continue});
+   }
+
+   return;
+}
+
+## Worker exits current job.
+
+sub exit {
+
+   my MCE $self = $_[0];
+
+   @_ = ();
+
+   if ($self->wid() > 0) {
+      my $_OUT_W_SOCK = $self->{_out_w_sock};
+
+      local $\ = undef;
+      print $_OUT_W_SOCK OUTPUT_W_DNE, $LF, OUTPUT_W_EXT, $LF;
+
+      ## Enter loop and wait for exit notification.
+      $self->_worker_loop();
+
+      ## Wait till MCE completes exit notification to all workers.
+      flock $_DAT_LOCK, LOCK_SH;
+      flock $_DAT_LOCK, LOCK_UN;
+
+      close $_DAT_LOCK; undef $_DAT_LOCK;
+      close $_COM_LOCK; undef $_COM_LOCK;
+
+      ## Exit thread/child process.
+      threads->exit() if ($_has_threads && threads->can('exit'));
+      exit;
+   }
+
+   return;
+}
+
+## Worker breaks out of chunking loop.
+
+sub last {
+
+   my MCE $self = $_[0];
+
+   @_ = ();
+
+   if ($self->wid() > 0) {
+      $self->{_last}() if (defined $self->{_last});
    }
 
    return;
@@ -1291,17 +1370,25 @@ sub _validate_args {
    my ($_I_SEP, $_O_SEP, $_total_ended, $_input_glob, $_chunk_size);
    my ($_input_size, $_offset_pos, $_single_dim, $_use_slurpio);
 
+   my ($_total_exited);
+
    ## Create hash structure containing various output functions.
    my %_output_function = (
 
-      OUTPUT_W_DNE.$LF => sub {                   ## Worker has completed
+      OUTPUT_W_EXT.$LF => sub {                   ## Worker has exited job
+         $_total_exited += 1;
+
+         return;
+      },
+
+      OUTPUT_W_DNE.$LF => sub {                   ## Worker has completed job
          $_total_workers -= 1;
 
          return;
       },
 
       OUTPUT_W_END.$LF => sub {                   ## Worker has ended
-         $_total_workers -= 1;
+         $_total_workers -= 1;                    ## prematurely
          $_total_ended   += 1;
 
          return;
@@ -1571,7 +1658,7 @@ sub _validate_args {
       $_user_error  = $self->{user_error};
       $_single_dim  = $self->{_single_dim};
 
-      $_total_ended = $_eof_flag = 0;
+      $_total_ended = $_total_exited = $_eof_flag = 0;
 
       if (defined $_input_data && ref $_input_data eq 'ARRAY') {
          $_input_size = @$_input_data;
@@ -1641,6 +1728,11 @@ sub _validate_args {
       ## Close MCE STDOUT/STDERR handles.
       close $_MCE_STDOUT; undef $_MCE_STDOUT;
       close $_MCE_STDERR; undef $_MCE_STDERR;
+
+      ## Shutdown all workers if one or more have exited.
+      if ($_total_exited > 0 && $_total_ended == 0) {
+         $self->shutdown();
+      }
 
       ## Shutdown all workers if one or more have ended prematurely.
       if ($_total_ended > 0) {
@@ -1712,6 +1804,11 @@ sub _worker_read_handle {
    }
 
    ## -------------------------------------------------------------------------
+
+   $self->{_continue} = sub { goto _WORKER_READ_HANDLE__CONTINUE; };
+   $self->{_last}     = sub { goto _WORKER_READ_HANDLE__LAST; };
+
+   _WORKER_READ_HANDLE__CONTINUE:
 
    while (1) {
 
@@ -1798,6 +1895,8 @@ sub _worker_read_handle {
          }
       }
    }
+
+   _WORKER_READ_HANDLE__LAST:
 }
 
 ###############################################################################
@@ -1836,6 +1935,11 @@ sub _worker_request_chunk {
    }
 
    ## -------------------------------------------------------------------------
+
+   $self->{_continue} = sub { goto _WORKER_REQUEST_CHUNK__CONTINUE; };
+   $self->{_last}     = sub { goto _WORKER_REQUEST_CHUNK__LAST; };
+
+   _WORKER_REQUEST_CHUNK__CONTINUE:
 
    while (1) {
 
@@ -1898,6 +2002,8 @@ sub _worker_request_chunk {
          }
       }
    }
+
+   _WORKER_REQUEST_CHUNK__LAST:
 }
 
 ###############################################################################
@@ -1950,6 +2056,9 @@ sub _worker_do {
    else {
       $_user_func->($self);
    }
+
+   undef $self->{_continue} if (defined $self->{_continue});
+   undef $self->{_last}     if (defined $self->{_last});
 
    ## Call user_end if defined.
    $_user_end->($self) if ($_user_end);
@@ -2440,16 +2549,81 @@ the next n elements from the input stream to the next available worker.
     $self->do('display_result', \@wk_result, $chunk_id);
  });
 
+=head2 CONTINUE & LAST METHODS
+
+ ## Both continue and last methods work inside foreach, forchunk,
+ ## and user_func code blocks and processing input_data.
+
+ ## Worker continues on to the next chunk.
+
+ my @list = (1..80);
+
+ $mce->forchunk(\@list, { chunk_size => 4 }, sub {
+
+    my ($self, $chunk_ref, $chunk_id) = @_;
+
+    $self->continue if ($chunk_id < 20);
+
+    my @output = ();
+
+    for my $rec ( @{ $chunk_ref } ) {
+       push @output, $rec, "\n";
+    }
+
+    $self->sendto('stdout', \@output);
+ });
+
+ -- Output (each chunk above consists of 4 elements)
+
+ 77
+ 78
+ 79
+ 80
+
+ ## Worker breaks out of chunking loop.
+
+ my @list = (1..80);
+
+ $mce->forchunk(\@list, { chunk_size => 2 }, sub {
+
+    my ($self, $chunk_ref, $chunk_id) = @_;
+
+    $self->last if ($chunk_id > 4);
+
+    my @output = ();
+
+    for my $rec ( @{ $chunk_ref } ) {
+       push @output, $rec, "\n";
+    }
+
+    $self->sendto('stdout', \@output);
+ });
+
+ -- Output (each chunk above consists of 2 elements)
+
+ 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+
 =head2 MISCELLANEOUS METHODS
 
  ## Notifies workers to abort after processing the current chunk. The
  ## abort method is only meaningful when processing input_data.
 
- $self->abort();
+    $self->abort();
+
+ ## Worker exits current job.
+
+    $self->exit();
 
  ## Returns worker ID of worker.
 
- $self->wid();
+    $self->wid();
 
 =head2 DO & SENDTO METHODS
 

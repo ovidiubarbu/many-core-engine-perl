@@ -76,7 +76,6 @@ my $mce = MCE->new(
    max_workers => $max_workers
 );
 
-$mce->spawn();
 $start = time();
 
 ## Worker calls code block passing a reference to an array containing
@@ -89,7 +88,6 @@ $mce->foreach(\@input_data, sub {
 });
 
 $end = time();
-$mce->shutdown();
 
 printf STDERR "\n## Compute time: %0.03f\n\n",  $end - $start;
 
