@@ -361,39 +361,13 @@
    });
 
    --------------------------------------------------------------------------
-   CONTINUE & LAST METHODS
+   LAST & NEXT METHODS
    --------------------------------------------------------------------------
 
-   ## Both continue and last methods work inside foreach, forchunk,
-   ## and user_func code blocks and processing input_data.
+   ## Both next and last methods work inside foreach, forchunk,
+   ## and user_func code blocks.
 
-   ## Worker continues on to the next chunk.
-
-   my @list = (1..80);
-
-   $mce->forchunk(\@list, { chunk_size => 4 }, sub {
-
-      my ($self, $chunk_ref, $chunk_id) = @_;
-
-      $self->continue if ($chunk_id < 20);
-
-      my @output = ();
-
-      for my $rec ( @{ $chunk_ref } ) {
-         push @output, $rec, "\n";
-      }
-
-      $self->sendto('stdout', \@output);
-   });
-
-   -- Output (each chunk above consists of 4 elements)
-
-   77
-   78
-   79
-   80
-
-   ## Worker breaks out of chunking loop.
+   ## ->last: Worker immediately exits the chunking loop
 
    my @list = (1..80);
 
@@ -422,6 +396,32 @@
    6
    7
    8
+
+   ## ->next: Worker starts the next iteration of the chunking loop
+
+   my @list = (1..80);
+
+   $mce->forchunk(\@list, { chunk_size => 4 }, sub {
+
+      my ($self, $chunk_ref, $chunk_id) = @_;
+
+      $self->next if ($chunk_id < 20);
+
+      my @output = ();
+
+      for my $rec ( @{ $chunk_ref } ) {
+         push @output, $rec, "\n";
+      }
+
+      $self->sendto('stdout', \@output);
+   });
+
+   -- Output (each chunk above consists of 4 elements)
+
+   77
+   78
+   79
+   80
 
    --------------------------------------------------------------------------
    MISCELLANEOUS METHODS

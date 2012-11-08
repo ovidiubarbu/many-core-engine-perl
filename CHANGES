@@ -1,5 +1,8 @@
 Revision history for Perl extension MCE.
 
+1.002 Thu Nov 08 01:13:10 2012
+- Renamed continue method to next
+
 1.001 Wed Nov 07 23:58:20 2012
 - Added perl-MCE.spec to trunk
   http://code.google.com/p/many-core-engine-perl/source/browse/trunk/
