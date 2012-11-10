@@ -26,6 +26,7 @@ images/07_Sequential_IO.gif
 images/08_Natural_Callback.gif
 images/09_Supported_OS.gif
 images/10_Scaling_Pings.gif
+images/11_SNMP_Collection.gif
 t/00_required_modules.t
 t/00_required_signals.t
 t/01_load_mce.t

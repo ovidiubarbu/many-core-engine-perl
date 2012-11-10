@@ -10,8 +10,8 @@
 
 package MCE::Signal;
 
-my ($_prog_name, $_main_proc_id);
-our $_has_threads;
+our ($_has_threads, $_main_proc_id);
+my $_prog_name;
 
 BEGIN {
    $_prog_name = $0;
@@ -22,7 +22,7 @@ BEGIN {
 use strict;
 use warnings;
 
-our $VERSION = '1.000';
+our $VERSION = '1.003';
 $VERSION = eval $VERSION;
 
 use Fcntl qw( :flock );
@@ -400,7 +400,7 @@ MCE::Signal - Provides tmp_dir creation & signal handling for Many-Core Engine.
 
 =head1 VERSION
 
-This document describes MCE::Signal version 1.000
+This document describes MCE::Signal version 1.003
 
 =head1 SYNOPSIS
 

@@ -1,5 +1,11 @@
 Revision history for Perl extension MCE.
 
+1.003 Sat Nov 10 12:55:00 2012
+- Updated images/06_Shared_Sockets.gif
+- Updated images/10_Scaling_Pings.gif
+- Added   images/11_SNMP_Collection.gif
+- Small update to MCE::Signal
+
 1.002 Thu Nov 08 01:13:10 2012
 - Renamed continue method to next
 
