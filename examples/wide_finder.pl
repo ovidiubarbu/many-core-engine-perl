@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Wide Finder script done with Many-core Engine for Perl.
+## Wide Finder script via Many-core Engine for Perl.
 ##
 ## http://www.tbray.org/ongoing/When/200x/2007/09/20/Wide-Finder
 ## http://www.tbray.org/ongoing/When/200x/2007/10/30/WF-Results
@@ -10,7 +10,7 @@
 ## Heh, I'm 5 years late :). I only came to know of Wide Finder about two
 ## months ago. MCE does quite well for this use case. One doesn't have to
 ## worry about a worker crossing into another worker's boundary as can be
-## seen with the fastest solution utilizing MMAP IO.
+## seen with the solution utilizing MMAP IO.
 ##
 ## Try testing 8, 16, 32 workers on a "code cache" file under Linux. The MMAP
 ## progressively slows down as number of workers increases. The reason why is
@@ -33,7 +33,8 @@
 ## MCE, with its Chunking and Slurp IO capability, is beneficial for the
 ## "wide-data" usage pattern of all sorts.
 ##
-## Default behaviour is to spawn off child processes.
+## The default behaviour is to spawn off child processes.
+##
 ## Pass --use_threads or --use_forks to use threads instead.
 ##
 ## usage: wide_finder.pl logfile
@@ -234,12 +235,8 @@ $mce->shutdown();
 
 ## Display results.
 
-my $n = 0;
-
-for (sort { $total{$b} <=> $total{$a} } keys %total) {
-    print "$total{$_}\t$_\n";
-    last if ++$n >= 10;
-}
+print "$total{$_}\t$_\n"
+   for (sort { $total{$b} <=> $total{$a} } keys %total)[ 0 .. 9 ];
 
 printf "\n## Compute time: %0.03f\n\n",  $end - $start;
 
