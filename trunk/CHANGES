@@ -1,5 +1,9 @@
 Revision history for Perl extension MCE.
 
+1.004 Sun Nov 11 11:54:00 2012
+- Updated examples/mce_usage.readme
+- Updated examples/wide_finder.pl
+
 1.003 Sat Nov 10 12:55:00 2012
 - Updated images/06_Shared_Sockets.gif
 - Updated images/10_Scaling_Pings.gif
