@@ -188,20 +188,20 @@ if (-d $logfile) {
 ##
 ###############################################################################
 
-my %total = ();
+my %count = ();
 
-## Callback function for storing sub-totals.
+## Callback function for aggregating total counted.
 
 sub store_result {
    my ($hash_ref) = @_;
    for (keys %$hash_ref) {
-      $total{$_} += $hash_ref->{$_};
+      $count{$_} += $hash_ref->{$_};
    }
 }
 
 ## Compute via MCE. Think of user_begin, user_func, user_end like the awk
 ## scripting language: awk 'BEGIN { ... } { ... } END { ... }'. All workers
-## submit their totals after processing all chunks.
+## submit their counts after processing all chunks.
 
 my $mce = MCE->new(
    max_workers => $max_workers,
@@ -235,8 +235,8 @@ $mce->shutdown();
 
 ## Display results.
 
-print "$total{$_}\t$_\n"
-   for (sort { $total{$b} <=> $total{$a} } keys %total)[ 0 .. 9 ];
+print "$count{$_}\t$_\n"
+   for (sort { $count{$b} <=> $count{$a} } keys %count)[ 0 .. 9 ];
 
 printf "\n## Compute time: %0.03f\n\n",  $end - $start;
 
