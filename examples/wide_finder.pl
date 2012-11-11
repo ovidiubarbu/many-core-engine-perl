@@ -193,9 +193,9 @@ my %count = ();
 ## Callback function for aggregating total counted.
 
 sub store_result {
-   my ($hash_ref) = @_;
-   for (keys %$hash_ref) {
-      $count{$_} += $hash_ref->{$_};
+   my ($count_ref) = @_;
+   for (keys %$count_ref) {
+      $count{$_} += $count_ref->{$_};
    }
 }
 
@@ -210,18 +210,20 @@ my $mce = MCE->new(
 
    user_begin => sub {
       my $self = shift;
-      $self->{wk_hash} = {};
+      $self->{wk_count} = {};
    },
+
    user_func => sub {
       my ($self, $chunk_ref, $chunk_id) = @_;
-      $self->{wk_hash}{$1}++ while (
+      $self->{wk_count}{$1}++ while (
          $$chunk_ref =~
             m{GET /ongoing/When/\d\d\dx/(\d\d\d\d/\d\d/\d\d/[^ .]+) }g
       );
    },
+
    user_end => sub {
       my $self = shift;
-      $self->do('store_result', $self->{wk_hash});
+      $self->do('store_result', $self->{wk_count});
    }
 );
 
