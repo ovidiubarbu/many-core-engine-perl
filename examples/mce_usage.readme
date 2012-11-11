@@ -1,13 +1,4 @@
 
-###############################################################################
-## ----------------------------------------------------------------------------
-## Many-Core Engine (MCE) for Perl. Provides parallel processing cabilities.
-##
-## First modular release in a Perl package format
-## -- Created by Mario Roy, 11/05/2012
-##
-###############################################################################
-
 <> SYNOPSIS
 
    use MCE;
