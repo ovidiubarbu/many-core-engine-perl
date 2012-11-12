@@ -1,12 +1,9 @@
 #!/usr/bin/perl
 
 ##
-## http://www.tbray.org/ongoing/When/200x/2007/09/20/Wide-Finder
-## requires the data at http://www.tbray.org/tmp/o10k.ap
-##
 ## usage: tbray_baseline2.pl < logfile
 ##
-## This runs faster than baseline1 -- regex optimization is in effect
+## This runs faster than baseline1 -- regex optimization is in effect here
 ## whereas not the case in baseline1.
 ##
 

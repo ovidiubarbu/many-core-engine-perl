@@ -1,13 +1,10 @@
 #!/usr/bin/perl -s
 
 ##
-## http://www.tbray.org/ongoing/When/200x/2007/09/20/Wide-Finder
-## requires the data at http://www.tbray.org/tmp/o10k.ap
-##
-## Parallizing baseline code via MCE -- Part 2 of 3.
+## Part 2 of 3.
 ##
 ## usage:
-##    perl -s wf2.pl -J=$N -C=$N $LOGFILE
+##    perl -s wf_mce2.pl -J=$N -C=$N $LOGFILE
 ##
 ##    where $N is the number of processes, $C is the chunk size,
 ##    and $LOGFILE is the target

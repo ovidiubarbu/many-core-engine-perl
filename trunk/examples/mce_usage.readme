@@ -66,7 +66,7 @@
       user_error   => \&user_error,   ## Default is undef
       user_output  => \&user_output,  ## Default is undef
 
-          ## When workers call the following funtions, MCE will
+          ## When workers call the following functions, MCE will
           ## pass the data to user_error/user_output if defined.
           ## $self->sendto('stderr', 'Sending to STDERR');
           ## $self->sendto('stdout', 'Sending to STDOUT');
@@ -273,7 +273,7 @@
    MCE EXAMPLE WITH CHUNK_SIZE => 500
    --------------------------------------------------------------------------
 
-   ## Chunking reduces overhead manyfolds. Instead of passing a single
+   ## Chunking reduces overhead many folds. Instead of passing a single
    ## item from @input_data, a chunk of $chunk_size is sent instead to
    ## the next available worker.
 
@@ -481,8 +481,8 @@
 <> EXAMPLES
 
    MCE comes with various examples showing real-world use case scenarios on
-   parallelizing something as small as cat (try with -n) to grepping for
-   patterns and wordcount aggregation.
+   parallelizing something as small as cat (try with -n) to greping for
+   patterns and word count aggregation.
 
    cat.pl    Concatenation script, similar to the cat binary.
    egrep.pl  Egrep script, similar to the egrep binary.
@@ -498,10 +498,10 @@
              Perform ping test and report back failing IPs to
              standard output.
 
-   widefinder.pl
-             An implementation utilizing MCE.
-             As fast as MMAP IO when file resides in OS FS cache
-             2x ~ 3x faster when reading directly from disk
+   tbray/wf_mce1.pl, wf_mce2.pl, wf_mce3.pl
+             An implementation of wide finder utilizing MCE.
+             As fast as MMAP IO when file resides in OS FS cache.
+             2x ~ 3x faster when reading directly from disk.
 
    foreach.pl
    forchunk.pl

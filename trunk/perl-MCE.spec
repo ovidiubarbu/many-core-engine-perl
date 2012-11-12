@@ -36,7 +36,10 @@ find $RPM_BUILD_ROOT -depth -type d -exec rmdir {} 2>/dev/null \;
 
 for f in examples/*
 do
-    install -D -p -m 0755 $f $RPM_BUILD_ROOT%{_datadir}/doc/%{name}-%{version}/$f
+    if [ ! -d $f ]
+    then
+        install -D -p -m 0755 $f $RPM_BUILD_ROOT%{_datadir}/doc/%{name}-%{version}/$f
+    fi
 done
 
 %{_fixperms} $RPM_BUILD_ROOT/*
@@ -54,10 +57,18 @@ rm -rf $RPM_BUILD_ROOT
 %{_mandir}/man3/*
 
 %changelog
-* Sat Nov 11 2012 Mario Roy 1.004-1
+* Sun Nov 12 2012 Mario Roy 1.004-1
 - Updated examples/mce_usage.readme
 - Updated examples/wide_finder.pl
+- Added examples/tbray/README
+- Added examples/tbray/tbray_baseline1.pl
+- Added examples/tbray/tbray_baseline2.pl
+- Added examples/tbray/wf_mce1.pl
+- Added examples/tbray/wf_mce2.pl
+- Added examples/tbray/wf_mce3.pl (../wide_finder.pl moved here)
+- Added examples/tbray/wf_mmap.pl
 * Sat Nov 10 2012 Mario Roy 1.003-1
+- Updated README
 - Updated images/06_Shared_Sockets.gif
 - Updated images/10_Scaling_Pings.gif
 - Added   images/11_SNMP_Collection.gif

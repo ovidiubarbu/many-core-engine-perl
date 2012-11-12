@@ -1,13 +1,10 @@
 #!/usr/bin/perl -s
 
 ##
-## http://www.tbray.org/ongoing/When/200x/2007/09/20/Wide-Finder
-## requires the data at http://www.tbray.org/tmp/o10k.ap
-##
-## Parallizing baseline code via MCE -- Part 3 of 3.
+## Part 3 of 3.
 ##
 ## usage:
-##    perl -s wf3.pl -J=$N -C=$N $LOGFILE
+##    perl -s wf_mce3.pl -J=$N -C=$N $LOGFILE
 ##
 ##    where $N is the number of processes, $C is the chunk size,
 ##    and $LOGFILE is the target
@@ -31,7 +28,9 @@ sub store_result {
    $count{$_} += $count_ref->{$_} for (keys %$count_ref);
 }
 
-## Parallelize via MCE.
+## Parallelize via MCE. Think of user_begin, user_func, user_end like the awk
+## scripting language: awk 'BEGIN { ... } { ... } END { ... }'. All workers
+## submit their counts once versus per each chunk.
 
 my $start = time();
 
