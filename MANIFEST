@@ -14,8 +14,14 @@ examples/forchunk.pl
 examples/foreach.pl
 examples/mce_usage.readme
 examples/scaling_pings.pl
+examples/tbray/README
+examples/tbray/tbray_baseline1.pl
+examples/tbray/tbray_baseline2.pl
+examples/tbray/wf_mce1.pl
+examples/tbray/wf_mce2.pl
+examples/tbray/wf_mce3.pl
+examples/tbray/wf_mmap.pl
 examples/wc.pl
-examples/wide_finder.pl
 images/01_Bank_Queuing_Model.gif
 images/02_Bank_Model_Chunking.gif
 images/03_Bank_Model_Chunk_ID.gif
