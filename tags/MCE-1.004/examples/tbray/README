@@ -1,0 +1,130 @@
+
+##
+## The idea to create this directory came from the MooseX-POE module.
+## What a great idea. :)  I tried to install MooseX-POE under Linux
+## via CPAN, but that failed unfortunately. I wanted to see how
+## tbray_poe.pl and tbray_poe_workers.pl performed. I will try
+## again at a later time.
+##
+## MCE was originally created to parallelize event loops such as Net::Ping
+## and Net::SNMP. This is a demonstration to see if MCE is a viable option
+## in calculating the top 10 hits against an apache log file. I had no idea
+## MCE was going to perform this well actually. I also didn't expect the
+## finding with MMAP IO when reading directly from disk (not FS cache).
+##
+
+##
+## Back in 2007, Tim Bray created the wonderful Wide-Finder site. I came
+## across this site about 2 months ago when searching for problems to try
+## out with MCE. At the time, MCE was lacking the slurpio option. Without
+## it, MCE wasn't fast enough as seen with the first wf_mce1.pl example
+## below. I thought at the time, hey, Perl allows the possibility to slurp
+## an entire file into a scalar. Why not let Perl be Perl and let it slurp
+## the chunk and pass that to the user function. All I needed was an if
+## statement to not convert the chunk to an array. And voila...
+##
+## http://www.tbray.org/ongoing/When/200x/2007/09/20/Wide-Finder
+## http://www.tbray.org/ongoing/When/200x/2007/10/30/WF-Results
+## http://www.tbray.org/ongoing/When/200x/2007/11/12/WF-Conclusions
+##
+## It requires the data at http://www.tbray.org/tmp/o10k.ap
+##
+## To create o1000k.ap, take o10k.ap and concatenate it 99 more times.
+## Scripts are normalized to use Time::HiRes for computing time to run.
+##
+
+tbray_baseline1.pl
+      Baseline script for Perl.
+      Regex optimization is not working as expected.
+
+tbray_baseline2.pl
+      Regex optimization is now working as expected.
+
+wf_mce1.pl
+      Count data is sent to the main process after each chunk.
+      MCE by default passes a reference to an array containing
+      the chunk data.
+
+wf_mce2.pl
+      Count data is sent to the main process after each chunk.
+      Enabling slurpio causes MCE to pass the reference of the scalar
+      containing the raw chunk data. Essentially, MCE does not convert
+      the chunk to an array. That is the only difference between
+      slurpio => 0 (default) and slurpio => 1.
+
+wf_mce3.pl
+      Count data is sent once to the main process by each worker.
+      Make use of user_begin and user_end options in MCE.
+
+wf_mmap.pl
+      Code from Sean O'Rourke, 2007, public domain.
+      Modified to default to 8 workers if -J is not specified.
+
+##
+## Times below are reported in number of seconds to compute.
+##
+##    Benchmarked under Linux -- CentOS 6.2 (RHEL6), Perl 5.10.1
+##    Hardware: 2.0 GHz (4 Cores -- 8 logical processors), 7200 RPM Disk
+##    Scripts wf_mce1/2/3 and wf_mmap are benchmarked with -J=8.
+##    Log file tested was o1000k.ap (1 million rows).
+##
+## Cold cache -- sync; echo 3 >/proc/sys/vm/drop_caches
+## Warm cache -- log file is read from FS cache
+##
+
+Script....:  baseline1  baseline2  wf_mce1  wf_mce2  wf_mce3  wf_mmap
+Cold cache:      1.674      1.370    1.252    1.182    1.174    3.056
+Warm cache:      1.236      0.923    0.325    0.106    0.098    0.092
+
+MCE is able to come close to MMAP IO performance levels. MCE, in essence,
+performs sequential read IO (only a single worker reads at any given time).
+For MMAP IO, many workers are reading simultaneously (essentially random IO),
+which is not noticeable when reading from FS cache. MMAP IO is seen here
+wanting nearly 3x the time when reading directly from disk. That came as a
+surprise to me actually.
+
+The result helps clarify a decision I made with MCE. Sequential IO is always
+thought to be the fastest IO out there in benchmark reviews (even SSDs).
+Therefore, I designed MCE to follow a bank-teller queuing model when reading
+input data.
+
+##
+## Q. Why does MCE follow a bank-teller queuing model for input data?
+##
+
+The main reason was for maximizing all available cores from start to end.
+In essence, a core should only begin to go idle at the very end of the compute
+job when reaching EOF. If a worker requires 1.5x the time to process a given
+chunk, that shouldn't impact the other workers working on other chunks.
+
+I also imagined a farm of compute blades all reading input data residing
+on a NFS server. Take for example, 200 blades having 32 workers each, all
+possibly reading from NFS simultaneously. That presents quite a load for the
+NFS server. My thought is that NFS is better able to respond to 200 requests
+versus (200 * 32) requests.
+
+##
+## Q. Why chunking?
+##
+
+The biggest reason for chunking is to reduce overhead as in the number of
+trips between workers and the main process. The less time needed by MCE, the
+more time there is for "actual" compute time for workers.
+
+Chunking helps enable the power-of-randomness. There's a less chance for NFS
+to choke if workers acquire enough input data to last 10 ~ 15 minutes of
+compute time. Chunking also helps enable for "sustained" sequential IO when
+chunk_size => 200000 for example. There's a very brief time-lapse between
+chunks [chunk_1].[chunk_2].[chunk_3].[chunk_n]. The time-lapse is the time for
+the current reader to write the offset position immediately after reading plus
+the time for the next available worker to read the offset position from the
+queue and perform the seek operation. This time-lapse is very narrow actually.
+
+##
+## When you have a chance, take a look at the images folder under MCE to get
+## an idea how chunking is applied to the bank-teller queuing model. Just
+## like at the bank, there is a time-lapse for the next person in line to
+## reach the next available teller. Fortunately, the time-lapse is quite
+## narrow in MCE. In addition, see how chunking further reduces overhead.
+##
+
