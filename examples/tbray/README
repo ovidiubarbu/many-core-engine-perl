@@ -1,7 +1,27 @@
 
 ##
+## The idea to create this directory came from the MooseX-POE module.
+## What a great idea. :)  I tried to install MooseX-POE under Linux
+## via CPAN, but that failed unfortunately. I wanted to see how
+## tbray_poe.pl and tbray_poe_workers.pl performed. I will try
+## again at a later time.
+##
+## MCE was originally created to parallize event loops such as Net::Ping
+## and Net::SNMP. All I had to do was add a new option (slurpio) in order
+## for MCE to perform like MMAP. It's just an if statement in MCE to not
+## convert the chunk data to an array before passing it to user_func.
+##
+## This is a demonstration to see if MCE is a viable option in calculating
+## the top 10 hits against an apache log file. I had no idea MCE was going to
+## perform this well actually. I also didn't expect the finding with MMAP IO
+## when reading directly from disk (not FS cache).
+##
+
+##
+## Well, here we go... Some time back, Tim Bray created this site:
 ## http://www.tbray.org/ongoing/When/200x/2007/09/20/Wide-Finder
-## requires the data at http://www.tbray.org/tmp/o10k.ap
+##
+## It requires the data at http://www.tbray.org/tmp/o10k.ap
 ##
 ## To create o1000k.ap, take o10k.ap and concatenate it 99 more times.
 ## Scripts are normalized to use Time::HiRes for computing time to run.
@@ -88,10 +108,17 @@ more time there is for "actual" compute time for workers.
 Chunking helps enable the power-of-randomness. There's a less chance for NFS
 to choke if workers acquire enough input data to last 10 ~ 15 minutes of
 compute time. Chunking also helps enable for "sustained" sequential IO when
-chunk_size => 200000 for example. There's a very brief time lapse between
-chunks [chunk_1].[chunk_2].[chunk_3].[chunk_n]. The time lapse is the time for
+chunk_size => 200000 for example. There's a very brief time-lapse between
+chunks [chunk_1].[chunk_2].[chunk_3].[chunk_n]. The time-lapse is the time for
 the current reader to write the offset position immediately after reading plus
 the time for the next available worker to read the offset position from the
-queue and perform the seek operation. This time lapse is very narrow actually.
+queue and perform the seek operation. This time-lapse is very narrow actually.
 
+##
+## When you have a chance, take a look at the images folder under MCE to get
+## an idea how chunking is applied to the bank-teller queuing model. Just
+## like at the bank, there is a time-lapse for the next person in line to
+## reach the next available teller. Fortunately, the time-lapse is quite
+## narrow in MCE. In addition, see how chunking further reduces overhead.
+##
 
