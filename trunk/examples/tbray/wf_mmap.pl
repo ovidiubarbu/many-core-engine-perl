@@ -1,4 +1,4 @@
-#!/usr/bin/perl -s
+#!/usr/bin/env perl -s
 ## wf.pl -- an implementation of the "wide finder" benchmark.
 ## Sean O'Rourke, 2007, public domain.
 ##

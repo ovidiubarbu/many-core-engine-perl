@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 ##
 ## usage: tbray_baseline1.pl < logfile

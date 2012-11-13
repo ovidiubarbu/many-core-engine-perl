@@ -1,7 +1,7 @@
-#!/usr/bin/perl -s
+#!/usr/bin/env perl -s
 
 ##
-## Part 3 of 3.
+## Part 3 of 3 with slurpio => 1.
 ##
 ## usage:
 ##    perl -s wf_mce3.pl -J=$N -C=$N $LOGFILE
@@ -28,9 +28,7 @@ sub store_result {
    $count{$_} += $count_ref->{$_} for (keys %$count_ref);
 }
 
-## Parallelize via MCE. Think of user_begin, user_func, user_end like the awk
-## scripting language: awk 'BEGIN { ... } { ... } END { ... }'. All workers
-## submit their counts once versus per each chunk.
+## Parallelize via MCE.
 
 my $start = time();
 
@@ -46,15 +44,14 @@ my $mce = MCE->new(
       $self->{wk_rx} = qr{GET /ongoing/When/\d\d\dx/(\d\d\d\d/\d\d/\d\d/[^ .]+) };
    },
 
+   user_func => sub {
+      my ($self, $chunk_ref, $chunk_id) = @_;
+      $self->{wk_count}{$1}++ while ( $$chunk_ref =~ /$self->{wk_rx}/go );
+   },
+
    user_end => sub {
       my $self = shift;
       $self->do('store_result', $self->{wk_count});
-   },
-
-   user_func => sub {
-      my ($self, $chunk_ref, $chunk_id) = @_;
-      my $rx = $self->{wk_rx};
-      $self->{wk_count}{$1}++ while ( $$chunk_ref =~ /$rx/go );
    }
 );
 

@@ -1,4 +1,4 @@
-#!/usr/bin/perl -s
+#!/usr/bin/env perl -s
 
 ##
 ## Parallizing baseline code via MCE -- Part 1 of 3.
@@ -37,18 +37,24 @@ my $mce = MCE->new(
    max_workers => $J,
    input_data  => $logfile,
 
+   user_begin => sub {
+      my $self = shift;
+      $self->{wk_count} = {};
+      $self->{wk_rx} = qr{GET /ongoing/When/\d\d\dx/(\d\d\d\d/\d\d/\d\d/[^ .]+) };
+   },
+
    user_func => sub {
       my ($self, $chunk_ref, $chunk_id) = @_;
-
-      my $rx = qr{GET /ongoing/When/\d\d\dx/(\d\d\d\d/\d\d/\d\d/[^ .]+) };
-      my %count = ();
-
+      my $rx = $self->{wk_rx};
       for ( @$chunk_ref ) {
          next unless $_ =~ /$rx/o;
-         $count{$1}++;
+         $self->{wk_count}{$1}++;
       }
+   },
 
-      $self->do('store_result', \%count);
+   user_end => sub {
+      my $self = shift;
+      $self->do('store_result', $self->{wk_count});
    }
 );
 
