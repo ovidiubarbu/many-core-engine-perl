@@ -1,7 +1,7 @@
-#!/usr/bin/perl -s
+#!/usr/bin/env perl -s
 
 ##
-## Part 2 of 3.
+## Part 2 of 3 with slurpio => 1 (omitted user_begin & user_end).
 ##
 ## usage:
 ##    perl -s wf_mce2.pl -J=$N -C=$N $LOGFILE

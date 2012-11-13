@@ -1,5 +1,9 @@
 Revision history for Perl extension MCE.
 
+1.005 Tue Nov 13 06:11:00 2012
+- Removed underscore from package globals in MCE::Signal
+- Optimized _worker_read_handle method in MCE
+- Updated files under examples/tbray/
 1.004 Mon Nov 12 01:50:00 2012
 - Updated examples/mce_usage.readme
 - Updated examples/wide_finder.pl

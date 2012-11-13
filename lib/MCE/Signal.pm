@@ -3,26 +3,23 @@
 ## MCE::Signal
 ## -- Provides tmp_dir creation & signal handling for Many-Core Engine.
 ##
-## First modular release in a Perl package format
-## -- Created by Mario Roy, 11/05/2012
-##
 ###############################################################################
 
 package MCE::Signal;
 
-our ($_has_threads, $_main_proc_id);
+our ($has_threads, $main_proc_id);
 my $_prog_name;
 
 BEGIN {
    $_prog_name = $0;
    $_prog_name =~ s{^.*[\\/]}{}g;
-   $_main_proc_id = $$;
+   $main_proc_id = $$;
 }
 
 use strict;
 use warnings;
 
-our $VERSION = '1.004';
+our $VERSION = '1.005';
 $VERSION = eval $VERSION;
 
 use Fcntl qw( :flock );
@@ -123,11 +120,11 @@ $SIG{CHLD} = 'DEFAULT' if ($^O ne 'MSWin32');
 ##
 ###############################################################################
 
-our $_mce_spawned_ref = undef;
+our $mce_spawned_ref = undef;
 
 END {
    MCE::Signal->_shutdown_mce();
-   MCE::Signal->stop_and_exit($?) if ($$ == $_main_proc_id || $? != 0);
+   MCE::Signal->stop_and_exit($?) if ($$ == $main_proc_id || $? != 0);
 }
 
 ###############################################################################
@@ -165,7 +162,7 @@ sub sys_cmd {
 ## Stops execution, removes temp directory and exits cleanly.
 ##
 ## Provides safe reentrant logic for both parent and child processes.
-## The $_main_proc_id variable is defined above.
+## The $main_proc_id variable is defined above.
 ##
 ###############################################################################
 
@@ -199,7 +196,7 @@ sub sys_cmd {
       ## ----------------------------------------------------------------------
 
       ## For main thread / parent process.
-      if ($$ == $_main_proc_id) {
+      if ($$ == $main_proc_id) {
 
          $_handler_cnt += 1;
 
@@ -254,7 +251,7 @@ sub sys_cmd {
             ## Signal process group to die.
             if ($_is_sig == 1) {
                print STDERR "\n" if ($_sig_name ne 'PIPE');
-               kill('KILL', -$$, $_main_proc_id);
+               kill('KILL', -$$, $main_proc_id);
             }
          }
       }
@@ -262,7 +259,7 @@ sub sys_cmd {
       ## ----------------------------------------------------------------------
 
       ## For child processes.
-      if ($$ != $_main_proc_id && $_is_sig == 1) {
+      if ($$ != $main_proc_id && $_is_sig == 1) {
 
          ## Obtain lock.
          open my $CHILD_LOCK, '+>>', "$tmp_dir/child.lock";
@@ -276,7 +273,7 @@ sub sys_cmd {
             ## Signal process group to terminate.
             if (! -f "$tmp_dir/killed" && ! -f "$tmp_dir/stopped") {
                open FH, "> $tmp_dir/killed"; close FH;
-               kill('TERM', -$$, $_main_proc_id);
+               kill('TERM', -$$, $main_proc_id);
             }
          }
 
@@ -292,7 +289,7 @@ sub sys_cmd {
          select(undef, undef, undef, 0.133) for (1..3);
       }
 
-      threads->exit($_exit_status) if ($_has_threads && threads->can('exit'));
+      threads->exit($_exit_status) if ($has_threads && threads->can('exit'));
       exit $_exit_status;
    }
 }
@@ -306,14 +303,14 @@ sub sys_cmd {
 
 sub _shutdown_mce {
 
-   if (defined $_mce_spawned_ref) {
-      my $_tid = ($_has_threads) ? threads->tid() : '';
+   if (defined $mce_spawned_ref) {
+      my $_tid = ($has_threads) ? threads->tid() : '';
       $_tid = '' unless defined $_tid;
 
-      foreach my $_mce_id (keys %{ $_mce_spawned_ref }) {
+      foreach my $_mce_id (keys %{ $mce_spawned_ref }) {
          if ($_mce_id =~ /\A$$\.$_tid\./) {
-            $_mce_spawned_ref->{$_mce_id}->shutdown();
-            delete $_mce_spawned_ref->{$_mce_id};
+            $mce_spawned_ref->{$_mce_id}->shutdown();
+            delete $mce_spawned_ref->{$_mce_id};
          }
       }
    }
@@ -379,7 +376,7 @@ sub _sig_handler_warn {
       ## The main process will kill the process group before this expires.
       select(undef, undef, undef, 0.133) for (1..3);
 
-      threads->exit($_exit_status) if ($_has_threads && threads->can('exit'));
+      threads->exit($_exit_status) if ($has_threads && threads->can('exit'));
       exit $_exit_status;
    }
 }
@@ -400,7 +397,7 @@ MCE::Signal - Provides tmp_dir creation & signal handling for Many-Core Engine.
 
 =head1 VERSION
 
-This document describes MCE::Signal version 1.004
+This document describes MCE::Signal version 1.005
 
 =head1 SYNOPSIS
 

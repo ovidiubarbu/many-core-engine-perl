@@ -41,12 +41,10 @@ tbray_baseline2.pl
       Regex optimization is now working as expected.
 
 wf_mce1.pl
-      Count data is sent to the main process after each chunk.
       MCE by default passes a reference to an array containing
       the chunk data.
 
 wf_mce2.pl
-      Count data is sent to the main process after each chunk.
       Enabling slurpio causes MCE to pass the reference of the scalar
       containing the raw chunk data. Essentially, MCE does not convert
       the chunk to an array. That is the only difference between
@@ -54,7 +52,6 @@ wf_mce2.pl
 
 wf_mce3.pl
       Count data is sent once to the main process by each worker.
-      Make use of user_begin and user_end options in MCE.
 
 wf_mmap.pl
       Code from Sean O'Rourke, 2007, public domain.
@@ -74,7 +71,7 @@ wf_mmap.pl
 
 Script....:  baseline1  baseline2  wf_mce1  wf_mce2  wf_mce3  wf_mmap
 Cold cache:      1.674      1.370    1.252    1.182    1.174    3.056
-Warm cache:      1.236      0.923    0.325    0.106    0.098    0.092
+Warm cache:      1.236      0.923    0.277    0.106    0.098    0.092
 
 MCE is able to come close to MMAP IO performance levels. MCE, in essence,
 performs sequential read IO (only a single worker reads at any given time).
@@ -117,14 +114,6 @@ compute time. Chunking also helps enable for "sustained" sequential IO when
 chunk_size => 200000 for example. There's a very brief time-lapse between
 chunks [chunk_1].[chunk_2].[chunk_3].[chunk_n]. The time-lapse is the time for
 the current reader to write the offset position immediately after reading plus
-the time for the next available worker to read the offset position from the
-queue and perform the seek operation. This time-lapse is very narrow actually.
-
-##
-## When you have a chance, take a look at the images folder under MCE to get
-## an idea how chunking is applied to the bank-teller queuing model. Just
-## like at the bank, there is a time-lapse for the next person in line to
-## reach the next available teller. Fortunately, the time-lapse is quite
-## narrow in MCE. In addition, see how chunking further reduces overhead.
-##
+the time for the next available worker to read the offset position and perform
+the seek operation. This time-lapse is very narrow actually.
 

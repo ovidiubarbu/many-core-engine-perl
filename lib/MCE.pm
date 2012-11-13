@@ -2,9 +2,6 @@
 ## ----------------------------------------------------------------------------
 ## Many-Core Engine (MCE) for Perl. Provides parallel processing cabilities.
 ##
-## First modular release in a Perl package format
-## -- Created by Mario Roy, 11/05/2012
-##
 ###############################################################################
 
 package MCE;
@@ -99,7 +96,7 @@ INIT {
 use strict;
 use warnings;
 
-our $VERSION = '1.004';
+our $VERSION = '1.005';
 $VERSION = eval $VERSION;
 
 use Fcntl qw( :flock O_CREAT O_TRUNC O_RDWR O_RDONLY );
@@ -192,7 +189,7 @@ my $_mce_tmp_dir = $MCE::Signal::tmp_dir;
 my %_mce_spawned = ();
 my $_mce_count   = 0;
 
-$MCE::Signal::_mce_spawned_ref = \%_mce_spawned;
+$MCE::Signal::mce_spawned_ref = \%_mce_spawned;
 
 ## Warnings are disabled to minimize bits of noise when user or OS signals
 ## the script to exit. e.g. MCE_script.pl < infile | head
@@ -242,8 +239,8 @@ sub new {
       $self->{use_threads} = ($_has_threads) ? 1 : 0;
    }
 
-   $MCE::Signal::_has_threads = 1
-      if ($self->{use_threads} && !$MCE::Signal::_has_threads);
+   $MCE::Signal::has_threads = 1
+      if ($self->{use_threads} && !$MCE::Signal::has_threads);
 
    $self->{job_delay}    = $argv{job_delay}    || undef;
    $self->{spawn_delay}  = $argv{spawn_delay}  || undef;
@@ -649,7 +646,7 @@ sub run {
          $_input_glob = $self->{input_data};
          $_input_data = $_input_file = undef;
          $_abort_msg  = 0; ## Flag: Has Data: No
-         $_first_msg  = 1; ## Flag: Has DAta: Yes
+         $_first_msg  = 1; ## Flag: Has Data: Yes
       }
       elsif (ref $self->{input_data} eq '') {        ## File mode.
          $_run_mode   = 'file';
@@ -1783,6 +1780,8 @@ sub _worker_read_handle {
 
    die "Private method called" unless (caller)[0]->isa( ref($self) );
 
+   my $_many_wrks   = ($self->{max_workers} > 1) ? 1 : 0;
+
    my $_QUE_R_SOCK  = $self->{_que_r_sock};
    my $_QUE_W_SOCK  = $self->{_que_w_sock};
    my $_chunk_size  = $self->{chunk_size};
@@ -1790,7 +1789,7 @@ sub _worker_read_handle {
    my $_user_func   = $self->{user_func};
 
    my ($_data_size, $_next, $_chunk_id, $_offset_pos, $_IN_FILE);
-   my @_records = ();
+   my @_records = (); $_chunk_id = $_offset_pos = 0;
 
    $_data_size = ($_proc_type == READ_MEMORY)
       ? length($$_input_data) : -s $_input_data;
@@ -1818,7 +1817,7 @@ sub _worker_read_handle {
       my $_buffer;
 
       ## Obtain the next chunk_id and offset position.
-      {
+      if ($_many_wrks) {
          local $\ = undef; local $/ = $LF;
 
          read $_QUE_R_SOCK, $_next, QUE_READ_SIZE;
@@ -1829,13 +1828,17 @@ sub _worker_read_handle {
             close $_IN_FILE; undef $_IN_FILE;
             return;
          }
-
-         $_chunk_id++;
       }
+      elsif (eof $_IN_FILE) {
+         close $_IN_FILE; undef $_IN_FILE;
+         return;
+      }
+
+      $_chunk_id++;
 
       ## Read data.
       if ($_chunk_size <= MAX_RECS_SIZE) {        ## One or many records.
-         seek $_IN_FILE, $_offset_pos, 0;
+         seek $_IN_FILE, $_offset_pos, 0 if ($_many_wrks);
          if ($_chunk_size == 1) {
             $_buffer = <$_IN_FILE>;
          }
@@ -1856,7 +1859,7 @@ sub _worker_read_handle {
       }
       else {                                      ## Large chunk.
          if ($_proc_type == READ_MEMORY) {
-            seek $_IN_FILE, $_offset_pos, 0;
+            seek $_IN_FILE, $_offset_pos, 0 if ($_many_wrks);
             if (read($_IN_FILE, $_buffer, $_chunk_size) == $_chunk_size) {
                $_buffer .= <$_IN_FILE>;
             }
@@ -1870,11 +1873,12 @@ sub _worker_read_handle {
             else {
                seek $_IN_FILE, sysseek($_IN_FILE, 0, 1), 0;
             }
+            $_offset_pos = tell $_IN_FILE unless ($_many_wrks);
          }
       }
 
       ## Append the next offset position into the queue.
-      {
+      if ($_many_wrks) {
          local $\ = undef;
          print $_QUE_W_SOCK pack(QUE_TEMPLATE, $_chunk_id, tell $_IN_FILE);
       }
@@ -2169,7 +2173,7 @@ sub _worker_main {
    $self->{stderr_file}  = $self->{stdout_file}  = undef;
    $self->{user_error}   = $self->{user_output}  = undef;
 
-   $MCE::Signal::_mce_spawned_ref = undef;
+   $MCE::Signal::mce_spawned_ref = undef;
    %_mce_spawned = ();
    $self->{_wid} = $_wid;
 
@@ -2213,7 +2217,7 @@ MCE - Many-Core Engine for Perl. Provides parallel processing cabilities.
 
 =head1 VERSION
 
-This document describes MCE version 1.004
+This document describes MCE version 1.005
 
 =head1 SYNOPSIS
 
