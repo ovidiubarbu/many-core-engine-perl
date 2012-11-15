@@ -1,4 +1,4 @@
-MCE version 1.005
+MCE version 1.006
 =================
 
 Many-core Engine (MCE) for Perl helps enable a new level of performance by
@@ -21,17 +21,14 @@ DEPENDENCIES
 
 This module requires Perl 5.8.0 or later.
 
-   MCE by default does forking (child processes).
-
+   By default MCE does forking (spawns child processes).
    MCE also supports threads via 2 threading libraries.
 
    The use of threads in MCE requires that you include threads support
-   of your choice prior to loading MCE.
+   prior to loading MCE.
 
-      use threads;           (or)   use forks;
-      use threads::shared;          use forks::shared;
-
-      <other_perl_modules>          <other_perl_modules>
+      use threads;                  use forks;
+      use threads::shared;   (or)   use forks::shared;
 
       use MCE;                      use MCE;
 

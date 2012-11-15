@@ -7,19 +7,16 @@
 
 package MCE::Signal;
 
-our ($has_threads, $main_proc_id);
-my $_prog_name;
+our ($has_threads, $main_proc_id, $prog_name);
 
 BEGIN {
-   $_prog_name = $0;
-   $_prog_name =~ s{^.*[\\/]}{}g;
-   $main_proc_id = $$;
+   $main_proc_id = $$; $prog_name = $0; $prog_name =~ s{^.*[\\/]}{}g;
 }
 
 use strict;
 use warnings;
 
-our $VERSION = '1.005';
+our $VERSION = '1.006';
 $VERSION = eval $VERSION;
 
 use Fcntl qw( :flock );
@@ -82,10 +79,10 @@ sub import {
    }
 
    $_count = 0;
-   $tmp_dir = "$_tmp_dir_base/$_prog_name.$$.$_count";
+   $tmp_dir = "$_tmp_dir_base/$prog_name.$$.$_count";
 
    while ( !(mkdir "$tmp_dir", 0770) ) {
-      $tmp_dir = "$_tmp_dir_base/$_prog_name.$$." . (++$_count);
+      $tmp_dir = "$_tmp_dir_base/$prog_name.$$." . (++$_count);
    }
 }
 
@@ -96,9 +93,6 @@ sub import {
 ###############################################################################
 
 ## Set traps to catch signals.
-$SIG{__DIE__}  = \&_sig_handler_die;
-$SIG{__WARN__} = \&_sig_handler_warn;
-
 $SIG{XCPU} = \&stop_and_exit if (exists $SIG{XCPU});   ## UNIX SIG 24
 $SIG{XFSZ} = \&stop_and_exit if (exists $SIG{XFSZ});   ## UNIX SIG 25
 
@@ -123,7 +117,7 @@ $SIG{CHLD} = 'DEFAULT' if ($^O ne 'MSWin32');
 our $mce_spawned_ref = undef;
 
 END {
-   MCE::Signal->_shutdown_mce();
+   MCE::Signal->shutdown_mce();
    MCE::Signal->stop_and_exit($?) if ($$ == $main_proc_id || $? != 0);
 }
 
@@ -170,7 +164,7 @@ sub sys_cmd {
    my $_handler_cnt = 0;
 
    my %_sig_name_lkup = map { $_ => 1 } qw(
-      HUP INT PIPE QUIT TERM CHLD XCPU XFSZ
+      __DIE__ __WARN__ HUP INT PIPE QUIT TERM CHLD XCPU XFSZ
    );
 
    sub stop_and_exit {
@@ -184,6 +178,7 @@ sub sys_cmd {
       if (exists $_sig_name_lkup{$_sig_name}) {
          $SIG{$_sig_name} = sub { };
          $_exit_status = $_is_sig = 1;
+         $_exit_status = 255 if $_sig_name eq '__DIE__';
       }
       else {
          $_exit_status = $_sig_name if ($_sig_name ne '0');
@@ -201,7 +196,7 @@ sub sys_cmd {
          $_handler_cnt += 1;
 
          if ($_handler_cnt == 1 && ! -e "$tmp_dir/stopped") {
-            open FH, "> $tmp_dir/stopped"; close FH;
+            open my $_FH, "> $tmp_dir/stopped"; close $_FH;
 
             local $\ = undef;
 
@@ -223,11 +218,11 @@ sub sys_cmd {
                }
 
                ## Display error message.
-               print STDERR "\n## $_prog_name: $_err_msg\n" if ($_err_msg);
-               open FH, "> $tmp_dir/killed"; close FH;
+               print STDERR "\n## $prog_name: $_err_msg\n" if ($_err_msg);
+               open my $_FH, "> $tmp_dir/killed"; close $_FH;
 
                ## Signal process group to terminate.
-               kill('TERM', -$$) unless (-f "$tmp_dir/died");
+               kill('TERM', -$$);
 
                ## Pause a bit.
                if ($_sig_name ne 'PIPE') {
@@ -238,7 +233,7 @@ sub sys_cmd {
             ## Remove temp directory.
             if (defined $tmp_dir && $tmp_dir ne '' && -d $tmp_dir) {
                if ($_keep_tmp_dir == 1) {
-                  print STDERR "$_prog_name: saved tmp_dir = $tmp_dir\n";
+                  print STDERR "$prog_name: saved tmp_dir = $tmp_dir\n";
                }
                else {
                   if ($tmp_dir ne '/tmp' && $tmp_dir ne '/var/tmp') {
@@ -270,9 +265,14 @@ sub sys_cmd {
          ## Signal process group to terminate.
          if ($_handler_cnt == 1) {
 
+            ## Notify the main process that I've died.
+            if ($_sig_name eq '__DIE__') {
+               open my $_FH, "> $tmp_dir/died"; close $_FH;
+            }
+
             ## Signal process group to terminate.
             if (! -f "$tmp_dir/killed" && ! -f "$tmp_dir/stopped") {
-               open FH, "> $tmp_dir/killed"; close FH;
+               open my $_FH, "> $tmp_dir/killed"; close $_FH;
                kill('TERM', -$$, $main_proc_id);
             }
          }
@@ -301,7 +301,7 @@ sub sys_cmd {
 ##
 ###############################################################################
 
-sub _shutdown_mce {
+sub shutdown_mce {
 
    if (defined $mce_spawned_ref) {
       my $_tid = ($has_threads) ? threads->tid() : '';
@@ -318,66 +318,35 @@ sub _shutdown_mce {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Provides signal handler for the Perl __WARN__ exception.
+## Signal handlers for __DIE__ & __WARN__ utilized by MCE.
 ##
 ###############################################################################
 
-sub _sig_handler_warn {
+sub die_handler {
+
+   shift @_ if (defined $_[0] && $_[0] eq 'MCE::Signal');
+
+   return unless (defined $tmp_dir);
+   local $SIG{__DIE__} = sub { };
+
+   local $\ = undef; my $_time_stamp = localtime();
+   print STDERR "## $_time_stamp: $prog_name: ERROR: ", $_[0];
+
+   MCE::Signal->stop_and_exit('__DIE__');
+}
+
+sub warn_handler {
+
+   shift @_ if (defined $_[0] && $_[0] eq 'MCE::Signal');
 
    ## Display warning message with localtime. Ignore thread exiting messages
    ## coming from the user or OS signaling the script to exit.
 
    unless ($_[0] =~ /^A thread exited while \d+ threads were running/) {
       unless ($_[0] =~ /^Perl exited with active threads/) {
-         local $\ = undef;
-         my $_time_stamp = localtime();
-         print STDERR "## $_time_stamp: $_prog_name: WARNING: $_[0]";
+         local $\ = undef; my $_time_stamp = localtime();
+         print STDERR "## $_time_stamp: $prog_name: WARNING: ", $_[0];
       }
-   }
-}
-
-###############################################################################
-## ----------------------------------------------------------------------------
-## Provides signal handler for the Perl __DIE__ exception.
-##
-###############################################################################
-
-{
-   my $_handler_cnt = 0;
-
-   sub _sig_handler_die {
-
-      my $_exit_status = $?;
-      return unless (defined $tmp_dir);
-
-      local $SIG{__DIE__} = sub { };
-
-      ## Obtain lock.
-      open my $DIE_LOCK, '+>>', "$tmp_dir/die.lock";
-      flock $DIE_LOCK, LOCK_EX;
-
-      $_handler_cnt += 1;
-
-      ## Display warning message with localtime. Signal main process to quit.
-      if ($_handler_cnt == 1 && ! -e "$tmp_dir/died") {
-         open FH, "> $tmp_dir/died"; close FH;
-
-         local $\ = undef;
-         my $_time_stamp = localtime();
-         print STDERR "## $_time_stamp: $_prog_name: ERROR: $_[0]";
-   
-         MCE::Signal->stop_and_exit('TERM');
-      }
-
-      ## Release lock.
-      flock $DIE_LOCK, LOCK_UN;
-      close $DIE_LOCK;
-
-      ## The main process will kill the process group before this expires.
-      select(undef, undef, undef, 0.133) for (1..3);
-
-      threads->exit($_exit_status) if ($has_threads && threads->can('exit'));
-      exit $_exit_status;
    }
 }
 
@@ -397,18 +366,32 @@ MCE::Signal - Provides tmp_dir creation & signal handling for Many-Core Engine.
 
 =head1 VERSION
 
-This document describes MCE::Signal version 1.005
+This document describes MCE::Signal version 1.006
 
 =head1 SYNOPSIS
 
  use MCE::Signal qw( [-use_dev_shm] [-keep_tmp_dir] );
 
+=head1 DESCRIPTION
+
+This package configures $SIG{HUP,INT,PIPE,QUIT,TERM,XCPU,XFSZ} to point to
+stop_and_exit and creates a temporary directory. The main process or workers
+receiving said signal calls stop_and_exit, which signals all workers to
+terminate, removes the temporary directory unless -keep_tmp_dir is specified,
+and terminates itself.
+
+The location of tmp dir resides under $ENV{TEMP} if configured, otherwise
+/dev/shm if available and -use_dev_shm is specified, or /tmp.
+
+Tmp dir resides under $ENV{TEMP}/mce/ when running Perl on Microsoft Windows.
+
 Nothing is exported by default. Exportable are 1 variable and 2 subroutines:
 
- $tmp_dir          - Path to temp dir
+ $tmp_dir          - Path to temporary directory.
 
- sys_cmd           - Execute cmd and return the actual exit status
+ sys_cmd           - Execute command and return the actual exit status.
  stop_and_exit     - Stops execution, removes tmp directory and exits
+                     the entire application.
 
 =head1 EXAMPLES
 

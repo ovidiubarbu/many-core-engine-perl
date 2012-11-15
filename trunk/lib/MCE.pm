@@ -6,15 +6,10 @@
 
 package MCE;
 
-my ($_que_template, $_que_read_size, $_die_handler);
+my ($_que_template, $_que_read_size);
 my ($_has_threads, $_max_files, $_max_procs);
 
 BEGIN {
-   if (ref $SIG{__DIE__} eq 'CODE') {
-      $_die_handler = $SIG{__DIE__};
-      $SIG{__DIE__} = 'DEFAULT';
-   }
-
    ## Configure template to use for pack/unpack for writing to and reading from
    ## the queue. Each entry contains 2 positive numbers: chunk_id & msg_id.
    ## Attempt 64-bit size, otherwize fall back to host machine's word length.
@@ -96,19 +91,14 @@ INIT {
 use strict;
 use warnings;
 
-our $VERSION = '1.005';
+our $VERSION = '1.006';
 $VERSION = eval $VERSION;
 
 use Fcntl qw( :flock O_CREAT O_TRUNC O_RDWR O_RDONLY );
 use Storable 2.04 qw( store retrieve freeze thaw );
 use Socket qw( :DEFAULT :crlf );
 
-if (ref $_die_handler eq 'CODE') {
-   $SIG{__DIE__} = $_die_handler;
-   $_die_handler = undef;
-}
-
-require MCE::Signal; MCE::Signal->import();
+use MCE::Signal;
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -208,6 +198,9 @@ sub new {
    my ($class, %argv) = @_;
 
    @_ = ();
+
+   local $SIG{__DIE__}  = \&_die;
+   local $SIG{__WARN__} = \&_warn;
 
    my $self = { };
 
@@ -335,6 +328,9 @@ sub spawn {
 
    ## Return if workers have already been spawned.
    return $self unless ($self->{_spawned} == 0);
+
+   local $SIG{__DIE__}  = \&_die;
+   local $SIG{__WARN__} = \&_warn;
 
    lock $_MCE_LOCK if ($_has_threads);            ## Obtain MCE lock.
 
@@ -489,6 +485,9 @@ sub foreach {
 
    @_ = ();
 
+   local $SIG{__DIE__}  = \&_die;
+   local $SIG{__WARN__} = \&_warn;
+
    _croak(ILLEGAL_STATE . ": 'input_data' is not specified")
       unless (defined $_input_data);
    _croak(ILLEGAL_STATE . ": 'code_block' is not specified")
@@ -527,6 +526,9 @@ sub forchunk {
 
    @_ = ();
 
+   local $SIG{__DIE__}  = \&_die;
+   local $SIG{__WARN__} = \&_warn;
+
    _croak(ILLEGAL_STATE . ": 'input_data' is not specified")
       unless (defined $_input_data);
    _croak(ILLEGAL_STATE . ": 'code_block' is not specified")
@@ -553,6 +555,9 @@ sub process {
    my $_params_ref = $_[2] || undef;
 
    @_ = ();
+
+   local $SIG{__DIE__}  = \&_die;
+   local $SIG{__WARN__} = \&_warn;
 
    ## Set input data.
    if (defined $_input_data) {
@@ -590,6 +595,9 @@ sub run {
    }
 
    @_ = ();
+
+   local $SIG{__DIE__}  = \&_die;
+   local $SIG{__WARN__} = \&_warn;
 
    my $_requires_shutdown = 0;
 
@@ -774,6 +782,9 @@ sub shutdown {
 
    ## Return if workers have not been spawned or have already been shutdown.
    return $self unless ($self->{_spawned});
+
+   local $SIG{__DIE__}  = \&_die;
+   local $SIG{__WARN__} = \&_warn;
 
    lock $_MCE_LOCK if ($_has_threads);            ## Obtain MCE lock.
 
@@ -1013,7 +1024,7 @@ sub do {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Private Methods.
+## Private methods begins here.
 ## ----------------------------------------------------------------------------
 ###############################################################################
 
@@ -1026,6 +1037,16 @@ sub _croak {
    $\ = undef; require Carp; goto &Carp::croak;
 
    return;
+}
+
+sub _die {
+
+   MCE::Signal->die_handler(@_);
+}
+
+sub _warn {
+
+   MCE::Signal->warn_handler(@_);
 }
 
 ###############################################################################
@@ -2217,7 +2238,7 @@ MCE - Many-Core Engine for Perl. Provides parallel processing cabilities.
 
 =head1 VERSION
 
-This document describes MCE version 1.005
+This document describes MCE version 1.006
 
 =head1 SYNOPSIS
 
@@ -2257,19 +2278,27 @@ This document describes MCE version 1.005
 
         ## Number of workers to spawn, whether or not to enable
         ## slurpio when reading files (passes raw chunk to user
-        ## function), and whether or not to use threads versus
-        ## forking new workers. Use_threads defaults to 1 only
-        ## when script contains 'use threads' or 'use forks'
-        ## and 'use_threads' is not specified. when wanting
-        ## threads, please include thread modules prior to
-        ## MCE. Load MCE as the very last module.
+        ## function), and whether or not to use threads.
+
+        ## By default MCE does forking (spawns child processes).
+        ## MCE also supports threads via 2 threading libraries.
+        ##
+        ## The use of threads in MCE requires that you include
+        ## threads support prior to loading MCE.
+        ##
+        ##    use threads;                  use forks;
+        ##    use threads::shared;   (or)   use forks::shared;
+        ##
+        ##    use MCE                       use MCE;
 
     job_delay    => 0.035,          ## Default is undef
     spawn_delay  => 0.150,          ## Default is undef
     submit_delay => 0.001,          ## Default is undef
 
-        ## How long to wait before spawning, job (run),
-        ## and params submission to workers.
+        ## Time to wait, in fractional seconds, before processing
+        ## job, spawning workers, and parameters submission to
+        ## workers. Use submit_delay if wanting to stagger many
+        ## workers connecting to the database.
 
     user_begin   => \&user_begin,   ## Default is undef
     user_func    => \&user_func,    ## Default is undef
