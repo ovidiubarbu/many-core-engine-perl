@@ -37,19 +37,27 @@
 
           ## Number of workers to spawn, whether or not to enable
           ## slurpio when reading files (passes raw chunk to user
-          ## function), and whether or not to use threads versus
-          ## forking new workers. Use_threads defaults to 1 only
-          ## when script contains 'use threads' or 'use forks'
-          ## and 'use_threads' is not specified. when wanting
-          ## threads, please include thread modules prior to
-          ## MCE. Load MCE as the very last module.
+          ## function), and whether or not to use threads.
+
+          ## By default MCE does forking (spawns child processes).
+          ## MCE also supports threads via 2 threading libraries.
+          ##
+          ## The use of threads in MCE requires that you include
+          ## threads support prior to loading MCE.
+          ##
+          ##    use threads;                  use forks;
+          ##    use threads::shared;   (or)   use forks::shared;
+          ##
+          ##    use MCE                       use MCE;
 
       job_delay    => 0.035,          ## Default is undef
       spawn_delay  => 0.150,          ## Default is undef
       submit_delay => 0.001,          ## Default is undef
 
-          ## How long to wait before spawning, job (run),
-          ## and params submission to workers.
+          ## Time to wait, in fractional seconds, before processing
+          ## job, spawning workers, and parameters submission to
+          ## workers. Use submit_delay if wanting to stagger many
+          ## workers connecting to the database.
 
       user_begin   => \&user_begin,   ## Default is undef
       user_func    => \&user_func,    ## Default is undef

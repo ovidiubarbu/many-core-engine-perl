@@ -1,5 +1,5 @@
 Name:           perl-MCE
-Version:        1.005
+Version:        1.006
 Release:        1%{?dist}
 Summary:        Many-Core Engine for Perl. Provides parallel processing cabilities.
 License:        CHECK(Distributable)
@@ -57,7 +57,12 @@ rm -rf $RPM_BUILD_ROOT
 %{_mandir}/man3/*
 
 %changelog
-* Tue Nov 12 2012 Mario Roy 1.005-1
+* Thu Nov 15 2012 Mario Roy 1.006-1
+- Added description section to MCE::Signal's Perl doc
+- Do not set trap on __DIE__ and __WARN__ inside MCE::Signal
+- Localized __DIE__ and __WARN__ handlers inside MCE instead
+- Clarify the use of threads in documentation
+* Tue Nov 13 2012 Mario Roy 1.005-1
 - Removed underscore from package globals in MCE::Signal
 - Optimized _worker_read_handle method in MCE
 - Updated files under examples/tbray/
