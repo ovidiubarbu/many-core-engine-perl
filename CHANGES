@@ -1,5 +1,9 @@
 Revision history for Perl extension MCE.
 
+1.007 Thu Nov 15 21:30:00 2012
+- At last, the "Voila" release :)
+- Small change to __DIE__ and __WARN__ signal handling for spawn method
+
 1.006 Thu Nov 15 03:30:00 2012
 - Added description section to MCE::Signal's Perl doc
 - Do not set trap on __DIE__ and __WARN__ inside MCE::Signal

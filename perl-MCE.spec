@@ -1,5 +1,5 @@
 Name:           perl-MCE
-Version:        1.006
+Version:        1.007
 Release:        1%{?dist}
 Summary:        Many-Core Engine for Perl. Provides parallel processing cabilities.
 License:        CHECK(Distributable)
@@ -57,6 +57,9 @@ rm -rf $RPM_BUILD_ROOT
 %{_mandir}/man3/*
 
 %changelog
+* Thu Nov 15 2012 Mario Roy 1.007-1
+- At last, the "Voila" release :)
+- Small change to __DIE__ and __WARN__ signal handling for spawn method
 * Thu Nov 15 2012 Mario Roy 1.006-1
 - Added description section to MCE::Signal's Perl doc
 - Do not set trap on __DIE__ and __WARN__ inside MCE::Signal

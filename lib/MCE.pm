@@ -91,7 +91,7 @@ INIT {
 use strict;
 use warnings;
 
-our $VERSION = '1.006';
+our $VERSION = '1.007';
 $VERSION = eval $VERSION;
 
 use Fcntl qw( :flock O_CREAT O_TRUNC O_RDWR O_RDONLY );
@@ -329,10 +329,10 @@ sub spawn {
    ## Return if workers have already been spawned.
    return $self unless ($self->{_spawned} == 0);
 
-   local $SIG{__DIE__}  = \&_die;
-   local $SIG{__WARN__} = \&_warn;
-
    lock $_MCE_LOCK if ($_has_threads);            ## Obtain MCE lock.
+
+   my $_die_handler  = $SIG{__DIE__};  $SIG{__DIE__}  = \&_die;
+   my $_warn_handler = $SIG{__WARN__}; $SIG{__WARN__} = \&_warn;
 
    ## Delay spawning.
    select(undef, undef, undef, $self->{spawn_delay})
@@ -452,6 +452,9 @@ sub spawn {
    ## Release lock.
    flock $_COM_LOCK, LOCK_UN;
    close $_COM_LOCK; undef $_COM_LOCK;
+
+   $SIG{__DIE__}  = $_die_handler;
+   $SIG{__WARN__} = $_warn_handler;
 
    ## Update max workers spawned.
    $_mce_spawned{$_mce_id} = $self;
@@ -1024,7 +1027,7 @@ sub do {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Private methods begins here.
+## Private methods start here.
 ## ----------------------------------------------------------------------------
 ###############################################################################
 
@@ -2238,7 +2241,7 @@ MCE - Many-Core Engine for Perl. Provides parallel processing cabilities.
 
 =head1 VERSION
 
-This document describes MCE version 1.006
+This document describes MCE version 1.007
 
 =head1 SYNOPSIS
 
@@ -2298,7 +2301,7 @@ This document describes MCE version 1.006
         ## Time to wait, in fractional seconds, before processing
         ## job, spawning workers, and parameters submission to
         ## workers. Use submit_delay if wanting to stagger many
-        ## workers connecting to the database.
+        ## workers connecting to a database.
 
     user_begin   => \&user_begin,   ## Default is undef
     user_func    => \&user_func,    ## Default is undef
