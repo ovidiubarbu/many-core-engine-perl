@@ -16,7 +16,7 @@ BEGIN {
 use strict;
 use warnings;
 
-our $VERSION = '1.006';
+our $VERSION = '1.007';
 $VERSION = eval $VERSION;
 
 use Fcntl qw( :flock );
@@ -178,7 +178,6 @@ sub sys_cmd {
       if (exists $_sig_name_lkup{$_sig_name}) {
          $SIG{$_sig_name} = sub { };
          $_exit_status = $_is_sig = 1;
-         $_exit_status = 255 if $_sig_name eq '__DIE__';
       }
       else {
          $_exit_status = $_sig_name if ($_sig_name ne '0');
@@ -366,7 +365,7 @@ MCE::Signal - Provides tmp_dir creation & signal handling for Many-Core Engine.
 
 =head1 VERSION
 
-This document describes MCE::Signal version 1.006
+This document describes MCE::Signal version 1.007
 
 =head1 SYNOPSIS
 
