@@ -1,23 +1,5 @@
 #!/usr/bin/env perl
 
-use Cwd qw( abs_path );
-our ($prog_name, $prog_dir, $base_dir);
-
-BEGIN {
-   $ENV{PATH} = "/usr/bin:/bin:/usr/sbin:/sbin:$ENV{PATH}";
-
-   umask 0022;
-
-   $prog_name = $0;                    ## prog name
-   $prog_name =~ s{^.*[\\/]}{}g;
-   $prog_dir  = abs_path($0);          ## prog dir
-   $prog_dir  =~ s{[\\/][^\\/]*$}{};
-   $base_dir  = $prog_dir;             ## base dir
-   $base_dir  =~ s{[\\/][^\\/]*$}{};
-
-   unshift @INC, "$base_dir/lib";
-}
-
 use Test::More tests => 3;
 
 ## Default is $MCE::Signal::tmp_dir which points to $ENV{TEMP} if defined.
