@@ -57,6 +57,11 @@ rm -rf $RPM_BUILD_ROOT
 %{_mandir}/man3/*
 
 %changelog
+* Sat Nov 17 2012 Mario Roy 1.008-1
+- Update on __DIE__ and __WARN__ handling in MCE. This addresses the
+  unreferenced scalars seen in packaging logs at activestate.com for
+  Perl under Windows: http://code.activestate.com/ppm/MCE/
+- Update t/01_load_signal_arg.t -- added check for $ENV{TEMP}
 * Thu Nov 15 2012 Mario Roy 1.007-1
 - At last, the "Voila" release :)
 - Small change to __DIE__ and __WARN__ signal handling for spawn method

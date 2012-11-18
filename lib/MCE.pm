@@ -91,7 +91,7 @@ INIT {
 use strict;
 use warnings;
 
-our $VERSION = '1.007';
+our $VERSION = '1.008';
 $VERSION = eval $VERSION;
 
 use Fcntl qw( :flock O_CREAT O_TRUNC O_RDWR O_RDONLY );
@@ -199,9 +199,6 @@ sub new {
 
    @_ = ();
 
-   local $SIG{__DIE__}  = \&_die;
-   local $SIG{__WARN__} = \&_warn;
-
    my $self = { };
 
    bless $self, $class;
@@ -217,12 +214,12 @@ sub new {
       $self->{use_threads} = $argv{use_threads};
 
       if (!$_has_threads && $argv{use_threads} ne '0') {
-         my $_msg  = "Please include threads support.\n";
+         my $_msg  = "\n";
+            $_msg .= "## Please include threads support prior to loading MCE\n";
+            $_msg .= "## when specifying to use threads.\n";
             $_msg .= "\n";
             $_msg .= "   use threads;           (or)   use forks;\n";
             $_msg .= "   use threads::shared;          use forks::shared;\n";
-            $_msg .= "\n";
-            $_msg .= "## Include threads modules before MCE.\n";
             $_msg .= "\n";
             
          _croak($_msg);
@@ -488,9 +485,6 @@ sub foreach {
 
    @_ = ();
 
-   local $SIG{__DIE__}  = \&_die;
-   local $SIG{__WARN__} = \&_warn;
-
    _croak(ILLEGAL_STATE . ": 'input_data' is not specified")
       unless (defined $_input_data);
    _croak(ILLEGAL_STATE . ": 'code_block' is not specified")
@@ -529,9 +523,6 @@ sub forchunk {
 
    @_ = ();
 
-   local $SIG{__DIE__}  = \&_die;
-   local $SIG{__WARN__} = \&_warn;
-
    _croak(ILLEGAL_STATE . ": 'input_data' is not specified")
       unless (defined $_input_data);
    _croak(ILLEGAL_STATE . ": 'code_block' is not specified")
@@ -558,9 +549,6 @@ sub process {
    my $_params_ref = $_[2] || undef;
 
    @_ = ();
-
-   local $SIG{__DIE__}  = \&_die;
-   local $SIG{__WARN__} = \&_warn;
 
    ## Set input data.
    if (defined $_input_data) {
@@ -599,9 +587,6 @@ sub run {
 
    @_ = ();
 
-   local $SIG{__DIE__}  = \&_die;
-   local $SIG{__WARN__} = \&_warn;
-
    my $_requires_shutdown = 0;
 
    ## Set user_func to NOOP if not specified.
@@ -624,6 +609,9 @@ sub run {
 
    ## Spawn workers.
    $self->spawn() if ($self->{_spawned} == 0);
+
+   local $SIG{__DIE__}  = \&_die;
+   local $SIG{__WARN__} = \&_warn;
 
    ## Delay job.
    select(undef, undef, undef, $self->{job_delay})
@@ -1036,6 +1024,9 @@ sub _NOOP {
 }
 
 sub _croak {
+
+   $SIG{__DIE__}  = \&_die;
+   $SIG{__WARN__} = \&_warn;
 
    $\ = undef; require Carp; goto &Carp::croak;
 
@@ -2241,7 +2232,7 @@ MCE - Many-Core Engine for Perl. Provides parallel processing cabilities.
 
 =head1 VERSION
 
-This document describes MCE version 1.007
+This document describes MCE version 1.008
 
 =head1 SYNOPSIS
 

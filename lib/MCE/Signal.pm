@@ -16,7 +16,7 @@ BEGIN {
 use strict;
 use warnings;
 
-our $VERSION = '1.007';
+our $VERSION = '1.008';
 $VERSION = eval $VERSION;
 
 use Fcntl qw( :flock );
@@ -329,7 +329,7 @@ sub die_handler {
    local $SIG{__DIE__} = sub { };
 
    local $\ = undef; my $_time_stamp = localtime();
-   print STDERR "## $_time_stamp: $prog_name: ERROR: ", $_[0];
+   print STDERR "## $_time_stamp: $prog_name: ERROR:\n", $_[0];
 
    MCE::Signal->stop_and_exit('__DIE__');
 }
@@ -344,7 +344,7 @@ sub warn_handler {
    unless ($_[0] =~ /^A thread exited while \d+ threads were running/) {
       unless ($_[0] =~ /^Perl exited with active threads/) {
          local $\ = undef; my $_time_stamp = localtime();
-         print STDERR "## $_time_stamp: $prog_name: WARNING: ", $_[0];
+         print STDERR "## $_time_stamp: $prog_name: WARNING:\n", $_[0];
       }
    }
 }
@@ -365,7 +365,7 @@ MCE::Signal - Provides tmp_dir creation & signal handling for Many-Core Engine.
 
 =head1 VERSION
 
-This document describes MCE::Signal version 1.007
+This document describes MCE::Signal version 1.008
 
 =head1 SYNOPSIS
 

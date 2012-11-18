@@ -1,5 +1,11 @@
 Revision history for Perl extension MCE.
 
+1.008 Sat Nov 17 23:00:00 2012
+- Update on __DIE__ and __WARN__ handling in MCE. This addresses the 
+  unreferenced scalars seen in packaging logs at activestate.com for
+  Perl under Windows: http://code.activestate.com/ppm/MCE/
+- Update t/01_load_signal_arg.t -- added check for $ENV{TEMP}
+
 1.007 Thu Nov 15 21:30:00 2012
 - At last, the "Voila" release :)
 - Small change to __DIE__ and __WARN__ signal handling for spawn method
