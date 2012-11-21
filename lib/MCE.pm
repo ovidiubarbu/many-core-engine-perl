@@ -91,7 +91,7 @@ INIT {
 use strict;
 use warnings;
 
-our $VERSION = '1.008';
+our $VERSION = '1.100';
 $VERSION = eval $VERSION;
 
 use Fcntl qw( :flock O_CREAT O_TRUNC O_RDWR O_RDONLY );
@@ -142,10 +142,10 @@ use constant {
    REQUEST_ARRAY    => 0,                ## Worker requests next array chunk
    REQUEST_GLOB     => 1,                ## Worker requests next glob chunk
 
-   SENDTO_CALLBK    => 0,                ## Worker sends to callback
-   SENDTO_STDOUT    => 1,                ## Worker sends to STDOUT
-   SENDTO_STDERR    => 2,                ## Worker sends to STDERR
-   SENDTO_FILE      => 3,                ## Worker sends to file
+   SENDTO_FILEV1    => 0,                ## Worker sends to 'file', $a, '/path'
+   SENDTO_FILEV2    => 1,                ## Worker sends to 'file:/path', $a
+   SENDTO_STDOUT    => 2,                ## Worker sends to STDOUT
+   SENDTO_STDERR    => 3,                ## Worker sends to STDERR
 
    WANTS_UNDEFINE   => 0,                ## Callee wants nothing
    WANTS_ARRAY      => 1,                ## Callee wants list
@@ -158,8 +158,8 @@ undef $_que_template; undef $_que_read_size;
 
 my %_valid_fields = map { $_ => 1 } qw(
    chunk_size input_data max_workers use_slurpio use_threads
+   flush_file flush_stderr flush_stdout stderr_file stdout_file
    user_begin user_end user_func user_error user_output
-   flush_stderr flush_stdout stderr_file stdout_file
    job_delay spawn_delay submit_delay tmp_dir
 
    _mce_id _mce_tid _pids _sess_dir _spawned _wid
@@ -170,8 +170,8 @@ my %_valid_fields = map { $_ => 1 } qw(
 
 my %_params_allowed_args = map { $_ => 1 } qw(
    chunk_size input_data job_delay spawn_delay submit_delay use_slurpio
+   flush_file flush_stderr flush_stdout stderr_file stdout_file
    user_begin user_end user_func user_error user_output
-   flush_stderr flush_stdout stderr_file stdout_file
 );
 
 my $_is_winperl  = ($^O eq 'MSWin32');
@@ -216,7 +216,7 @@ sub new {
       if (!$_has_threads && $argv{use_threads} ne '0') {
          my $_msg  = "\n";
             $_msg .= "## Please include threads support prior to loading MCE\n";
-            $_msg .= "## when specifying to use threads.\n";
+            $_msg .= "## when specifying use_threads => $argv{use_threads}\n";
             $_msg .= "\n";
             $_msg .= "   use threads;           (or)   use forks;\n";
             $_msg .= "   use threads::shared;          use forks::shared;\n";
@@ -240,6 +240,7 @@ sub new {
    $self->{user_end}     = $argv{user_end}     || undef;
    $self->{user_error}   = $argv{user_error}   || undef;
    $self->{user_output}  = $argv{user_output}  || undef;
+   $self->{flush_file}   = $argv{flush_file}   || 0;
    $self->{flush_stderr} = $argv{flush_stderr} || 0;
    $self->{flush_stdout} = $argv{flush_stdout} || 0;
    $self->{stderr_file}  = $argv{stderr_file}  || undef;
@@ -969,47 +970,63 @@ sub do {
 
    my MCE $self  = shift;
    my $_callback = shift;
-   my $_ref_type = (@_ > 0) ? ref $_[0] : undef;
 
-   _croak(ILLEGAL_ARGUMENT . ": 'callback argument' is not specified")
+   _croak(ILLEGAL_STATE . ": 'callback argument' is not specified")
       unless defined $_callback;
 
    $_callback = "main::$_callback" if (index($_callback, ':') < 0);
 
-   return _do_send($self, SENDTO_CALLBK, $_ref_type, \@_, $_callback);
+   return _do_callback($self, $_callback, \@_);
 }
 
 ## Sendto routine.
 
 {
    my %_sendto_lkup = (
+      'file'   => SENDTO_FILEV1, 'FILE'   => SENDTO_FILEV1,
+      'file:'  => SENDTO_FILEV2, 'FILE:'  => SENDTO_FILEV2,
       'stdout' => SENDTO_STDOUT, 'STDOUT' => SENDTO_STDOUT,
-      'stderr' => SENDTO_STDERR, 'STDERR' => SENDTO_STDERR,
-      'file'   => SENDTO_FILE,   'FILE'   => SENDTO_FILE
+      'stderr' => SENDTO_STDERR, 'STDERR' => SENDTO_STDERR
    );
+
+   my $_filev2_regx = qr/^([^:]+:)(.+)/;
 
    sub sendto {
 
-      my MCE $self  = $_[0];
-      my $_to       = $_[1];
-      my $_data_ref = $_[2];
-      my $_value    = $_[3];
+      my MCE $self = shift;
+      my $_to      = shift;
 
-      @_ = ();
+      return unless (defined $_[0]);
 
-      _croak(ILLEGAL_ARGUMENT . ": data argument is not specified")
-         unless defined $_data_ref;
-      _croak(ILLEGAL_ARGUMENT . ": type argument is not specified")
-         unless defined $_to;
-      _croak(ILLEGAL_ARGUMENT . ": type argument is not valid")
-         unless exists $_sendto_lkup{$_to};
+      my ($_file, $_id);
+      $_id = (exists $_sendto_lkup{$_to}) ? $_sendto_lkup{$_to} : undef;
 
-      my $_ref_type = ref $_data_ref;
+      if (!defined $_id) {
+         if (defined $_to && $_to =~ /$_filev2_regx/o) {
+            $_id = (exists $_sendto_lkup{$1}) ? $_sendto_lkup{$1} : undef;
+            $_file = $2;
+         }
+         if (!defined $_id || ($_id == SENDTO_FILEV2 && !defined $_file)) {
+            my $_msg  = "\n";
+               $_msg .= ILLEGAL_STATE. ": improper use of sendto(<to>, ...)\n";
+               $_msg .= "\n";
+               $_msg .= "## usage:\n";
+               $_msg .= "##    ->sendto(\"stderr\", ...);\n";
+               $_msg .= "##    ->sendto(\"stdout\", ...);\n";
+               $_msg .= "##    ->sendto(\"file:/path/to/file\", ...);\n";
+               $_msg .= "\n";
 
-      _do_send($self, $_sendto_lkup{$_to}, $_ref_type, $_data_ref, $_value)
-         if ($_ref_type ne 'HASH' && $_ref_type ne 'GLOB');
+            _croak($_msg);
+         }
+      }
 
-      return;
+      if ($_id == SENDTO_FILEV1) {                ## sendto 'file', $a, $path
+         return if (!defined $_[1] || @_ > 2);    ## Please switch to using V2
+         $_file = $_[1]; delete $_[1];            ## sendto 'file:/path', $a
+         $_id   = SENDTO_FILEV2;
+      }
+
+      return _do_send($self, $_id, $_file, @_);
    }
 }
 
@@ -1118,6 +1135,8 @@ sub _validate_args {
    _croak INVALID_REF . ": 'user_output' is not a CODE reference"
       if ($self->{user_output} && ref $self->{user_output} ne 'CODE');
 
+   _croak ILLEGAL_STATE . ": 'flush_file' is not 0 or 1"
+      if ($self->{flush_file} && $self->{flush_file} !~ /\A[01]\z/);
    _croak ILLEGAL_STATE . ": 'flush_stderr' is not 0 or 1"
       if ($self->{flush_stderr} && $self->{flush_stderr} !~ /\A[01]\z/);
    _croak ILLEGAL_STATE . ": 'flush_stdout' is not 0 or 1"
@@ -1128,46 +1147,93 @@ sub _validate_args {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Internal send related functions for serializing data to destination.
+## Internal do & send related functions for serializing data to destination.
 ##
 ###############################################################################
 
 {
-   my ($_data_ref, $_dest, $_len, $_ref_type, $_send_init_called);
-   my ($_sess_dir, $_value, $_DAT_W_SOCK, $_OUT_W_SOCK, $_want_id);
+   my ($_data_ref, $_dest, $_value, $_len, $_send_init_called);
+   my ($_sess_dir, $_DAT_W_SOCK, $_OUT_W_SOCK, $_want_id);
 
-   ## Create hash structure containing various send functions.
+   ## Create array structure containing various send functions.
    my @_dest_function = ();
 
-   $_dest_function[SENDTO_CALLBK] = sub {
+   $_dest_function[SENDTO_FILEV2] = sub {
+
+      return unless (defined $_value);
+
+      local $\ = undef;                           ## Content >> File
+      $_len = length(${ $_[0] });
+
+      flock $_DAT_LOCK, LOCK_EX;
+      print $_OUT_W_SOCK OUTPUT_S_FLE, $LF;
+      print $_DAT_W_SOCK "$_value${LF}$_len${LF}", ${ $_[0] };
+
+      flock $_DAT_LOCK, LOCK_UN;
+      return;
+   };
+
+   $_dest_function[SENDTO_STDOUT] = sub {
+
+      local $\ = undef;                           ## Content >> STDOUT
+      $_len = length(${ $_[0] });
+
+      flock $_DAT_LOCK, LOCK_EX;
+      print $_OUT_W_SOCK OUTPUT_S_OUT, $LF;
+      print $_DAT_W_SOCK "$_len${LF}", ${ $_[0] };
+
+      flock $_DAT_LOCK, LOCK_UN;
+      return;
+   };
+
+   $_dest_function[SENDTO_STDERR] = sub {
+
+      local $\ = undef;                           ## Content >> STDERR
+      $_len = length(${ $_[0] });
+
+      flock $_DAT_LOCK, LOCK_EX;
+      print $_OUT_W_SOCK OUTPUT_S_ERR, $LF;
+      print $_DAT_W_SOCK "$_len${LF}", ${ $_[0] };
+
+      flock $_DAT_LOCK, LOCK_UN;
+      return;
+   };
+
+   ## -------------------------------------------------------------------------
+
+   sub _do_callback {
+
+      my MCE $self = $_[0];
+      $_value      = $_[1];
+      $_data_ref   = $_[2];
+
+      die "Improper use of function call" unless ($_send_init_called);
 
       local $\ = undef; my $_buffer;
 
       unless (defined wantarray) {
          $_want_id = WANTS_UNDEFINE;
-      }
-      elsif (wantarray) {
+      } elsif (wantarray) {
          $_want_id = WANTS_ARRAY;
-      }
-      else {
+      } else {
          $_want_id = WANTS_SCALAR;
       }
 
       ## Crossover: Send arguments
 
-      if (@$_data_ref > 0) {
-         if ($_ref_type || @$_data_ref > 1) {     ## Reference >> Callback
+      if (@$_data_ref > 0) {                      ## Multiple Args >> Callback
+         if (@$_data_ref > 1 || ref $_data_ref->[0]) {
             $_buffer = freeze($_data_ref); $_len = length($_buffer);
-            flock $_DAT_LOCK, LOCK_EX;
 
+            flock $_DAT_LOCK, LOCK_EX;
             print $_OUT_W_SOCK OUTPUT_A_CBK, $LF;
             print $_DAT_W_SOCK "$_want_id${LF}$_value${LF}";
             print $_DAT_W_SOCK "$_len${LF}", $_buffer;
          }
          else {                                   ## Scalar >> Callback
             $_len = length($_data_ref->[0]);
-            flock $_DAT_LOCK, LOCK_EX;
 
+            flock $_DAT_LOCK, LOCK_EX;
             print $_OUT_W_SOCK OUTPUT_S_CBK, $LF;
             print $_DAT_W_SOCK "$_want_id${LF}$_value${LF}";
             print $_DAT_W_SOCK "$_len${LF}", $_data_ref->[0];
@@ -1175,7 +1241,6 @@ sub _validate_args {
       }
       else {                                      ## No Args >> Callback
          flock $_DAT_LOCK, LOCK_EX;
-
          print $_OUT_W_SOCK OUTPUT_N_CBK, $LF;
          print $_DAT_W_SOCK "$_want_id${LF}$_value${LF}";
       }
@@ -1191,10 +1256,9 @@ sub _validate_args {
 
          chomp($_len = <$_DAT_W_SOCK>);
          read $_DAT_W_SOCK, $_buffer, $_len;
-         flock $_DAT_LOCK, LOCK_UN;
 
-         $_data_ref = thaw($_buffer);
-         return @{ $_data_ref };
+         flock $_DAT_LOCK, LOCK_UN;
+         return @{ thaw($_buffer) };
       }
       else {
          local $/ = $LF;
@@ -1202,129 +1266,16 @@ sub _validate_args {
          chomp($_want_id = <$_DAT_W_SOCK>);
          chomp($_len     = <$_DAT_W_SOCK>);
          read $_DAT_W_SOCK, $_buffer, $_len;
-         flock $_DAT_LOCK, LOCK_UN;
 
+         flock $_DAT_LOCK, LOCK_UN;
          if ($_want_id == WANTS_SCALAR) {
             return $_buffer;
          }
          else {
-            $_data_ref = thaw($_buffer);
-            return $_data_ref;
+            return thaw($_buffer);
          }
       }
-   };
-
-   ## -------------------------------------------------------------------------
-
-   $_dest_function[SENDTO_STDOUT] = sub {
-
-      local $\ = undef; my $_buffer;
-
-      if ($_ref_type) {                           ## Reference >> STDOUT
-         if ($_ref_type eq 'ARRAY') {
-            $_buffer = join('', @$_data_ref);
-
-            $_len = length($_buffer);
-            flock $_DAT_LOCK, LOCK_EX;
-
-            print $_OUT_W_SOCK OUTPUT_S_OUT, $LF;
-            print $_DAT_W_SOCK "$_len${LF}", $_buffer;
-         }
-         else {
-            $_len = length($$_data_ref);
-            flock $_DAT_LOCK, LOCK_EX;
-
-            print $_OUT_W_SOCK OUTPUT_S_OUT, $LF;
-            print $_DAT_W_SOCK "$_len${LF}", $$_data_ref;
-         }
-      }
-      else {                                      ## Scalar >> STDOUT
-         $_len = length($_data_ref);
-         flock $_DAT_LOCK, LOCK_EX;
-
-         print $_OUT_W_SOCK OUTPUT_S_OUT, $LF;
-         print $_DAT_W_SOCK "$_len${LF}", $_data_ref;
-      }
-
-      flock $_DAT_LOCK, LOCK_UN;
-
-      return;
-   };
-
-   ## -------------------------------------------------------------------------
-
-   $_dest_function[SENDTO_STDERR] = sub {
-
-      local $\ = undef; my $_buffer;
-
-      if ($_ref_type) {                           ## Reference >> STDERR
-         if ($_ref_type eq 'ARRAY') {
-            $_buffer = join('', @$_data_ref);
-
-            $_len = length($_buffer);
-            flock $_DAT_LOCK, LOCK_EX;
-
-            print $_OUT_W_SOCK OUTPUT_S_ERR, $LF;
-            print $_DAT_W_SOCK "$_len${LF}", $_buffer;
-         }
-         else {
-            $_len = length($$_data_ref);
-            flock $_DAT_LOCK, LOCK_EX;
-
-            print $_OUT_W_SOCK OUTPUT_S_ERR, $LF;
-            print $_DAT_W_SOCK "$_len${LF}", $$_data_ref;
-         }
-      }
-      else {                                      ## Scalar >> STDERR
-         $_len = length($_data_ref);
-         flock $_DAT_LOCK, LOCK_EX;
-
-         print $_OUT_W_SOCK OUTPUT_S_ERR, $LF;
-         print $_DAT_W_SOCK "$_len${LF}", $_data_ref;
-      }
-
-      flock $_DAT_LOCK, LOCK_UN;
-
-      return;
-   };
-
-   ## -------------------------------------------------------------------------
-
-   $_dest_function[SENDTO_FILE] = sub {
-
-      return unless (defined $_value);
-      local $\ = undef; my $_buffer;
-
-      if ($_ref_type) {                           ## Reference >> File
-         if ($_ref_type eq 'ARRAY') {
-            $_buffer = join('', @$_data_ref);
-
-            $_len = length($_buffer);
-            flock $_DAT_LOCK, LOCK_EX;
-
-            print $_OUT_W_SOCK OUTPUT_S_FLE, $LF;
-            print $_DAT_W_SOCK "$_value${LF}$_len${LF}", $_buffer;
-         }
-         else {
-            $_len = length($$_data_ref);
-            flock $_DAT_LOCK, LOCK_EX;
-
-            print $_OUT_W_SOCK OUTPUT_S_FLE, $LF;
-            print $_DAT_W_SOCK "$_value${LF}$_len${LF}", $$_data_ref;
-         }
-      }
-      else {                                      ## Scalar >> File
-         $_len = length($_data_ref);
-         flock $_DAT_LOCK, LOCK_EX;
-
-         print $_OUT_W_SOCK OUTPUT_S_FLE, $LF;
-         print $_DAT_W_SOCK "$_value${LF}$_len${LF}", $_data_ref;
-      }
-
-      flock $_DAT_LOCK, LOCK_UN;
-
-      return;
-   };
+   }
 
    ## -------------------------------------------------------------------------
 
@@ -1347,17 +1298,33 @@ sub _validate_args {
 
    sub _do_send {
 
-      my MCE $self = $_[0];
-      $_dest       = $_[1];
-      $_ref_type   = $_[2];
-      $_data_ref   = $_[3];
-      $_value      = $_[4];
-
-      @_ = ();
+      my MCE $self = shift;
+      $_dest       = shift;
+      $_value      = shift;
 
       die "Improper use of function call" unless ($_send_init_called);
 
-      return $_dest_function[$_dest]();           ## Call send function
+      my $_buffer;
+
+      if (@_ > 1) {
+         $_buffer = join('', @_);
+         return $_dest_function[$_dest](\$_buffer);
+      }
+      elsif (my $_ref = ref $_[0]) {
+         if ($_ref eq 'SCALAR') {
+            return $_dest_function[$_dest]($_[0]);
+         } elsif ($_ref eq 'ARRAY') {
+            $_buffer = join('', @{ $_[0] });
+         } elsif ($_ref eq 'HASH') {
+            $_buffer = join('', %{ $_[0] });
+         } else {
+            $_buffer = join('', @_);
+         }
+         return $_dest_function[$_dest](\$_buffer);
+      }
+      else {
+         return $_dest_function[$_dest](\$_[0]);
+      }
    }
 }
 
@@ -1374,9 +1341,9 @@ sub _validate_args {
 ###############################################################################
 
 {
-   my ($_callback, $_data_ref, $_file, $_len, $_ref_type);
    my ($_total_workers, $_value, $_want_id, $_input_data, $_eof_flag);
-   my ($_max_workers, $_user_error, $_user_output, $self);
+   my ($_max_workers, $_user_error, $_user_output, $_flush_file, $self);
+   my ($_callback, $_file, %_sendto_fhs, $_len);
 
    my ($_DAT_R_SOCK, $_OUT_R_SOCK, $_MCE_STDERR, $_MCE_STDOUT);
    my ($_I_SEP, $_O_SEP, $_total_ended, $_input_glob, $_chunk_size);
@@ -1492,7 +1459,7 @@ sub _validate_args {
          chomp($_len      = <$_DAT_R_SOCK>);
 
          read $_DAT_R_SOCK, $_buffer, $_len;
-         $_data_ref = thaw($_buffer);
+         my $_data_ref = thaw($_buffer);
 
          local $\ = $_O_SEP; local $/ = $_I_SEP;
          no strict 'refs';
@@ -1632,18 +1599,25 @@ sub _validate_args {
       },
 
       OUTPUT_S_FLE.$LF => sub {                   ## Scalar >> File
-         my $_buffer;
+         my ($_buffer, $_OUT_FILE);
 
          chomp($_file = <$_DAT_R_SOCK>);
          chomp($_len  = <$_DAT_R_SOCK>);
 
          read $_DAT_R_SOCK, $_buffer, $_len;
 
-         open my $_OUT_FILE, '>>', $_file or die "$_file: $!\n";
-         binmode $_OUT_FILE;
-         print   $_OUT_FILE $_buffer;
-         close   $_OUT_FILE;
-         undef   $_OUT_FILE;
+         unless (exists $_sendto_fhs{$_file}) {
+            open    $_sendto_fhs{$_file}, '>>', $_file or die "$_file: $!\n";
+            binmode $_sendto_fhs{$_file};
+
+            ## Select new FH, turn on autoflush, restore the old FH.
+            ## IO::Handle is too large just to call autoflush(1).
+            select((select($_sendto_fhs{$_file}), $| = 1)[0])
+               if ($_flush_file);
+         }
+
+         $_OUT_FILE = $_sendto_fhs{$_file};
+         print $_OUT_FILE $_buffer;
 
          return;
       }
@@ -1664,6 +1638,7 @@ sub _validate_args {
       die "Private method called" unless (caller)[0]->isa( ref($self) );
 
       $_chunk_size  = $self->{chunk_size};
+      $_flush_file  = $self->{flush_file};
       $_max_workers = $self->{max_workers};
       $_use_slurpio = $self->{use_slurpio};
       $_user_output = $self->{user_output};
@@ -1732,6 +1707,13 @@ sub _validate_args {
             $_output_function{$_func}();
             last unless ($_total_workers);
          }
+      }
+
+      ## Close opened sendto file handles.
+      for (keys %_sendto_fhs) {
+         close  $_sendto_fhs{$_};
+         undef  $_sendto_fhs{$_};
+         delete $_sendto_fhs{$_};
       }
 
       ## Restore the default handle.
@@ -2180,13 +2162,13 @@ sub _worker_main {
    ## die "Private method called" unless (caller)[0]->isa( ref($self) );
 
    $SIG{PIPE} = \&_NOOP;
-
    my $_sess_dir = $self->{_sess_dir};
 
    $self->{_com_r_sock}  = $self->{_dat_r_sock}  = $self->{_out_r_sock} = undef;
    $self->{flush_stderr} = $self->{flush_stdout} = undef;
    $self->{stderr_file}  = $self->{stdout_file}  = undef;
    $self->{user_error}   = $self->{user_output}  = undef;
+   $self->{flush_file}   = undef;
 
    $MCE::Signal::mce_spawned_ref = undef;
    %_mce_spawned = ();
@@ -2232,7 +2214,7 @@ MCE - Many-Core Engine for Perl. Provides parallel processing cabilities.
 
 =head1 VERSION
 
-This document describes MCE version 1.008
+This document describes MCE version 1.100
 
 =head1 SYNOPSIS
 
@@ -2248,27 +2230,27 @@ This document describes MCE version 1.008
         ## $ENV{TEMP} if defined. Otherwise, tmp_dir points
         ## to /tmp.
 
-    input_data   => $input_file,    ## Default is undef
+    input_data   => $input_file,       ## Default is undef
 
         ## input_data => '/path/to/file' for input file
         ## input_data => \@array for input array
         ## input_data => \*FILE_HNDL for file handle
         ## input_data => \$scalar to treat like file
 
-    chunk_size   => 2000,           ## Default is 500
+    chunk_size   => 2000,              ## Default is 500
 
         ## Less than or equal to 8192 is number of records.
         ## Greater than 8192 is number of bytes. MCE reads
         ## till the end of record before calling user_func.
 
-        ## chunk_size =>     1,     ## Consists of 1 record
-        ## chunk_size =>  1000,     ## Consists of 1000 records
-        ## chunk_size => 16384,     ## Approximate 16384 bytes
-        ## chunk_size => 50000,     ## Approximate 50000 bytes
+        ## chunk_size =>     1,        ## Consists of 1 record
+        ## chunk_size =>  1000,        ## Consists of 1000 records
+        ## chunk_size => 16384,        ## Approximate 16384 bytes
+        ## chunk_size => 50000,        ## Approximate 50000 bytes
 
-    max_workers  => 8,              ## Default is 2
-    use_slurpio  => 1,              ## Default is 0
-    use_threads  => 1,              ## Default is 0 or 1
+    max_workers  => 8,                 ## Default is 2
+    use_slurpio  => 1,                 ## Default is 0
+    use_threads  => 1,                 ## Default is 0 or 1
 
         ## Number of workers to spawn, whether or not to enable
         ## slurpio when reading files (passes raw chunk to user
@@ -2285,18 +2267,18 @@ This document describes MCE version 1.008
         ##
         ##    use MCE                       use MCE;
 
-    job_delay    => 0.035,          ## Default is undef
-    spawn_delay  => 0.150,          ## Default is undef
-    submit_delay => 0.001,          ## Default is undef
+    job_delay    => 0.035,             ## Default is undef
+    spawn_delay  => 0.150,             ## Default is undef
+    submit_delay => 0.001,             ## Default is undef
 
         ## Time to wait, in fractional seconds, before processing
         ## job, spawning workers, and parameters submission to
         ## workers. Use submit_delay if wanting to stagger many
         ## workers connecting to a database.
 
-    user_begin   => \&user_begin,   ## Default is undef
-    user_func    => \&user_func,    ## Default is undef
-    user_end     => \&user_end,     ## Default is undef
+    user_begin   => \&user_begin,      ## Default is undef
+    user_func    => \&user_func,       ## Default is undef
+    user_end     => \&user_end,        ## Default is undef
 
         ## Think of user_begin, user_func, user_end like the awk
         ## scripting language:
@@ -2306,23 +2288,24 @@ This document describes MCE version 1.008
         ## calls user_func repeatedly until no chunks remain.
         ## Afterwards, user_end is called.
 
-    user_error   => \&user_error,   ## Default is undef
-    user_output  => \&user_output,  ## Default is undef
+    user_error   => \&user_error,      ## Default is undef
+    user_output  => \&user_output,     ## Default is undef
 
         ## When workers call the following functions, MCE will
         ## pass the data to user_error/user_output if defined.
         ## $self->sendto('stderr', 'Sending to STDERR');
         ## $self->sendto('stdout', 'Sending to STDOUT');
 
-    stderr_file  => 'err_file',     ## Default is STDERR
-    stdout_file  => 'out_file',     ## Default is STDOUT
+    stderr_file  => 'err_file',        ## Default is STDERR
+    stdout_file  => 'out_file',        ## Default is STDOUT
 
         ## Or to file. User_error/user_output take precedence.
 
-    flush_stderr => 1,              ## Default is 0
-    flush_stdout => 1,              ## Default is 0
+    flush_file   => 1,                 ## Default is 0
+    flush_stderr => 1,                 ## Default is 0
+    flush_stdout => 1,                 ## Default is 0
 
-        ## Flush standard error or output immediately.
+        ## Flush sendto file, standard error, or standard output.
  );
 
  ## Run calls spawn, kicks off job, workers call user_begin,
@@ -2331,7 +2314,7 @@ This document describes MCE version 1.008
  ## 1 to auto-shutdown workers after processing.
 
  $mce->run();
- $mce->run(0);                      ## 0 disables auto-shutdown
+ $mce->run(0);                         ## 0 disables auto-shutdown
 
  ## Or, spawn workers early.
 
@@ -2340,11 +2323,11 @@ This document describes MCE version 1.008
  ## Acquire data arrays and/or input_files. The same pool of
  ## workers are used. Process calls run(0).
 
- $mce->process(\@input_data_1);     ## Process arrays
+ $mce->process(\@input_data_1);        ## Process arrays
  $mce->process(\@input_data_2);
  $mce->process(\@input_data_n);
 
- $mce->process('input_file_1');     ## Process files
+ $mce->process('input_file_1');        ## Process files
  $mce->process('input_file_2');
  $mce->process('input_file_n');
 
@@ -2359,47 +2342,48 @@ This document describes MCE version 1.008
 
  ## Each worker calls this once prior to processing.
 
- sub user_begin {                   ## Optional via user_begin option
+    sub user_begin {
 
-    my $self = shift;
+       my $self = shift;
 
-    $self->{wk_total_rows} = 0;     ## Prefix variables with wk_
- }
+       ## Prefix variables with wk_
+       $self->{wk_total_rows} = 0;
+    }
 
  ## And once after completion.
 
- sub user_end {                     ## Optional via user_end option
+    sub user_end {
 
-    my $self = shift;
+       my $self = shift;
 
-    printf "## %d: Processed %d rows\n",
-       $self->wid(), $self->{wk_total_rows};
- }
+       printf "## %d: Processed %d rows\n",
+          $self->wid(), $self->{wk_total_rows};
+    }
 
 =head2 SYNTAX FOR USER_FUNC (with use_slurpio => 0 option)
 
  ## MCE passes a reference to an array containing the chunk data.
 
- sub user_func {
+    sub user_func {
 
-    my ($self, $chunk_ref, $chunk_id) = @_;
+       my ($self, $chunk_ref, $chunk_id) = @_;
 
-    foreach my $row ( @{ $chunk_ref } ) {
-       print $row;
-       $self->{wk_total_rows} += 1;
+       foreach my $row ( @{ $chunk_ref } ) {
+          print $row;
+          $self->{wk_total_rows} += 1;
+       }
     }
- }
 
 =head2 SYNTAX FOR USER_FUNC (with use_slurpio => 1 option)
 
  ## MCE passes a reference to a scalar containing the raw chunk data.
 
- sub user_func {
+    sub user_func {
 
-    my ($self, $chunk_ref, $chunk_id) = @_;
+       my ($self, $chunk_ref, $chunk_id) = @_;
 
-    my $count = () = $$chunk_ref =~ /abc/;
- }
+       my $count = () = $$chunk_ref =~ /abc/;
+    }
 
 =head2 SYNTAX FOR USER_ERROR & USER_OUTPUT
 
@@ -2407,19 +2391,19 @@ This document describes MCE version 1.008
  ## functions in a serialized fashion. This is handy if one wants to
  ## filter, modify, and/or send the data elsewhere.
 
- sub user_error {                   ## Optional via user_error option
+    sub user_error {
 
-    my $error = shift;
+       my $error = shift;
 
-    print LOGERR $error;
- }
+       print LOGERR $error;
+    }
 
- sub user_output {                  ## Optional via user_output option
+    sub user_output {
 
-    my $output = shift;
+       my $output = shift;
 
-    print LOGOUT $output;
- }
+       print LOGOUT $output;
+    }
 
 =head1 DESCRIPTION
 
@@ -2435,68 +2419,68 @@ the next n elements from the input stream to the next available worker.
  ## Imagine a long running process and wanting to parallelize an array
  ## against a pool of workers.
 
- my @input_data  = (0 .. 18000 - 1);
- my $max_workers = 3;
- my $order_id    = 1;
- my %result;
+    my @input_data  = (0 .. 18000 - 1);
+    my $max_workers = 3;
+    my $order_id    = 1;
+    my %result;
 
  ## Callback function for displaying results. The logic below shows how
  ## one can display results immediately while still preserving output
  ## order. The %result hash is a temporary cache to store results
  ## for out-of-order replies.
 
- sub display_result {
+    sub display_result {
 
-    my ($wk_result, $chunk_id) = @_;
-    $result{$chunk_id} = $wk_result;
+       my ($wk_result, $chunk_id) = @_;
+       $result{$chunk_id} = $wk_result;
 
-    while (1) {
-       last unless exists $result{$order_id};
+       while (1) {
+          last unless exists $result{$order_id};
 
-       printf "i: %d sqrt(i): %f\n",
-          $input_data[$order_id - 1], $result{$order_id};
+          printf "i: %d sqrt(i): %f\n",
+             $input_data[$order_id - 1], $result{$order_id};
 
-       delete $result{$order_id};
-       $order_id++;
+          delete $result{$order_id};
+          $order_id++;
+       }
     }
- }
 
  ## Compute via MCE.
 
- my $mce = MCE->new(
-    input_data  => \@input_data,
-    max_workers => $max_workers,
-    chunk_size  => 1,
+    my $mce = MCE->new(
+       input_data  => \@input_data,
+       max_workers => $max_workers,
+       chunk_size  => 1,
 
-    user_func => sub {
+       user_func => sub {
 
-       my ($self, $chunk_ref, $chunk_id) = @_;
-       my $wk_result = sqrt($chunk_ref->[0]);
+          my ($self, $chunk_ref, $chunk_id) = @_;
+          my $wk_result = sqrt($chunk_ref->[0]);
 
-       $self->do('display_result', $wk_result, $chunk_id);
-    }
- );
+          $self->do('display_result', $wk_result, $chunk_id);
+       }
+    );
 
- $mce->run();
+    $mce->run();
 
 =head2 FOREACH SUGAR METHOD
 
  ## Compute via MCE. Foreach implies chunk_size => 1.
 
- my $mce = MCE->new(
-    max_workers => 3
- );
+    my $mce = MCE->new(
+       max_workers => $max_workers
+    );
 
  ## Worker calls code block passing a reference to an array containing
  ## one item. Use $chunk_ref->[0] to retrieve the single element.
 
- $mce->foreach(\@input_data, sub {
+    $mce->foreach(\@input_data, sub {
 
-    my ($self, $chunk_ref, $chunk_id) = @_;
-    my $wk_result = sqrt($chunk_ref->[0]);
+       my ($self, $chunk_ref, $chunk_id) = @_;
+       my $wk_result = sqrt($chunk_ref->[0]);
 
-    $self->do('display_result', $wk_result, $chunk_id);
- });
+       $self->do('display_result', $wk_result, $chunk_id);
+    });
 
 =head2 MCE EXAMPLE WITH CHUNK_SIZE => 500
 
@@ -2504,40 +2488,67 @@ the next n elements from the input stream to the next available worker.
  ## item from @input_data, a chunk of $chunk_size is sent instead to
  ## the next available worker.
 
- my @input_data  = (0 .. 385000 - 1);
- my $max_workers = 3;
- my $chunk_size  = 500;
- my $order_id    = 1;
- my %result;
+    my @input_data  = (0 .. 385000 - 1);
+    my $max_workers = 3;
+    my $chunk_size  = 500;
+    my $order_id    = 1;
+    my %result;
 
  ## Callback function for displaying results.
 
- sub display_result {
+    sub display_result {
 
-    my ($wk_result, $chunk_id) = @_;
-    $result{$chunk_id} = $wk_result;
+       my ($wk_result, $chunk_id) = @_;
+       $result{$chunk_id} = $wk_result;
 
-    while (1) {
-       last unless exists $result{$order_id};
-       my $i = ($order_id - 1) * $chunk_size;
+       while (1) {
+          last unless exists $result{$order_id};
+          my $i = ($order_id - 1) * $chunk_size;
 
-       for ( @{ $result{$order_id} } ) {
-          printf "i: %d sqrt(i): %f\n", $input_data[$i++], $_;
+          for ( @{ $result{$order_id} } ) {
+             printf "i: %d sqrt(i): %f\n", $input_data[$i++], $_;
+          }
+
+          delete $result{$order_id};
+          $order_id++;
        }
-
-       delete $result{$order_id};
-       $order_id++;
     }
- }
 
  ## Compute via MCE.
 
- my $mce = MCE->new(
-    input_data  => \@input_data,
-    max_workers => $max_workers,
-    chunk_size  => $chunk_size,
+    my $mce = MCE->new(
+       input_data  => \@input_data,
+       max_workers => $max_workers,
+       chunk_size  => $chunk_size,
 
-    user_func => sub {
+       user_func => sub {
+
+          my ($self, $chunk_ref, $chunk_id) = @_;
+          my @wk_result;
+
+          for ( @{ $chunk_ref } ) {
+             push @wk_result, sqrt($_);
+          }
+
+          $self->do('display_result', \@wk_result, $chunk_id);
+       }
+    );
+
+    $mce->run();
+
+=head2 FORCHUNK SUGAR METHOD
+
+ ## Compute via MCE.
+
+    my $mce = MCE->new(
+       max_workers => $max_workers,
+       chunk_size  => $chunk_size
+    );
+
+ ## Below, $chunk_ref is a reference to an array containing the next
+ ## $chunk_size items from @input_data.
+
+    $mce->forchunk(\@input_data, sub {
 
        my ($self, $chunk_ref, $chunk_id) = @_;
        my @wk_result;
@@ -2547,95 +2558,68 @@ the next n elements from the input stream to the next available worker.
        }
 
        $self->do('display_result', \@wk_result, $chunk_id);
-    }
- );
-
- $mce->run();
-
-=head2 FORCHUNK SUGAR METHOD
-
- ## Compute via MCE.
-
- my $mce = MCE->new(
-    max_workers => $max_workers,
-    chunk_size  => $chunk_size
- );
-
- ## Below, $chunk_ref is a reference to an array containing the next
- ## $chunk_size items from @input_data.
-
- $mce->forchunk(\@input_data, sub {
-
-    my ($self, $chunk_ref, $chunk_id) = @_;
-    my @wk_result;
-
-    for ( @{ $chunk_ref } ) {
-       push @wk_result, sqrt($_);
-    }
-
-    $self->do('display_result', \@wk_result, $chunk_id);
- });
+    });
 
 =head2 LAST & NEXT METHODS
 
  ## Both last and next methods work inside foreach, forchunk,
  ## and user_func code blocks.
 
- ## ->last: Worker immediately exits the chunking loop
+ ## ->last: Worker immediately exits the chunking loop or user func
 
- my @list = (1..80);
+    my @list = (1..80);
 
- $mce->forchunk(\@list, { chunk_size => 2 }, sub {
+    $mce->forchunk(\@list, { chunk_size => 2 }, sub {
 
-    my ($self, $chunk_ref, $chunk_id) = @_;
+       my ($self, $chunk_ref, $chunk_id) = @_;
 
-    $self->last if ($chunk_id > 4);
+       $self->last if ($chunk_id > 4);
 
-    my @output = ();
+       my @output = ();
 
-    for my $rec ( @{ $chunk_ref } ) {
-       push @output, $rec, "\n";
-    }
+       for my $rec ( @{ $chunk_ref } ) {
+          push @output, $rec, "\n";
+       }
 
-    $self->sendto('stdout', \@output);
- });
+       $self->sendto('stdout', @output);
+    });
 
  -- Output (each chunk above consists of 2 elements)
 
- 1
- 2
- 3
- 4
- 5
- 6
- 7
- 8
+    1
+    2
+    3
+    4
+    5
+    6
+    7
+    8
 
  ## ->next: Worker starts the next iteration of the chunking loop
 
- my @list = (1..80);
+    my @list = (1..80);
 
- $mce->forchunk(\@list, { chunk_size => 4 }, sub {
+    $mce->forchunk(\@list, { chunk_size => 4 }, sub {
 
-    my ($self, $chunk_ref, $chunk_id) = @_;
+       my ($self, $chunk_ref, $chunk_id) = @_;
 
-    $self->next if ($chunk_id < 20);
+       $self->next if ($chunk_id < 20);
 
-    my @output = ();
+       my @output = ();
 
-    for my $rec ( @{ $chunk_ref } ) {
-       push @output, $rec, "\n";
-    }
+       for my $rec ( @{ $chunk_ref } ) {
+          push @output, $rec, "\n";
+       }
 
-    $self->sendto('stdout', \@output);
- });
+       $self->sendto('stdout', @output);
+    });
 
  -- Output (each chunk above consists of 4 elements)
 
- 77
- 78
- 79
- 80
+    77
+    78
+    79
+    80
 
 =head2 MISCELLANEOUS METHODS
 
@@ -2648,52 +2632,86 @@ the next n elements from the input stream to the next available worker.
 
     $self->exit();
 
- ## Returns worker ID of worker.
+ ## Returns worker ID.
 
     $self->wid();
 
-=head2 DO & SENDTO METHODS
+=head2 DO METHOD
 
 MCE can serialized data transfers from worker processes via helper functions.
 The main MCE thread will process these in a serial fashion. This utilizes the
 Storable Perl module for passing data from a worker process to the main MCE
 thread. In addition, the callback function can optionally return a reply.
 
- [ $reply = ] $self->do('callback_func' [, $arg1, $arg2, ...]);
+ [ $reply = ] $self->do('callback' [, $arg1, $arg2, ...]);
 
  ## Passing arguments to a callback function using references & scalar:
 
- sub callback_func {  
-    my ($array_ref, $hash_ref, $scalar_ref, $scalar) = @_;
-    ...
- }
+    sub callback {
+       my ($array_ref, $hash_ref, $scalar_ref, $scalar) = @_;
+       ...
+    }
 
- $self->do('main::callback_func', \@a, \%h, \$s, 'hello');
+    $self->do('main::callback', \@a, \%h, \$s, 'hello');
+    $self->do('callback', \@a, \%h, \$s, 'hello');
 
- ## MCE knows if wanting void, a list, a hash, or a scalar return value.
+ ## MCE knows if wanting a void, list, hash, or scalar return value.
 
- $self->do('callback_func' [, ...]);
- my @array  = $self->do('callback_func' [, ...]);
- my %hash   = $self->do('callback_func' [, ...]);
- my $scalar = $self->do('callback_func' [, ...]);
+    $self->do('callback' [, ...]);
 
- ## Display content to STDOUT or STDERR. Same as above, supports only 1
- ## level scalar values for arrays.
+    my @array  = $self->do('callback' [, ...]);
+    my %hash   = $self->do('callback' [, ...]);
+    my $scalar = $self->do('callback' [, ...]);
 
- $self->sendto('stdout', \@array);
- $self->sendto('stdout', \$scalar);
- $self->sendto('stdout', $scalar);
+=head2 SENDTO METHOD
 
- $self->sendto('stderr', \@array);
- $self->sendto('stderr', \$scalar);
- $self->sendto('stderr', $scalar);
+The sendto method is called by workers to serialize data to standard output,
+standard error, or to end of file. The action is done by the main process or
+thread.
 
- ## Append content to the end of file. Supports 1 level scalar values for
- ## arrays.
+Release 1.100 adds the ability to pass multiple arguments.
 
- $self->sendto('file', \@array, '/path/to/file');
- $self->sendto('file', \$scalar, '/path/to/file');
- $self->sendto('file', $scalar, '/path/to/file');
+=head3 1.00x SYNTAX
+
+ ## Release 1.00x supported only 1 data argument.
+ ## /path/to/file is the 3rd argument for 'file'.
+
+    $self->sendto('stdout', \@array);
+    $self->sendto('stdout', \$scalar);
+    $self->sendto('stdout', $scalar);
+
+    $self->sendto('stderr', \@array);
+    $self->sendto('stderr', \$scalar);
+    $self->sendto('stderr', $scalar);
+
+    $self->sendto('file', \@array, '/path/to/file');
+    $self->sendto('file', \$scalar, '/path/to/file');
+    $self->sendto('file', $scalar, '/path/to/file');
+
+=head3 1.100 SYNTAX (NEW)
+
+ ## Notice the syntax change for appending to a file.
+
+    $self->sendto('stdout', $arg1 [, $arg2, $arg3, ...]);
+    $self->sendto('stderr', $arg1 [, $arg2, $arg3, ...]);
+    $self->sendto('file:/path/to/file', $arg1 [, $arg2, $arg3, ...]);
+
+ ## Passing a reference is no longer necessary beginning with 1.100.
+
+    $self->sendto("stdout", @a, "\n", %h, "\n", $s, "\n");
+
+ ## To retain 1.00x compatibility, sendto outputs the content when a
+ ## a single data argument is specified and is a reference.
+
+    $self->sendto('stdout', \@array);
+    $self->sendto('stderr', \$scalar);
+    $self->sendto('file:/path/to/file', \@array);
+
+ ## Otherwise, the reference for \@array and \$scalar is shown,
+ ## not the content. Basically, output matches the print statement.
+ ## Ex. print STDOUT "hello\n", \@array, \$scalar, "\n";
+
+    $self->sendto('stdout', "hello\n", \@array, \$scalar, "\n");
 
 =head1 EXAMPLES
 
@@ -2729,7 +2747,7 @@ patterns and word count aggregation.
 
            Parallel::Loops:     600  Forking each @input is expensive
            MCE foreach....:  18,000  Sends result after each @input
-           MCE forchunk...: 385,000  Chunking reduces overhead 
+           MCE forchunk...: 385,000  Chunking reduces overhead
 
 =head1 REQUIREMENTS
 
@@ -2751,7 +2769,7 @@ Mario E. Roy, S<E<lt>marioeroy AT gmail DOT comE<gt>>
 
 Copyright (C) 2012 by Mario E. Roy
 
-MCE is free software; you can redistribute it and/or modify it under the same
-terms as Perl itself.
+MCE is free software; you can redistribute it and/or modify it under the
+same terms as Perl itself.
 
 =cut

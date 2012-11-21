@@ -1,4 +1,8 @@
 
+## MCE - Many-Core Engine for Perl. Provides parallel processing cabilities.
+
+## This document describes MCE version 1.100
+
 <> SYNOPSIS
 
    use MCE;
@@ -13,27 +17,27 @@
           ## $ENV{TEMP} if defined. Otherwise, tmp_dir points
           ## to /tmp.
 
-      input_data   => $input_file,    ## Default is undef
+      input_data   => $input_file,       ## Default is undef
 
           ## input_data => '/path/to/file' for input file
           ## input_data => \@array for input array
           ## input_data => \*FILE_HNDL for file handle
           ## input_data => \$scalar to treat like file
 
-      chunk_size   => 2000,           ## Default is 500
+      chunk_size   => 2000,              ## Default is 500
 
           ## Less than or equal to 8192 is number of records.
           ## Greater than 8192 is number of bytes. MCE reads
           ## till the end of record before calling user_func.
 
-          ## chunk_size =>     1,     ## Consists of 1 record
-          ## chunk_size =>  1000,     ## Consists of 1000 records
-          ## chunk_size => 16384,     ## Approximate 16384 bytes
-          ## chunk_size => 50000,     ## Approximate 50000 bytes
+          ## chunk_size =>     1,        ## Consists of 1 record
+          ## chunk_size =>  1000,        ## Consists of 1000 records
+          ## chunk_size => 16384,        ## Approximate 16384 bytes
+          ## chunk_size => 50000,        ## Approximate 50000 bytes
 
-      max_workers  => 8,              ## Default is 2
-      use_slurpio  => 1,              ## Default is 0
-      use_threads  => 1,              ## Default is 0 or 1
+      max_workers  => 8,                 ## Default is 2
+      use_slurpio  => 1,                 ## Default is 0
+      use_threads  => 1,                 ## Default is 0 or 1
 
           ## Number of workers to spawn, whether or not to enable
           ## slurpio when reading files (passes raw chunk to user
@@ -50,18 +54,18 @@
           ##
           ##    use MCE                       use MCE;
 
-      job_delay    => 0.035,          ## Default is undef
-      spawn_delay  => 0.150,          ## Default is undef
-      submit_delay => 0.001,          ## Default is undef
+      job_delay    => 0.035,             ## Default is undef
+      spawn_delay  => 0.150,             ## Default is undef
+      submit_delay => 0.001,             ## Default is undef
 
           ## Time to wait, in fractional seconds, before processing
           ## job, spawning workers, and parameters submission to
           ## workers. Use submit_delay if wanting to stagger many
-          ## workers connecting to the database.
+          ## workers connecting to a database.
 
-      user_begin   => \&user_begin,   ## Default is undef
-      user_func    => \&user_func,    ## Default is undef
-      user_end     => \&user_end,     ## Default is undef
+      user_begin   => \&user_begin,      ## Default is undef
+      user_func    => \&user_func,       ## Default is undef
+      user_end     => \&user_end,        ## Default is undef
 
           ## Think of user_begin, user_func, user_end like the awk
           ## scripting language:
@@ -71,23 +75,24 @@
           ## calls user_func repeatedly until no chunks remain.
           ## Afterwards, user_end is called.
 
-      user_error   => \&user_error,   ## Default is undef
-      user_output  => \&user_output,  ## Default is undef
+      user_error   => \&user_error,      ## Default is undef
+      user_output  => \&user_output,     ## Default is undef
 
           ## When workers call the following functions, MCE will
           ## pass the data to user_error/user_output if defined.
           ## $self->sendto('stderr', 'Sending to STDERR');
           ## $self->sendto('stdout', 'Sending to STDOUT');
 
-      stderr_file  => 'err_file',     ## Default is STDERR
-      stdout_file  => 'out_file',     ## Default is STDOUT
+      stderr_file  => 'err_file',        ## Default is STDERR
+      stdout_file  => 'out_file',        ## Default is STDOUT
 
           ## Or to file. User_error/user_output take precedence.
 
-      flush_stderr => 1,              ## Default is 0
-      flush_stdout => 1,              ## Default is 0
+      flush_file   => 1,                 ## Default is 0
+      flush_stderr => 1,                 ## Default is 0
+      flush_stdout => 1,                 ## Default is 0
 
-          ## Flush standard error or output immediately.
+          ## Flush sendto file, standard error, or standard output.
    );
 
    ## Run calls spawn, kicks off job, workers call user_begin,
@@ -96,7 +101,7 @@
    ## 1 to auto-shutdown workers after processing.
 
    $mce->run();
-   $mce->run(0);                      ## 0 disables auto-shutdown
+   $mce->run(0);                         ## 0 disables auto-shutdown
 
    ## Or, spawn workers early.
 
@@ -105,11 +110,11 @@
    ## Acquire data arrays and/or input_files. The same pool of
    ## workers are used. Process calls run(0).
 
-   $mce->process(\@input_data_1);     ## Process arrays
+   $mce->process(\@input_data_1);        ## Process arrays
    $mce->process(\@input_data_2);
    $mce->process(\@input_data_n);
 
-   $mce->process('input_file_1');     ## Process files
+   $mce->process('input_file_1');        ## Process files
    $mce->process('input_file_2');
    $mce->process('input_file_n');
 
@@ -126,22 +131,23 @@
 
    ## Each worker calls this once prior to processing.
 
-   sub user_begin {                   ## Optional via user_begin option
+      sub user_begin {
 
-      my $self = shift;
+         my $self = shift;
 
-      $self->{wk_total_rows} = 0;     ## Prefix variables with wk_
-   }
+         ## Prefix variables with wk_
+         $self->{wk_total_rows} = 0;
+      }
 
    ## And once after completion.
 
-   sub user_end {                     ## Optional via user_end option
+      sub user_end {
 
-      my $self = shift;
+         my $self = shift;
 
-      printf "## %d: Processed %d rows\n",
-         $self->wid(), $self->{wk_total_rows};
-   }
+         printf "## %d: Processed %d rows\n",
+            $self->wid(), $self->{wk_total_rows};
+      }
 
    --------------------------------------------------------------------------
    SYNTAX FOR USER_FUNC (with use_slurpio => 0 option)
@@ -149,15 +155,15 @@
 
    ## MCE passes a reference to an array containing the chunk data.
 
-   sub user_func {
+      sub user_func {
 
-      my ($self, $chunk_ref, $chunk_id) = @_;
+         my ($self, $chunk_ref, $chunk_id) = @_;
 
-      foreach my $record ( @{ $chunk_ref } ) {
-         print $record;
-         $self->{wk_total_rows} += 1;
+         foreach my $row ( @{ $chunk_ref } ) {
+            print $row;
+            $self->{wk_total_rows} += 1;
+         }
       }
-   }
 
    --------------------------------------------------------------------------
    SYNTAX FOR USER_FUNC (with use_slurpio => 1 option)
@@ -165,12 +171,12 @@
 
    ## MCE passes a reference to a scalar containing the raw chunk data.
 
-   sub user_func {
+      sub user_func {
 
-      my ($self, $chunk_ref, $chunk_id) = @_;
+         my ($self, $chunk_ref, $chunk_id) = @_;
 
-      my $count = () = $$chunk_ref =~ /abc/;
-   }
+         my $count = () = $$chunk_ref =~ /abc/;
+      }
 
    --------------------------------------------------------------------------
    SYNTAX FOR USER_ERROR & USER_OUTPUT
@@ -180,19 +186,19 @@
    ## functions in a serialized fashion. This is handy if one wants to
    ## filter, modify, and/or send the data elsewhere.
 
-   sub user_error {                   ## Optional via user_error option
+      sub user_error {
 
-      my $error = shift;
+         my $error = shift;
 
-      print LOGERR $error;
-   }
+         print LOGERR $error;
+      }
 
-   sub user_output {                  ## Optional via user_output option
+      sub user_output {
 
-      my $output = shift;
+         my $output = shift;
 
-      print LOGOUT $output;
-   }
+         print LOGOUT $output;
+      }
 
 ===============================================================================
 
@@ -212,49 +218,49 @@
    ## Imagine a long running process and wanting to parallelize an array
    ## against a pool of workers.
 
-   my @input_data  = (0 .. 18000 - 1);
-   my $max_workers = 3;
-   my $order_id    = 1;
-   my %result;
+      my @input_data  = (0 .. 18000 - 1);
+      my $max_workers = 3;
+      my $order_id    = 1;
+      my %result;
 
    ## Callback function for displaying results. The logic below shows how
    ## one can display results immediately while still preserving output
    ## order. The %result hash is a temporary cache to store results
    ## for out-of-order replies.
 
-   sub display_result {
+      sub display_result {
 
-      my ($wk_result, $chunk_id) = @_;
-      $result{$chunk_id} = $wk_result;
+         my ($wk_result, $chunk_id) = @_;
+         $result{$chunk_id} = $wk_result;
 
-      while (1) {
-         last unless exists $result{$order_id};
+         while (1) {
+            last unless exists $result{$order_id};
 
-         printf "i: %d sqrt(i): %f\n",
-            $input_data[$order_id - 1], $result{$order_id};
+            printf "i: %d sqrt(i): %f\n",
+               $input_data[$order_id - 1], $result{$order_id};
 
-         delete $result{$order_id};
-         $order_id++;
+            delete $result{$order_id};
+            $order_id++;
+         }
       }
-   }
 
    ## Compute via MCE.
 
-   my $mce = MCE->new(
-      input_data  => \@input_data,
-      max_workers => $max_workers,
-      chunk_size  => 1,
+      my $mce = MCE->new(
+         input_data  => \@input_data,
+         max_workers => $max_workers,
+         chunk_size  => 1,
 
-      user_func => sub {
+         user_func => sub {
 
-         my ($self, $chunk_ref, $chunk_id) = @_;
-         my $wk_result = sqrt($chunk_ref->[0]);
+            my ($self, $chunk_ref, $chunk_id) = @_;
+            my $wk_result = sqrt($chunk_ref->[0]);
 
-         $self->do('display_result', $wk_result, $chunk_id);
-      }
-   );
+            $self->do('display_result', $wk_result, $chunk_id);
+         }
+      );
 
-   $mce->run();
+      $mce->run();
 
    --------------------------------------------------------------------------
    FOREACH SUGAR METHOD
@@ -262,20 +268,20 @@
 
    ## Compute via MCE. Foreach implies chunk_size => 1.
 
-   my $mce = MCE->new(
-      max_workers => $max_workers
-   );
+      my $mce = MCE->new(
+         max_workers => $max_workers
+      );
 
    ## Worker calls code block passing a reference to an array containing
    ## one item. Use $chunk_ref->[0] to retrieve the single element.
 
-   $mce->foreach(\@input_data, sub {
+      $mce->foreach(\@input_data, sub {
 
-      my ($self, $chunk_ref, $chunk_id) = @_;
-      my $wk_result = sqrt($chunk_ref->[0]);
+         my ($self, $chunk_ref, $chunk_id) = @_;
+         my $wk_result = sqrt($chunk_ref->[0]);
 
-      $self->do('display_result', $wk_result, $chunk_id);
-   });
+         $self->do('display_result', $wk_result, $chunk_id);
+      });
 
    --------------------------------------------------------------------------
    MCE EXAMPLE WITH CHUNK_SIZE => 500
@@ -285,40 +291,69 @@
    ## item from @input_data, a chunk of $chunk_size is sent instead to
    ## the next available worker.
 
-   my @input_data  = (0 .. 385000 - 1);
-   my $max_workers = 3;
-   my $chunk_size  = 500;
-   my $order_id    = 1;
-   my %result;
+      my @input_data  = (0 .. 385000 - 1);
+      my $max_workers = 3;
+      my $chunk_size  = 500;
+      my $order_id    = 1;
+      my %result;
 
    ## Callback function for displaying results.
 
-   sub display_result {
+      sub display_result {
 
-      my ($wk_result, $chunk_id) = @_;
-      $result{$chunk_id} = $wk_result;
+         my ($wk_result, $chunk_id) = @_;
+         $result{$chunk_id} = $wk_result;
 
-      while (1) {
-         last unless exists $result{$order_id};
-         my $i = ($order_id - 1) * $chunk_size;
+         while (1) {
+            last unless exists $result{$order_id};
+            my $i = ($order_id - 1) * $chunk_size;
 
-         for ( @{ $result{$order_id} } ) {
-            printf "i: %d sqrt(i): %f\n", $input_data[$i++], $_;
+            for ( @{ $result{$order_id} } ) {
+               printf "i: %d sqrt(i): %f\n", $input_data[$i++], $_;
+            }
+
+            delete $result{$order_id};
+            $order_id++;
          }
-
-         delete $result{$order_id};
-         $order_id++;
       }
-   }
 
    ## Compute via MCE.
 
-   my $mce = MCE->new(
-      input_data  => \@input_data,
-      max_workers => $max_workers,
-      chunk_size  => $chunk_size,
+      my $mce = MCE->new(
+         input_data  => \@input_data,
+         max_workers => $max_workers,
+         chunk_size  => $chunk_size,
 
-      user_func => sub {
+         user_func => sub {
+
+            my ($self, $chunk_ref, $chunk_id) = @_;
+            my @wk_result;
+
+            for ( @{ $chunk_ref } ) {
+               push @wk_result, sqrt($_);
+            }
+
+            $self->do('display_result', \@wk_result, $chunk_id);
+         }
+      );
+
+      $mce->run();
+
+   --------------------------------------------------------------------------
+   FORCHUNK SUGAR METHOD
+   --------------------------------------------------------------------------
+
+   ## Compute via MCE.
+
+      my $mce = MCE->new(
+         max_workers => $max_workers,
+         chunk_size  => $chunk_size
+      );
+
+   ## Below, $chunk_ref is a reference to an array containing the next
+   ## $chunk_size items from @input_data.
+
+      $mce->forchunk(\@input_data, sub {
 
          my ($self, $chunk_ref, $chunk_id) = @_;
          my @wk_result;
@@ -328,99 +363,70 @@
          }
 
          $self->do('display_result', \@wk_result, $chunk_id);
-      }
-   );
-
-   $mce->run();
-
-   --------------------------------------------------------------------------
-   FORCHUNK SUGAR METHOD
-   --------------------------------------------------------------------------
-
-   ## Compute via MCE.
-
-   my $mce = MCE->new(
-      max_workers => $max_workers,
-      chunk_size  => $chunk_size
-   );
-
-   ## Below, $chunk_ref is a reference to an array containing the next
-   ## $chunk_size items from @input_data.
-
-   $mce->forchunk(\@input_data, sub {
-
-      my ($self, $chunk_ref, $chunk_id) = @_;
-      my @wk_result;
-
-      for ( @{ $chunk_ref } ) {
-         push @wk_result, sqrt($_);
-      }
-
-      $self->do('display_result', \@wk_result, $chunk_id);
-   });
+      });
 
    --------------------------------------------------------------------------
    LAST & NEXT METHODS
    --------------------------------------------------------------------------
 
-   ## Both next and last methods work inside foreach, forchunk,
+   ## Both last and next methods work inside foreach, forchunk,
    ## and user_func code blocks.
 
-   ## ->last: Worker immediately exits the chunking loop
+   ## ->last: Worker immediately exits the chunking loop or user func
 
-   my @list = (1..80);
+      my @list = (1..80);
 
-   $mce->forchunk(\@list, { chunk_size => 2 }, sub {
+      $mce->forchunk(\@list, { chunk_size => 2 }, sub {
 
-      my ($self, $chunk_ref, $chunk_id) = @_;
+         my ($self, $chunk_ref, $chunk_id) = @_;
 
-      $self->last if ($chunk_id > 4);
+         $self->last if ($chunk_id > 4);
 
-      my @output = ();
+         my @output = ();
 
-      for my $rec ( @{ $chunk_ref } ) {
-         push @output, $rec, "\n";
-      }
+         for my $rec ( @{ $chunk_ref } ) {
+            push @output, $rec, "\n";
+         }
 
-      $self->sendto('stdout', \@output);
-   });
+         $self->sendto('stdout', @output);
+      });
 
    -- Output (each chunk above consists of 2 elements)
 
-   1
-   2
-   3
-   4
-   5
-   6
-   7
-   8
+      1
+      2
+      3
+      4
+      5
+      6
+      7
+      8
 
    ## ->next: Worker starts the next iteration of the chunking loop
 
-   my @list = (1..80);
+      my @list = (1..80);
 
-   $mce->forchunk(\@list, { chunk_size => 4 }, sub {
+      $mce->forchunk(\@list, { chunk_size => 4 }, sub {
 
-      my ($self, $chunk_ref, $chunk_id) = @_;
+         my ($self, $chunk_ref, $chunk_id) = @_;
 
-      $self->next if ($chunk_id < 20);
+         $self->next if ($chunk_id < 20);
 
-      my @output = ();
+         my @output = ();
 
-      for my $rec ( @{ $chunk_ref } ) {
-         push @output, $rec, "\n";
-      }
+         for my $rec ( @{ $chunk_ref } ) {
+            push @output, $rec, "\n";
+         }
 
-      $self->sendto('stdout', \@output);
-   });
+         $self->sendto('stdout', @output);
+      });
 
    -- Output (each chunk above consists of 4 elements)
 
-   77
-   78
-   79
-   80
+      77
+      78
+      79
+      80
 
    --------------------------------------------------------------------------
    MISCELLANEOUS METHODS
@@ -435,12 +441,12 @@
 
       $self->exit();
 
-   ## Returns worker ID of worker.
+   ## Returns worker ID.
 
       $self->wid();
 
    --------------------------------------------------------------------------
-   DO & SENDTO METHODS
+   DO METHOD
    --------------------------------------------------------------------------
 
    MCE can serialized data transfers from worker processes via helper functions.
@@ -448,41 +454,81 @@
    Storable Perl module for passing data from a worker process to the main MCE
    thread. In addition, the callback function can optionally return a reply.
 
-   [ $reply = ] $self->do('callback_func' [, $arg1, $arg2, ...]);
+   [ $reply = ] $self->do('callback' [, $arg1, $arg2, ...]);
 
    ## Passing arguments to a callback function using references & scalar:
 
-   sub callback_func {
-      my ($array_ref, $hash_ref, $scalar_ref, $scalar) = @_;
-      ...
-   }
+      sub callback {
+         my ($array_ref, $hash_ref, $scalar_ref, $scalar) = @_;
+         ...
+      }
 
-   $self->do('main::callback_func', \@a, \%h, \$s, 'hello');
+      $self->do('main::callback', \@a, \%h, \$s, 'hello');
+      $self->do('callback', \@a, \%h, \$s, 'hello');
 
-   ## MCE knows if wanting void, a list, a hash, or a scalar return value.
+   ## MCE knows if wanting a void, list, hash, or scalar return value.
 
-   $self->do('callback_func' [, ...]);
-   my @array  = $self->do('callback_func' [, ...]);
-   my %hash   = $self->do('callback_func' [, ...]);
-   my $scalar = $self->do('callback_func' [, ...]);
+      $self->do('callback' [, ...]);
 
-   ## Display content to STDOUT or STDERR. Same as above, supports only 1
-   ## level scalar values for arrays.
+      my @array  = $self->do('callback' [, ...]);
+      my %hash   = $self->do('callback' [, ...]);
+      my $scalar = $self->do('callback' [, ...]);
 
-   $self->sendto('stdout', \@array);
-   $self->sendto('stdout', \$scalar);
-   $self->sendto('stdout', $scalar);
+   --------------------------------------------------------------------------
+   SENDTO METHOD
+   --------------------------------------------------------------------------
 
-   $self->sendto('stderr', \@array);
-   $self->sendto('stderr', \$scalar);
-   $self->sendto('stderr', $scalar);
+   The sendto method is called by workers to serialize data to standard output,
+   standard error, or to end of file. The action is done by the main process or
+   thread.
 
-   ## Append content to the end of file. Supports 1 level scalar values for
-   ## arrays.
+   Release 1.100 adds the ability to pass multiple arguments.
 
-   $self->sendto('file', \@array, '/path/to/file');
-   $self->sendto('file', \$scalar, '/path/to/file');
-   $self->sendto('file', $scalar, '/path/to/file');
+   ------------
+   1.00x SYNTAX
+   ------------
+
+   ## Release 1.00x supported only 1 data argument.
+   ## /path/to/file is the 3rd argument for 'file'.
+
+      $self->sendto('stdout', \@array);
+      $self->sendto('stdout', \$scalar);
+      $self->sendto('stdout', $scalar);
+
+      $self->sendto('stderr', \@array);
+      $self->sendto('stderr', \$scalar);
+      $self->sendto('stderr', $scalar);
+
+      $self->sendto('file', \@array, '/path/to/file');
+      $self->sendto('file', \$scalar, '/path/to/file');
+      $self->sendto('file', $scalar, '/path/to/file');
+
+   ------------------
+   1.100 SYNTAX (NEW)
+   ------------------
+
+   ## Notice the syntax change for appending to a file.
+
+      $self->sendto('stdout', $arg1 [, $arg2, $arg3, ...]);
+      $self->sendto('stderr', $arg1 [, $arg2, $arg3, ...]);
+      $self->sendto('file:/path/to/file', $arg1 [, $arg2, $arg3, ...]);
+
+   ## Passing a reference is no longer necessary beginning with 1.100.
+
+      $self->sendto("stdout", @a, "\n", %h, "\n", $s, "\n");
+
+   ## To retain 1.00x compatibility, sendto outputs the content when a
+   ## a single data argument is specified and is a reference.
+
+      $self->sendto('stdout', \@array);
+      $self->sendto('stderr', \$scalar);
+      $self->sendto('file:/path/to/file', \@array);
+
+   ## Otherwise, the reference for \@array and \$scalar is shown,
+   ## not the content. Basically, output matches the print statement.
+   ## Ex. print STDOUT "hello\n", \@array, \$scalar, "\n";
+
+      $self->sendto('stdout', "hello\n", \@array, \$scalar, "\n");
 
 ===============================================================================
 
