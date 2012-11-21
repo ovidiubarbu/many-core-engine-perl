@@ -1,0 +1,50 @@
+MCE version 1.100
+=================
+
+Many-core Engine (MCE) for Perl helps enable a new level of performance by
+maximizing all available cores. One immediate benefit is that MCE does not
+fork a new worker process per each element in an array. Instead, MCE follows
+a bank queuing model. Imagine the line being the data and bank-tellers the
+parallel workers. MCE enhances that model by adding the ability to chunk
+the next n elements from the input stream to the next available worker.
+
+INSTALLATION
+
+To install this module type the following:
+
+   perl Makefile.PL
+   make
+   make test
+   make install
+
+DEPENDENCIES
+
+This module requires Perl 5.8.0 or later.
+
+   By default MCE does forking (spawns child processes).
+   MCE also supports threads via 2 threading libraries.
+
+   The use of threads in MCE requires that you include threads support
+   prior to loading MCE.
+
+      use threads;                  use forks;
+      use threads::shared;   (or)   use forks::shared;
+
+      use MCE;                      use MCE;
+
+This module requires these other modules and libraries:
+
+   Fcntl
+   Socket
+   Storable 2.04 or later
+   File::Path
+   Test::More 0.45 or later (for testing)
+
+COPYRIGHT AND LICENCE
+
+Copyright (C) 2012 by Mario E. Roy <marioeroy AT gmail DOT com>
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself, either Perl version 5.8.0 or,
+at your option, any later version of Perl 5 you may have available.
+
