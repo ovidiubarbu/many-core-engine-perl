@@ -1,5 +1,11 @@
 Revision history for Perl extension MCE.
 
+1.101 Wed Nov 21 16:00:00 2012
+- Updated documetation -- shifted white space to the left for code blocks
+  Did not like the way code appeared on metacpan.org inside documentation
+- Folks out there, 1.006 introduced a bug which was fixed in 1.008
+  Please update to 1.008 or 1.100/1
+
 1.100 Wed Nov 21 10:00:00 2012
 - All regressions seen thus far have been fixed
 - Completed optimization and shakeout for MCE's existing API

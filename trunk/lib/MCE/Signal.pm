@@ -16,7 +16,7 @@ BEGIN {
 use strict;
 use warnings;
 
-our $VERSION = '1.100';
+our $VERSION = '1.101';
 $VERSION = eval $VERSION;
 
 use Fcntl qw( :flock );
@@ -365,7 +365,7 @@ MCE::Signal - Provides tmp_dir creation & signal handling for Many-Core Engine.
 
 =head1 VERSION
 
-This document describes MCE::Signal version 1.100
+This document describes MCE::Signal version 1.101
 
 =head1 SYNOPSIS
 
@@ -422,6 +422,6 @@ Mario E. Roy, S<E<lt>marioeroy AT gmail DOT comE<gt>>
 Copyright (C) 2012 by Mario E. Roy
 
 MCE::Signal is free software; you can redistribute it and/or modify it under
-the same terms as Perl itself.
+the same terms as Perl itself: L<http://dev.perl.org/licenses/>
 
 =cut

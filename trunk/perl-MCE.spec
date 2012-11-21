@@ -1,5 +1,5 @@
 Name:           perl-MCE
-Version:        1.100
+Version:        1.101
 Release:        1%{?dist}
 Summary:        Many-Core Engine for Perl. Provides parallel processing cabilities.
 License:        CHECK(Distributable)
@@ -57,6 +57,11 @@ rm -rf $RPM_BUILD_ROOT
 %{_mandir}/man3/*
 
 %changelog
+* Wed Nov 21 2012 Mario Roy 1.101-1
+- Update to documetation -- shifted white space to the left for code blocks
+  Did not like the way code appeared on metacpan.org inside documentation
+- Folks out there, 1.006 introduced a bug which was fixed in 1.008
+  Please update to 1.008 or 1.100/1
 * Wed Nov 21 2012 Mario Roy 1.100-1
 - All regressions seen thus far have been fixed
 - Completed optimization and shakeout for MCE's existing API

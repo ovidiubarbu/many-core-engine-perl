@@ -91,7 +91,7 @@ INIT {
 use strict;
 use warnings;
 
-our $VERSION = '1.100';
+our $VERSION = '1.101';
 $VERSION = eval $VERSION;
 
 use Fcntl qw( :flock O_CREAT O_TRUNC O_RDWR O_RDONLY );
@@ -2214,7 +2214,7 @@ MCE - Many-Core Engine for Perl. Provides parallel processing cabilities.
 
 =head1 VERSION
 
-This document describes MCE version 1.100
+This document describes MCE version 1.101
 
 =head1 SYNOPSIS
 
@@ -2342,48 +2342,48 @@ This document describes MCE version 1.100
 
  ## Each worker calls this once prior to processing.
 
-    sub user_begin {
+ sub user_begin {                   ## Optional via user_begin option
 
-       my $self = shift;
+    my $self = shift;
 
-       ## Prefix variables with wk_
-       $self->{wk_total_rows} = 0;
-    }
+    ## Prefix variables with wk_
+    $self->{wk_total_rows} = 0;
+ }
 
  ## And once after completion.
 
-    sub user_end {
+ sub user_end {                     ## Optional via user_end option
 
-       my $self = shift;
+    my $self = shift;
 
-       printf "## %d: Processed %d rows\n",
-          $self->wid(), $self->{wk_total_rows};
-    }
+    printf "## %d: Processed %d rows\n",
+       $self->wid(), $self->{wk_total_rows};
+ }
 
 =head2 SYNTAX FOR USER_FUNC (with use_slurpio => 0 option)
 
  ## MCE passes a reference to an array containing the chunk data.
 
-    sub user_func {
+ sub user_func {
 
-       my ($self, $chunk_ref, $chunk_id) = @_;
+    my ($self, $chunk_ref, $chunk_id) = @_;
 
-       foreach my $row ( @{ $chunk_ref } ) {
-          print $row;
-          $self->{wk_total_rows} += 1;
-       }
+    foreach my $row ( @{ $chunk_ref } ) {
+       print $row;
+       $self->{wk_total_rows} += 1;
     }
+ }
 
 =head2 SYNTAX FOR USER_FUNC (with use_slurpio => 1 option)
 
  ## MCE passes a reference to a scalar containing the raw chunk data.
 
-    sub user_func {
+ sub user_func {
 
-       my ($self, $chunk_ref, $chunk_id) = @_;
+    my ($self, $chunk_ref, $chunk_id) = @_;
 
-       my $count = () = $$chunk_ref =~ /abc/;
-    }
+    my $count = () = $$chunk_ref =~ /abc/;
+ }
 
 =head2 SYNTAX FOR USER_ERROR & USER_OUTPUT
 
@@ -2391,19 +2391,19 @@ This document describes MCE version 1.100
  ## functions in a serialized fashion. This is handy if one wants to
  ## filter, modify, and/or send the data elsewhere.
 
-    sub user_error {
+ sub user_error {                   ## Optional via user_error option
 
-       my $error = shift;
+    my $error = shift;
 
-       print LOGERR $error;
-    }
+    print LOGERR $error;
+ }
 
-    sub user_output {
+ sub user_output {                  ## Optional via user_output option
 
-       my $output = shift;
+    my $output = shift;
 
-       print LOGOUT $output;
-    }
+    print LOGOUT $output;
+ }
 
 =head1 DESCRIPTION
 
@@ -2419,68 +2419,68 @@ the next n elements from the input stream to the next available worker.
  ## Imagine a long running process and wanting to parallelize an array
  ## against a pool of workers.
 
-    my @input_data  = (0 .. 18000 - 1);
-    my $max_workers = 3;
-    my $order_id    = 1;
-    my %result;
+ my @input_data  = (0 .. 18000 - 1);
+ my $max_workers = 3;
+ my $order_id    = 1;
+ my %result;
 
  ## Callback function for displaying results. The logic below shows how
  ## one can display results immediately while still preserving output
  ## order. The %result hash is a temporary cache to store results
  ## for out-of-order replies.
 
-    sub display_result {
+ sub display_result {
 
-       my ($wk_result, $chunk_id) = @_;
-       $result{$chunk_id} = $wk_result;
+    my ($wk_result, $chunk_id) = @_;
+    $result{$chunk_id} = $wk_result;
 
-       while (1) {
-          last unless exists $result{$order_id};
+    while (1) {
+       last unless exists $result{$order_id};
 
-          printf "i: %d sqrt(i): %f\n",
-             $input_data[$order_id - 1], $result{$order_id};
+       printf "i: %d sqrt(i): %f\n",
+          $input_data[$order_id - 1], $result{$order_id};
 
-          delete $result{$order_id};
-          $order_id++;
-       }
+       delete $result{$order_id};
+       $order_id++;
     }
+ }
 
  ## Compute via MCE.
 
-    my $mce = MCE->new(
-       input_data  => \@input_data,
-       max_workers => $max_workers,
-       chunk_size  => 1,
+ my $mce = MCE->new(
+    input_data  => \@input_data,
+    max_workers => $max_workers,
+    chunk_size  => 1,
 
-       user_func => sub {
-
-          my ($self, $chunk_ref, $chunk_id) = @_;
-          my $wk_result = sqrt($chunk_ref->[0]);
-
-          $self->do('display_result', $wk_result, $chunk_id);
-       }
-    );
-
-    $mce->run();
-
-=head2 FOREACH SUGAR METHOD
-
- ## Compute via MCE. Foreach implies chunk_size => 1.
-
-    my $mce = MCE->new(
-       max_workers => $max_workers
-    );
-
- ## Worker calls code block passing a reference to an array containing
- ## one item. Use $chunk_ref->[0] to retrieve the single element.
-
-    $mce->foreach(\@input_data, sub {
+    user_func => sub {
 
        my ($self, $chunk_ref, $chunk_id) = @_;
        my $wk_result = sqrt($chunk_ref->[0]);
 
        $self->do('display_result', $wk_result, $chunk_id);
-    });
+    }
+ );
+
+ $mce->run();
+
+=head3 FOREACH SUGAR METHOD
+
+ ## Compute via MCE. Foreach implies chunk_size => 1.
+
+ my $mce = MCE->new(
+    max_workers => $max_workers
+ );
+
+ ## Worker calls code block passing a reference to an array containing
+ ## one item. Use $chunk_ref->[0] to retrieve the single element.
+
+ $mce->foreach(\@input_data, sub {
+
+    my ($self, $chunk_ref, $chunk_id) = @_;
+    my $wk_result = sqrt($chunk_ref->[0]);
+
+    $self->do('display_result', $wk_result, $chunk_id);
+ });
 
 =head2 MCE EXAMPLE WITH CHUNK_SIZE => 500
 
@@ -2488,67 +2488,40 @@ the next n elements from the input stream to the next available worker.
  ## item from @input_data, a chunk of $chunk_size is sent instead to
  ## the next available worker.
 
-    my @input_data  = (0 .. 385000 - 1);
-    my $max_workers = 3;
-    my $chunk_size  = 500;
-    my $order_id    = 1;
-    my %result;
+ my @input_data  = (0 .. 385000 - 1);
+ my $max_workers = 3;
+ my $chunk_size  = 500;
+ my $order_id    = 1;
+ my %result;
 
  ## Callback function for displaying results.
 
-    sub display_result {
+ sub display_result {
 
-       my ($wk_result, $chunk_id) = @_;
-       $result{$chunk_id} = $wk_result;
+    my ($wk_result, $chunk_id) = @_;
+    $result{$chunk_id} = $wk_result;
 
-       while (1) {
-          last unless exists $result{$order_id};
-          my $i = ($order_id - 1) * $chunk_size;
+    while (1) {
+       last unless exists $result{$order_id};
+       my $i = ($order_id - 1) * $chunk_size;
 
-          for ( @{ $result{$order_id} } ) {
-             printf "i: %d sqrt(i): %f\n", $input_data[$i++], $_;
-          }
-
-          delete $result{$order_id};
-          $order_id++;
+       for ( @{ $result{$order_id} } ) {
+          printf "i: %d sqrt(i): %f\n", $input_data[$i++], $_;
        }
+
+       delete $result{$order_id};
+       $order_id++;
     }
+ }
 
  ## Compute via MCE.
 
-    my $mce = MCE->new(
-       input_data  => \@input_data,
-       max_workers => $max_workers,
-       chunk_size  => $chunk_size,
+ my $mce = MCE->new(
+    input_data  => \@input_data,
+    max_workers => $max_workers,
+    chunk_size  => $chunk_size,
 
-       user_func => sub {
-
-          my ($self, $chunk_ref, $chunk_id) = @_;
-          my @wk_result;
-
-          for ( @{ $chunk_ref } ) {
-             push @wk_result, sqrt($_);
-          }
-
-          $self->do('display_result', \@wk_result, $chunk_id);
-       }
-    );
-
-    $mce->run();
-
-=head2 FORCHUNK SUGAR METHOD
-
- ## Compute via MCE.
-
-    my $mce = MCE->new(
-       max_workers => $max_workers,
-       chunk_size  => $chunk_size
-    );
-
- ## Below, $chunk_ref is a reference to an array containing the next
- ## $chunk_size items from @input_data.
-
-    $mce->forchunk(\@input_data, sub {
+    user_func => sub {
 
        my ($self, $chunk_ref, $chunk_id) = @_;
        my @wk_result;
@@ -2558,7 +2531,34 @@ the next n elements from the input stream to the next available worker.
        }
 
        $self->do('display_result', \@wk_result, $chunk_id);
-    });
+    }
+ );
+
+ $mce->run();
+
+=head3 FORCHUNK SUGAR METHOD
+
+ ## Compute via MCE.
+
+ my $mce = MCE->new(
+    max_workers => $max_workers,
+    chunk_size  => $chunk_size
+ );
+
+ ## Below, $chunk_ref is a reference to an array containing the next
+ ## $chunk_size items from @input_data.
+
+ $mce->forchunk(\@input_data, sub {
+
+    my ($self, $chunk_ref, $chunk_id) = @_;
+    my @wk_result;
+
+    for ( @{ $chunk_ref } ) {
+       push @wk_result, sqrt($_);
+    }
+
+    $self->do('display_result', \@wk_result, $chunk_id);
+ });
 
 =head2 LAST & NEXT METHODS
 
@@ -2567,74 +2567,74 @@ the next n elements from the input stream to the next available worker.
 
  ## ->last: Worker immediately exits the chunking loop or user func
 
-    my @list = (1..80);
+ my @list = (1..80);
 
-    $mce->forchunk(\@list, { chunk_size => 2 }, sub {
+ $mce->forchunk(\@list, { chunk_size => 2 }, sub {
 
-       my ($self, $chunk_ref, $chunk_id) = @_;
+    my ($self, $chunk_ref, $chunk_id) = @_;
 
-       $self->last if ($chunk_id > 4);
+    $self->last if ($chunk_id > 4);
 
-       my @output = ();
+    my @output = ();
 
-       for my $rec ( @{ $chunk_ref } ) {
-          push @output, $rec, "\n";
-       }
+    for my $rec ( @{ $chunk_ref } ) {
+       push @output, $rec, "\n";
+    }
 
-       $self->sendto('stdout', @output);
-    });
+    $self->sendto('stdout', @output);
+ });
 
  -- Output (each chunk above consists of 2 elements)
 
-    1
-    2
-    3
-    4
-    5
-    6
-    7
-    8
+ 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
 
  ## ->next: Worker starts the next iteration of the chunking loop
 
-    my @list = (1..80);
+ my @list = (1..80);
 
-    $mce->forchunk(\@list, { chunk_size => 4 }, sub {
+ $mce->forchunk(\@list, { chunk_size => 4 }, sub {
 
-       my ($self, $chunk_ref, $chunk_id) = @_;
+    my ($self, $chunk_ref, $chunk_id) = @_;
 
-       $self->next if ($chunk_id < 20);
+    $self->next if ($chunk_id < 20);
 
-       my @output = ();
+    my @output = ();
 
-       for my $rec ( @{ $chunk_ref } ) {
-          push @output, $rec, "\n";
-       }
+    for my $rec ( @{ $chunk_ref } ) {
+       push @output, $rec, "\n";
+    }
 
-       $self->sendto('stdout', @output);
-    });
+    $self->sendto('stdout', @output);
+ });
 
  -- Output (each chunk above consists of 4 elements)
 
-    77
-    78
-    79
-    80
+ 77
+ 78
+ 79
+ 80
 
 =head2 MISCELLANEOUS METHODS
 
  ## Notifies workers to abort after processing the current chunk. The
  ## abort method is only meaningful when processing input_data.
 
-    $self->abort();
+ $self->abort();
 
  ## Worker exits current job.
 
-    $self->exit();
+ $self->exit();
 
  ## Returns worker ID.
 
-    $self->wid();
+ $self->wid();
 
 =head2 DO METHOD
 
@@ -2647,21 +2647,21 @@ thread. In addition, the callback function can optionally return a reply.
 
  ## Passing arguments to a callback function using references & scalar:
 
-    sub callback {
-       my ($array_ref, $hash_ref, $scalar_ref, $scalar) = @_;
-       ...
-    }
+ sub callback {
+    my ($array_ref, $hash_ref, $scalar_ref, $scalar) = @_;
+    ...
+ }
 
-    $self->do('main::callback', \@a, \%h, \$s, 'hello');
-    $self->do('callback', \@a, \%h, \$s, 'hello');
+ $self->do('main::callback', \@a, \%h, \$s, 'hello');
+ $self->do('callback', \@a, \%h, \$s, 'hello');
 
  ## MCE knows if wanting a void, list, hash, or scalar return value.
 
-    $self->do('callback' [, ...]);
+ $self->do('callback' [, ...]);
 
-    my @array  = $self->do('callback' [, ...]);
-    my %hash   = $self->do('callback' [, ...]);
-    my $scalar = $self->do('callback' [, ...]);
+ my @array  = $self->do('callback' [, ...]);
+ my %hash   = $self->do('callback' [, ...]);
+ my $scalar = $self->do('callback' [, ...]);
 
 =head2 SENDTO METHOD
 
@@ -2676,42 +2676,42 @@ Release 1.100 adds the ability to pass multiple arguments.
  ## Release 1.00x supported only 1 data argument.
  ## /path/to/file is the 3rd argument for 'file'.
 
-    $self->sendto('stdout', \@array);
-    $self->sendto('stdout', \$scalar);
-    $self->sendto('stdout', $scalar);
+ $self->sendto('stdout', \@array);
+ $self->sendto('stdout', \$scalar);
+ $self->sendto('stdout', $scalar);
 
-    $self->sendto('stderr', \@array);
-    $self->sendto('stderr', \$scalar);
-    $self->sendto('stderr', $scalar);
+ $self->sendto('stderr', \@array);
+ $self->sendto('stderr', \$scalar);
+ $self->sendto('stderr', $scalar);
 
-    $self->sendto('file', \@array, '/path/to/file');
-    $self->sendto('file', \$scalar, '/path/to/file');
-    $self->sendto('file', $scalar, '/path/to/file');
+ $self->sendto('file', \@array, '/path/to/file');
+ $self->sendto('file', \$scalar, '/path/to/file');
+ $self->sendto('file', $scalar, '/path/to/file');
 
-=head3 1.100 SYNTAX (NEW)
+=head3 1.10x SYNTAX (NEW)
 
  ## Notice the syntax change for appending to a file.
 
-    $self->sendto('stdout', $arg1 [, $arg2, $arg3, ...]);
-    $self->sendto('stderr', $arg1 [, $arg2, $arg3, ...]);
-    $self->sendto('file:/path/to/file', $arg1 [, $arg2, $arg3, ...]);
+ $self->sendto('stdout', $arg1 [, $arg2, $arg3, ...]);
+ $self->sendto('stderr', $arg1 [, $arg2, $arg3, ...]);
+ $self->sendto('file:/path/to/file', $arg1 [, $arg2, $arg3, ...]);
 
  ## Passing a reference is no longer necessary beginning with 1.100.
 
-    $self->sendto("stdout", @a, "\n", %h, "\n", $s, "\n");
+ $self->sendto("stdout", @a, "\n", %h, "\n", $s, "\n");
 
  ## To retain 1.00x compatibility, sendto outputs the content when a
  ## a single data argument is specified and is a reference.
 
-    $self->sendto('stdout', \@array);
-    $self->sendto('stderr', \$scalar);
-    $self->sendto('file:/path/to/file', \@array);
+ $self->sendto('stdout', \@array);
+ $self->sendto('stderr', \$scalar);
+ $self->sendto('file:/path/to/file', \@array);
 
  ## Otherwise, the reference for \@array and \$scalar is shown,
  ## not the content. Basically, output matches the print statement.
  ## Ex. print STDOUT "hello\n", \@array, \$scalar, "\n";
 
-    $self->sendto('stdout', "hello\n", \@array, \$scalar, "\n");
+ $self->sendto('stdout', "hello\n", \@array, \$scalar, "\n");
 
 =head1 EXAMPLES
 
@@ -2770,6 +2770,6 @@ Mario E. Roy, S<E<lt>marioeroy AT gmail DOT comE<gt>>
 Copyright (C) 2012 by Mario E. Roy
 
 MCE is free software; you can redistribute it and/or modify it under the
-same terms as Perl itself.
+same terms as Perl itself: L<http://dev.perl.org/licenses/>
 
 =cut
