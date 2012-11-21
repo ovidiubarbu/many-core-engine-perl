@@ -1,5 +1,5 @@
 Name:           perl-MCE
-Version:        1.008
+Version:        1.100
 Release:        1%{?dist}
 Summary:        Many-Core Engine for Perl. Provides parallel processing cabilities.
 License:        CHECK(Distributable)
@@ -57,11 +57,18 @@ rm -rf $RPM_BUILD_ROOT
 %{_mandir}/man3/*
 
 %changelog
+* Wed Nov 21 2012 Mario Roy 1.100-1
+- All regressions seen thus far have been fixed
+- Completed optimization and shakeout for MCE's existing API
+- File handles are cached when calling sendto and appending to a file
+- The sendto method now supports multiple arguments -- see perldoc
+- Added new option: flush_file
 * Sat Nov 17 2012 Mario Roy 1.008-1
 - Update on __DIE__ and __WARN__ handling in MCE. This addresses the
   unreferenced scalars seen in packaging logs at activestate.com for
   Perl under Windows: http://code.activestate.com/ppm/MCE/
 - Update t/01_load_signal_arg.t -- added check for $ENV{TEMP}
+  This fixes issue seen under Cygwin
 * Thu Nov 15 2012 Mario Roy 1.007-1
 - At last, the "Voila" release :)
 - Small change to __DIE__ and __WARN__ signal handling for spawn method

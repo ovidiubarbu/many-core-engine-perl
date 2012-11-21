@@ -1,10 +1,18 @@
 Revision history for Perl extension MCE.
 
+1.100 Wed Nov 21 10:00:00 2012
+- All regressions seen thus far have been fixed
+- Completed optimization and shakeout for MCE's existing API
+- File handles are cached when calling sendto and appending to a file
+- The sendto method now supports multiple arguments -- see perldoc
+- Added new option: flush_file
+
 1.008 Sat Nov 17 23:00:00 2012
 - Update on __DIE__ and __WARN__ handling in MCE. This addresses the 
   unreferenced scalars seen in packaging logs at activestate.com for
   Perl under Windows: http://code.activestate.com/ppm/MCE/
 - Update t/01_load_signal_arg.t -- added check for $ENV{TEMP}
+  This fixes issue seen under Cygwin
 
 1.007 Thu Nov 15 21:30:00 2012
 - At last, the "Voila" release :)
