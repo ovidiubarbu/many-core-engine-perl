@@ -1,8 +1,12 @@
 Revision history for Perl extension MCE.
 
+1.102 Thu Nov 22 13:00:00 2012
+- Woohoot !!! MCE now passes with Perl 5.17.x
+- Added Copying file -- same as in Perl
+
 1.101 Wed Nov 21 16:00:00 2012
 - Updated documetation -- shifted white space to the left for code blocks
-  Did not like the way code appeared on metacpan.org inside documentation
+  inside documentation
 - Folks out there, 1.006 introduced a bug which was fixed in 1.008
   Please update to 1.008 or 1.100/1
 

@@ -91,7 +91,7 @@ INIT {
 use strict;
 use warnings;
 
-our $VERSION = '1.101';
+our $VERSION = '1.102';
 $VERSION = eval $VERSION;
 
 use Fcntl qw( :flock O_CREAT O_TRUNC O_RDWR O_RDONLY );
@@ -2214,7 +2214,7 @@ MCE - Many-Core Engine for Perl. Provides parallel processing cabilities.
 
 =head1 VERSION
 
-This document describes MCE version 1.101
+This document describes MCE version 1.102
 
 =head1 SYNOPSIS
 
@@ -2770,6 +2770,6 @@ Mario E. Roy, S<E<lt>marioeroy AT gmail DOT comE<gt>>
 Copyright (C) 2012 by Mario E. Roy
 
 MCE is free software; you can redistribute it and/or modify it under the
-same terms as Perl itself: L<http://dev.perl.org/licenses/>
+same terms as Perl itself L<http://dev.perl.org/licenses/gpl1.html>.
 
 =cut
