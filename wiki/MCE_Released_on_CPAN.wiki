@@ -1,0 +1,54 @@
+= Introduction =
+
+MCE for Perl helps enable a new level of performance by maximizing all available cores. 4 socket pairs are configured total and shared among all workers. Examples provided with MCE show that output order can still be preserved as if processing from a single worker.
+
+http://many-core-engine-perl.googlecode.com/svn/wiki/img/MCE.gif
+
+MCE spawns a pool of workers and therefore does not fork a new worker process per each element in an array. Instead, MCE follows a bank queuing model. Imagine the line being the data and bank-tellers the parallel workers. MCE enhances that model by adding the ability to chunk the next n elements from the input stream to the next available worker.
+
+http://many-core-engine-perl.googlecode.com/svn/wiki/img/Bank_Queuing_Model.gif
+
+
+= CPAN Release =
+
+The MCE Perl module has been released on CPAN:
+http://search.cpan.org/~marioroy/
+
+The source code is hosted at code.google.com:
+http://code.google.com/p/many-core-engine-perl/
+
+MCE comes with various examples showing real-world use case scenarios on parallelizing something as small as cat (try with -n) to greping for patterns and word count aggregation. An implementation of the wide finder is also provided utilizing MCE.
+
+<pre>
+ cat.pl    Concatenation script, similar to the cat binary.
+ egrep.pl  Egrep script, similar to the egrep binary.
+ wc.pl     Word count script, similar to the wc binary.
+
+  findnull.pl
+           A parallel driven script to report lines containing
+           null fields. It's many times faster than the binary
+           egrep command. Try against a large file containing
+           very long lines.
+
+  scaling_pings.pl
+           Perform ping test and report back failing IPs to
+           standard output.
+
+  tbray/wf_mce1.pl, wf_mce2.pl, wf_mce3.pl
+           An implementation of wide finder utilizing MCE.
+           As fast as MMAP IO when file resides in OS FS cache.
+           2x ~ 3x faster when reading directly from disk.
+
+  foreach.pl, forchunk.pl
+           These take the same sqrt example from Parallel::Loops
+           and measures the overhead of the engine. The number
+           indicates the size of @input which can be submitted
+           and results displayed in 1 second.
+           Parallel::Loops:     600  Forking each @input is expensive
+           MCE foreach....:  18,000  Sends result after each @input
+           MCE forchunk...: 385,000  Chunking reduces overhead
+</pre>
+
+= Supported OS and maximum workers allowed =
+
+http://many-core-engine-perl.googlecode.com/svn/wiki/img/Supported_OS.gif
