@@ -1,3 +1,4 @@
+#labels Featured
 = Introduction =
 
 MCE for Perl helps enable a new level of performance by maximizing all available cores. 4 socket pairs are configured total and shared among all workers. Examples provided with MCE show that output order can still be preserved as if processing from a single worker.
