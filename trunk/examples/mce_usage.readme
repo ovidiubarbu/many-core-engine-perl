@@ -1,7 +1,7 @@
 
 ## MCE - Many-Core Engine for Perl. Provides parallel processing cabilities.
 
-## This document describes MCE version 1.101
+## This document describes MCE version 1.102
 
 <> SYNOPSIS
 
@@ -591,5 +591,5 @@
    Copyright (C) 2012 by Mario E. Roy
 
    MCE is free software; you can redistribute it and/or modify it under the
-   same terms as Perl itself: http://dev.perl.org/licenses/
+   same terms as Perl itself http://dev.perl.org/licenses/gpl1.html.
 

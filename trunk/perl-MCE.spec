@@ -1,5 +1,5 @@
 Name:           perl-MCE
-Version:        1.101
+Version:        1.102
 Release:        1%{?dist}
 Summary:        Many-Core Engine for Perl. Provides parallel processing cabilities.
 License:        CHECK(Distributable)
@@ -52,14 +52,17 @@ rm -rf $RPM_BUILD_ROOT
 
 %files
 %defattr(-,root,root,-)
-%doc CHANGES CREDITS README TODO examples
+%doc Copying CHANGES CREDITS README TODO examples
 %{perl_vendorlib}/*
 %{_mandir}/man3/*
 
 %changelog
+* Thu Nov 22 2012 Mario Roy 1.102-1
+- Woohoot !!! MCE now passes with Perl 5.17.x
+- Added Copying file -- same as in Perl
 * Wed Nov 21 2012 Mario Roy 1.101-1
 - Update to documetation -- shifted white space to the left for code blocks
-  Did not like the way code appeared on metacpan.org inside documentation
+  inside documentation
 - Folks out there, 1.006 introduced a bug which was fixed in 1.008
   Please update to 1.008 or 1.100/1
 * Wed Nov 21 2012 Mario Roy 1.100-1
