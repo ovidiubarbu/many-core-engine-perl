@@ -15,7 +15,7 @@ use Test::More tests => 3;
 BEGIN {
    use_ok('MCE::Signal', qw( $tmp_dir -use_dev_shm ));
 
-   if (! exists $ENV{TEMP} && -d '/dev/shm') {
+   if (! exists $ENV{TEMP} && -d '/dev/shm' && -w '/dev/shm') {
       ok($tmp_dir =~ m!^/dev/shm/!, 'Check tmp_dir matches ^/dev/shm/');
    }
    else {

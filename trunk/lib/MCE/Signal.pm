@@ -16,14 +16,17 @@ BEGIN {
 use strict;
 use warnings;
 
-our $VERSION = '1.102';
+our $VERSION = '1.103';
 $VERSION = eval $VERSION;
 
 use Fcntl qw( :flock );
 use File::Path qw( rmtree );
 use base 'Exporter';
 
-use constant { ILLEGAL_STATE => 'ILLEGAL_STATE' };
+use constant {
+   ILLEGAL_STATE => 'ILLEGAL_STATE',
+   NOT_WRITEABLE => 'NOT_WRITEABLE'
+};
 
 our $tmp_dir = undef;
 our @EXPORT_OK = qw( $tmp_dir sys_cmd stop_and_exit );
@@ -75,8 +78,12 @@ sub import {
       }
    }
    else {
-      $_tmp_dir_base = ($_use_dev_shm && -d '/dev/shm') ? '/dev/shm' : '/tmp';
+      $_tmp_dir_base = ($_use_dev_shm && -d '/dev/shm' && -w '/dev/shm')
+         ? '/dev/shm' : '/tmp';
    }
+
+   _croak(NOT_WRITEABLE . ": '$_tmp_dir_base' is not writeable")
+      unless (-w $_tmp_dir_base);
 
    $_count = 0;
    $tmp_dir = "$_tmp_dir_base/$prog_name.$$.$_count";
@@ -365,7 +372,7 @@ MCE::Signal - Provides tmp_dir creation & signal handling for Many-Core Engine.
 
 =head1 VERSION
 
-This document describes MCE::Signal version 1.102
+This document describes MCE::Signal version 1.103
 
 =head1 SYNOPSIS
 
@@ -380,7 +387,7 @@ terminate, removes the temporary directory unless -keep_tmp_dir is specified,
 and terminates itself.
 
 The location of tmp dir resides under $ENV{TEMP} if configured, otherwise
-/dev/shm if available and -use_dev_shm is specified, or /tmp.
+/dev/shm if writeable and -use_dev_shm is specified, or /tmp.
 
 Tmp dir resides under $ENV{TEMP}/mce/ when running Perl on Microsoft Windows.
 

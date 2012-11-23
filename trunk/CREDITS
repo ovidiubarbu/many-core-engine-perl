@@ -2,6 +2,12 @@
 All the people reporting problems and fixes or additions. More specifically in
 alphabetical order:
 
+David Cantrell (DrHyde on perlmonks.org)
+  For reporting on MCE hanging with cpan -t MCE under his environment.
+  Thank you for providing a test account to allow me to reproduce the issue.
+  One cannot assume that /dev/shm is writeable by everyone. :)
+  Added writeable check and croak if tmp dir is not writeable.
+
 Joseph Ogulin
   For providing me the perl-MCE.spec file.
 
