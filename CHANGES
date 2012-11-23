@@ -1,5 +1,9 @@
 Revision history for Perl extension MCE.
 
+1.103 Fri Nov 23 13:00:00 2012
+- Added writeable check on /dev/shm
+- Croak if tmp dir is not writeable
+
 1.102 Thu Nov 22 13:00:00 2012
 - Woohoot !!! MCE now passes with Perl 5.17.x
 - Added Copying file -- same as in Perl

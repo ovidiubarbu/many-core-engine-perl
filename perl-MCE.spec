@@ -1,5 +1,5 @@
 Name:           perl-MCE
-Version:        1.102
+Version:        1.103
 Release:        1%{?dist}
 Summary:        Many-Core Engine for Perl. Provides parallel processing cabilities.
 License:        CHECK(Distributable)
@@ -57,6 +57,9 @@ rm -rf $RPM_BUILD_ROOT
 %{_mandir}/man3/*
 
 %changelog
+* Fri Nov 23 2012 Mario Roy 1.103-1
+- Added writeable check on /dev/shm
+- Croak if tmp dir is not writeable
 * Thu Nov 22 2012 Mario Roy 1.102-1
 - Woohoot !!! MCE now passes with Perl 5.17.x
 - Added Copying file -- same as in Perl

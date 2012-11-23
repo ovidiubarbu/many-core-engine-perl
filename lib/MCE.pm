@@ -91,7 +91,7 @@ INIT {
 use strict;
 use warnings;
 
-our $VERSION = '1.102';
+our $VERSION = '1.103';
 $VERSION = eval $VERSION;
 
 use Fcntl qw( :flock O_CREAT O_TRUNC O_RDWR O_RDONLY );
@@ -2214,7 +2214,7 @@ MCE - Many-Core Engine for Perl. Provides parallel processing cabilities.
 
 =head1 VERSION
 
-This document describes MCE version 1.102
+This document describes MCE version 1.103
 
 =head1 SYNOPSIS
 
@@ -2408,8 +2408,8 @@ This document describes MCE version 1.102
 =head1 DESCRIPTION
 
 Many-core Engine (MCE) for Perl helps enable a new level of performance by
-maximizing all available cores. One immediate benefit is that MCE does not
-fork a new worker process per each element in an array. Instead, MCE follows
+maximizing all available cores. MCE spawns a pool of workers and therefore
+does not fork a new process per each element of data. Instead, MCE follows
 a bank queuing model. Imagine the line being the data and bank-tellers the
 parallel workers. MCE enhances that model by adding the ability to chunk
 the next n elements from the input stream to the next available worker.
