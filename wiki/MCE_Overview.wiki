@@ -1,14 +1,13 @@
 #labels Featured
-= Introduction =
+= Overview =
 
 MCE for Perl helps enable a new level of performance by maximizing all available cores. 4 socket pairs are configured total and shared among all workers. Examples provided with MCE show that output order can still be preserved as if processing from a single worker.
 
 http://many-core-engine-perl.googlecode.com/svn/wiki/img/MCE.gif
 
-MCE spawns a pool of workers and therefore does not fork a new worker process per each element in an array. Instead, MCE follows a bank queuing model. Imagine the line being the data and bank-tellers the parallel workers. MCE enhances that model by adding the ability to chunk the next n elements from the input stream to the next available worker.
+MCE spawns a pool of workers and therefore does not fork a new worker process per each element of data. Instead, MCE follows a bank queuing model. Imagine the line being the data and bank-tellers the parallel workers. MCE enhances that model by adding the ability to chunk the next n elements from the input stream to the next available worker.
 
 http://many-core-engine-perl.googlecode.com/svn/wiki/img/Bank_Queuing_Model.gif
-
 
 = CPAN Release =
 
@@ -53,3 +52,4 @@ MCE comes with various examples showing real-world use case scenarios on paralle
 = Supported OS and maximum workers allowed =
 
 http://many-core-engine-perl.googlecode.com/svn/wiki/img/Supported_OS.gif
+
