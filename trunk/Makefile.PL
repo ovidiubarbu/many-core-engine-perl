@@ -9,6 +9,7 @@ use warnings;
 use ExtUtils::MakeMaker;
 
 WriteMakefile(
+
     'NAME'          => 'MCE',
     'AUTHOR'        => 'Mario E. Roy <marioeroy AT gmail DOT com>',
     'VERSION_FROM'  => 'lib/MCE.pm',
@@ -27,6 +28,6 @@ WriteMakefile(
     ((ExtUtils::MakeMaker->VERSION() lt '6.25') ?
         ('PL_FILES' => { })            : ()),
     ((ExtUtils::MakeMaker->VERSION() gt '6.30') ?
-        ('LICENSE'  => 'http://dev.perl.org/licenses/')         : ()),
+        ('LICENSE'  => 'perl')         : ()),
 );
 

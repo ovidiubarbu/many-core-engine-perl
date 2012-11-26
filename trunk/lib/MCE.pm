@@ -91,7 +91,7 @@ INIT {
 use strict;
 use warnings;
 
-our $VERSION = '1.103';
+our $VERSION = '1.104';
 $VERSION = eval $VERSION;
 
 use Fcntl qw( :flock O_CREAT O_TRUNC O_RDWR O_RDONLY );
@@ -107,18 +107,12 @@ use MCE::Signal;
 ###############################################################################
 
 use constant {
-   ILLEGAL_ARGUMENT => 'ILLEGAL_ARGUMENT',  ## Usage related
-   ILLEGAL_STATE    => 'ILLEGAL_STATE',
-   INVALID_DIR      => 'INVALID_DIR',
-   INVALID_PATH     => 'INVALID_PATH',
-   INVALID_REF      => 'INVALID_REF',
-
    MAX_CHUNK_SIZE   => 24 * 1024 * 1024, ## Set max constraints
    MAX_OPEN_FILES   => $_max_files,
    MAX_USER_PROCS   => $_max_procs,
 
    MAX_RECS_SIZE    => 8192,             ## Read # of records if <= value
-                                         ## Read # of bytes if > value
+                                         ## Read # of bytes   if >  value
 
    QUE_TEMPLATE     => $_que_template,   ## Pack template for queue socket
    QUE_READ_SIZE    => $_que_read_size,  ## Read size
@@ -162,7 +156,7 @@ my %_valid_fields = map { $_ => 1 } qw(
    user_begin user_end user_func user_error user_output
    job_delay spawn_delay submit_delay tmp_dir
 
-   _mce_id _mce_tid _pids _sess_dir _spawned _wid
+   _mce_sid _mce_tid _pids _sess_dir _spawned _wid
    _com_r_sock _com_w_sock _dat_r_sock _dat_w_sock
    _out_r_sock _out_w_sock _que_r_sock _que_w_sock
    _abort_msg _run_mode _single_dim
@@ -248,12 +242,14 @@ sub new {
 
    ## Validation.
    foreach (keys %argv) {
-      _croak(ILLEGAL_ARGUMENT . ": '$_' is not a valid constructor argument")
+      _croak("MCE::new: '$_' is not a valid constructor argument")
          unless (exists $_valid_fields{$_});
    }
 
-   _croak(INVALID_DIR . ": '$self->{tmp_dir}' does not exist")
+   _croak("MCE::new: '$self->{tmp_dir}' is not a directory or does not exist")
       unless (-d $self->{tmp_dir});
+   _croak("MCE::new: '$self->{tmp_dir}' is not writeable")
+      unless (-w $self->{tmp_dir});
 
    _validate_args($self);
 
@@ -261,7 +257,9 @@ sub new {
 
    ## Private options.
    @{ $self->{_pids} }  = ();    ## Array for joining workers when completed
-   $self->{_sess_dir}   = undef; ## Unique session dir for this MCE
+   $self->{_mce_sid}    = undef; ## Spawn ID defined at time of spawning
+   $self->{_mce_tid}    = undef; ## Thread ID when spawn was called
+   $self->{_sess_dir}   = undef; ## Unique session dir when spawn was called
    $self->{_spawned}    = 0;     ## 1 equals workers have been spawned
    $self->{_wid}        = 0;     ## Unique Worker ID
    $self->{_com_r_sock} = undef; ## Communication channel for MCE
@@ -286,26 +284,26 @@ sub new {
    }
    else {
       if ($self->{use_threads}) {
-         $self->{max_workers} = int(MAX_OPEN_FILES / 4) - 28
-            if ($self->{max_workers} > int(MAX_OPEN_FILES / 4) - 28);
+         $self->{max_workers} = int(MAX_OPEN_FILES / 2) - 32
+            if ($self->{max_workers} > int(MAX_OPEN_FILES / 2) - 32);
       }
       else {
-         $self->{max_workers} = MAX_USER_PROCS - 56
-            if ($self->{max_workers} > MAX_USER_PROCS - 56);
+         $self->{max_workers} = MAX_USER_PROCS - 64
+            if ($self->{max_workers} > MAX_USER_PROCS - 64);
       }
    }
 
-   if ($^O eq 'cygwin') {                 ## Limit to 32 threads, 16 children
-      $self->{max_workers} = 32
-         if ($self->{use_threads} && $self->{max_workers} > 32);
-      $self->{max_workers} = 16
-         if (!$self->{use_threads} && $self->{max_workers} > 16);
+   if ($^O eq 'cygwin') {                 ## Limit to 48 threads, 24 children
+      $self->{max_workers} = 48
+         if ($self->{use_threads} && $self->{max_workers} > 48);
+      $self->{max_workers} = 24
+         if (!$self->{use_threads} && $self->{max_workers} > 24);
    }
-   elsif ($^O eq 'MSWin32') {             ## Limit to 64 threads, 32 children
-      $self->{max_workers} = 64
-         if ($self->{use_threads} && $self->{max_workers} > 64);
-      $self->{max_workers} = 32
-         if (!$self->{use_threads} && $self->{max_workers} > 32);
+   elsif ($^O eq 'MSWin32') {             ## Limit to 96 threads, 48 children
+      $self->{max_workers} = 96
+         if ($self->{use_threads} && $self->{max_workers} > 96);
+      $self->{max_workers} = 48
+         if (!$self->{use_threads} && $self->{max_workers} > 48);
    }
 
    return $self;
@@ -336,15 +334,17 @@ sub spawn {
    select(undef, undef, undef, $self->{spawn_delay})
       if ($self->{spawn_delay} && $self->{spawn_delay} > 0.0);
 
-   ## Configure this MCE ID here.
-   $self->{_mce_tid} = ($_has_threads) ? threads->tid() : '';
-   $self->{_mce_tid} = '' unless defined $self->{_mce_tid};
-
-   $self->{_mce_id}  = $$ .'.'. $self->{_mce_tid} .'.'. (++$_mce_count);
+   ## Configure tid/sid for this instance here, not in the new method above.
+   ## We want the actual thread id in which spawn was called under.
+   unless ($self->{_mce_tid}) {
+      $self->{_mce_tid} = ($_has_threads) ? threads->tid() : '';
+      $self->{_mce_tid} = '' unless defined $self->{_mce_tid};
+      $self->{_mce_sid} = $$ .'.'. $self->{_mce_tid} .'.'. (++$_mce_count);
+   }
 
    ## Local vars.
+   my $_mce_sid      = $self->{_mce_sid};
    my $_mce_tid      = $self->{_mce_tid};
-   my $_mce_id       = $self->{_mce_id};
    my $_sess_dir     = $self->{_sess_dir};
    my $_tmp_dir      = $self->{tmp_dir};
    my $_max_workers  = $self->{max_workers};
@@ -352,10 +352,18 @@ sub spawn {
 
    ## Create temp dir.
    unless ($_sess_dir) {
+      _croak("MCE::spawn: '$_tmp_dir' is not defined")
+         if (!defined $_tmp_dir || $_tmp_dir eq '');
+      _croak("MCE::spawn: '$_tmp_dir' is not a directory or does not exist")
+         unless (-d $_tmp_dir);
+      _croak("MCE::spawn: '$_tmp_dir' is not writeable")
+         unless (-w $_tmp_dir);
+
+      $_sess_dir = $self->{_sess_dir} = "$_tmp_dir/$_mce_sid";
       my $_cnt = 0;
-      $_sess_dir = $self->{_sess_dir} = "$_tmp_dir/$_mce_id";
+
       while ( !(mkdir $_sess_dir, 0770) ) {
-         $_sess_dir = $self->{_sess_dir} = "$_tmp_dir/$_mce_id." . (++$_cnt);
+         $_sess_dir = $self->{_sess_dir} = "$_tmp_dir/$_mce_sid." . (++$_cnt);
       }
    }
 
@@ -447,6 +455,8 @@ sub spawn {
       }
    }
 
+   ## -------------------------------------------------------------------------
+
    ## Release lock.
    flock $_COM_LOCK, LOCK_UN;
    close $_COM_LOCK; undef $_COM_LOCK;
@@ -455,7 +465,7 @@ sub spawn {
    $SIG{__WARN__} = $_warn_handler;
 
    ## Update max workers spawned.
-   $_mce_spawned{$_mce_id} = $self;
+   $_mce_spawned{$_mce_sid} = $self;
    $self->{max_workers} = $_wid;
    $self->{_spawned} = 1;
 
@@ -486,9 +496,9 @@ sub foreach {
 
    @_ = ();
 
-   _croak(ILLEGAL_STATE . ": 'input_data' is not specified")
+   _croak("MCE::foreach: 'input_data' is not specified")
       unless (defined $_input_data);
-   _croak(ILLEGAL_STATE . ": 'code_block' is not specified")
+   _croak("MCE::foreach: 'code_block' is not specified")
       unless (defined $_user_func);
 
    $_params_ref->{chunk_size} = 1;
@@ -524,9 +534,9 @@ sub forchunk {
 
    @_ = ();
 
-   _croak(ILLEGAL_STATE . ": 'input_data' is not specified")
+   _croak("MCE::forchunk: 'input_data' is not specified")
       unless (defined $_input_data);
-   _croak(ILLEGAL_STATE . ": 'code_block' is not specified")
+   _croak("MCE::forchunk: 'code_block' is not specified")
       unless (defined $_user_func);
 
    $_params_ref->{input_data} = $_input_data;
@@ -556,7 +566,7 @@ sub process {
       $_params_ref->{input_data} = $_input_data;
    }
    else {
-      _croak(ILLEGAL_STATE . ": 'input_data' is not specified")
+      _croak("MCE::process: 'input_data' is not specified")
    }
 
    ## Pass 0 to "not" auto-shutdown after processing.
@@ -668,7 +678,7 @@ sub run {
          }
       }
       else {
-         _croak(ILLEGAL_STATE . ": 'input_data' is not valid");
+         _croak("MCE::run: 'input_data' is not valid");
       }
    }
    else {                                            ## Nodata mode.
@@ -782,7 +792,7 @@ sub shutdown {
 
    ## Local vars.
    my $_COM_R_SOCK  = $self->{_com_r_sock};
-   my $_mce_id      = $self->{_mce_id};
+   my $_mce_sid     = $self->{_mce_sid};
    my $_mce_tid     = $self->{_mce_tid};
    my $_sess_dir    = $self->{_sess_dir};
    my $_max_workers = $self->{max_workers};
@@ -791,7 +801,7 @@ sub shutdown {
    my @_pids = (); my $_pid;
 
    ## Delete entry.
-   delete $_mce_spawned{$_mce_id};
+   delete $_mce_spawned{$_mce_sid};
 
    ## Notify workers to exit loop.
    local $\ = undef; local $/ = $LF;
@@ -851,9 +861,10 @@ sub shutdown {
    $self->{_com_r_sock} = $self->{_com_w_sock} = undef;
    $self->{_dat_r_sock} = $self->{_dat_w_sock} = undef;
 
-   $self->{_spawned} = $self->{_mce_tid} = $self->{_wid} = 0;
-   $self->{_sess_dir} = undef;
-   @{ $self->{_pids} } = ();
+   $self->{_mce_sid}    = $self->{_mce_tid}    = undef;
+   $self->{_spawned}    = $self->{_wid}        = 0;
+   $self->{_sess_dir}   = undef;
+   @{ $self->{_pids} }  = ();
 
    return $self;
 }
@@ -971,7 +982,7 @@ sub do {
    my MCE $self  = shift;
    my $_callback = shift;
 
-   _croak(ILLEGAL_STATE . ": 'callback argument' is not specified")
+   _croak("MCE::do: 'callback' is not specified")
       unless defined $_callback;
 
    $_callback = "main::$_callback" if (index($_callback, ':') < 0);
@@ -1008,7 +1019,7 @@ sub do {
          }
          if (!defined $_id || ($_id == SENDTO_FILEV2 && !defined $_file)) {
             my $_msg  = "\n";
-               $_msg .= ILLEGAL_STATE. ": improper use of sendto(<to>, ...)\n";
+               $_msg .= "MCE::sendto: improper use of method\n";
                $_msg .= "\n";
                $_msg .= "## usage:\n";
                $_msg .= "##    ->sendto(\"stderr\", ...);\n";
@@ -1032,8 +1043,8 @@ sub do {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Private methods start here.
-## ----------------------------------------------------------------------------
+## Private methods.
+##
 ###############################################################################
 
 sub _NOOP {
@@ -1086,7 +1097,7 @@ sub _sync_params {
    }
 
    foreach (keys %{ $_params_ref }) {
-      _croak(ILLEGAL_ARGUMENT . ": '$_' is not a valid params argument")
+      _croak("MCE::_sync_params: '$_' is not a valid params argument")
          unless exists $_params_allowed_args{$_};
 
       $self->{$_} = $_params_ref->{$_};
@@ -1104,42 +1115,42 @@ sub _validate_args {
    die "Private method called" unless (caller)[0]->isa( ref($self) );
 
    if ($self->{input_data} && ref $self->{input_data} eq '') {
-      _croak INVALID_PATH . ": '$self->{input_data}' does not exist"
+      _croak "MCE::_validate_args: '$self->{input_data}' does not exist"
          unless (-e $self->{input_data});
    }
 
-   _croak ILLEGAL_STATE . ": 'chunk_size' is not valid"
+   _croak "MCE::_validate_args: 'chunk_size' is not valid"
       if ($self->{chunk_size} !~ /\A\d+\z/ or $self->{chunk_size} == 0);
-   _croak ILLEGAL_STATE . ": 'max_workers' is not valid"
+   _croak "MCE::_validate_args: 'max_workers' is not valid"
       if ($self->{max_workers} !~ /\A\d+\z/ or $self->{max_workers} == 0);
-   _croak ILLEGAL_STATE . ": 'use_slurpio' is not 0 or 1"
+   _croak "MCE::_validate_args: 'use_slurpio' is not 0 or 1"
       if ($self->{use_slurpio} && $self->{use_slurpio} !~ /\A[01]\z/);
-   _croak ILLEGAL_STATE . ": 'use_threads' is not 0 or 1"
+   _croak "MCE::_validate_args: 'use_threads' is not 0 or 1"
       if ($self->{use_threads} && $self->{use_threads} !~ /\A[01]\z/);
 
-   _croak ILLEGAL_STATE . ": 'job_delay' is not valid"
+   _croak "MCE::_validate_args: 'job_delay' is not valid"
       if ($self->{job_delay} && $self->{job_delay} !~ /\A[\d\.]+\z/);
-   _croak ILLEGAL_STATE . ": 'spawn_delay' is not valid"
+   _croak "MCE::_validate_args: 'spawn_delay' is not valid"
       if ($self->{spawn_delay} && $self->{spawn_delay} !~ /\A[\d\.]+\z/);
-   _croak ILLEGAL_STATE . ": 'submit_delay' is not valid"
+   _croak "MCE::_validate_args: 'submit_delay' is not valid"
       if ($self->{submit_delay} && $self->{submit_delay} !~ /\A[\d\.]+\z/);
 
-   _croak INVALID_REF . ": 'user_begin' is not a CODE reference"
+   _croak "MCE::_validate_args: 'user_begin' is not a CODE reference"
       if ($self->{user_begin} && ref $self->{user_begin} ne 'CODE');
-   _croak INVALID_REF . ": 'user_func' is not a CODE reference"
+   _croak "MCE::_validate_args: 'user_func' is not a CODE reference"
       if ($self->{user_func} && ref $self->{user_func} ne 'CODE');
-   _croak INVALID_REF . ": 'user_end' is not a CODE reference"
+   _croak "MCE::_validate_args: 'user_end' is not a CODE reference"
       if ($self->{user_end} && ref $self->{user_end} ne 'CODE');
-   _croak INVALID_REF . ": 'user_error' is not a CODE reference"
+   _croak "MCE::_validate_args: 'user_error' is not a CODE reference"
       if ($self->{user_error} && ref $self->{user_error} ne 'CODE');
-   _croak INVALID_REF . ": 'user_output' is not a CODE reference"
+   _croak "MCE::_validate_args: 'user_output' is not a CODE reference"
       if ($self->{user_output} && ref $self->{user_output} ne 'CODE');
 
-   _croak ILLEGAL_STATE . ": 'flush_file' is not 0 or 1"
+   _croak "MCE::_validate_args: 'flush_file' is not 0 or 1"
       if ($self->{flush_file} && $self->{flush_file} !~ /\A[01]\z/);
-   _croak ILLEGAL_STATE . ": 'flush_stderr' is not 0 or 1"
+   _croak "MCE::_validate_args: 'flush_stderr' is not 0 or 1"
       if ($self->{flush_stderr} && $self->{flush_stderr} !~ /\A[01]\z/);
-   _croak ILLEGAL_STATE . ": 'flush_stdout' is not 0 or 1"
+   _croak "MCE::_validate_args: 'flush_stdout' is not 0 or 1"
       if ($self->{flush_stdout} && $self->{flush_stdout} !~ /\A[01]\z/);
 
    return;
@@ -2189,6 +2200,9 @@ sub _worker_main {
    my $_status = _worker_loop($self);
 
    ## Wait till MCE completes exit notification.
+   $SIG{__DIE__}  = sub { };
+   $SIG{__WARN__} = sub { };
+
    flock $_DAT_LOCK, LOCK_SH;
    flock $_DAT_LOCK, LOCK_UN;
 
@@ -2214,7 +2228,7 @@ MCE - Many-Core Engine for Perl. Provides parallel processing cabilities.
 
 =head1 VERSION
 
-This document describes MCE version 1.103
+This document describes MCE version 1.104
 
 =head1 SYNOPSIS
 
@@ -2307,6 +2321,8 @@ This document describes MCE version 1.103
 
         ## Flush sendto file, standard error, or standard output.
  );
+
+=head2 RUNNING
 
  ## Run calls spawn, kicks off job, workers call user_begin,
  ## user_func, user_end. Run shuts down workers afterwards.
@@ -2414,7 +2430,7 @@ a bank queuing model. Imagine the line being the data and bank-tellers the
 parallel workers. MCE enhances that model by adding the ability to chunk
 the next n elements from the input stream to the next available worker.
 
-=head2 MCE EXAMPLE WITH CHUNK_SIZE => 1
+=head2 EXAMPLE WITH CHUNK_SIZE => 1
 
  ## Imagine a long running process and wanting to parallelize an array
  ## against a pool of workers.
@@ -2482,7 +2498,7 @@ the next n elements from the input stream to the next available worker.
     $self->do('display_result', $wk_result, $chunk_id);
  });
 
-=head2 MCE EXAMPLE WITH CHUNK_SIZE => 500
+=head2 EXAMPLE WITH CHUNK_SIZE => 500
 
  ## Chunking reduces overhead many folds. Instead of passing a single
  ## item from @input_data, a chunk of $chunk_size is sent instead to
@@ -2636,7 +2652,7 @@ the next n elements from the input stream to the next available worker.
 
  $self->wid();
 
-=head2 DO METHOD
+=head2 DO CALLBACK METHOD
 
 MCE can serialized data transfers from worker processes via helper functions.
 The main MCE thread will process these in a serial fashion. This utilizes the
@@ -2713,7 +2729,7 @@ Release 1.100 adds the ability to pass multiple arguments.
 
  $self->sendto('stdout', "hello\n", \@array, \$scalar, "\n");
 
-=head1 EXAMPLES
+=head1 MORE EXAMPLES
 
 MCE comes with various examples showing real-world use case scenarios on
 parallelizing something as small as cat (try with -n) to greping for
@@ -2749,6 +2765,89 @@ patterns and word count aggregation.
            MCE foreach....:  18,000  Sends result after each @input
            MCE forchunk...: 385,000  Chunking reduces overhead
 
+=head2 MULTIPLE WORKERS RUNNING IN PARALLEL (NO INPUT_DATA)
+
+The input_data option is optional. One can simply use MCE to parallelize
+multiple workers. The "do" & "sendto" methods are used to pass data back
+to the main process or thread. One doesn't have to wait till the worker
+has completed processing to pass data back. Both "do" & "sendto" methods
+are processed serially by the main process on a first come, first serve
+basis. All 4 workers run in parallel for the demonstration below.
+
+ use MCE;
+
+ sub report_stats {
+    my ($wid, $msg, $hash_ref) = @_;
+    print "Worker $wid says $msg: ", $hash_ref->{'counter'}, "\n";
+ }
+
+ my $mce = MCE->new(
+    max_workers => 4,
+
+    user_func => sub {
+       my ($self) = @_;
+       my $wid = $self->wid();
+
+       if ($wid == 1) {
+          my %hash = ('counter' => 0);
+          while (1) {
+             $hash{'counter'} += 1;
+             $self->do('report_stats', $wid, 'Hello there', \%hash);
+             last if ($hash{'counter'} == 4);
+             sleep 2;
+          }
+       }
+
+       else {
+          my %hash = ('counter' => 0);
+          while (1) {
+             $hash{'counter'} += 1;
+             $self->do('report_stats', $wid, 'Welcome ...', \%hash);
+             last if ($hash{'counter'} == 2);
+             sleep 4;
+          }
+       }
+
+       $self->sendto('stdout', "Worker $wid is exiting\n");
+    }
+ );
+
+ $mce->run;
+
+Worker 2 gets there first in 2nd output below.
+
+ $ ./demo.pl 
+ Worker 1 says Hello there: 1
+ Worker 2 says Welcome ...: 1
+ Worker 3 says Welcome ...: 1
+ Worker 4 says Welcome ...: 1
+ Worker 1 says Hello there: 2
+ Worker 2 says Welcome ...: 2
+ Worker 3 says Welcome ...: 2
+ Worker 1 says Hello there: 3
+ Worker 2 is exiting
+ Worker 3 is exiting
+ Worker 4 says Welcome ...: 2
+ Worker 4 is exiting
+ Worker 1 says Hello there: 4
+ Worker 1 is exiting
+
+ $ ./demo.pl 
+ Worker 2 says Welcome ...: 1
+ Worker 1 says Hello there: 1
+ Worker 4 says Welcome ...: 1
+ Worker 3 says Welcome ...: 1
+ Worker 1 says Hello there: 2
+ Worker 2 says Welcome ...: 2
+ Worker 4 says Welcome ...: 2
+ Worker 3 says Welcome ...: 2
+ Worker 2 is exiting
+ Worker 4 is exiting
+ Worker 1 says Hello there: 3
+ Worker 3 is exiting
+ Worker 1 says Hello there: 4
+ Worker 1 is exiting
+
 =head1 REQUIREMENTS
 
 Perl 5.8.0 or later
@@ -2770,6 +2869,6 @@ Mario E. Roy, S<E<lt>marioeroy AT gmail DOT comE<gt>>
 Copyright (C) 2012 by Mario E. Roy
 
 MCE is free software; you can redistribute it and/or modify it under the
-same terms as Perl itself L<http://dev.perl.org/licenses/gpl1.html>.
+same terms as Perl itself L<http://dev.perl.org/licenses/>.
 
 =cut

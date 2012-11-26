@@ -16,17 +16,12 @@ BEGIN {
 use strict;
 use warnings;
 
-our $VERSION = '1.103';
+our $VERSION = '1.104';
 $VERSION = eval $VERSION;
 
 use Fcntl qw( :flock );
 use File::Path qw( rmtree );
 use base 'Exporter';
-
-use constant {
-   ILLEGAL_STATE => 'ILLEGAL_STATE',
-   NOT_WRITEABLE => 'NOT_WRITEABLE'
-};
 
 our $tmp_dir = undef;
 our @EXPORT_OK = qw( $tmp_dir sys_cmd stop_and_exit );
@@ -82,7 +77,7 @@ sub import {
          ? '/dev/shm' : '/tmp';
    }
 
-   _croak(NOT_WRITEABLE . ": '$_tmp_dir_base' is not writeable")
+   _croak("MCE::Signal::import: '$_tmp_dir_base' is not writeable")
       unless (-w $_tmp_dir_base);
 
    $_count = 0;
@@ -145,7 +140,7 @@ END {
 sub sys_cmd {
 
    shift @_ if (defined $_[0] && $_[0] eq 'MCE::Signal');
-   _croak(ILLEGAL_STATE . ": no arguments was specified") if (@_ == 0);
+   _croak("MCE::Signal::sys_cmd: no arguments was specified") if (@_ == 0);
 
    my $_status = system(@_);
    my $_sig_no = $_status & 127;
@@ -313,10 +308,10 @@ sub shutdown_mce {
       my $_tid = ($has_threads) ? threads->tid() : '';
       $_tid = '' unless defined $_tid;
 
-      foreach my $_mce_id (keys %{ $mce_spawned_ref }) {
-         if ($_mce_id =~ /\A$$\.$_tid\./) {
-            $mce_spawned_ref->{$_mce_id}->shutdown();
-            delete $mce_spawned_ref->{$_mce_id};
+      foreach my $_mce_sid (keys %{ $mce_spawned_ref }) {
+         if ($_mce_sid =~ /\A$$\.$_tid\./) {
+            $mce_spawned_ref->{$_mce_sid}->shutdown();
+            delete $mce_spawned_ref->{$_mce_sid};
          }
       }
    }
@@ -332,8 +327,9 @@ sub die_handler {
 
    shift @_ if (defined $_[0] && $_[0] eq 'MCE::Signal');
 
-   return unless (defined $tmp_dir);
    local $SIG{__DIE__} = sub { };
+
+   ## Display die message with localtime.
 
    local $\ = undef; my $_time_stamp = localtime();
    print STDERR "## $_time_stamp: $prog_name: ERROR:\n", $_[0];
@@ -372,7 +368,7 @@ MCE::Signal - Provides tmp_dir creation & signal handling for Many-Core Engine.
 
 =head1 VERSION
 
-This document describes MCE::Signal version 1.103
+This document describes MCE::Signal version 1.104
 
 =head1 SYNOPSIS
 
@@ -429,6 +425,6 @@ Mario E. Roy, S<E<lt>marioeroy AT gmail DOT comE<gt>>
 Copyright (C) 2012 by Mario E. Roy
 
 MCE::Signal is free software; you can redistribute it and/or modify it under
-the same terms as Perl itself: L<http://dev.perl.org/licenses/gpl1.html>.
+the same terms as Perl itself L<http://dev.perl.org/licenses/>.
 
 =cut

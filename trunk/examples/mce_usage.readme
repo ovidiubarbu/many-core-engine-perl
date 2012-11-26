@@ -1,7 +1,7 @@
 
 ## MCE - Many-Core Engine for Perl. Provides parallel processing cabilities.
 
-## This document describes MCE version 1.103
+## This document describes MCE version 1.104
 
 <> SYNOPSIS
 
@@ -94,6 +94,10 @@
 
           ## Flush sendto file, standard error, or standard output.
    );
+
+   --------------------------------------------------------------------------
+   RUNNING
+   --------------------------------------------------------------------------
 
    ## Run calls spawn, kicks off job, workers call user_begin,
    ## user_func, user_end. Run shuts down workers afterwards.
@@ -212,7 +216,7 @@
    the next n elements from the input stream to the next available worker.
 
    --------------------------------------------------------------------------
-   MCE EXAMPLE WITH CHUNK_SIZE => 1
+   EXAMPLE WITH CHUNK_SIZE => 1
    --------------------------------------------------------------------------
 
    ## Imagine a long running process and wanting to parallelize an array
@@ -284,7 +288,7 @@
    });
 
    --------------------------------------------------------------------------
-   MCE EXAMPLE WITH CHUNK_SIZE => 500
+   EXAMPLE WITH CHUNK_SIZE => 500
    --------------------------------------------------------------------------
 
    ## Chunking reduces overhead many folds. Instead of passing a single
@@ -446,7 +450,7 @@
    $self->wid();
 
    --------------------------------------------------------------------------
-   DO METHOD
+   DO CALLBACK METHOD
    --------------------------------------------------------------------------
 
    MCE can serialized data transfers from worker processes via helper functions.
@@ -532,7 +536,7 @@
 
 ===============================================================================
 
-<> EXAMPLES
+<> MORE EXAMPLES
 
    MCE comes with various examples showing real-world use case scenarios on
    parallelizing something as small as cat (try with -n) to greping for
@@ -568,6 +572,91 @@
              MCE foreach....:  18,000  Sends result after each @input
              MCE forchunk...: 385,000  Chunking reduces overhead
 
+   --------------------------------------------------------------------------
+   MULTIPLE WORKERS RUNNING IN PARALLEL (NO INPUT_DATA)
+   --------------------------------------------------------------------------
+
+   The input_data option is optional. One can simply use MCE to parallelize
+   multiple workers. The "do" & "sendto" methods are used to pass data back
+   to the main process or thread. One doesn't have to wait till the worker
+   has completed processing to pass data back. Both "do" & "sendto" methods
+   are processed serially by the main process on a first come, first serve
+   basis. All 4 workers run in parallel for the demonstration below.
+
+   use MCE;
+
+   sub report_stats {
+      my ($wid, $msg, $hash_ref) = @_;
+      print "Worker $wid says $msg: ", $hash_ref->{'counter'}, "\n";
+   }
+
+   my $mce = MCE->new(
+      max_workers => 4,
+
+      user_func => sub {
+         my ($self) = @_;
+         my $wid = $self->wid();
+
+         if ($wid == 1) {
+            my %hash = ('counter' => 0);
+            while (1) {
+               $hash{'counter'} += 1;
+               $self->do('report_stats', $wid, 'Hello there', \%hash);
+               last if ($hash{'counter'} == 4);
+               sleep 2;
+            }
+         }
+
+         else {
+            my %hash = ('counter' => 0);
+            while (1) {
+               $hash{'counter'} += 1;
+               $self->do('report_stats', $wid, 'Welcome ...', \%hash);
+               last if ($hash{'counter'} == 2);
+               sleep 4;
+            }
+         }
+
+         $self->sendto('stdout', "Worker $wid is exiting\n");
+      }
+   );
+
+   $mce->run;
+
+   Worker 2 gets there first in 2nd output below.
+
+   $ ./demo.pl
+   Worker 1 says Hello there: 1
+   Worker 2 says Welcome ...: 1
+   Worker 3 says Welcome ...: 1
+   Worker 4 says Welcome ...: 1
+   Worker 1 says Hello there: 2
+   Worker 2 says Welcome ...: 2
+   Worker 3 says Welcome ...: 2
+   Worker 1 says Hello there: 3
+   Worker 2 is exiting
+   Worker 3 is exiting
+   Worker 4 says Welcome ...: 2
+   Worker 4 is exiting
+   Worker 1 says Hello there: 4
+   Worker 1 is exiting
+
+   $ ./demo.pl
+   Worker 2 says Welcome ...: 1
+   Worker 1 says Hello there: 1
+   Worker 4 says Welcome ...: 1
+   Worker 3 says Welcome ...: 1
+   Worker 1 says Hello there: 2
+   Worker 2 says Welcome ...: 2
+   Worker 4 says Welcome ...: 2
+   Worker 3 says Welcome ...: 2
+   Worker 2 is exiting
+   Worker 4 is exiting
+   Worker 1 says Hello there: 3
+   Worker 3 is exiting
+   Worker 1 says Hello there: 4
+   Worker 1 is exiting
+
 ===============================================================================
 
 <> REQUIREMENTS
@@ -591,5 +680,5 @@
    Copyright (C) 2012 by Mario E. Roy
 
    MCE is free software; you can redistribute it and/or modify it under the
-   same terms as Perl itself http://dev.perl.org/licenses/gpl1.html.
+   same terms as Perl itself http://dev.perl.org/licenses/.
 

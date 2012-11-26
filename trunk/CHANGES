@@ -1,21 +1,24 @@
 Revision history for Perl extension MCE.
 
+1.104 Sun Nov 25 17:00:00 2012
+- Added 1 new example to MCE's Perl documentation
+- Use module::method name versus constant symbol when calling _croak
+- Croak if session directory is not writeable inside MCE::spawn
+- Renamed _mce_id to _mce_sid (met to be spawn id actually)
+- Re-calibrated maximum workers allowed
+
 1.103 Fri Nov 23 13:00:00 2012
 - Added writeable check on /dev/shm
-- Croak if tmp dir is not writeable
+- Croak if tmp dir is not writeable inside MCE::Signal::import
 
 1.102 Thu Nov 22 13:00:00 2012
 - Woohoot !!! MCE now passes with Perl 5.17.x
 - Added Copying file -- same as in Perl
 
 1.101 Wed Nov 21 16:00:00 2012
-- Updated documetation -- shifted white space to the left for code blocks
-  inside documentation
-- Folks out there, 1.006 introduced a bug which was fixed in 1.008
-  Please update to 1.008 or 1.100/1
+- Shifted white space to the left for code blocks inside documentation
 
 1.100 Wed Nov 21 10:00:00 2012
-- All regressions seen thus far have been fixed
 - Completed optimization and shakeout for MCE's existing API
 - File handles are cached when calling sendto and appending to a file
 - The sendto method now supports multiple arguments -- see perldoc
