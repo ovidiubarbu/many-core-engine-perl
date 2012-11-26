@@ -1,5 +1,5 @@
 Name:           perl-MCE
-Version:        1.103
+Version:        1.104
 Release:        1%{?dist}
 Summary:        Many-Core Engine for Perl. Provides parallel processing cabilities.
 License:        CHECK(Distributable)
@@ -57,19 +57,21 @@ rm -rf $RPM_BUILD_ROOT
 %{_mandir}/man3/*
 
 %changelog
+* Sun Nov 25 2012 Mario Roy 1.104-1
+- Added 1 new example to MCE's Perl documentation
+- Use module::method name versus constant symbol when calling _croak
+- Croak if session directory is not writeable inside MCE::spawn
+- Renamed _mce_id to _mce_sid (met to be spawn id actually)
+- Re-calibrated maximum workers allowed
 * Fri Nov 23 2012 Mario Roy 1.103-1
 - Added writeable check on /dev/shm
-- Croak if tmp dir is not writeable
+- Croak if tmp dir is not writeable inside MCE::Signal::import
 * Thu Nov 22 2012 Mario Roy 1.102-1
 - Woohoot !!! MCE now passes with Perl 5.17.x
 - Added Copying file -- same as in Perl
 * Wed Nov 21 2012 Mario Roy 1.101-1
-- Update to documetation -- shifted white space to the left for code blocks
-  inside documentation
-- Folks out there, 1.006 introduced a bug which was fixed in 1.008
-  Please update to 1.008 or 1.100/1
+- Shifted white space to the left for code blocks inside documentation
 * Wed Nov 21 2012 Mario Roy 1.100-1
-- All regressions seen thus far have been fixed
 - Completed optimization and shakeout for MCE's existing API
 - File handles are cached when calling sendto and appending to a file
 - The sendto method now supports multiple arguments -- see perldoc
