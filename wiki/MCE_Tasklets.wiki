@@ -39,6 +39,8 @@ $mce->run();
 
 One no longer has to create multiple MCE instances and run them in parallel. All workers shared the same 4 socket channels. A single MCE instance is all that's needed. :)
 
+Additional info will be provided on release day plus examples.
+
 - mario
 
  
