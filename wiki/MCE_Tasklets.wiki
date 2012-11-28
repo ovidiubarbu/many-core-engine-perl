@@ -7,7 +7,7 @@ http://many-core-engine-perl.googlecode.com/svn/wiki/img/MCE_Tasklets.png
 
 = Instantiation =
 
-Setting it up is straight forward. A new option "tasklets" takes an array of tasks. Each set allows for 5 options: max_workers, use_threads, user_begin, user_func, and user_end. Forking and threading can be mixed between sets.
+Setting it up is straight forward. A new option "tasklets" takes an array of tasks. Each set allows for 5 options: max_workers, use_threads, user_begin, user_func, and user_end. Forking and threading can be inter-mixed between sets.
 
 {{{
 use threads;
