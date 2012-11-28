@@ -1,13 +1,13 @@
 #labels Featured
-= MCE Tasklets =
+= MCE Tasks =
 
-The upcoming 1.2 release will provide support for tasklets. Workers can be configured based on tasking.
+The upcoming 1.2 release will provide support for multiple tasks. Workers can be configured based on tasking.
 
-http://many-core-engine-perl.googlecode.com/svn/wiki/img/MCE_Tasklets.png
+http://many-core-engine-perl.googlecode.com/svn/wiki/img/MCE_Tasks.png
 
 = Instantiation =
 
-Setting it up is straight forward. A new option "tasklets" takes an array of tasks. Each set allows for 5 options: max_workers, use_threads, user_begin, user_func, and user_end. Forking and threading can be inter-mixed between sets.
+Setting it up is straight forward. A new option "user_tasks" takes an array of tasks. Each task allows for 5 options: max_workers, use_threads, user_begin, user_func, and user_end. Forking and threading can be inter-mixed among tasks.
 
 {{{
 use threads;
@@ -18,7 +18,7 @@ use MCE;
 my $mce = MCE->new(
    input_data => \@ip_list,
    chunk_size => 500,
-   tasklets => [{
+   user_tasks => [{
       max_workers => 8,
       use_threads => 0,
       user_func   => \&pinger
