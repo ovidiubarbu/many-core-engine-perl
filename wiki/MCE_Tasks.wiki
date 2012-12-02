@@ -12,35 +12,97 @@ Setting it up is straight forward. A new option "user_tasks" takes an array of t
 {{{
 use threads;
 use threads::shared;
+use Thread::Queue;
 
 use MCE;
 
+## Declare variables before calling MCE.
+##
+my $Q_POLLER = Thread::Queue->new;
+my $Q_WRITER = Thread::Queue->new;
+
+my $ip_list_file = shift;
+
+my $max_pingers =  8;
+my $max_pollers = 48;
+my $max_writers =  8;
+
+## Run Pingers, Pollers & Writers (all within one MCE instance).
+##
 my $mce = MCE->new(
-   input_data => \@ip_list,
-   chunk_size => 500,
-   user_tasks => [{
-      max_workers => 8,
-      use_threads => 0,
-      user_func   => \&pinger
+
+   input_data  => $ip_list_file,
+   chunk_size  => 500,
+   use_slurpio => 1,
+
+   user_tasks  => [{
+      task_end    => sub {
+         $Q_POLLER->enqueue( (undef) x $max_pollers );
+      },
+      max_workers => $max_pingers,
+      user_func   => \&pinger,
+      use_threads => 0
+
    },{
-      max_workers => 48,
-      use_threads => 1,
-      user_func   => \&poller
+      task_end    => sub {
+         $Q_WRITER->enqueue( (undef) x $max_writers );
+      },
+      max_workers => $max_pollers,
+      user_func   => \&poller,
+      use_threads => 1
+
    },{
-      max_workers => 8,
-      use_threads => 1,
-      user_func   => \&db
+      max_workers => $max_writers,
+      user_func   => \&writer,
+      use_threads => 1
+
    }]
 );
 
 $mce->run();
 
+exit;
+
+ # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+ # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+sub pinger_cb {
+   my ($chunk_ref, $chunk_id) = @_;
+   $Q_POLLER->enqueue($$chunk_ref);
+}
+
+sub pinger {
+   my ($self, $chunk_ref, $chunk_id) = @_;
+   if (defined $chunk_ref) {
+      $self->sendto('stderr', "pinger: ", $self->wid(), "\n");
+      $self->do('pinger_cb', $chunk_ref, $chunk_id);
+   }
+}
+
+sub poller {
+   my ($self) = @_;
+   my $wid = $self->wid();
+   while ( my $buffer = $Q_POLLER->dequeue ) {
+      $self->sendto('stderr', "poller: $wid\n");
+      $Q_WRITER->enqueue($buffer);
+   }
+}
+
+sub writer {
+   my ($self) = @_;
+   my $wid = $self->wid();
+   while ( my $buffer = $Q_WRITER->dequeue ) {
+      $self->sendto('stderr', "writer: $wid\n");
+      $self->sendto('stdout', $buffer);
+   }
+}
+
 }}} 
 
-One no longer has to create multiple MCE instances and run them in parallel. All workers shared the same 4 socket channels. A single MCE instance is all that's needed. :)
+One no longer has to create multiple MCE instances to run multiple tasks in parallel. This can now be done with a single MCE instance via the new user_tasks option. All workers shared the same 4 socket channels. :)
 
 Additional info will be provided on release day plus examples.
 
 - mario
 
- 
