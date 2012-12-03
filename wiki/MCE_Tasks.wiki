@@ -21,35 +21,46 @@ use MCE;
 my $Q_POLLER = Thread::Queue->new;
 my $Q_WRITER = Thread::Queue->new;
 
-my $ip_list_file = shift;
+my $list_file = shift;
 
-my $max_pingers =  8;
-my $max_pollers = 48;
-my $max_writers =  8;
+my $chunk_size  = 500;
+my $max_pingers =   8;
+my $max_pollers =  48;
+my $max_writers =   8;
 
 ## Run Pingers, Pollers & Writers (all within one MCE instance).
+## Below, use_slurpio is enabled to simulate cat file instead
+## in user functions to keep the example small.
+##
+## The Pinger task spawns off child processes (forking). Therefore,
+## workers pass the result back to the main process via a callback
+## function. The callback function is executed by the main process
+## which is able to append to the queue. The other 2 tasks are able
+## to enqueue/dequeue directly since they are threads.
+##
+## The task_end block is executed by the main process.
 ##
 my $mce = MCE->new(
 
-   input_data  => $ip_list_file,
-   chunk_size  => 500,
+   input_data  => $list_file,
+   chunk_size  => $chunk_size,
    use_slurpio => 1,
 
    user_tasks  => [{
-      task_end    => sub {
-         $Q_POLLER->enqueue( (undef) x $max_pollers );
-      },
       max_workers => $max_pingers,
       user_func   => \&pinger,
-      use_threads => 0
+      use_threads => 0,
+      task_end    => sub {
+         $Q_POLLER->enqueue( (undef) x $max_pollers );
+      }
 
    },{
-      task_end    => sub {
-         $Q_WRITER->enqueue( (undef) x $max_writers );
-      },
       max_workers => $max_pollers,
       user_func   => \&poller,
-      use_threads => 1
+      use_threads => 1,
+      task_end    => sub {
+         $Q_WRITER->enqueue( (undef) x $max_writers );
+      }
 
    },{
       max_workers => $max_writers,
@@ -68,21 +79,27 @@ exit;
  # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 sub pinger_cb {
-   my ($chunk_ref, $chunk_id) = @_;
+
+   my ($chunk_ref) = @_;
+
    $Q_POLLER->enqueue($$chunk_ref);
 }
 
 sub pinger {
+
    my ($self, $chunk_ref, $chunk_id) = @_;
+
    if (defined $chunk_ref) {
       $self->sendto('stderr', "pinger: ", $self->wid(), "\n");
-      $self->do('pinger_cb', $chunk_ref, $chunk_id);
+      $self->do('pinger_cb', $chunk_ref);
    }
 }
 
 sub poller {
+
    my ($self) = @_;
    my $wid = $self->wid();
+
    while ( my $buffer = $Q_POLLER->dequeue ) {
       $self->sendto('stderr', "poller: $wid\n");
       $Q_WRITER->enqueue($buffer);
@@ -90,8 +107,10 @@ sub poller {
 }
 
 sub writer {
+
    my ($self) = @_;
    my $wid = $self->wid();
+
    while ( my $buffer = $Q_WRITER->dequeue ) {
       $self->sendto('stderr', "writer: $wid\n");
       $self->sendto('stdout', $buffer);
@@ -102,7 +121,7 @@ sub writer {
 
 One no longer has to create multiple MCE instances to run multiple tasks in parallel. This can now be done with a single MCE instance via the new user_tasks option. All workers shared the same 4 socket channels. :)
 
-Additional info will be provided on release day plus examples.
+Additional info will be provided when MCE 1.2 is released.
 
 - mario
 
