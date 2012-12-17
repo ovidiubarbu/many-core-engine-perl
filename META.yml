@@ -13,9 +13,14 @@ build_requires:
 requires:
     Fcntl:       0
     File::Path:  0
+    perl:        5.008
     Socket:      0
     Storable:    2.04
     Test::More:  0.45
+resources:
+    homepage:    http://code.google.com/p/many-core-engine-perl/
+    license:     http://dev.perl.org/licenses/
+    repository:  http://code.google.com/p/many-core-engine-perl/
 no_index:
     directory:
         - t
