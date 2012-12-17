@@ -1,7 +1,7 @@
 
 ## MCE - Many-Core Engine for Perl. Provides parallel processing cabilities.
 
-## This document describes MCE version 1.104
+## This document describes MCE version 1.105
 
 <> SYNOPSIS
 
@@ -312,7 +312,7 @@
          last unless exists $result{$order_id};
          my $i = ($order_id - 1) * $chunk_size;
 
-         for ( @{ $result{$order_id} } ) {
+         foreach ( @{ $result{$order_id} } ) {
             printf "i: %d sqrt(i): %f\n", $input_data[$i++], $_;
          }
 
@@ -333,7 +333,7 @@
          my ($self, $chunk_ref, $chunk_id) = @_;
          my @wk_result;
 
-         for ( @{ $chunk_ref } ) {
+         foreach ( @{ $chunk_ref } ) {
             push @wk_result, sqrt($_);
          }
 
@@ -362,7 +362,7 @@
       my ($self, $chunk_ref, $chunk_id) = @_;
       my @wk_result;
 
-      for ( @{ $chunk_ref } ) {
+      foreach ( @{ $chunk_ref } ) {
          push @wk_result, sqrt($_);
       }
 
@@ -378,7 +378,7 @@
 
    ## ->last: Worker immediately exits the chunking loop or user func
 
-   my @list = (1..80);
+   my @list = (1 .. 80);
 
    $mce->forchunk(\@list, { chunk_size => 2 }, sub {
 
@@ -388,7 +388,7 @@
 
       my @output = ();
 
-      for my $rec ( @{ $chunk_ref } ) {
+      foreach my $rec ( @{ $chunk_ref } ) {
          push @output, $rec, "\n";
       }
 
@@ -408,7 +408,7 @@
 
    ## ->next: Worker starts the next iteration of the chunking loop
 
-   my @list = (1..80);
+   my @list = (1 .. 80);
 
    $mce->forchunk(\@list, { chunk_size => 4 }, sub {
 
@@ -418,7 +418,7 @@
 
       my @output = ();
 
-      for my $rec ( @{ $chunk_ref } ) {
+      foreach my $rec ( @{ $chunk_ref } ) {
          push @output, $rec, "\n";
       }
 
@@ -536,7 +536,7 @@
 
 ===============================================================================
 
-<> MORE EXAMPLES
+<> EXAMPLES
 
    MCE comes with various examples showing real-world use case scenarios on
    parallelizing something as small as cat (try with -n) to greping for
@@ -578,7 +578,7 @@
 
    The input_data option is optional. One can simply use MCE to parallelize
    multiple workers. The "do" & "sendto" methods are used to pass data back
-   to the main process or thread. One doesn't have to wait till the worker
+   to the main process or thread. One doesn't have to wait until the worker
    has completed processing to pass data back. Both "do" & "sendto" methods
    are processed serially by the main process on a first come, first serve
    basis. All 4 workers run in parallel for the demonstration below.

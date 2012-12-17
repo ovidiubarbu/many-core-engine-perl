@@ -1,5 +1,9 @@
 Revision history for Perl extension MCE.
 
+1.105 Sun Dec 16 23:00:00 2012
+- Completed code re-factoring
+- Added t/pod.t
+
 1.104 Sun Nov 25 17:00:00 2012
 - Added 1 new example to MCE's Perl documentation
 - Use module::method name versus constant symbol when calling _croak

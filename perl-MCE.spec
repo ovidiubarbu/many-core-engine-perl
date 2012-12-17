@@ -1,5 +1,5 @@
 Name:           perl-MCE
-Version:        1.104
+Version:        1.105
 Release:        1%{?dist}
 Summary:        Many-Core Engine for Perl. Provides parallel processing cabilities.
 License:        CHECK(Distributable)
@@ -57,6 +57,9 @@ rm -rf $RPM_BUILD_ROOT
 %{_mandir}/man3/*
 
 %changelog
+* Sun Dec 16 2012 Mario Roy 1.105-1
+- Completed code re-factoring
+- Added t/pod.t
 * Sun Nov 25 2012 Mario Roy 1.104-1
 - Added 1 new example to MCE's Perl documentation
 - Use module::method name versus constant symbol when calling _croak
