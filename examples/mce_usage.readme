@@ -29,6 +29,10 @@
 
    use MCE;
 
+   -------------------------------------------------------------------------
+   new ( options )
+   -------------------------------------------------------------------------
+
    ## A new instance shown with all available options.
 
    my $mce = MCE->new(
@@ -230,7 +234,7 @@
    Methods listed below are callable by the main process and workers.
 
    -------------------------------------------------------------------------
-   abort( void )
+   abort ( void )
    -------------------------------------------------------------------------
 
    ## Notifies workers to abort after processing the current chunk.
@@ -239,7 +243,7 @@
    $self->abort();
 
    -------------------------------------------------------------------------
-   wid( void )
+   wid ( void )
    -------------------------------------------------------------------------
 
    ## Returns the worker ID of worker.
@@ -253,7 +257,7 @@
    Methods listed below are callable by the main process only.
 
    -------------------------------------------------------------------------
-   forchunk( $input_data [, { options } ], sub { ... } )
+   forchunk ( $input_data [, { options } ], sub { ... } )
    -------------------------------------------------------------------------
 
    ## Both forchunk & foreach are sugar methods in MCE. Workers are
@@ -286,7 +290,7 @@
    });
 
    -------------------------------------------------------------------------
-   foreach( $input_data [, { options } ], sub { ... } )
+   foreach ( $input_data [, { options } ], sub { ... } )
    -------------------------------------------------------------------------
 
    ## Foreach always implies chunk_size => 1 (cannot be overwritten).
@@ -323,7 +327,7 @@
    });
 
    -------------------------------------------------------------------------  
-   process( $input_data [, { options } ] )
+   process ( $input_data [, { options } ] )
    -------------------------------------------------------------------------
 
    ## The process method will spawn workers automatically if not already
@@ -348,7 +352,7 @@
    $mce->shutdown();
 
    -------------------------------------------------------------------------  
-   run( [ $auto_shutdown ] [, { options } ] )
+   run ( [ $auto_shutdown ] [, { options } ] )
    -------------------------------------------------------------------------
 
    ## The run method, by default, spawns workers, processes once,
@@ -363,7 +367,7 @@
    $mce->run(0);                         ## Disables auto-shutdown
 
    -------------------------------------------------------------------------
-   shutdown( void )
+   shutdown ( void )
    -------------------------------------------------------------------------
 
    ## The run method will automatically spawn workers, run once, and
@@ -386,7 +390,7 @@
    $mce->shutdown();
 
    -------------------------------------------------------------------------
-   spawn( void )
+   spawn ( void )
    -------------------------------------------------------------------------
 
    ## Workers are normally spawned automatically. The spawn method is
@@ -403,7 +407,7 @@
    Methods listed below are callable by workers only.
 
    -------------------------------------------------------------------------
-   do( 'callback_func' [, $arg1, ... ] )
+   do ( 'callback_func' [, $arg1, ... ] )
    -------------------------------------------------------------------------
 
    ## MCE can serialized data transfers from worker processes via
@@ -433,7 +437,7 @@
    my $scalar = $self->do('callback' [, $arg1, ... ]);
 
    -------------------------------------------------------------------------
-   exit( void )
+   exit ( void )
    -------------------------------------------------------------------------
 
    ## The worker exits the current job.
@@ -441,7 +445,7 @@
    $self->exit();
 
    -------------------------------------------------------------------------  
-   last( void )
+   last ( void )
    -------------------------------------------------------------------------
 
    ## Worker immediately exits the chunking loop or user func.
@@ -475,7 +479,7 @@
    8
 
    -------------------------------------------------------------------------  
-   next( void )
+   next ( void )
    -------------------------------------------------------------------------
 
    ## Worker starts the next iteration of the chunking loop.
@@ -505,7 +509,7 @@
    80
 
    -------------------------------------------------------------------------
-   sendto( 'to_string', $arg1, ... )
+   sendto ( 'to_string', $arg1, ... )
    -------------------------------------------------------------------------
 
    The sendto method is called by workers to serialize data to standard output,
@@ -568,6 +572,9 @@
    parallelizing something as small as cat (try with -n) to greping for
    patterns and word count aggregation.
 
+   -------------------------------------------------------------------------
+   INCLUDED EXAMPLES
+   -------------------------------------------------------------------------
    cat.pl    Concatenation script, similar to the cat binary.
    egrep.pl  Egrep script, similar to the egrep binary.
    wc.pl     Word count script, similar to the wc binary.

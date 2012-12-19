@@ -2313,7 +2313,7 @@ have many workers run in parallel.
 
  use MCE;
 
-=head2 new( options )
+=head2 new ( options )
 
  ## A new instance shown with all available options.
 
@@ -2503,14 +2503,14 @@ have many workers run in parallel.
 
 Methods listed below are callable by the main process and workers.
 
-=head2 abort( void )
+=head2 abort ( void )
 
  ## Notifies workers to abort after processing the current chunk.
  ## The abort method is only meaningful when processing input_data.
 
  $self->abort( void );
 
-=head2 wid( void )
+=head2 wid ( void )
 
  ## Returns the worker ID of worker.
 
@@ -2520,7 +2520,7 @@ Methods listed below are callable by the main process and workers.
 
 Methods listed below are callable by the main process only.
 
-=head2 forchunk( $input_data [, { options } ], sub { ... } )
+=head2 forchunk ( $input_data [, { options } ], sub { ... } )
 
  ## Both forchunk & foreach are sugar methods in MCE. Workers are
  ## automatically spawned, the code block is executed in parallel,
@@ -2551,7 +2551,7 @@ Methods listed below are callable by the main process only.
     ...
  });
 
-=head2 foreach( $input_data [, { options } ], sub { ... } )
+=head2 foreach ( $input_data [, { options } ], sub { ... } )
 
  ## Foreach always implies chunk_size => 1 (cannot be overwritten).
 
@@ -2586,7 +2586,7 @@ Methods listed below are callable by the main process only.
     ...  ## Runs in parallel
  });
 
-=head2 process( $input_data [, { options } ] )
+=head2 process ( $input_data [, { options } ] )
 
  ## The process method will spawn workers automatically if not already
  ## spawned. It will set input_data => $input_data. It calls run(0) to
@@ -2609,7 +2609,7 @@ Methods listed below are callable by the main process only.
  $mce->process($array_ref, { stdout_file => $output_file });
  $mce->shutdown();
 
-=head2 run( [ $auto_shutdown ] [, { options } ] )
+=head2 run ( [ $auto_shutdown ] [, { options } ] )
 
  ## The run method, by default, spawns workers, processes once,
  ## and shuts down workers. Set $auto_shutdown to 0 if not wanting
@@ -2622,7 +2622,7 @@ Methods listed below are callable by the main process only.
 
  $mce->run(0);                         ## Disables auto-shutdown
 
-=head2 shutdown( void )
+=head2 shutdown ( void )
 
  ## The run method will automatically spawn workers, run once, and
  ## shutdown workers automatically. The process method leaves workers
@@ -2641,7 +2641,7 @@ Methods listed below are callable by the main process only.
 
  $mce->shutdown();
 
-=head2 spawn( void )
+=head2 spawn ( void )
 
  ## Workers are normally spawned automatically. The spawn method is
  ## beneficial when wanting to spawn workers early.
@@ -2654,7 +2654,7 @@ Methods listed below are callable by the main process only.
 
 Methods listed below are callable by workers only.
 
-=head2 do( 'callback_func' [, $arg1, ... ] )
+=head2 do ( 'callback_func' [, $arg1, ... ] )
 
  ## MCE can serialized data transfers from worker processes via
  ## helper functions do & sendto. The main MCE thread will process
@@ -2682,13 +2682,13 @@ Methods listed below are callable by workers only.
  my %hash   = $self->do('callback' [, $arg1, ... ]);
  my $scalar = $self->do('callback' [, $arg1, ... ]);
 
-=head2 exit( void )
+=head2 exit ( void )
 
  ## The worker exits the current job.
 
  $self->exit();
 
-=head2 last( void )
+=head2 last ( void )
 
  ## Worker immediately exits the chunking loop or user func.
  ## Call this inside foreach, forchunk, and user_func.
@@ -2720,7 +2720,7 @@ Methods listed below are callable by workers only.
  7
  8
 
-=head2 next( void )
+=head2 next ( void )
 
  ## Worker starts the next iteration of the chunking loop.
  ## Call this inside foreach, forchunk, and user_func.
@@ -2748,7 +2748,7 @@ Methods listed below are callable by workers only.
  79
  80
 
-=head2 sendto( 'to_string', $arg1, ... )
+=head2 sendto ( 'to_string', $arg1, ... )
 
 The sendto method is called by workers to serialize data to standard output,
 standard error, or to end of file. The action is done by the main process or
@@ -2803,6 +2803,8 @@ Release 1.100 adds the ability to pass multiple arguments.
 MCE comes with various examples showing real-world use case scenarios on
 parallelizing something as small as cat (try with -n) to greping for
 patterns and word count aggregation.
+
+=head2 INCLUDED EXAMPLES
 
  cat.pl    Concatenation script, similar to the cat binary.
  egrep.pl  Egrep script, similar to the egrep binary.
