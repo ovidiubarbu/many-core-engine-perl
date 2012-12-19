@@ -16,7 +16,7 @@ BEGIN {
 use strict;
 use warnings;
 
-our $VERSION = '1.105';
+our $VERSION = '1.106';
 $VERSION = eval $VERSION;
 
 use Fcntl qw( :flock );
@@ -119,7 +119,7 @@ $SIG{CHLD} = 'DEFAULT' if ($^O ne 'MSWin32');
 our $mce_spawned_ref = undef;
 
 END {
-   MCE::Signal->shutdown_mce();
+   MCE::Signal->_shutdown_mce();
    MCE::Signal->stop_and_exit($?) if ($$ == $main_proc_id || $? != 0);
 }
 
@@ -302,7 +302,7 @@ sub sys_cmd {
 ##
 ###############################################################################
 
-sub shutdown_mce {
+sub _shutdown_mce {
 
    if (defined $mce_spawned_ref) {
       my $_tid = ($has_threads) ? threads->tid() : '';
@@ -323,7 +323,7 @@ sub shutdown_mce {
 ##
 ###############################################################################
 
-sub die_handler {
+sub _die_handler {
 
    shift @_ if (defined $_[0] && $_[0] eq 'MCE::Signal');
 
@@ -337,7 +337,7 @@ sub die_handler {
    MCE::Signal->stop_and_exit('__DIE__');
 }
 
-sub warn_handler {
+sub _warn_handler {
 
    shift @_ if (defined $_[0] && $_[0] eq 'MCE::Signal');
 
@@ -368,7 +368,7 @@ MCE::Signal - Provides tmp_dir creation & signal handling for Many-Core Engine.
 
 =head1 VERSION
 
-This document describes MCE::Signal version 1.105
+This document describes MCE::Signal version 1.106
 
 =head1 SYNOPSIS
 
@@ -377,23 +377,38 @@ This document describes MCE::Signal version 1.105
 =head1 DESCRIPTION
 
 This package configures $SIG{HUP,INT,PIPE,QUIT,TERM,XCPU,XFSZ} to point to
-stop_and_exit and creates a temporary directory. The main process or workers
-receiving said signal calls stop_and_exit, which signals all workers to
+stop_and_exit and creates a temporary directory. The main process and workers
+receiving said signals call stop_and_exit, which signals all workers to
 terminate, removes the temporary directory unless -keep_tmp_dir is specified,
 and terminates itself.
 
-The location of tmp dir resides under $ENV{TEMP} if configured, otherwise
+The location of temp dir resides under $ENV{TEMP} if defined, otherwise
 /dev/shm if writeable and -use_dev_shm is specified, or /tmp.
 
-Tmp dir resides under $ENV{TEMP}/mce/ when running Perl on Microsoft Windows.
+The temp dir resides under $ENV{TEMP}/mce/ when running Perl on Microsoft
+Windows.
 
 Nothing is exported by default. Exportable are 1 variable and 2 subroutines:
 
  $tmp_dir          - Path to temporary directory.
+ stop_and_exit     - Described below
+ sys_cmd           - Described below
 
- sys_cmd           - Execute command and return the actual exit status.
- stop_and_exit     - Stops execution, removes tmp directory and exits
-                     the entire application.
+=head2 stop_and_exit( [ $exit_status | $signal ] )
+
+ ## Stops execution, removes temp directory and exits the entire
+ ## application. Pass 'TERM' if wanting to terminate a spawned or
+ ## running MCE state.
+
+ MCE::Signal::stop_and_exit(1);
+ MCE::Signal::stop_and_exit('TERM');
+
+=head2 sys_cmd( $command )
+
+ ## Execute command and return the actual exit status. The calling
+ ## process is also signaled if command caught SIGINT or SIGQUIT.
+
+ my $exit_status = MCE::Signal::sys_cmd($command);
 
 =head1 EXAMPLES
 

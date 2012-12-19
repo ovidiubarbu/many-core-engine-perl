@@ -1,4 +1,4 @@
-MCE version 1.105
+MCE version 1.106
 =================
 
 Many-core Engine (MCE) for Perl helps enable a new level of performance by
@@ -39,6 +39,8 @@ This module requires these other modules and libraries:
    Storable 2.04 or later
    File::Path
    Test::More 0.45 or later (for testing)
+
+For usage, read examples/mce_usage.readme or perldoc MCE.
 
 COPYRIGHT AND LICENCE
 

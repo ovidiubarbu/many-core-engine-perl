@@ -1,5 +1,12 @@
 Revision history for Perl extension MCE.
 
+1.106 Wed Dec 19 05:00:00 2012
+- Added t/pod-coverage.t
+- Big overhaul of the MCE documentation -- all methods are documented
+- Croak if method suited for a MCE worker is called by the main MCE process
+- Croak if method suited for the main MCE process is called by a MCE worker
+- Updated Makefile.PL to declare the minimum Perl version
+
 1.105 Sun Dec 16 23:00:00 2012
 - Completed code re-factoring
 - Added t/pod.t
