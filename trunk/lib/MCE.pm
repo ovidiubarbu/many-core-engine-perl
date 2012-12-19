@@ -1,6 +1,6 @@
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Many-Core Engine (MCE) for Perl. Provides parallel processing cabilities.
+## Many-Core Engine (MCE) for Perl. Provides parallel processing capabilities.
 ##
 ###############################################################################
 
@@ -40,14 +40,14 @@ BEGIN {
       }
       else {
          local $@; local $SIG{__DIE__} = \&_NOOP;
-         eval { require BSD::Resource; };
+         eval '
+            require BSD::Resource;
+            $_max_files = BSD::Resource::getrlimit("RLIMIT_NOFILE") || 256;
+            $_max_procs = BSD::Resource::getrlimit("RLIMIT_NPROC" ) || 256;
+         ';
 
          if ($@) {
             $_max_files = $_max_procs = 256;
-         }
-         else {
-            $_max_files = BSD::Resource::getrlimit('RLIMIT_NOFILE') || 256;
-            $_max_procs = BSD::Resource::getrlimit('RLIMIT_NPROC' ) || 256;
          }
       }
    }
@@ -72,26 +72,28 @@ my ($_COM_LOCK, $_DAT_LOCK);
 our $_MCE_LOCK : shared = 1;
 
 INIT {
-   if ($threads::VERSION) {
-      unless (defined $threads::shared::VERSION) {
-         local $@; local $SIG{__DIE__} = \&_NOOP;
-         eval 'use threads::shared; threads::shared::share($_MCE_LOCK)';
+   unless (defined $_has_threads) {
+
+      if (defined $threads::VERSION) {
+         unless (defined $threads::shared::VERSION) {
+            local $@; local $SIG{__DIE__} = \&_NOOP;
+            eval 'use threads::shared; threads::shared::share($_MCE_LOCK)';
+         }
+         $_has_threads = 1;
       }
-      $_has_threads = 1;
-   }
-   elsif ($forks::VERSION) {
-      unless (defined $forks::shared::VERSION) {
+      else {
          local $@; local $SIG{__DIE__} = \&_NOOP;
-         eval 'use forks::shared; forks::shared::share($_MCE_LOCK)';
+         eval '$_has_threads = 1 if (defined $forks::VERSION)';
       }
-      $_has_threads = 1;
+
+      $_has_threads = $_has_threads || 0;
    }
 }
 
 use strict;
 use warnings;
 
-our $VERSION = '1.105';
+our $VERSION = '1.106';
 $VERSION = eval $VERSION;
 
 use Fcntl qw( :flock O_CREAT O_TRUNC O_RDWR O_RDONLY );
@@ -323,6 +325,10 @@ sub spawn {
    ## To avoid leaking (Scalars leaked: 1) messages (fixed in Perl 5.12.x).
    @_ = ();
 
+   ## Croak if method was called by a MCE worker.
+   _croak("MCE::spawn: method cannot be called by a MCE worker")
+      if ($self->wid());
+
    ## Return if workers have already been spawned.
    return $self unless ($self->{_spawned} == 0);
 
@@ -339,7 +345,7 @@ sub spawn {
    ## We want the actual thread id in which spawn was called under.
    unless ($self->{_mce_tid}) {
       $self->{_mce_tid} = ($_has_threads) ? threads->tid() : '';
-      $self->{_mce_tid} = '' unless defined $self->{_mce_tid};
+      $self->{_mce_tid} = '' unless (defined $self->{_mce_tid});
       $self->{_mce_sid} = $$ .'.'. $self->{_mce_tid} .'.'. (++$_mce_count);
    }
 
@@ -461,6 +467,11 @@ sub foreach {
    my MCE $self    = $_[0];
    my $_input_data = $_[1];
 
+   ## Croak if method was called by a MCE worker.
+   _croak("MCE::foreach: method cannot be called by a MCE worker")
+      if ($self->wid());
+
+   ## Parse args.
    my ($_user_func, $_params_ref);
 
    if (ref $_[2] eq 'HASH') {
@@ -499,6 +510,11 @@ sub forchunk {
    my MCE $self    = $_[0];
    my $_input_data = $_[1];
 
+   ## Croak if method was called by a MCE worker.
+   _croak("MCE::forchunk: method cannot be called by a MCE worker")
+      if ($self->wid());
+
+   ## Parse args.
    my ($_user_func, $_params_ref);
 
    if (ref $_[2] eq 'HASH') {
@@ -539,6 +555,10 @@ sub process {
 
    @_ = ();
 
+   ## Croak if method was called by a MCE worker.
+   _croak("MCE::process: method cannot be called by a MCE worker")
+      if ($self->wid());
+
    ## Set input data.
    if (defined $_input_data) {
       $_params_ref->{input_data} = $_input_data;
@@ -563,6 +583,11 @@ sub run {
 
    my MCE $self = $_[0];
 
+   ## Croak if method was called by a MCE worker.
+   _croak("MCE::run: method cannot be called by a MCE worker")
+      if ($self->wid());
+
+   ## Parse args.
    my ($_auto_shutdown, $_params_ref);
 
    if (ref $_[1] eq 'HASH') {
@@ -754,6 +779,10 @@ sub shutdown {
 
    @_ = ();
 
+   ## Croak if method was called by a MCE worker.
+   _croak("MCE::shutdown: method cannot be called by a MCE worker")
+      if ($self->wid());
+
    ## Return if workers have not been spawned or have already been shutdown.
    return $self unless ($self->{_spawned});
 
@@ -871,30 +900,29 @@ sub exit {
 
    @_ = ();
 
-   if ($self->wid() > 0) {
-      my $_OUT_W_SOCK = $self->{_out_w_sock};
+   _croak("MCE::exit: method cannot be called by the main MCE process")
+      unless ($self->wid());
 
-      local $\ = undef;
-      print $_OUT_W_SOCK OUTPUT_W_DNE, $LF, OUTPUT_W_EXT, $LF;
+   my $_OUT_W_SOCK = $self->{_out_w_sock};
 
-      ## Enter loop and wait for exit notification.
-      $self->_worker_loop();
+   local $\ = undef;
+   print $_OUT_W_SOCK OUTPUT_W_DNE, $LF, OUTPUT_W_EXT, $LF;
 
-      $SIG{__DIE__} = $SIG{__WARN__} = sub { };
+   ## Enter loop and wait for exit notification.
+   $self->_worker_loop();
 
-      eval {
-         flock $_DAT_LOCK, LOCK_SH;
-         flock $_DAT_LOCK, LOCK_UN;
-         close $_DAT_LOCK; undef $_DAT_LOCK;
-         close $_COM_LOCK; undef $_COM_LOCK;
-      };
+   $SIG{__DIE__} = $SIG{__WARN__} = sub { };
 
-      ## Exit thread/child process.
-      threads->exit() if ($_has_threads && threads->can('exit'));
-      CORE::exit();
-   }
+   eval {
+      flock $_DAT_LOCK, LOCK_SH;
+      flock $_DAT_LOCK, LOCK_UN;
+      close $_DAT_LOCK; undef $_DAT_LOCK;
+      close $_COM_LOCK; undef $_COM_LOCK;
+   };
 
-   return;
+   ## Exit thread/child process.
+   threads->exit() if ($_has_threads && threads->can('exit'));
+   CORE::exit();
 }
 
 ## Worker immediately exits the chunking loop.
@@ -905,9 +933,10 @@ sub last {
 
    @_ = ();
 
-   if ($self->wid() > 0) {
-      $self->{_last_jmp}() if (defined $self->{_last_jmp});
-   }
+   _croak("MCE::last: method cannot be called by the main MCE process")
+      unless ($self->wid());
+
+   $self->{_last_jmp}() if (defined $self->{_last_jmp});
 
    return;
 }
@@ -920,9 +949,10 @@ sub next {
 
    @_ = ();
 
-   if ($self->wid() > 0) {
-      $self->{_next_jmp}() if (defined $self->{_next_jmp});
-   }
+   _croak("MCE::next: method cannot be called by the main MCE process")
+      unless ($self->wid());
+
+   $self->{_next_jmp}() if (defined $self->{_next_jmp});
 
    return;
 }
@@ -951,8 +981,11 @@ sub do {
    my MCE $self  = shift;
    my $_callback = shift;
 
+   _croak("MCE::do: method cannot be called by the main MCE process")
+      unless ($self->wid());
+
    _croak("MCE::do: 'callback' is not specified")
-      unless defined $_callback;
+      unless (defined $_callback);
 
    $_callback = "main::$_callback" if (index($_callback, ':') < 0);
 
@@ -975,6 +1008,9 @@ sub do {
 
       my MCE $self = shift;
       my $_to      = shift;
+
+      _croak("MCE::sendto: method cannot be called by the main MCE process")
+         unless ($self->wid());
 
       return unless (defined $_[0]);
 
@@ -1032,12 +1068,12 @@ sub _croak {
 
 sub _die {
 
-   MCE::Signal->die_handler(@_);
+   MCE::Signal->_die_handler(@_);
 }
 
 sub _warn {
 
-   MCE::Signal->warn_handler(@_);
+   MCE::Signal->_warn_handler(@_);
 }
 
 ###############################################################################
@@ -1067,7 +1103,7 @@ sub _sync_params {
 
    for (keys %{ $_params_ref }) {
       _croak("MCE::_sync_params: '$_' is not a valid params argument")
-         unless exists $_params_allowed_args{$_};
+         unless (exists $_params_allowed_args{$_});
 
       $self->{$_} = $_params_ref->{$_};
    }
@@ -2255,15 +2291,29 @@ __END__
 
 =head1 NAME
 
-MCE - Many-Core Engine for Perl. Provides parallel processing cabilities.
+MCE - Many-Core Engine for Perl. Provides parallel processing capabilities.
 
 =head1 VERSION
 
-This document describes MCE version 1.105
+This document describes MCE version 1.106
+
+=head1 DESCRIPTION
+
+Many-core Engine (MCE) for Perl helps enable a new level of performance by
+maximizing all available cores. MCE spawns a pool of workers and therefore
+does not fork a new process per each element of data. Instead, MCE follows
+a bank queuing model. Imagine the line being the data and bank-tellers the
+parallel workers. MCE enhances that model by adding the ability to chunk
+the next n elements from the input stream to the next available worker.
+
+Both chunking and input are optional in MCE. One can simply use MCE to
+have many workers run in parallel.
 
 =head1 SYNOPSIS
 
  use MCE;
+
+=head2 new( options )
 
  ## A new instance shown with all available options.
 
@@ -2357,18 +2407,15 @@ This document describes MCE version 1.105
 
  ## Run calls spawn, kicks off job, workers call user_begin,
  ## user_func, user_end. Run shuts down workers afterwards.
- ## The run method can take an optional argument. Default is
- ## 1 to auto-shutdown workers after processing.
 
  $mce->run();
- $mce->run(0);                         ## 0 disables auto-shutdown
 
- ## Or, spawn workers early.
+ ## OR, spawn workers early.
 
  $mce->spawn();
 
  ## Acquire data arrays and/or input_files. The same pool of
- ## workers are used. Process calls run(0).
+ ## workers are used.
 
  $mce->process(\@input_data_1);        ## Process arrays
  $mce->process(\@input_data_2);
@@ -2452,16 +2499,342 @@ This document describes MCE version 1.105
     print LOGOUT $output;
  }
 
-=head1 DESCRIPTION
+=head1 METHODS for MAIN PROCESS & WORKERS
 
-Many-core Engine (MCE) for Perl helps enable a new level of performance by
-maximizing all available cores. MCE spawns a pool of workers and therefore
-does not fork a new process per each element of data. Instead, MCE follows
-a bank queuing model. Imagine the line being the data and bank-tellers the
-parallel workers. MCE enhances that model by adding the ability to chunk
-the next n elements from the input stream to the next available worker.
+Methods listed below are callable by the main process and workers.
 
-=head2 EXAMPLE WITH CHUNK_SIZE => 1
+=head2 abort( void )
+
+ ## Notifies workers to abort after processing the current chunk.
+ ## The abort method is only meaningful when processing input_data.
+
+ $self->abort( void );
+
+=head2 wid( void )
+
+ ## Returns the worker ID of worker.
+
+ my $wid = $self->wid();
+
+=head1 METHODS for MAIN PROCESS ONLY
+
+Methods listed below are callable by the main process only.
+
+=head2 forchunk( $input_data [, { options } ], sub { ... } )
+
+ ## Both forchunk & foreach are sugar methods in MCE. Workers are
+ ## automatically spawned, the code block is executed in parallel,
+ ## and workers are shut down afterwards. Do not call these methods
+ ## if wanting workers to remain up after processing.
+ ##
+ ## Specifying options is optional. Valid options are the same as
+ ## for the process method.
+
+ my $mce = MCE->new(
+    chunk_size  => 20,
+    max_workers => $max_workers
+ );
+
+ ## Arguments inside code block are the same as for user_func.
+
+ $mce->forchunk(\@input_data, sub {
+    my ($self, $chunk_ref, $chunk_id) = @_;
+
+    foreach ( @{ $chunk_ref } ) {
+       $self->sendto("stdout", "$chunk_id: $_\n");
+    }
+ });
+
+ ## Passing chunk_size as an option.
+
+ $mce->forchunk(\@input_data, { chunk_size => 30 }, sub {
+    ...
+ });
+
+=head2 foreach( $input_data [, { options } ], sub { ... } )
+
+ ## Foreach always implies chunk_size => 1 (cannot be overwritten).
+
+ my $mce = MCE->new(
+    max_workers => $max_workers
+ );
+
+ ## Arguments inside code block are the same as for user_func.
+ ## This holds true even if chunk_size is set to 1. MCE is both
+ ## a chunking engine plus parallel engine all in one. Arguments
+ ## within the block are the same whether chunking is 1 or > 1.
+
+ $mce->foreach(\@input_data, sub {
+    my ($self, $chunk_ref, $chunk_id) = @_;
+    my $row = $chunk_ref->[0];
+    $self->sendto("stdout", "$chunk_id: $row\n");
+ });
+
+ ## Passing an anonymous array as input data. For example,
+ ## wanting to parallelize a serial for loop with MCE.
+
+ for (my $i = 0; $i < $max; $i++) {
+    ...  ## Runs serially
+ }
+ for my $i (0 .. $max - 1) {
+    ...  ## Runs serially
+ }
+
+ $mce->foreach([ (0 .. $max - 1) ], sub {
+    my ($self, $chunk_ref, $chunk_id) = @_;
+    my $i = $chunk_ref->[0];  (OR)  my $i = $chunk_id - 1;
+    ...  ## Runs in parallel
+ });
+
+=head2 process( $input_data [, { options } ] )
+
+ ## The process method will spawn workers automatically if not already
+ ## spawned. It will set input_data => $input_data. It calls run(0) to
+ ## not auto-shutdown workers. Specifying options is optional.
+ ##
+ ## Allowable options { key => value, ... } are:
+ ## chunk_size input_data job_delay spawn_delay submit_delay use_slurpio
+ ## flush_file flush_stderr flush_stdout stderr_file stdout_file
+ ## user_begin user_end user_func user_error user_output
+ ##
+ ## Options remain persistent going forward unless changed. Setting
+ ## user_begin, user_end, or user_func will cause already spawned
+ ## workers to shutdown and re-spawn automatically. Therefore, define
+ ## these during instantiation if possible.
+
+ my $mce = MCE->new( ... );
+
+ $mce->spawn();
+ $mce->process($array_ref);
+ $mce->process($array_ref, { stdout_file => $output_file });
+ $mce->shutdown();
+
+=head2 run( [ $auto_shutdown ] [, { options } ] )
+
+ ## The run method, by default, spawns workers, processes once,
+ ## and shuts down workers. Set $auto_shutdown to 0 if not wanting
+ ## to auto-shutdown workers after processing (default is 1).
+ ##
+ ## Specifying options is optional. Valid options are the same as
+ ## for the process method.
+
+ my $mce = MCE->new( ... );
+
+ $mce->run(0);                         ## Disables auto-shutdown
+
+=head2 shutdown( void )
+
+ ## The run method will automatically spawn workers, run once, and
+ ## shutdown workers automatically. The process method leaves workers
+ ## waiting for the next job after processing. Call shutdown after
+ ## processing all jobs.
+
+ my $mce = MCE->new( ... );
+
+ $mce->process(\@input_data_1);        ## Processing multiple arrays
+ $mce->process(\@input_data_2);
+ $mce->process(\@input_data_n);
+
+ $mce->process('input_file_1');        ## Processing multiple files
+ $mce->process('input_file_2');
+ $mce->process('input_file_n');
+
+ $mce->shutdown();
+
+=head2 spawn( void )
+
+ ## Workers are normally spawned automatically. The spawn method is
+ ## beneficial when wanting to spawn workers early.
+
+ my $mce = MCE->new( ... );
+
+ $mce->spawn();
+
+=head1 METHODS for WORKERS ONLY
+
+Methods listed below are callable by workers only.
+
+=head2 do( 'callback_func' [, $arg1, ... ] )
+
+ ## MCE can serialized data transfers from worker processes via
+ ## helper functions do & sendto. The main MCE thread will process
+ ## these in a serial fashion. This utilizes the Storable Perl module
+ ## for passing data from a worker process to the main MCE thread.
+ ## The callback function can optionally return a reply.
+
+ [ $reply = ] $self->do('callback' [, $arg1, ... ]);
+
+ ## Passing arguments to a callback function using references & scalar.
+
+ sub callback {
+    my ($array_ref, $hash_ref, $scalar_ref, $scalar) = @_;
+    ...
+ }
+
+ $self->do('main::callback', \@a, \%h, \$s, 'hello');
+ $self->do('callback', \@a, \%h, \$s, 'hello');
+
+ ## MCE knows if wanting a void, list, hash, or a scalar return value.
+
+ $self->do('callback' [, $arg1, ... ]);
+
+ my @array  = $self->do('callback' [, $arg1, ... ]);
+ my %hash   = $self->do('callback' [, $arg1, ... ]);
+ my $scalar = $self->do('callback' [, $arg1, ... ]);
+
+=head2 exit( void )
+
+ ## The worker exits the current job.
+
+ $self->exit();
+
+=head2 last( void )
+
+ ## Worker immediately exits the chunking loop or user func.
+ ## Call this inside foreach, forchunk, and user_func.
+
+ my @list = (1 .. 80);
+
+ $mce->forchunk(\@list, { chunk_size => 2 }, sub {
+
+    my ($self, $chunk_ref, $chunk_id) = @_;
+    $self->last if ($chunk_id > 4);
+
+    my @output = ();
+
+    foreach my $rec ( @{ $chunk_ref } ) {
+       push @output, $rec, "\n";
+    }
+
+    $self->sendto('stdout', @output);
+ });
+
+ -- Output (each chunk above consists of 2 elements)
+
+ 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+
+=head2 next( void )
+
+ ## Worker starts the next iteration of the chunking loop.
+ ## Call this inside foreach, forchunk, and user_func.
+
+ my @list = (1 .. 80);
+
+ $mce->forchunk(\@list, { chunk_size => 4 }, sub {
+
+    my ($self, $chunk_ref, $chunk_id) = @_;
+    $self->next if ($chunk_id < 20);
+
+    my @output = ();
+
+    foreach my $rec ( @{ $chunk_ref } ) {
+       push @output, $rec, "\n";
+    }
+
+    $self->sendto('stdout', @output);
+ });
+
+ -- Output (each chunk above consists of 4 elements)
+
+ 77
+ 78
+ 79
+ 80
+
+=head2 sendto( 'to_string', $arg1, ... )
+
+The sendto method is called by workers to serialize data to standard output,
+standard error, or to end of file. The action is done by the main process or
+thread.
+
+Release 1.100 adds the ability to pass multiple arguments.
+
+=head3 1.00x syntax
+
+ ## Release 1.00x supported only 1 data argument.
+ ## /path/to/file is the 3rd argument for 'file'.
+
+ $self->sendto('stdout', \@array);
+ $self->sendto('stdout', \$scalar);
+ $self->sendto('stdout', $scalar);
+
+ $self->sendto('stderr', \@array);
+ $self->sendto('stderr', \$scalar);
+ $self->sendto('stderr', $scalar);
+
+ $self->sendto('file', \@array, '/path/to/file');
+ $self->sendto('file', \$scalar, '/path/to/file');
+ $self->sendto('file', $scalar, '/path/to/file');
+
+=head3 1.10x syntax
+
+ ## Notice the syntax change for appending to a file.
+
+ $self->sendto('stdout', $arg1 [, $arg2, ... ]);
+ $self->sendto('stderr', $arg1 [, $arg2, ... ]);
+ $self->sendto('file:/path/to/file', $arg1 [, $arg2, ... ]);
+
+ ## Passing a reference is no longer necessary beginning with 1.100.
+
+ $self->sendto("stdout", @a, "\n", %h, "\n", $s, "\n");
+
+ ## To retain 1.00x compatibility, sendto outputs the content when a
+ ## a single data argument is specified and is a reference.
+
+ $self->sendto('stdout', \@array);
+ $self->sendto('stderr', \$scalar);
+ $self->sendto('file:/path/to/file', \@array);
+
+ ## Otherwise, the reference for \@array and \$scalar is shown,
+ ## not the content. Basically, output matches the print statement.
+ ## Ex. print STDOUT "hello\n", \@array, \$scalar, "\n";
+
+ $self->sendto('stdout', "hello\n", \@array, \$scalar, "\n");
+
+=head1 EXAMPLES
+
+MCE comes with various examples showing real-world use case scenarios on
+parallelizing something as small as cat (try with -n) to greping for
+patterns and word count aggregation.
+
+ cat.pl    Concatenation script, similar to the cat binary.
+ egrep.pl  Egrep script, similar to the egrep binary.
+ wc.pl     Word count script, similar to the wc binary.
+
+ findnull.pl
+           A parallel driven script to report lines containing
+           null fields. It's many times faster than the binary
+           egrep command. Try against a large file containing
+           very long lines.
+
+ scaling_pings.pl
+           Perform ping test and report back failing IPs to
+           standard output.
+
+ tbray/wf_mce1.pl, wf_mce2.pl, wf_mce3.pl
+           An implementation of wide finder utilizing MCE.
+           As fast as MMAP IO when file resides in OS FS cache.
+           2x ~ 3x faster when reading directly from disk.
+
+ foreach.pl
+ forchunk.pl
+           These take the same sqrt example from Parallel::Loops
+           and measures the overhead of the engine. The number
+           indicates the size of @input which can be submitted
+           and results displayed in 1 second.
+
+           Parallel::Loops:     600  Forking each @input is expensive
+           MCE foreach....:  18,000  Sends result after each @input
+           MCE forchunk...: 385,000  Chunking reduces overhead
+
+=head2 CHUNK_SIZE => 1 (in essence, wanting no chunking for input_data)
 
  ## Imagine a long running process and wanting to parallelize an array
  ## against a pool of workers.
@@ -2482,7 +2855,7 @@ the next n elements from the input stream to the next available worker.
     $result{$chunk_id} = $wk_result;
 
     while (1) {
-       last unless exists $result{$order_id};
+       last unless (exists $result{$order_id});
 
        printf "i: %d sqrt(i): %f\n",
           $input_data[$order_id - 1], $result{$order_id};
@@ -2529,7 +2902,7 @@ the next n elements from the input stream to the next available worker.
     $self->do('display_result', $wk_result, $chunk_id);
  });
 
-=head2 EXAMPLE WITH CHUNK_SIZE => 500
+=head2 CHUNKING INPUT_DATA
 
  ## Chunking reduces overhead many folds. Instead of passing a single
  ## item from @input_data, a chunk of $chunk_size is sent instead to
@@ -2549,7 +2922,7 @@ the next n elements from the input stream to the next available worker.
     $result{$chunk_id} = $wk_result;
 
     while (1) {
-       last unless exists $result{$order_id};
+       last unless (exists $result{$order_id});
        my $i = ($order_id - 1) * $chunk_size;
 
        foreach ( @{ $result{$order_id} } ) {
@@ -2606,195 +2979,6 @@ the next n elements from the input stream to the next available worker.
 
     $self->do('display_result', \@wk_result, $chunk_id);
  });
-
-=head2 LAST & NEXT METHODS
-
- ## Both last and next methods work inside foreach, forchunk,
- ## and user_func code blocks.
-
- ## ->last: Worker immediately exits the chunking loop or user func
-
- my @list = (1 .. 80);
-
- $mce->forchunk(\@list, { chunk_size => 2 }, sub {
-
-    my ($self, $chunk_ref, $chunk_id) = @_;
-
-    $self->last if ($chunk_id > 4);
-
-    my @output = ();
-
-    foreach my $rec ( @{ $chunk_ref } ) {
-       push @output, $rec, "\n";
-    }
-
-    $self->sendto('stdout', @output);
- });
-
- -- Output (each chunk above consists of 2 elements)
-
- 1
- 2
- 3
- 4
- 5
- 6
- 7
- 8
-
- ## ->next: Worker starts the next iteration of the chunking loop
-
- my @list = (1 .. 80);
-
- $mce->forchunk(\@list, { chunk_size => 4 }, sub {
-
-    my ($self, $chunk_ref, $chunk_id) = @_;
-
-    $self->next if ($chunk_id < 20);
-
-    my @output = ();
-
-    foreach my $rec ( @{ $chunk_ref } ) {
-       push @output, $rec, "\n";
-    }
-
-    $self->sendto('stdout', @output);
- });
-
- -- Output (each chunk above consists of 4 elements)
-
- 77
- 78
- 79
- 80
-
-=head2 MISCELLANEOUS METHODS
-
- ## Notifies workers to abort after processing the current chunk. The
- ## abort method is only meaningful when processing input_data.
-
- $self->abort();
-
- ## Worker exits current job.
-
- $self->exit();
-
- ## Returns worker ID.
-
- $self->wid();
-
-=head2 DO CALLBACK METHOD
-
-MCE can serialized data transfers from worker processes via helper functions.
-The main MCE thread will process these in a serial fashion. This utilizes the
-Storable Perl module for passing data from a worker process to the main MCE
-thread. In addition, the callback function can optionally return a reply.
-
- [ $reply = ] $self->do('callback' [, $arg1, $arg2, ...]);
-
- ## Passing arguments to a callback function using references & scalar:
-
- sub callback {
-    my ($array_ref, $hash_ref, $scalar_ref, $scalar) = @_;
-    ...
- }
-
- $self->do('main::callback', \@a, \%h, \$s, 'hello');
- $self->do('callback', \@a, \%h, \$s, 'hello');
-
- ## MCE knows if wanting a void, list, hash, or scalar return value.
-
- $self->do('callback' [, ...]);
-
- my @array  = $self->do('callback' [, ...]);
- my %hash   = $self->do('callback' [, ...]);
- my $scalar = $self->do('callback' [, ...]);
-
-=head2 SENDTO METHOD
-
-The sendto method is called by workers to serialize data to standard output,
-standard error, or to end of file. The action is done by the main process or
-thread.
-
-Release 1.100 adds the ability to pass multiple arguments.
-
-=head3 1.00x SYNTAX
-
- ## Release 1.00x supported only 1 data argument.
- ## /path/to/file is the 3rd argument for 'file'.
-
- $self->sendto('stdout', \@array);
- $self->sendto('stdout', \$scalar);
- $self->sendto('stdout', $scalar);
-
- $self->sendto('stderr', \@array);
- $self->sendto('stderr', \$scalar);
- $self->sendto('stderr', $scalar);
-
- $self->sendto('file', \@array, '/path/to/file');
- $self->sendto('file', \$scalar, '/path/to/file');
- $self->sendto('file', $scalar, '/path/to/file');
-
-=head3 1.10x SYNTAX (NEW)
-
- ## Notice the syntax change for appending to a file.
-
- $self->sendto('stdout', $arg1 [, $arg2, $arg3, ...]);
- $self->sendto('stderr', $arg1 [, $arg2, $arg3, ...]);
- $self->sendto('file:/path/to/file', $arg1 [, $arg2, $arg3, ...]);
-
- ## Passing a reference is no longer necessary beginning with 1.100.
-
- $self->sendto("stdout", @a, "\n", %h, "\n", $s, "\n");
-
- ## To retain 1.00x compatibility, sendto outputs the content when a
- ## a single data argument is specified and is a reference.
-
- $self->sendto('stdout', \@array);
- $self->sendto('stderr', \$scalar);
- $self->sendto('file:/path/to/file', \@array);
-
- ## Otherwise, the reference for \@array and \$scalar is shown,
- ## not the content. Basically, output matches the print statement.
- ## Ex. print STDOUT "hello\n", \@array, \$scalar, "\n";
-
- $self->sendto('stdout', "hello\n", \@array, \$scalar, "\n");
-
-=head1 EXAMPLES
-
-MCE comes with various examples showing real-world use case scenarios on
-parallelizing something as small as cat (try with -n) to greping for
-patterns and word count aggregation.
-
- cat.pl    Concatenation script, similar to the cat binary.
- egrep.pl  Egrep script, similar to the egrep binary.
- wc.pl     Word count script, similar to the wc binary.
-
- findnull.pl
-           A parallel driven script to report lines containing
-           null fields. It's many times faster than the binary
-           egrep command. Try against a large file containing
-           very long lines.
-
- scaling_pings.pl
-           Perform ping test and report back failing IPs to
-           standard output.
-
- tbray/wf_mce1.pl, wf_mce2.pl, wf_mce3.pl
-           An implementation of wide finder utilizing MCE.
-           As fast as MMAP IO when file resides in OS FS cache.
-           2x ~ 3x faster when reading directly from disk.
-
- foreach.pl
- forchunk.pl
-           These take the same sqrt example from Parallel::Loops
-           and measures the overhead of the engine. The number
-           indicates the size of @input which can be submitted
-           and results displayed in 1 second.
-
-           Parallel::Loops:     600  Forking each @input is expensive
-           MCE foreach....:  18,000  Sends result after each @input
-           MCE forchunk...: 385,000  Chunking reduces overhead
 
 =head2 MULTIPLE WORKERS RUNNING IN PARALLEL (NO INPUT_DATA)
 

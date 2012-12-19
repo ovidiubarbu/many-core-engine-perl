@@ -1,7 +1,7 @@
 Name:           perl-MCE
-Version:        1.105
+Version:        1.106
 Release:        1%{?dist}
-Summary:        Many-Core Engine for Perl. Provides parallel processing cabilities.
+Summary:        Many-Core Engine for Perl. Provides parallel processing capabilities.
 License:        CHECK(Distributable)
 Group:          Development/Libraries
 URL:            http://search.cpan.org/dist/MCE/
@@ -57,6 +57,12 @@ rm -rf $RPM_BUILD_ROOT
 %{_mandir}/man3/*
 
 %changelog
+* Wed Dec 19 2012 Mario Roy 1.106-1
+- Added t/pod-coverage.t
+- Big overhaul of the MCE documentation -- all methods are documented
+- Croak if method suited for a MCE worker is called by the main MCE process
+- Croak if method suited for the main MCE process is called by a MCE worker
+- Updated Makefile.PL to declare the minimum Perl version
 * Sun Dec 16 2012 Mario Roy 1.105-1
 - Completed code re-factoring
 - Added t/pod.t
