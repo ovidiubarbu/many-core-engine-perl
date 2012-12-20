@@ -7,7 +7,7 @@
 
 <> VERSION
 
-   This document describes MCE version 1.106
+   This document describes MCE version 1.200
 
 ===============================================================================
 
@@ -122,6 +122,45 @@
    );
 
    -------------------------------------------------------------------------
+   USER_TASKS OPTION (new)
+   -------------------------------------------------------------------------
+
+   ## The 1.200 release introduces a new option to allow for flexible
+   ## workers. The "user_tasks" takes an array of tasks. Each task allows
+   ## for 5 options: max_workers, use_threads, user_begin, user_func, and
+   ## user_end. In addition, task_end can be specified for the manager
+   ## process to run when workers under task have completed processing.
+   ##
+   ## Forking and threading can be inter-mixed among tasks except under
+   ## CYGWIN. Input data (if defined) can only be processed by the first
+   ## task. The run method will remain running until all workers have
+   ## completed processing.
+   ##
+   ## Go here for further reading on the new user_tasks option.
+   ## http://code.google.com/p/many-core-engine-perl/wiki/MCE_Tasks
+
+   my $mce = MCE->new(
+      input_data => $list_file,
+
+      user_tasks => [{
+         max_workers => 2,
+         user_func   => \&parallel_task1,
+         use_threads => 0,
+         task_end    => sub {
+            print "Task 1 completed processing\n";
+         }
+
+      },{
+         max_workers => 4,
+         user_func   => \&parallel_task2,
+         use_threads => 1
+
+      }]
+   );
+
+   $mce->run();
+
+   -------------------------------------------------------------------------
    RUNNING
    -------------------------------------------------------------------------
 
@@ -229,7 +268,7 @@
 
 ===============================================================================
 
-<> METHODS for BOTH MAIN PROCESS & WORKERS
+<> METHODS for MANAGER PROCESS & WORKERS
 
    Methods listed below are callable by the main process and workers.
 
@@ -252,7 +291,7 @@
 
 ===============================================================================
 
-<> METHODS for MAIN PROCESS ONLY
+<> METHODS for MANAGER PROCESS ONLY
 
    Methods listed below are callable by the main process only.
 
@@ -573,7 +612,7 @@
    patterns and word count aggregation.
 
    -------------------------------------------------------------------------
-   INCLUDED EXAMPLES
+   INCLUDED WITH DISTRIBUTION
    -------------------------------------------------------------------------
    cat.pl    Concatenation script, similar to the cat binary.
    egrep.pl  Egrep script, similar to the egrep binary.
@@ -760,7 +799,7 @@
    });
 
    -------------------------------------------------------------------------
-   MULTIPLE WORKERS RUNNING IN PARALLEL (NO INPUT_DATA)
+   MULTIPLE WORKERS RUNNING IN PARALLEL (no input_data)
    -------------------------------------------------------------------------
 
    The input_data option is optional. One can simply use MCE to parallelize

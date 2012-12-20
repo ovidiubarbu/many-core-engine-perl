@@ -1,5 +1,10 @@
 Revision history for Perl extension MCE.
 
+1.200 Thu Dec 20 00:00:00 2012
+- Added new user_tasks option
+- Added space between method name and left-paren for header lines in POD
+- Remove not-needed BSD::Resource and forks inside BEGIN/INIT blocks
+
 1.106 Wed Dec 19 05:00:00 2012
 - Added t/pod-coverage.t
 - Big overhaul of the MCE documentation -- all methods are documented
