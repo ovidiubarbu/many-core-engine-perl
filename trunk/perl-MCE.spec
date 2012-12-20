@@ -1,5 +1,5 @@
 Name:           perl-MCE
-Version:        1.106
+Version:        1.200
 Release:        1%{?dist}
 Summary:        Many-Core Engine for Perl. Provides parallel processing capabilities.
 License:        CHECK(Distributable)
@@ -57,6 +57,10 @@ rm -rf $RPM_BUILD_ROOT
 %{_mandir}/man3/*
 
 %changelog
+* Thu Dec 20 2012 Mario Roy 1.200-1
+- Added new user_tasks option
+- Added space between method name and left-paren for header lines in POD
+- Remove not-needed BSD::Resource and forks inside BEGIN/INIT blocks
 * Wed Dec 19 2012 Mario Roy 1.106-1
 - Added t/pod-coverage.t
 - Big overhaul of the MCE documentation -- all methods are documented

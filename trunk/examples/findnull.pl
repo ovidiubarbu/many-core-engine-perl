@@ -15,10 +15,8 @@
 ## at an given time. You get "sustained" sequential IO plus the workers
 ## for parallel processing.
 ##
-## Default behaviour is to spawn off child processes.
-## Pass --use_threads or --use_forks to use threads instead.
-##
 ## usage: findnull.pl [-l] datafile
+##        findnull.pl wc.pl
 ##
 ###############################################################################
 
@@ -28,7 +26,6 @@ use warnings;
 use Cwd qw( abs_path );
 
 our ($prog_name, $prog_dir, $base_dir);
-my  ($use_threads, $use_forks);
 
 BEGIN {
    $ENV{PATH} = "/usr/bin:/bin:/usr/sbin:/sbin:$ENV{PATH}";
@@ -41,36 +38,6 @@ BEGIN {
    $base_dir  =~ s{[\\/][^\\/]*$}{};
 
    unshift @INC, "$base_dir/lib";
-
-   for (@ARGV) {
-      $use_threads = 1 if ($_ eq '--use_threads');
-      $use_forks   = 1 if ($_ eq '--use_forks');
-   }
-
-   if (($use_threads ? 1 : 0) + ($use_forks ? 1 : 0) == 1) {
-      if ($use_threads) {
-         local $@; local $SIG{__DIE__} = sub { };
-         eval {
-            require threads; threads->import();
-            require threads::shared; threads::shared->import();
-         };
-         if ($@) {
-            print STDERR "This Perl lacks threads && threads::shared modules\n";
-            exit 3;
-         }
-      }
-      elsif ($use_forks) {
-         local $@; local $SIG{__DIE__} = sub { };
-         eval {
-            require forks; forks->import();
-            require forks::shared; forks::shared->import();
-         };
-         if ($@) {
-            print STDERR "This Perl lacks forks && forks::shared modules\n";
-            exit 3;
-         }
-      }
-   }
 }
 
 INIT {
@@ -108,10 +75,6 @@ DESCRIPTION
    --max_workers MAX_WORKERS
           Specify number of workers for MCE   -- default: 8
 
-   --use_threads or --use_forks
-          Script will include threads & threads::shared/forks & forks::shared
-          modules -- workers are threads versus being child processes
-
    -l     Display the number of lines for the file
 
 EXIT STATUS
@@ -143,8 +106,6 @@ while ( my $arg = shift @ARGV ) {
       $l_flag      = $flag->() and next if ($arg eq '-l');
       $chunk_size  = $isOk->() and next if ($arg eq '--chunk_size');
       $max_workers = $isOk->() and next if ($arg eq '--max_workers');
-      $use_threads = $flag->() and next if ($arg eq '--use_threads');
-      $use_forks   = $flag->() and next if ($arg eq '--use_forks');
       $skip_args   = $flag->() and next if ($arg eq '--');
 
       usage() if ($arg =~ /^-/);
@@ -153,7 +114,6 @@ while ( my $arg = shift @ARGV ) {
    $file = $arg;
 }
 
-usage() if (($use_threads ? 1 : 0) + ($use_forks ? 1 : 0) == 2);
 usage() unless (defined $file);
 
 unless (-e $file) {
