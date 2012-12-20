@@ -1,7 +1,7 @@
 #labels Featured
 = MCE Tasks =
 
-The upcoming 1.2 release will provide support for multiple tasks. Workers can be configured based on tasking.
+The 1.2 release provides support for multiple tasks. Workers can be configured based on tasking.
 
 http://many-core-engine-perl.googlecode.com/svn/wiki/img/MCE_Tasks.png
 
@@ -121,7 +121,6 @@ sub writer {
 
 One no longer has to create multiple MCE instances to run multiple tasks in parallel. This can now be done with a single MCE instance via the new user_tasks option. All workers shared the same 4 socket channels. :)
 
-Additional info will be provided when MCE 1.2 is released.
 
 - mario
 
