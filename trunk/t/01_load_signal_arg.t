@@ -1,5 +1,8 @@
 #!/usr/bin/env perl
 
+use strict;
+use warnings;
+
 use Test::More tests => 3;
 
 ## Default is $MCE::Signal::tmp_dir which points to $ENV{TEMP} if defined.
@@ -11,6 +14,8 @@ use Test::More tests => 3;
 ## the location of $tmp_dir when exiting.
 ##
 ## Always load MCE::Signal before MCE when wanting to export or pass options.
+
+our $tmp_dir;
 
 BEGIN {
    use_ok('MCE::Signal', qw( $tmp_dir -use_dev_shm ));

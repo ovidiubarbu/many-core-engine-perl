@@ -1,5 +1,8 @@
 #!/usr/bin/env perl
 
+use strict;
+use warnings;
+
 use Test::More tests => 4;
 
 ## Threads is not necessary for MCE to function properly.

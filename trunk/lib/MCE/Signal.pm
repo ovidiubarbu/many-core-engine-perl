@@ -16,7 +16,7 @@ BEGIN {
 use strict;
 use warnings;
 
-our $VERSION = '1.200';
+our $VERSION = '1.201';
 $VERSION = eval $VERSION;
 
 use Fcntl qw( :flock );
@@ -368,7 +368,7 @@ MCE::Signal - Provides tmp_dir creation & signal handling for Many-Core Engine.
 
 =head1 VERSION
 
-This document describes MCE::Signal version 1.200
+This document describes MCE::Signal version 1.201
 
 =head1 SYNOPSIS
 

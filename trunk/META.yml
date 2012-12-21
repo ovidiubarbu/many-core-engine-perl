@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               MCE
-version:            1.200
+version:            1.201
 abstract:           Many-Core Engine for Perl. Provides parallel processing capabilities.
 author:
     - Mario E. Roy <marioeroy AT gmail DOT com>
@@ -10,13 +10,13 @@ configure_requires:
     ExtUtils::MakeMaker:  0
 build_requires:
     ExtUtils::MakeMaker:  0
+    Test::More:           0.45
 requires:
     Fcntl:       0
     File::Path:  0
     perl:        5.008
     Socket:      0
     Storable:    2.04
-    Test::More:  0.45
 resources:
     homepage:    http://code.google.com/p/many-core-engine-perl/
     license:     http://dev.perl.org/licenses/

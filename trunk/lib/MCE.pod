@@ -1,33 +1,27 @@
 
-===============================================================================
+=head1 NAME
 
-<> NAME
+MCE - Many-Core Engine for Perl. Provides parallel processing capabilities.
 
-   MCE - Many-Core Engine for Perl. Provides parallel processing capabilities.
+=head1 VERSION
 
-<> VERSION
+This document describes MCE version 1.201
 
-   This document describes MCE version 1.201
+=head1 DESCRIPTION
 
-<> DESCRIPTION
+Many-core Engine (MCE) for Perl helps enable a new level of performance by
+maximizing all available cores. MCE spawns a pool of workers and therefore
+does not fork a new process per each element of data. Instead, MCE follows
+a bank queuing model. Imagine the line being the data and bank-tellers the
+parallel workers. MCE enhances that model by adding the ability to chunk
+the next n elements from the input stream to the next available worker.
 
-   Many-core Engine (MCE) for Perl helps enable a new level of performance by
-   maximizing all available cores. MCE spawns a pool of workers and therefore
-   does not fork a new process per each element of data. Instead, MCE follows
-   a bank queuing model. Imagine the line being the data and bank-tellers the
-   parallel workers. MCE enhances that model by adding the ability to chunk
-   the next n elements from the input stream to the next available worker.
+Both chunking and input are optional in MCE. One can simply use MCE to
+have many workers run in parallel.
 
-   Both chunking and input are optional in MCE. One can simply use MCE to
-   have many workers run in parallel.
+=head1 SYNOPSIS
 
-===============================================================================
-
-<> SYNOPSIS
-
-   -------------------------------------------------------------------------
-   new ( [ options ] )
-   -------------------------------------------------------------------------
+=head2 new ( [ options ] )
 
    use MCE;
 
@@ -119,9 +113,7 @@
           ## Flush sendto file, standard error, or standard output.
    );
 
-   -------------------------------------------------------------------------
-   USER_TASKS OPTION
-   -------------------------------------------------------------------------
+=head2 USER_TASKS OPTION
 
    ## The 1.200 release introduces a new option to allow for flexible
    ## workers. The user_tasks option takes an array of tasks. Each task
@@ -137,7 +129,7 @@
    ## completed processing.
    ##
    ## Go here for further reading on the new user_tasks option.
-   ## http://code.google.com/p/many-core-engine-perl/wiki/MCE_Tasks
+   ## L<http://code.google.com/p/many-core-engine-perl/wiki/MCE_Tasks>
 
    my $mce = MCE->new(
       input_data => $list_file,
@@ -160,9 +152,7 @@
 
    $mce->run();
 
-   -------------------------------------------------------------------------
-   RUNNING
-   -------------------------------------------------------------------------
+=head2 RUNNING
 
    ## Run calls spawn, kicks off job, workers call user_begin,
    ## user_func, user_end. Run shuts down workers afterwards.
@@ -188,9 +178,7 @@
 
    $mce->shutdown();
 
-   -------------------------------------------------------------------------
-   SYNTAX FOR USER_BEGIN & USER_END
-   -------------------------------------------------------------------------
+=head2 SYNTAX FOR USER_BEGIN & USER_END
 
    ## Both user_begin and user_end functions, if specified, behave
    ## similarly to awk 'BEGIN { ... } { ... } END { ... }'.
@@ -215,9 +203,7 @@
          $self->wid(), $self->{wk_total_rows};
    }
 
-   -------------------------------------------------------------------------
-   SYNTAX FOR USER_FUNC (with use_slurpio => 0 option)
-   -------------------------------------------------------------------------
+=head2 SYNTAX FOR USER_FUNC (with use_slurpio => 0 option)
 
    ## MCE passes a reference to an array containing the chunk data.
 
@@ -231,9 +217,7 @@
       }
    }
 
-   -------------------------------------------------------------------------
-   SYNTAX FOR USER_FUNC (with use_slurpio => 1 option)
-   -------------------------------------------------------------------------
+=head2 SYNTAX FOR USER_FUNC (with use_slurpio => 1 option)
 
    ## MCE passes a reference to a scalar containing the raw chunk data.
 
@@ -244,9 +228,7 @@
       my $count = () = $$chunk_ref =~ /abc/;
    }
 
-   -------------------------------------------------------------------------
-   SYNTAX FOR USER_ERROR & USER_OUTPUT
-   -------------------------------------------------------------------------
+=head2 SYNTAX FOR USER_ERROR & USER_OUTPUT
 
    ## MCE will direct $self->sendto('stderr/out', ...) calls to these
    ## functions in a serialized fashion. This is handy if one wants to
@@ -266,38 +248,28 @@
       print LOGOUT $output;
    }
 
-===============================================================================
+=head1 METHODS for MANAGER PROCESS & WORKERS
 
-<> METHODS for MANAGER PROCESS & WORKERS
+Methods listed below are callable by the main process and workers.
 
-   Methods listed below are callable by the main process and workers.
-
-   -------------------------------------------------------------------------
-   abort ( void )
-   -------------------------------------------------------------------------
+=head2 abort ( void )
 
    ## Notifies workers to abort after processing the current chunk.
    ## The abort method is only meaningful when processing input data.
 
    $self->abort();
 
-   -------------------------------------------------------------------------
-   wid ( void )
-   -------------------------------------------------------------------------
+=head2 wid ( void )
 
    ## Returns the worker ID of worker.
 
    my $wid = $self->wid();
 
-===============================================================================
+=head1 METHODS for MANAGER PROCESS ONLY
 
-<> METHODS for MANAGER PROCESS ONLY
+Methods listed below are callable by the main process only.
 
-   Methods listed below are callable by the main process only.
-
-   -------------------------------------------------------------------------
-   forchunk ( $input_data [, { options } ], sub { ... } )
-   -------------------------------------------------------------------------
+=head2 forchunk ( $input_data [, { options } ], sub { ... } )
 
    ## Both forchunk & foreach are sugar methods in MCE. Workers are
    ## automatically spawned, the code block is executed in parallel,
@@ -328,9 +300,7 @@
       ...
    });
 
-   -------------------------------------------------------------------------
-   foreach ( $input_data [, { options } ], sub { ... } )
-   -------------------------------------------------------------------------
+=head2 foreach ( $input_data [, { options } ], sub { ... } )
 
    ## Foreach always implies chunk_size => 1 (cannot be overwritten).
 
@@ -365,9 +335,7 @@
       ...  ## Runs in parallel
    });
 
-   -------------------------------------------------------------------------  
-   process ( $input_data [, { options } ] )
-   -------------------------------------------------------------------------
+=head2 process ( $input_data [, { options } ] )
 
    ## The process method will spawn workers automatically if not already
    ## spawned. It will set input_data => $input_data. It calls run(0) to
@@ -391,9 +359,7 @@
    $mce->process($array_ref, { stdout_file => $output_file });
    $mce->shutdown();
 
-   -------------------------------------------------------------------------  
-   run ( [ $auto_shutdown ] [, { options } ] )
-   -------------------------------------------------------------------------
+=head2 run ( [ $auto_shutdown ] [, { options } ] )
 
    ## The run method, by default, spawns workers, processes once,
    ## and shuts down workers. Set $auto_shutdown to 0 if not wanting
@@ -406,9 +372,7 @@
 
    $mce->run(0);                         ## Disables auto-shutdown
 
-   -------------------------------------------------------------------------
-   shutdown ( void )
-   -------------------------------------------------------------------------
+=head2 shutdown ( void )
 
    ## The run method will automatically spawn workers, run once, and
    ## shutdown workers automatically. The process method leaves workers
@@ -429,9 +393,7 @@
 
    $mce->shutdown();
 
-   -------------------------------------------------------------------------
-   spawn ( void )
-   -------------------------------------------------------------------------
+=head2 spawn ( void )
 
    ## Workers are normally spawned automatically. The spawn method is
    ## beneficial when wanting to spawn workers early.
@@ -440,15 +402,11 @@
 
    $mce->spawn();
 
-===============================================================================
+=head1 METHODS for WORKERS ONLY
 
-<> METHODS for WORKERS ONLY
+Methods listed below are callable by workers only.
 
-   Methods listed below are callable by workers only.
-
-   -------------------------------------------------------------------------
-   do ( 'callback_func' [, $arg1, ... ] )
-   -------------------------------------------------------------------------
+=head2 do ( 'callback_func' [, $arg1, ... ] )
 
    ## MCE can serialized data transfers from worker processes via
    ## helper functions do & sendto. The main MCE thread will process
@@ -476,17 +434,13 @@
    my %hash   = $self->do('callback' [, $arg1, ... ]);
    my $scalar = $self->do('callback' [, $arg1, ... ]);
 
-   -------------------------------------------------------------------------
-   exit ( void )
-   -------------------------------------------------------------------------
+=head2 exit ( void )
 
    ## The worker exits the current job.
 
    $self->exit();
 
-   -------------------------------------------------------------------------  
-   last ( void )
-   -------------------------------------------------------------------------
+=head2 last ( void )
 
    ## Worker immediately exits the chunking loop or user func.
    ## Call this inside foreach, forchunk, and user_func.
@@ -518,9 +472,7 @@
    7
    8
 
-   -------------------------------------------------------------------------  
-   next ( void )
-   -------------------------------------------------------------------------
+=head2 next ( void )
 
    ## Worker starts the next iteration of the chunking loop.
    ## Call this inside foreach, forchunk, and user_func.
@@ -548,19 +500,15 @@
    79
    80
 
-   -------------------------------------------------------------------------
-   sendto ( 'to_string', $arg1, ... )
-   -------------------------------------------------------------------------
+=head2 sendto ( 'to_string', $arg1, ... )
 
-   The sendto method is called by workers to serialize data to standard output,
-   standard error, or to end of file. The action is done by the main process or
-   thread.
+The sendto method is called by workers to serialize data to standard output,
+standard error, or to end of file. The action is done by the main process or
+thread.
 
-   Release 1.100 adds the ability to pass multiple arguments.
+Release 1.100 adds the ability to pass multiple arguments.
 
-   ----------------
-   syntax for 1.00x
-   ----------------
+=head3 syntax for 1.00x
 
    ## Release 1.00x supported only 1 data argument.
    ## /path/to/file is the 3rd argument for 'file'.
@@ -577,9 +525,7 @@
    $self->sendto('file', \$scalar, '/path/to/file');
    $self->sendto('file', $scalar, '/path/to/file');
 
-   -----------------------------------
-   syntax for 1.100 and later releases
-   -----------------------------------
+=head3 syntax for 1.100 and later releases
 
    ## Notice the syntax change for appending to a file.
 
@@ -604,17 +550,13 @@
 
    $self->sendto('stdout', "hello\n", \@array, \$scalar, "\n");
 
-===============================================================================
+=head1 EXAMPLES
 
-<> EXAMPLES
+MCE comes with various examples showing real-world use case scenarios on
+parallelizing something as small as cat (try with -n) to greping for
+patterns and word count aggregation.
 
-   MCE comes with various examples showing real-world use case scenarios on
-   parallelizing something as small as cat (try with -n) to greping for
-   patterns and word count aggregation.
-
-   -------------------------------------------------------------------------
-   INCLUDED WITH DISTRIBUTION
-   -------------------------------------------------------------------------
+=head2 INCLUDED WITH DISTRIBUTION
 
    cat.pl    Concatenation script, similar to the cat binary.
    egrep.pl  Egrep script, similar to the egrep binary.
@@ -646,9 +588,7 @@
              MCE foreach....:  18,000  Sends result after each @input
              MCE forchunk...: 385,000  Chunking reduces overhead
 
-   -------------------------------------------------------------------------
-   CHUNK_SIZE => 1 (in essence, wanting no chunking on input data)
-   -------------------------------------------------------------------------
+=head2 CHUNK_SIZE => 1 (in essence, wanting no chunking on input data)
 
    ## Imagine a long running process and wanting to parallelize an array
    ## against a pool of workers.
@@ -660,7 +600,7 @@
 
    ## Callback function for displaying results. The logic below shows
    ## how one can display results immediately while still preserving
-   ## output order. The %result hash is a temporary cache to store
+   ## outpu order. The %result hash is a temporary cache to store
    ## results for out-of-order replies.
 
    sub display_result {
@@ -697,9 +637,7 @@
 
    $mce->run();
 
-   --------------------
-   FOREACH SUGAR METHOD
-   --------------------
+=head3 FOREACH SUGAR METHOD
 
    ## Compute via MCE. Foreach implies chunk_size => 1.
 
@@ -718,9 +656,7 @@
       $self->do('display_result', $wk_result, $chunk_id);
    });
 
-   -------------------------------------------------------------------------
-   CHUNKING INPUT_DATA
-   -------------------------------------------------------------------------
+=head2 CHUNKING INPUT_DATA
 
    ## Chunking reduces overhead many folds. Instead of passing a single
    ## item from @input_data, a chunk of $chunk_size is sent instead to
@@ -774,9 +710,7 @@
 
    $mce->run();
 
-   ---------------------
-   FORCHUNK SUGAR METHOD
-   ---------------------
+=head3 FORCHUNK SUGAR METHOD
 
    ## Compute via MCE.
 
@@ -800,16 +734,14 @@
       $self->do('display_result', \@wk_result, $chunk_id);
    });
 
-   -------------------------------------------------------------------------
-   MULTIPLE WORKERS RUNNING IN PARALLEL (no input data)
-   -------------------------------------------------------------------------
+=head2 MULTIPLE WORKERS RUNNING IN PARALLEL (no input data)
 
-   The input_data option is optional. One can simply use MCE to parallelize
-   multiple workers. The "do" & "sendto" methods are used to pass data back
-   to the main process or thread. One doesn't have to wait until the worker
-   has completed processing to pass data back. Both "do" & "sendto" methods
-   are processed serially by the main process on a first come, first serve
-   basis. All 4 workers run in parallel for the demonstration below.
+The input_data option is optional. One can simply use MCE to parallelize
+multiple workers. The "do" & "sendto" methods are used to pass data back
+to the main process or thread. One doesn't have to wait until the worker
+has completed processing to pass data back. Both "do" & "sendto" methods
+are processed serially by the main process on a first come, first serve
+basis. All 4 workers run in parallel for the demonstration below.
 
    use MCE;
 
@@ -885,28 +817,27 @@
    Worker 1 says Hello there: 4
    Worker 1 is exiting
 
-===============================================================================
+=head1 REQUIREMENTS
 
-<> REQUIREMENTS
+Perl 5.8.0 or later
 
-   Perl 5.8.0 or later
+=head1 SEE ALSO
 
--- SEE ALSO
+L<MCE::Signal>
 
-   MCE::Signal
+=head1 SOURCE
 
--- SOURCE
+The source is hosted at: L<http://code.google.com/p/many-core-engine-perl/>
 
-   The source is hosted at: http://code.google.com/p/many-core-engine-perl/
+=head1 AUTHOR
 
--- AUTHOR
+Mario E. Roy, S<E<lt>marioeroy AT gmail DOT comE<gt>>
 
-   Mario E. Roy, marioeroy AT gmail DOT com
+=head1 COPYRIGHT AND LICENSE
 
--- COPYRIGHT AND LICENSE
+Copyright (C) 2012 by Mario E. Roy
 
-   Copyright (C) 2012 by Mario E. Roy
+MCE is free software; you can redistribute it and/or modify it under the
+same terms as Perl itself L<http://dev.perl.org/licenses/>.
 
-   MCE is free software; you can redistribute it and/or modify it under the
-   same terms as Perl itself http://dev.perl.org/licenses/.
-
+=cut

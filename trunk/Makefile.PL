@@ -10,33 +10,40 @@ use ExtUtils::MakeMaker;
 
 WriteMakefile(
 
-    NAME          => 'MCE',
-    AUTHOR        => 'Mario E. Roy <marioeroy AT gmail DOT com>',
-    VERSION_FROM  => 'lib/MCE.pm',
-    ABSTRACT_FROM => 'lib/MCE.pm',
+   NAME           => 'MCE',
+   VERSION_FROM   => 'lib/MCE.pm',
 
-    PREREQ_PM     => {
-        'Fcntl'      => 0,
-        'Socket'     => 0,
-        'Storable'   => 2.04,
-        'File::Path' => 0,
-        'Test::More' => 0.45,
-    },
+   ABSTRACT       => 'Many-Core Engine for Perl. Provides parallel processing capabilities.',
+   AUTHOR         => 'Mario E. Roy <marioeroy AT gmail DOT com>',
 
-    META_MERGE    => {
-        requires  => { perl => 5.008000 },
-        resources => {
-            homepage   => 'http://code.google.com/p/many-core-engine-perl/',
-            repository => 'http://code.google.com/p/many-core-engine-perl/',
-            license    => 'http://dev.perl.org/licenses/'
-        }
-    },
+   PREREQ_PM      => {
+      'Fcntl'      => 0,
+      'Socket'     => 0,
+      'Storable'   => 2.04,
+      'File::Path' => 0
+   },
 
-    INSTALLDIRS   => (($] < 5.011) ? 'perl' : 'site'),
+   (($ExtUtils::MakeMaker::VERSION lt '6.25') ?
+      (PL_FILES   => { })            : ()),
 
-    ((ExtUtils::MakeMaker->VERSION() lt '6.25') ?
-        (PL_FILES => { })            : ()),
-    ((ExtUtils::MakeMaker->VERSION() gt '6.30') ?
-        (LICENSE  => 'perl')         : ()),
+   (($ExtUtils::MakeMaker::VERSION ge '6.30') ?
+      (LICENSE    => 'perl')         : ()),
+
+   (($ExtUtils::MakeMaker::VERSION ge '6.46') ?
+      (META_MERGE => {
+         build_requires => {
+            'Test::More' => 0.45
+         },
+         requires  => {
+            'perl'       => 5.008000
+         },
+         resources => {
+            'homepage'   => 'http://code.google.com/p/many-core-engine-perl/',
+            'repository' => 'http://code.google.com/p/many-core-engine-perl/',
+            'license'    => 'http://dev.perl.org/licenses/'
+         }
+      })                             : ()),
+
+   INSTALLDIRS    => (($] < 5.011) ? 'perl' : 'site')
 );
 
