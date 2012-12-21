@@ -1,95 +1,103 @@
-Revision history for Perl extension MCE.
+Revision history for MCE
 
-1.200 Thu Dec 20 00:00:00 2012
-- Added new user_tasks option
-- Added space between method name and left-paren for header lines in POD
-- Remove not-needed BSD::Resource and forks inside BEGIN/INIT blocks
+1.201 Fri Dec 21 00:00:00 EST 2012
+    * Merry Christmas and Happy Holidays -- releasing a polished MCE
+    * Added MCE.pod -- moved documentation from MCE.pm to pod file
+    * Added missing use strict/warnings to test scripts
+    * Default to 1 for chunk_size and max_workers if not specified
+    * Test::More is not a requirement to run MCE, only for building
+    * Changed the format for the change log file
 
-1.106 Wed Dec 19 05:00:00 2012
-- Added t/pod-coverage.t
-- Big overhaul of the MCE documentation -- all methods are documented
-- Croak if method suited for a MCE worker is called by the main MCE process
-- Croak if method suited for the main MCE process is called by a MCE worker
-- Updated Makefile.PL to declare the minimum Perl version
+1.200 Thu Dec 20 00:00:00 EST 2012
+    * Added new user_tasks option
+    * Added space between method name and left-paren for header lines in POD
+    * Remove not-needed BSD::Resource and forks inside BEGIN/INIT blocks
 
-1.105 Sun Dec 16 23:00:00 2012
-- Completed code re-factoring
-- Added t/pod.t
+1.106 Wed Dec 19 05:00:00 EST 2012
+    * Added t/pod-coverage.t
+    * Big overhaul of the MCE documentation -- all methods are documented
+    * Croak if method suited for a MCE worker is called by the main MCE process
+    * Croak if method suited for the main MCE process is called by a MCE worker
+    * Updated Makefile.PL to declare the minimum Perl version
 
-1.104 Sun Nov 25 17:00:00 2012
-- Added 1 new example to MCE's Perl documentation
-- Use module::method name versus constant symbol when calling _croak
-- Croak if session directory is not writeable inside MCE::spawn
-- Renamed _mce_id to _mce_sid (met to be spawn id actually)
-- Re-calibrated maximum workers allowed
+1.105 Sun Dec 16 23:00:00 EST 2012
+    * Completed code re-factoring
+    * Added t/pod.t
 
-1.103 Fri Nov 23 13:00:00 2012
-- Added writeable check on /dev/shm
-- Croak if tmp dir is not writeable inside MCE::Signal::import
+1.104 Sun Nov 25 17:00:00 EST 2012
+    * Added 1 new example to MCE's Perl documentation
+    * Use module::method name versus constant symbol when calling _croak
+    * Croak if session directory is not writeable inside MCE::spawn
+    * Renamed _mce_id to _mce_sid (met to be spawn id actually)
+    * Re-calibrated maximum workers allowed
 
-1.102 Thu Nov 22 13:00:00 2012
-- Woohoot !!! MCE now passes with Perl 5.17.x
-- Added Copying file -- same as in Perl
+1.103 Fri Nov 23 13:00:00 EST 2012
+    * Added writeable check on /dev/shm
+    * Croak if tmp dir is not writeable inside MCE::Signal::import
 
-1.101 Wed Nov 21 16:00:00 2012
-- Shifted white space to the left for code blocks inside documentation
+1.102 Thu Nov 22 13:00:00 EST 2012
+    * Woohoot !!! MCE now passes with Perl 5.17.x
+    * Added Copying file -- same as in Perl
 
-1.100 Wed Nov 21 10:00:00 2012
-- Completed optimization and shakeout for MCE's existing API
-- File handles are cached when calling sendto and appending to a file
-- The sendto method now supports multiple arguments -- see perldoc
-- Added new option: flush_file
+1.101 Wed Nov 21 16:00:00 EST 2012
+    * Shifted white space to the left for code blocks inside documentation
 
-1.008 Sat Nov 17 23:00:00 2012
-- Update on __DIE__ and __WARN__ handling in MCE. This addresses the 
-  unreferenced scalars seen in packaging logs at activestate.com for
-  Perl under Windows: http://code.activestate.com/ppm/MCE/
-- Update t/01_load_signal_arg.t -- added check for $ENV{TEMP}
-  This fixes issue seen under Cygwin
+1.100 Wed Nov 21 10:00:00 EST 2012
+    * Completed optimization and shakeout for MCE's existing API
+    * File handles are cached when calling sendto and appending to a file
+    * The sendto method now supports multiple arguments -- see perldoc
+    * Added new option: flush_file
 
-1.007 Thu Nov 15 21:30:00 2012
-- At last, the "Voila" release :)
-- Small change to __DIE__ and __WARN__ signal handling for spawn method
+1.008 Sat Nov 17 23:00:00 EST 2012
+    * Update on __DIE__ and __WARN__ handling in MCE. This addresses the 
+      unreferenced scalars seen in packaging logs at activestate.com for
+      Perl under Windows: http://code.activestate.com/ppm/MCE/
+    * Update t/01_load_signal_arg.t -- added check for $ENV{TEMP}
+      This fixes issue seen under Cygwin
 
-1.006 Thu Nov 15 03:30:00 2012
-- Added description section to MCE::Signal's Perl doc
-- Do not set trap on __DIE__ and __WARN__ inside MCE::Signal
-- Localized __DIE__ and __WARN__ handlers inside MCE instead
-- Clarify the use of threads in documentation
+1.007 Thu Nov 15 21:30:00 EST 2012
+    * At last, the "Voila" release :)
+    * Small change to __DIE__ and __WARN__ signal handling for spawn method
 
-1.005 Tue Nov 13 06:11:00 2012
-- Removed underscore from package globals in MCE::Signal
-- Optimized _worker_read_handle method in MCE
-- Updated files under examples/tbray/
+1.006 Thu Nov 15 03:30:00 EST 2012
+    * Added description section to MCE::Signal's Perl doc
+    * Do not set trap on __DIE__ and __WARN__ inside MCE::Signal
+    * Localized __DIE__ and __WARN__ handlers inside MCE instead
+    * Clarify the use of threads in documentation
 
-1.004 Mon Nov 12 01:50:00 2012
-- Updated examples/mce_usage.readme
-- Updated examples/wide_finder.pl
-- Added examples/tbray/README
-- Added examples/tbray/tbray_baseline1.pl
-- Added examples/tbray/tbray_baseline2.pl
-- Added examples/tbray/wf_mce1.pl
-- Added examples/tbray/wf_mce2.pl
-- Added examples/tbray/wf_mce3.pl (../wide_finder.pl moved here)
-- Added examples/tbray/wf_mmap.pl
+1.005 Tue Nov 13 06:11:00 EST 2012
+    * Removed underscore from package globals in MCE::Signal
+    * Optimized _worker_read_handle method in MCE
+    * Updated files under examples/tbray/
 
-1.003 Sat Nov 10 12:55:00 2012
-- Updated README
-- Updated images/06_Shared_Sockets.gif
-- Updated images/10_Scaling_Pings.gif
-- Added   images/11_SNMP_Collection.gif
-- Small update to MCE::Signal
+1.004 Mon Nov 12 01:50:00 EST 2012
+    * Updated examples/mce_usage.readme
+    * Updated examples/wide_finder.pl
+    * Added examples/tbray/README
+    * Added examples/tbray/tbray_baseline1.pl
+    * Added examples/tbray/tbray_baseline2.pl
+    * Added examples/tbray/wf_mce1.pl
+    * Added examples/tbray/wf_mce2.pl
+    * Added examples/tbray/wf_mce3.pl (../wide_finder.pl moved here)
+    * Added examples/tbray/wf_mmap.pl
 
-1.002 Thu Nov 08 01:13:10 2012
-- Renamed continue method to next
+1.003 Sat Nov 10 12:55:00 EST 2012
+    * Updated README
+    * Updated images/06_Shared_Sockets.gif
+    * Updated images/10_Scaling_Pings.gif
+    * Added   images/11_SNMP_Collection.gif
+    * Small update to MCE::Signal
 
-1.001 Wed Nov 07 23:58:20 2012
-- Added perl-MCE.spec to trunk
-  http://code.google.com/p/many-core-engine-perl/source/browse/trunk/
-- Added CREDITS
-- Added 3 new methods to MCE.pm: continue, last, and exit
-- Both foreach & forchunk now call run(1, {...}) to auto-shutdown workers
+1.002 Thu Nov 08 01:13:10 EST 2012
+    * Renamed continue method to next
 
-1.000 Mon Nov 05 10:00:00 2012
-- First release
+1.001 Wed Nov 07 23:58:20 EST 2012
+    * Added perl-MCE.spec to trunk
+      http://code.google.com/p/many-core-engine-perl/source/browse/trunk/
+    * Added CREDITS
+    * Added 3 new methods to MCE.pm: continue, last, and exit
+    * Both foreach & forchunk now call run(1, {...}) to auto-shutdown workers
+
+1.000 Mon Nov 05 10:00:00 EST 2012
+    * First release
 

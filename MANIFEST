@@ -7,6 +7,7 @@ README
 CHANGES
 TODO
 lib/MCE.pm
+lib/MCE.pod
 lib/MCE/Signal.pm
 examples/cat.pl
 examples/egrep.pl

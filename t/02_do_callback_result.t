@@ -1,5 +1,8 @@
 #!/usr/bin/env perl
 
+use strict;
+use warnings;
+
 use Test::More tests => 5;
 
 use MCE;
@@ -63,7 +66,7 @@ sub callback4 {
 
 sub callback5 {
    my $a_ref = $_[0];
-   my $h = ();
+   my %h = ();
 
    @ans = ();
 

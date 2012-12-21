@@ -1,5 +1,5 @@
 Name:           perl-MCE
-Version:        1.200
+Version:        1.201
 Release:        1%{?dist}
 Summary:        Many-Core Engine for Perl. Provides parallel processing capabilities.
 License:        CHECK(Distributable)
@@ -12,12 +12,11 @@ Requires:       perl(:MODULE_COMPAT_%(eval "`%{__perl} -V:version`"; echo $versi
 
 %description
 Many-core Engine (MCE) for Perl helps enable a new level of performance by
-maximizing all available cores. One immediate benefit is that MCE does not
-fork a new worker process per each element in an array. Instead, MCE
-follows a bank queuing model. Imagine the line being the data and bank-
-tellers the parallel workers. MCE enhances that model by adding the
-ability to chunk the next n elements from the input stream to the next
-available worker.
+maximizing all available cores. MCE spawns a pool of workers and therefore
+does not fork a new process per each element of data. Instead, MCE follows
+a bank queuing model. Imagine the line being the data and bank-tellers the
+parallel workers. MCE enhances that model by adding the ability to chunk
+the next n elements from the input stream to the next available worker.
 
 %prep
 %setup -q -n MCE-%{version}
@@ -57,6 +56,12 @@ rm -rf $RPM_BUILD_ROOT
 %{_mandir}/man3/*
 
 %changelog
+* Fri Dec 21 2012 Mario Roy 1.201-1
+- Added MCE.pod -- moved documentation from MCE.pm to pod file
+- Added missing use strict/warnings to test scripts
+- Default to 1 for chunk_size and max_workers if not specified
+- Test::More is not a requirement to run MCE, only for building
+- Changed the format for the change log file
 * Thu Dec 20 2012 Mario Roy 1.200-1
 - Added new user_tasks option
 - Added space between method name and left-paren for header lines in POD
