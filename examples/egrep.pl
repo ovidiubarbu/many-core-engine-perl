@@ -16,22 +16,10 @@
 use strict;
 use warnings;
 
-use Cwd qw( abs_path );
+use FindBin;
+use lib "$FindBin::Bin/../lib";
 
-our ($prog_name, $prog_dir, $base_dir);
-
-BEGIN {
-   $ENV{PATH} = "/usr/bin:/bin:/usr/sbin:/sbin:$ENV{PATH}";
-
-   $prog_name = $0;                    ## prog name
-   $prog_name =~ s{^.*[\\/]}{}g;
-   $prog_dir  = abs_path($0);          ## prog dir
-   $prog_dir  =~ s{[\\/][^\\/]*$}{};
-   $base_dir  = $prog_dir;             ## base dir
-   $base_dir  =~ s{[\\/][^\\/]*$}{};
-
-   unshift @INC, "$base_dir/lib";
-}
+my $prog_name = $0; $prog_name =~ s{^.*[\\/]}{}g;
 
 INIT {
    ## Provide file globbing support under Windows similar to Unix.
