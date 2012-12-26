@@ -394,10 +394,10 @@ Methods listed below are callable by the main process only.
    $mce->process($array_ref, { stdout_file => $output_file });
    $mce->shutdown();
 
-=head2 respawn_worker ( $wid )
+=head2 restart_worker ( $wid )
 
-   ## One can respawn a worker who has died or exited.
-   ## The job never ends below due to respawning each time.
+   ## One can restart a worker who has died or exited.
+   ## The job never ends below due to restarting each time.
    ## It's recommended to specify the same wid which has exited.
    ## Press ctrl-c to exit.
 
@@ -406,7 +406,7 @@ Methods listed below are callable by the main process only.
       on_post_exit => sub {
          my ($self, $wid, $pid, $status, $msg, $id) = @_;
          print "$wid: $pid: status $status: $msg";
-         $self->respawn_worker($wid);
+         $self->restart_worker($wid);
       },
 
       user_begin => sub {
