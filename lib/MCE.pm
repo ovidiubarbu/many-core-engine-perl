@@ -179,7 +179,7 @@ sub new {
 
    my $self = { };
 
-   bless $self, $class;
+   bless($self, ref($class) || $class);
 
    ## Public options.
    $self->{tmp_dir}      = $argv{tmp_dir}      || $_mce_tmp_dir;
