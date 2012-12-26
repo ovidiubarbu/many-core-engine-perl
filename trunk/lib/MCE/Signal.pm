@@ -328,11 +328,7 @@ sub _die_handler {
    shift @_ if (defined $_[0] && $_[0] eq 'MCE::Signal');
 
    local $SIG{__DIE__} = sub { };
-
-   ## Display die message with localtime.
-
-   local $\ = undef; my $_time_stamp = localtime();
-   print STDERR "## $_time_stamp: $prog_name: ERROR:\n", $_[0];
+   local $\ = undef; print STDERR $_[0];
 
    MCE::Signal->stop_and_exit('__DIE__');
 }
@@ -341,15 +337,15 @@ sub _warn_handler {
 
    shift @_ if (defined $_[0] && $_[0] eq 'MCE::Signal');
 
-   ## Display warning message with localtime. Ignore thread exiting messages
-   ## coming from the user or OS signaling the script to exit.
+   ## Ignore thread warnings during exiting.
 
-   unless ($_[0] =~ /^A thread exited while \d+ threads were running/) {
-      unless ($_[0] =~ /^Perl exited with active threads/) {
-         local $\ = undef; my $_time_stamp = localtime();
-         print STDERR "## $_time_stamp: $prog_name: WARNING:\n", $_[0];
-      }
-   }
+   return if (
+      $_[0] =~ /^Attempt to free unreferenced scalar/            ||
+      $_[0] =~ /^A thread exited while \d+ threads were running/ ||
+      $_[0] =~ /^Perl exited with active threads/
+   );
+
+   local $\ = undef; print STDERR $_[0];
 }
 
 1;
