@@ -14,6 +14,7 @@ use Fcntl qw( :flock );
 use base qw( Exporter );
 
 require File::Path;
+require POSIX;
 
 our ($has_threads, $main_proc_id, $prog_name);
 
@@ -120,8 +121,9 @@ $SIG{CHLD} = 'DEFAULT' if ($^O ne 'MSWin32');
 our $mce_spawned_ref = undef;
 
 END {
-   MCE::Signal->_shutdown_mce();
-   MCE::Signal->stop_and_exit($?) if ($$ == $main_proc_id || $? != 0);
+   my $_exit_status = $?;
+   MCE::Signal->_shutdown_mce($_exit_status);
+   MCE::Signal->stop_and_exit($_exit_status) if ($$ == $main_proc_id);
 }
 
 ###############################################################################
@@ -292,7 +294,7 @@ sub sys_cmd {
       }
 
       threads->exit($_exit_status) if ($has_threads && threads->can('exit'));
-      CORE::exit($_exit_status);
+      POSIX::_exit($_exit_status);
    }
 }
 
@@ -305,15 +307,22 @@ sub sys_cmd {
 
 sub _shutdown_mce {
 
+   shift @_ if (defined $_[0] && $_[0] eq 'MCE::Signal');
+   my $_exit_status = $_[0] || $?;
+
    if (defined $mce_spawned_ref) {
       my $_tid = ($has_threads) ? threads->tid() : '';
       $_tid = '' unless defined $_tid;
 
       foreach my $_mce_sid (keys %{ $mce_spawned_ref }) {
-         if ($_mce_sid =~ /\A$$\.$_tid\./) {
-            $mce_spawned_ref->{$_mce_sid}->shutdown();
-            delete $mce_spawned_ref->{$_mce_sid};
+         if ($mce_spawned_ref->{$_mce_sid}->wid()) {
+            $mce_spawned_ref->{$_mce_sid}->exit($_exit_status);
          }
+         else {
+            $mce_spawned_ref->{$_mce_sid}->shutdown()
+               if ($_mce_sid =~ /\A$$\.$_tid\./);
+         }
+         delete $mce_spawned_ref->{$_mce_sid};
       }
    }
 }

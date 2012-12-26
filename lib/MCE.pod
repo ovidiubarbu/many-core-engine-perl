@@ -82,6 +82,16 @@ have many workers run in parallel.
           ## For example, use job_delay when wanting to stagger
           ## many workers connecting to a database.
 
+      on_post_exit => \&on_post_exit,    ## Default is undef
+      on_post_run  => \&on_post_run,     ## Default is undef
+
+          ## Execute code block immediately after a worker exits
+          ## (exit, $self->exit, or die). Execute code block after
+          ## running a job ($self->process or $self->run).
+
+          ## One can take action immediately after a worker exits
+          ## or wait till after the job has completed.
+
       user_begin   => \&user_begin,      ## Default is undef
       user_func    => \&user_func,       ## Default is undef
       user_end     => \&user_end,        ## Default is undef
@@ -178,6 +188,30 @@ have many workers run in parallel.
    ## Shutdown workers afterwards.
 
    $mce->shutdown();
+
+=head2 SYNTAX for ON_POST_EXIT
+
+   ## Executed following a worker exiting (exit, $self->exit, or die).
+   ## e.g. $pid: PID_1234 or THR_123
+
+   sub on_post_exit {
+
+      my ($self, $wid, $pid, $status, $msg, $id) = @_;
+
+   }
+
+=head2 SYNTAX for ON_POST_RUN
+
+   ## Executed after running ($self->process or $self->run).
+
+   sub on_post_run {
+
+      my ($self, $status_ref) = @_;
+
+      foreach my $h ( @{ $status_ref } ) {
+         print "$h->{wid}: $h->{pid}: $h->{status}: $h->{msg}: $h->{id}\n";
+      }
+   }
 
 =head2 SYNTAX for USER_BEGIN and USER_END
 
@@ -345,8 +379,8 @@ Methods listed below are callable by the main process only.
    ## Allowable options { key => value, ... } are:
    ##   chunk_size input_data job_delay spawn_delay submit_delay
    ##   flush_file flush_stderr flush_stdout stderr_file stdout_file
-   ##   user_begin user_end user_func user_error user_output
-   ##   use_slurpio
+   ##   on_post_exit on_post_run user_begin user_end user_func
+   ##   user_error user_output use_slurpio
    ##
    ## Options remain persistent going forward unless changed. Setting
    ## user_begin, user_end, or user_func will cause already spawned
@@ -435,11 +469,13 @@ Methods listed below are callable by workers only.
    my %hash   = $self->do('callback' [, $arg1, ... ]);
    my $scalar = $self->do('callback' [, $arg1, ... ]);
 
-=head2 exit ( void )
+=head2 exit ( [ $status [, $message [, $id ] ] ] )
 
    ## The worker exits the current job.
 
-   $self->exit();
+   $self->exit();          ## default is 0
+   $self->exit(1);
+   $self->exit(2, 'error: entire chunk failed', $chunk_id);
 
 =head2 last ( void )
 

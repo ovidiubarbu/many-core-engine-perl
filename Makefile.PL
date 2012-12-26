@@ -16,34 +16,38 @@ WriteMakefile(
    ABSTRACT       => 'Many-Core Engine for Perl. Provides parallel processing capabilities.',
    AUTHOR         => 'Mario E. Roy <marioeroy AT gmail DOT com>',
 
-   PREREQ_PM      => {
+   PREREQ_PM => {
       'Fcntl'      => 0,
+      'File::Path' => 0,
+      'POSIX'      => 0,
       'Socket'     => 0,
-      'Storable'   => 2.04,
-      'File::Path' => 0
+      'Storable'   => 2.04
    },
 
    (($ExtUtils::MakeMaker::VERSION lt '6.25') ?
-      (PL_FILES   => { })            : ()),
+      (PL_FILES => { }) : ()),
 
    (($ExtUtils::MakeMaker::VERSION ge '6.30') ?
-      (LICENSE    => 'perl')         : ()),
+      (LICENSE => 'perl') : ()),
 
    (($ExtUtils::MakeMaker::VERSION ge '6.46') ?
       (META_MERGE => {
          build_requires => {
-            'Test::More' => 0.45
+            'Pod::Coverage'       => 0,
+            'Test::More'          => 0.45,
+            'Test::Pod'           => 0,
+            'Test::Pod::Coverage' => 0
          },
-         requires  => {
-            'perl'       => 5.008000
+         requires => {
+            'perl' => 5.008000
          },
          resources => {
             'homepage'   => 'http://code.google.com/p/many-core-engine-perl/',
             'repository' => 'http://code.google.com/p/many-core-engine-perl/',
             'license'    => 'http://dev.perl.org/licenses/'
          }
-      })                             : ()),
+      }) : ()),
 
-   INSTALLDIRS    => (($] < 5.011) ? 'perl' : 'site')
+   INSTALLDIRS => (($] < 5.011) ? 'perl' : 'site')
 );
 
