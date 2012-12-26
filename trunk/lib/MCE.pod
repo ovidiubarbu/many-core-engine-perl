@@ -124,7 +124,7 @@ have many workers run in parallel.
           ## Flush sendto file, standard error, or standard output.
    );
 
-=head2 USER_TASKS OPTION
+=head2 USER_TASKS
 
    ## The 1.200 release introduces a new option to allow for flexible
    ## workers. The user_tasks option takes an array of tasks. Each task
@@ -238,7 +238,7 @@ have many workers run in parallel.
          $self->wid(), $self->{wk_total_rows};
    }
 
-=head2 SYNTAX for USER_FUNC with use_slurpio => 0 option
+=head2 SYNTAX for USER_FUNC with USE_SLURPIO => 0
 
    ## MCE passes a reference to an array containing the chunk data.
 
@@ -252,7 +252,7 @@ have many workers run in parallel.
       }
    }
 
-=head2 SYNTAX for USER_FUNC with use_slurpio => 1 option
+=head2 SYNTAX for USER_FUNC with USE_SLURPIO => 1
 
    ## MCE passes a reference to a scalar containing the raw chunk data.
 
@@ -660,7 +660,7 @@ MCE comes with various examples showing real-world use case scenarios on
 parallelizing something as small as cat (try with -n) to greping for
 patterns and word count aggregation.
 
-=head2 INCLUDED WITH DISTRIBUTION
+=head2 INCLUDED with DISTRIBUTION
 
    cat.pl    Concatenation script, similar to the cat binary.
    egrep.pl  Egrep script, similar to the egrep binary.
@@ -741,7 +741,7 @@ patterns and word count aggregation.
 
    $mce->run();
 
-=head3 FOREACH SUGAR METHOD
+=head3 FOREACH sugar METHOD
 
    ## Compute via MCE. Foreach implies chunk_size => 1.
 
@@ -814,7 +814,7 @@ patterns and word count aggregation.
 
    $mce->run();
 
-=head3 FORCHUNK SUGAR METHOD
+=head3 FORCHUNK sugar METHOD
 
    ## Compute via MCE.
 
