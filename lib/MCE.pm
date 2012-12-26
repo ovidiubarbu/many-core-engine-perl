@@ -81,7 +81,7 @@ INIT {
    }
 }
 
-our $VERSION = '1.202_001';
+our $VERSION = '1.201_002';
 $VERSION = eval $VERSION;
 
 ###############################################################################
@@ -137,7 +137,7 @@ my %_valid_fields = map { $_ => 1 } qw(
    flush_file flush_stderr flush_stdout stderr_file stdout_file
    job_delay spawn_delay submit_delay tmp_dir user_tasks task_end
    user_begin user_end user_func user_error user_output
-   on_exit_post on_run_post
+   on_post_exit on_post_run
 
    _mce_sid _mce_tid _pids _sess_dir _spawned _task0_max_workers _thrs _tids
    _com_r_sock _com_w_sock _dat_r_sock _dat_w_sock _out_r_sock _out_w_sock
@@ -149,7 +149,7 @@ my %_params_allowed_args = map { $_ => 1 } qw(
    chunk_size input_data job_delay spawn_delay submit_delay use_slurpio
    flush_file flush_stderr flush_stdout stderr_file stdout_file
    user_begin user_end user_func user_error user_output
-   on_exit_post on_run_post
+   on_post_exit on_post_run
 );
 
 my $_is_cygwin   = ($^O eq 'cygwin');
@@ -210,8 +210,8 @@ sub new {
    $self->{job_delay}    = $argv{job_delay}    || undef;
    $self->{spawn_delay}  = $argv{spawn_delay}  || undef;
    $self->{submit_delay} = $argv{submit_delay} || undef;
-   $self->{on_exit_post} = $argv{on_exit_post} || undef;
-   $self->{on_run_post}  = $argv{on_run_post}  || undef;
+   $self->{on_post_exit} = $argv{on_post_exit} || undef;
+   $self->{on_post_run}  = $argv{on_post_run}  || undef;
    $self->{user_begin}   = $argv{user_begin}   || undef;
    $self->{user_func}    = $argv{user_func}    || undef;
    $self->{user_end}     = $argv{user_end}     || undef;
@@ -1264,10 +1264,10 @@ sub _validate_args {
    _croak "$_tag: 'submit_delay' is not valid"
       if ($_s->{submit_delay} && $_s->{submit_delay} !~ /\A[\d\.]+\z/);
 
-   _croak "$_tag: 'on_exit_post' is not a CODE reference"
-      if ($_s->{on_exit_post} && ref $_s->{on_exit_post} ne 'CODE');
-   _croak "$_tag: 'on_run_post' is not a CODE reference"
-      if ($_s->{on_run_post} && ref $_s->{on_run_post} ne 'CODE');
+   _croak "$_tag: 'on_post_exit' is not a CODE reference"
+      if ($_s->{on_post_exit} && ref $_s->{on_post_exit} ne 'CODE');
+   _croak "$_tag: 'on_post_run' is not a CODE reference"
+      if ($_s->{on_post_run} && ref $_s->{on_post_run} ne 'CODE');
    _croak "$_tag: 'user_begin' is not a CODE reference"
       if ($_s->{user_begin} && ref $_s->{user_begin} ne 'CODE');
    _croak "$_tag: 'user_func' is not a CODE reference"
@@ -1519,7 +1519,7 @@ sub _validate_args {
 
    my ($_has_user_tasks, $_task_id, @_task_max_workers);
    my ($_exit_wid, $_exit_pid, $_exit_status, $_exit_id);
-   my ($_on_exit_post, $_on_run_post);
+   my ($_on_post_exit, $_on_post_run);
 
    ## Create hash structure containing various output functions.
    my %_output_function = (
@@ -1578,15 +1578,15 @@ sub _validate_args {
             }
          }
 
-         ## Call on_exit_post callback if defined. Otherwise, append status
-         ## information if on_run_post is defined for later retrieval.
-         if (defined $_on_exit_post) {
-            $_on_exit_post->(
+         ## Call on_post_exit callback if defined. Otherwise, append status
+         ## information if on_post_run is defined for later retrieval.
+         if (defined $_on_post_exit) {
+            $_on_post_exit->(
                $self, $_exit_wid, $_exit_pid, $_exit_status,
                $_exit_msg, $_exit_id
             );
          }
-         elsif (defined $_on_run_post) {
+         elsif (defined $_on_post_run) {
             push @{ $self->{_status} }, {
                wid    => $_exit_wid,
                pid    => $_exit_pid,
@@ -1863,8 +1863,8 @@ sub _validate_args {
 
       die "Private method called" unless (caller)[0]->isa( ref($self) );
 
-      $_on_exit_post = $self->{on_exit_post};
-      $_on_run_post  = $self->{on_run_post};
+      $_on_post_exit = $self->{on_post_exit};
+      $_on_post_run  = $self->{on_post_run};
       $_chunk_size   = $self->{chunk_size};
       $_flush_file   = $self->{flush_file};
       $_max_workers  = $self->{max_workers};
@@ -1948,8 +1948,8 @@ sub _validate_args {
          }
       }
 
-      ## Call on_run_post callback.
-      $_on_run_post->($self, $self->{_status}) if (defined $_on_run_post);
+      ## Call on_post_run callback.
+      $_on_post_run->($self, $self->{_status}) if (defined $_on_post_run);
 
       @_task_max_workers = undef if ($_has_user_tasks);
 
@@ -2447,7 +2447,7 @@ sub _worker_main {
    ## Undef vars not required after being spawned.
    $self->{_com_r_sock}  = $self->{_dat_r_sock}  = $self->{_out_r_sock} = undef;
    $self->{flush_stderr} = $self->{flush_stdout} = undef;
-   $self->{on_exit_post} = $self->{on_run_post}  = undef;
+   $self->{on_post_exit} = $self->{on_post_run}  = undef;
    $self->{stderr_file}  = $self->{stdout_file}  = undef;
    $self->{user_error}   = $self->{user_output}  = undef;
    $self->{flush_file}   = undef;
