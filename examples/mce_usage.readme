@@ -131,7 +131,7 @@
    );
 
    -------------------------------------------------------------------------
-   USER_TASKS OPTION
+   USER_TASKS
    -------------------------------------------------------------------------
 
    ## The 1.200 release introduces a new option to allow for flexible
@@ -255,7 +255,7 @@
    }
 
    -------------------------------------------------------------------------
-   SYNTAX for USER_FUNC with use_slurpio => 0 option
+   SYNTAX for USER_FUNC with USE_SLURPIO => 0
    -------------------------------------------------------------------------
 
    ## MCE passes a reference to an array containing the chunk data.
@@ -271,7 +271,7 @@
    }
 
    -------------------------------------------------------------------------
-   SYNTAX for USER_FUNC with use_slurpio => 1 option
+   SYNTAX for USER_FUNC with USE_SLURPIO => 1
    -------------------------------------------------------------------------
 
    ## MCE passes a reference to a scalar containing the raw chunk data.
@@ -723,7 +723,7 @@
    patterns and word count aggregation.
 
    -------------------------------------------------------------------------
-   INCLUDED WITH DISTRIBUTION
+   INCLUDED with DISTRIBUTION
    -------------------------------------------------------------------------
 
    cat.pl    Concatenation script, similar to the cat binary.
@@ -808,7 +808,7 @@
    $mce->run();
 
    --------------------
-   FOREACH SUGAR METHOD
+   FOREACH sugar METHOD
    --------------------
 
    ## Compute via MCE. Foreach implies chunk_size => 1.
@@ -885,7 +885,7 @@
    $mce->run();
 
    ---------------------
-   FORCHUNK SUGAR METHOD
+   FORCHUNK sugar METHOD
    ---------------------
 
    ## Compute via MCE.
