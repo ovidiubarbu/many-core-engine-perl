@@ -189,7 +189,7 @@ have many workers run in parallel.
 
    $mce->shutdown();
 
-=head2 SYNTAX for ON_POST_EXIT
+=head2 SYNTAX for ON_EXIT_POST
 
    ## Executed following a worker exiting (exit, $self->exit, or die).
    ## e.g. $pid: PID_1234 or THR_123
@@ -200,7 +200,7 @@ have many workers run in parallel.
 
    }
 
-=head2 SYNTAX for ON_POST_RUN
+=head2 SYNTAX for ON_RUN_POST
 
    ## Executed after running ($self->process or $self->run).
 
