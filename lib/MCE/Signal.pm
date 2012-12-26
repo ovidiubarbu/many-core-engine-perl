@@ -21,7 +21,7 @@ BEGIN {
    $main_proc_id = $$; $prog_name = $0; $prog_name =~ s{^.*[\\/]}{}g;
 }
 
-our $VERSION = '1.201_001';
+our $VERSION = '1.202_001';
 $VERSION = eval $VERSION;
 
 our $tmp_dir = undef;
