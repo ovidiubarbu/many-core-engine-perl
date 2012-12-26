@@ -102,7 +102,6 @@ use constant {
    QUE_READ_SIZE    => $_que_read_size,  ## Read size
 
    OUTPUT_W_DNE     => ':W~DNE',         ## Worker has completed job
-   OUTPUT_W_END     => ':W~END',         ## Worker has ended prematurely
    OUTPUT_W_EXT     => ':W~EXT',         ## Worker has exited
    OUTPUT_A_ARY     => ':A~ARY',         ## Array  << Array
    OUTPUT_S_GLB     => ':S~GLB',         ## Scalar << Glob FH
@@ -189,7 +188,6 @@ sub new {
 
    if (exists $argv{use_threads}) {
       $self->{use_threads} = $argv{use_threads};
-
       if (!$_has_threads && $argv{use_threads} ne '0') {
          my $_msg  = "\n";
             $_msg .= "## Please include threads support prior to loading MCE\n";
@@ -1424,19 +1422,13 @@ sub _validate_args {
    my ($_callback, $_file, %_sendto_fhs, $_len);
 
    my ($_DAT_R_SOCK, $_OUT_R_SOCK, $_MCE_STDERR, $_MCE_STDOUT);
-   my ($_I_SEP, $_O_SEP, $_total_ended, $_input_glob, $_chunk_size);
+   my ($_I_SEP, $_O_SEP, $_input_glob, $_chunk_size);
    my ($_input_size, $_offset_pos, $_single_dim, $_use_slurpio);
 
    my ($_total_exited, $_has_user_tasks, $_task_id, @_task_max_workers);
 
    ## Create hash structure containing various output functions.
    my %_output_function = (
-
-      OUTPUT_W_EXT.$LF => sub {                   ## Worker has exited job
-         $_total_exited += 1;
-
-         return;
-      },
 
       OUTPUT_W_DNE.$LF => sub {                   ## Worker has completed job
          $_total_workers -= 1;
@@ -1455,9 +1447,10 @@ sub _validate_args {
          return;
       },
 
-      OUTPUT_W_END.$LF => sub {                   ## Worker has ended
-         $_total_workers -= 1;                    ## prematurely
-         $_total_ended   += 1;
+      ## ----------------------------------------------------------------------
+
+      OUTPUT_W_EXT.$LF => sub {                   ## Worker has exited job
+         $_total_exited += 1;
 
          return;
       },
@@ -1734,7 +1727,7 @@ sub _validate_args {
       $_user_error   = $self->{user_error};
       $_single_dim   = $self->{_single_dim};
 
-      $_total_ended  = $_total_exited = $_eof_flag = 0;
+      $_total_exited = $_eof_flag = 0;
       $_has_user_tasks = (defined $self->{user_tasks});
 
       if ($_has_user_tasks) {
@@ -1823,15 +1816,7 @@ sub _validate_args {
       close $_MCE_STDERR; undef $_MCE_STDERR;
 
       ## Shutdown all workers if one or more have exited.
-      if ($_total_exited > 0 && $_total_ended == 0) {
-         $self->shutdown();
-      }
-
-      ## Shutdown all workers if one or more have ended prematurely.
-      if ($_total_ended > 0) {
-         warn("[ $_total_ended ] workers ended prematurely\n");
-         $self->shutdown();
-      }
+      $self->shutdown() if ($_total_exited > 0);
 
       return;
    }
@@ -2248,22 +2233,6 @@ sub _worker_loop {
       $self->_worker_do($_params_ref);
       undef $_params_ref;
    }
-
-   ## -------------------------------------------------------------------------
-
-   ## Notify the main process a worker has ended. This code block is only
-   ## executed if an invalid reply was received above.
-
-   local $\ = undef;
-   flock $_COM_LOCK, LOCK_UN;
-
-   select STDOUT;
-
-   my $_OUT_W_SOCK = $self->{_out_w_sock};
-   print $_OUT_W_SOCK OUTPUT_W_END, $LF;
-
-   ## Pause before returning.
-   select(undef, undef, undef, 0.08 + (0.01 * $self->{max_workers}));
 
    return 1;
 }
