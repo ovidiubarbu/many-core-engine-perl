@@ -219,7 +219,6 @@ sub new {
    $self->{flush_stdout} = $argv{flush_stdout} || 0;
    $self->{stderr_file}  = $argv{stderr_file}  || undef;
    $self->{stdout_file}  = $argv{stdout_file}  || undef;
-
    $self->{user_tasks}   = $argv{user_tasks}   || undef;
    $self->{task_end}     = $argv{task_end}     || undef;
 
@@ -317,10 +316,6 @@ sub spawn {
 
    my $_die_handler  = $SIG{__DIE__};  $SIG{__DIE__}  = \&_die;
    my $_warn_handler = $SIG{__WARN__}; $SIG{__WARN__} = \&_warn;
-
-   ## Delay spawning.
-   select(undef, undef, undef, $self->{spawn_delay})
-      if ($self->{spawn_delay} && $self->{spawn_delay} > 0.0);
 
    ## Configure tid/sid for this instance here, not in the new method above.
    ## We want the actual thread id in which spawn was called under.
@@ -645,10 +640,6 @@ sub run {
 
    local $SIG{__DIE__}  = \&_die;
    local $SIG{__WARN__} = \&_warn;
-
-   ## Delay job.
-   select(undef, undef, undef, $self->{job_delay})
-      if ($self->{job_delay} && $self->{job_delay} > 0.0);
 
    ## Local vars.
    my ($_input_data, $_input_file, $_input_glob);
@@ -2205,8 +2196,10 @@ sub _worker_loop {
    die "Private method called" unless (caller)[0]->isa( ref($self) );
 
    my ($_response, $_len, $_buffer, $_params_ref);
+
    my $_COM_W_SOCK = $self->{_com_w_sock};
-   my $_wid = $self->{_wid};
+   my $_job_delay  = $self->{job_delay};
+   my $_wid        = $self->{_wid};
  
    while (1) {
 
@@ -2248,6 +2241,10 @@ sub _worker_loop {
 
       ## Update ID. Process request.
       $self->{_wid} = $_response unless (defined $self->{user_tasks});
+
+      select(undef, undef, undef, $_job_delay * $_wid)
+         if ($_job_delay && $_job_delay > 0.0);
+
       $self->_worker_do($_params_ref);
       undef $_params_ref;
    }
@@ -2356,6 +2353,9 @@ sub _dispatch_child {
 
    die "Private method called" unless (caller)[0]->isa( ref($self) );
 
+   select(undef, undef, undef, $self->{spawn_delay})
+      if ($self->{spawn_delay} && $self->{spawn_delay} > 0.0);
+
    my $_pid = fork();
 
    _croak "MCE::_dispatch_child: Failed to spawn worker $_wid: $!"
@@ -2391,6 +2391,9 @@ sub _dispatch_thread {
    @_ = ();
 
    die "Private method called" unless (caller)[0]->isa( ref($self) );
+
+   select(undef, undef, undef, $self->{spawn_delay})
+      if ($self->{spawn_delay} && $self->{spawn_delay} > 0.0);
 
    my $_thr = threads->create(
       \&_worker_main, $self, $_wid, $_task, $_task_id

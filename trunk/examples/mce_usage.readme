@@ -78,14 +78,15 @@
           ##
           ##    use MCE                       use MCE;
 
-      job_delay    => 0.035,             ## Default is undef
-      spawn_delay  => 0.150,             ## Default is undef
-      submit_delay => 0.001,             ## Default is undef
+      spawn_delay  => 0.035,             ## Default is undef
+      submit_delay => 0.002,             ## Default is undef
+      job_delay    => 0.150,             ## Default is undef
 
-          ## Time to wait, in fractional seconds, before processing
-          ## job, spawning workers, and parameters submission to
-          ## workers. Use submit_delay if wanting to stagger many
-          ## workers connecting to a database.
+          ## Time to wait, in fractional seconds, before spawning
+          ## each worker, parameters submission to each worker,
+          ## and job commencement (staggered) for each worker.
+          ## For example, use job_delay when wanting to stagger
+          ## many workers connecting to a database.
 
       user_begin   => \&user_begin,      ## Default is undef
       user_func    => \&user_func,       ## Default is undef
