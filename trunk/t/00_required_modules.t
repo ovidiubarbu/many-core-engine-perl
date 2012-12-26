@@ -3,7 +3,8 @@
 use strict;
 use warnings;
 
-use Test::More tests => 4;
+use Test::More tests => 4+1;
+use Test::NoWarnings;
 
 ## The following are minimum Perl modules required by MCE
 

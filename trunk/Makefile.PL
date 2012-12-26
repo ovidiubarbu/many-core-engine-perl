@@ -36,6 +36,7 @@ WriteMakefile(
          build_requires => {
             'Pod::Coverage'       => 0,
             'Test::More'          => 0.45,
+            'Test::NoWarnings'    => 0,
             'Test::Pod'           => 0,
             'Test::Pod::Coverage' => 0
          },
