@@ -614,23 +614,23 @@ sub process {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Respawn Worker Routine.
+## Restart Worker Routine.
 ##
 ###############################################################################
 
-sub respawn_worker {
+sub restart_worker {
 
    my MCE $self = $_[0];
    my $_wid     = $_[1];
 
-   _croak("MCE::foreach: method cannot be called by the worker process")
+   _croak("MCE::restart_worker: method cannot be called by the worker process")
       if ($self->wid());
 
    @_ = ();
 
-   _croak("MCE::respawn_worker: 'wid' is not specified")
+   _croak("MCE::restart_worker: 'wid' is not specified")
       unless (defined $_wid);
-   _croak("MCE::respawn_worker: 'wid' is not valid")
+   _croak("MCE::restart_worker: 'wid' is not valid")
       unless (defined $self->{_state}->[$_wid]);
 
    my $_params  = $self->{_state}->[$_wid]->{_params};

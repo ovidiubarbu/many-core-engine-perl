@@ -431,11 +431,11 @@
    $mce->shutdown();
 
    -------------------------------------------------------------------------  
-   respawn_worker ( $wid )
+   restart_worker ( $wid )
    -------------------------------------------------------------------------
 
-   ## One can respawn a worker who has died or exited.
-   ## The job never ends below due to respawning each time.
+   ## One can restart a worker who has died or exited.
+   ## The job never ends below due to restarting each time.
    ## It's recommended to specify the same wid which has exited.
    ## Press ctrl-c to exit.
 
@@ -444,7 +444,7 @@
       on_post_exit => sub {
          my ($self, $wid, $pid, $status, $msg, $id) = @_;
          print "$wid: $pid: status $status: $msg";
-         $self->respawn_worker($wid);
+         $self->restart_worker($wid);
       },
 
       user_begin => sub {
