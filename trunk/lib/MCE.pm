@@ -847,8 +847,18 @@ sub shutdown {
    flock $_DAT_LOCK, LOCK_UN;
 
    ## Reap children/threads.
-   waitpid $_, 0 for ( @{ $self->{_pids} } );
-   $$_->join()   for ( @{ $self->{_thrs} } );
+   if ( $self->{_pids} && @{ $self->{_pids} } > 0 ) {
+      my $_list = $self->{_pids};
+      for my $i (0 .. @$_list) {
+         waitpid $_list->[$i], 0 if ($_list->[$i]);
+      }
+   }
+   if ( $self->{_thrs} && @{ $self->{_thrs} } > 0 ) {
+      my $_list = $self->{_thrs};
+      for my $i (0 .. @$_list) {
+         ${ $_list->[$i] }->join() if ($_list->[$i]);
+      }
+   }
 
    close $_DAT_LOCK; undef $_DAT_LOCK;
 
@@ -1485,6 +1495,29 @@ sub _validate_args {
          chomp($_len         = <$_DAT_R_SOCK>);
 
          read $_DAT_R_SOCK, $_exit_msg, $_len if ($_len);
+
+         ## Reap child/thread. Note: Win32 uses negative PIDs.
+         if ($_exit_pid =~ /^PID_(-?\d+)/) {
+            my $_pid = $1; my $_list = $self->{_pids};
+            for my $i (0 .. @$_list) {
+               if ($_list->[$i] && $_list->[$i] == $_pid) {
+                  waitpid $_pid, 0;
+                  $self->{_pids}->[$i] = undef;
+                  last;
+               }
+            }
+         }
+         elsif ($_exit_pid =~ /^TID_(\d+)/) {
+            my $_tid = $1; my $_list = $self->{_tids};
+            for my $i (0 .. @$_list) {
+               if ($_list->[$i] && $_list->[$i] == $_tid) {
+                  ${ $self->{_thrs}->[$i] }->join();
+                  $self->{_thrs}->[$i] = undef;
+                  $self->{_tids}->[$i] = undef;
+                  last;
+               }
+            }
+         }
 
          ## Append status information.
          push @{ $self->{_status} }, {
