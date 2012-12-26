@@ -614,6 +614,45 @@ sub process {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
+## Respawn Worker Routine.
+##
+###############################################################################
+
+sub respawn_worker {
+
+   my MCE $self = $_[0];
+   my $_wid     = $_[1];
+
+   _croak("MCE::foreach: method cannot be called by the worker process")
+      if ($self->wid());
+
+   @_ = ();
+
+   _croak("MCE::respawn_worker: 'wid' is not specified")
+      unless (defined $_wid);
+   _croak("MCE::respawn_worker: 'wid' is not valid")
+      unless (defined $self->{_state}->[$_wid]);
+
+   my $_params  = $self->{_state}->[$_wid]->{_params};
+   my $_task_id = $self->{_state}->[$_wid]->{_task_id};
+   my $_task    = $self->{_state}->[$_wid]->{_task};
+
+   my $_use_threads = (defined $_task->{use_threads})
+      ? $_task->{use_threads} : $self->{use_threads};
+
+   if (defined $_use_threads && $_use_threads == 1) {
+      $self->_dispatch_thread($_wid, $_task, $_task_id, $_params);
+      $self->{_total_exited} -= 1; $self->{_total_workers} += 1;
+   } else {
+      $self->_dispatch_child($_wid, $_task, $_task_id, $_params);
+      $self->{_total_exited} -= 1; $self->{_total_workers} += 1;
+   }
+
+   return;
+}
+
+###############################################################################
+## ----------------------------------------------------------------------------
 ## Run Routine.
 ##
 ###############################################################################
@@ -2362,6 +2401,7 @@ sub _worker_main {
    my $_wid     = $_[1];
    my $_task    = $_[2];
    my $_task_id = $_[3];
+   my $_params  = $_[4];
 
    @_ = ();
 
@@ -2416,8 +2456,17 @@ sub _worker_main {
    }
 
    ## Wait until MCE completes spawning.
-   flock $_COM_LOCK, LOCK_SH;
-   flock $_COM_LOCK, LOCK_UN;
+   unless (defined $_params) {
+      flock $_COM_LOCK, LOCK_SH;
+      flock $_COM_LOCK, LOCK_UN;
+   }
+
+   ## Otherwise, a new worker was spawned taking place of a previous worker.
+   else {
+      $self->{_wid} = $_wid;
+      $self->_worker_do($_params);
+      undef $_params;
+   }
 
    ## Enter worker loop.
    my $_status = $self->_worker_loop();
@@ -2448,6 +2497,7 @@ sub _dispatch_child {
    my $_wid     = $_[1];
    my $_task    = $_[2];
    my $_task_id = $_[3];
+   my $_params  = $_[4];
 
    @_ = ();
 
@@ -2462,7 +2512,7 @@ sub _dispatch_child {
       unless (defined $_pid);
 
    unless ($_pid) {
-      _worker_main($self, $_wid, $_task, $_task_id);
+      _worker_main($self, $_wid, $_task, $_task_id, $_params);
 
       close STDERR; close STDOUT;
       kill 9, $$ unless ($_is_winperl);
@@ -2487,6 +2537,7 @@ sub _dispatch_thread {
    my $_wid     = $_[1];
    my $_task    = $_[2];
    my $_task_id = $_[3];
+   my $_params  = $_[4];
 
    @_ = ();
 
@@ -2496,7 +2547,7 @@ sub _dispatch_thread {
       if ($self->{spawn_delay} && $self->{spawn_delay} > 0.0);
 
    my $_thr = threads->create(
-      \&_worker_main, $self, $_wid, $_task, $_task_id
+      \&_worker_main, $self, $_wid, $_task, $_task_id, $_params
    );
 
    _croak "MCE::_dispatch_thread: Failed to spawn worker $_wid: $!"
