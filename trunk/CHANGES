@@ -1,5 +1,19 @@
 Revision history for MCE
 
+1.201_001 Wed Dec 26 08:22:00 EST 2012
+    * Enabled executable bit for test files
+    * Removed localtime output in die and warn handlers
+    * All 3 delay options are consistent whether or not user_tasks is specified
+    * Removed logic around total_ended count -- replaced with new exit logic
+    * Lots of emphasis on the exit method -- workers can exit or die without
+      impacting the manager (main) process. New callback options:
+      on_exit_post and on_run_post
+    * Reap child/thread immediately when worker exits or dies
+    * Added LICENSE file
+    * Added Test::NoWarnings to test scripts
+    * Save worker state after spawning and job submission (task_id/task/params)
+    * Added new restart_worker method
+
 1.201 Fri Dec 21 00:00:00 EST 2012
     * Merry Christmas and Happy Holidays -- releasing a polished MCE
     * Added MCE.pod -- moved documentation from MCE.pm to pod file
