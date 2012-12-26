@@ -373,7 +373,7 @@ MCE::Signal - Provides tmp_dir creation & signal handling for Many-Core Engine.
 
 =head1 VERSION
 
-This document describes MCE::Signal version 1.201_001
+This document describes MCE::Signal version 1.202_001
 
 =head1 SYNOPSIS
 
