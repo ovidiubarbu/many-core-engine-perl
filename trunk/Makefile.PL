@@ -19,7 +19,6 @@ WriteMakefile(
    PREREQ_PM => {
       'Fcntl'      => 0,
       'File::Path' => 0,
-      'POSIX'      => 0,
       'Socket'     => 0,
       'Storable'   => 2.04
    },
