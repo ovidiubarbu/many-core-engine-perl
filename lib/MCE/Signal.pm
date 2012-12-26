@@ -14,7 +14,6 @@ use Fcntl qw( :flock );
 use base qw( Exporter );
 
 require File::Path;
-require POSIX;
 
 our ($has_threads, $main_proc_id, $prog_name);
 
@@ -294,7 +293,7 @@ sub sys_cmd {
       }
 
       threads->exit($_exit_status) if ($has_threads && threads->can('exit'));
-      POSIX::_exit($_exit_status);
+      CORE::exit($_exit_status);
    }
 }
 
