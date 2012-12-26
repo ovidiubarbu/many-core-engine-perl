@@ -142,7 +142,7 @@ my %_valid_fields = map { $_ => 1 } qw(
    _mce_sid _mce_tid _pids _sess_dir _spawned _task0_max_workers _thrs _tids
    _com_r_sock _com_w_sock _dat_r_sock _dat_w_sock _out_r_sock _out_w_sock
    _que_r_sock _que_w_sock _abort_msg _run_mode _single_dim _task_id _wid
-   _exiting _exit_pid _status _total_exited
+   _exiting _exit_pid _status _total_exited _state
 );
 
 my %_params_allowed_args = map { $_ => 1 } qw(
@@ -259,6 +259,7 @@ sub new {
    $self->{_out_w_sock} = undef; ## Workers write to this for serialized writes
    $self->{_que_r_sock} = undef; ## Queue channel for MCE
    $self->{_que_w_sock} = undef; ## Queue channel for workers
+   $self->{_state}      = undef; ## State info: worker (task_id/task/params)
 
    ## -------------------------------------------------------------------------
 
@@ -409,7 +410,7 @@ sub spawn {
    my $_wid = 0;
 
    $self->{_pids}   = (); $self->{_thrs}  = (); $self->{_tids} = ();
-   $self->{_status} = ();
+   $self->{_status} = (); $self->{_state} = ();
 
    ## Obtain lock.
    open my $_COM_LOCK, '+>> :stdio', "$_sess_dir/com.lock";
@@ -426,6 +427,13 @@ sub spawn {
       }
 
       $self->{_task0_max_workers} = $_max_workers;
+      $_wid = 0;
+
+      for (1 .. $_max_workers) {
+         $self->{_state}->[++$_wid] = {
+            _task_id => undef, _task => undef, _params => undef
+         }
+      }
    }
    else {
       if ($_is_cygwin) {
@@ -464,6 +472,16 @@ sub spawn {
       }
 
       $self->{_task0_max_workers} = $self->{user_tasks}->[0]->{max_workers};
+      $_wid = $_task_id = 0;
+
+      for my $_task (@{ $self->{user_tasks} }) {
+         for (1 .. $_task->{max_workers}) {
+            $self->{_state}->[++$_wid] = {
+               _task_id => $_task_id, _task => $_task, _params => undef
+            }
+         }
+         $_task_id++;
+      }
    }
 
    ## Release lock.
@@ -757,8 +775,10 @@ sub run {
 
          if ($_wid <= $self->{_task0_max_workers}) {
             print $_COM_R_SOCK length($_frozen_params), $LF, $_frozen_params;
+            $self->{_state}->[$_wid]->{_params} = \%_params;
          } else {
             print $_COM_R_SOCK length($_frozen_nodata), $LF, $_frozen_nodata;
+            $self->{_state}->[$_wid]->{_params} = \%_params_nodata;
          }
 
          <$_COM_R_SOCK>;
@@ -894,7 +914,7 @@ sub shutdown {
    $self->{_total_exited} = 0;
 
    $self->{_pids}   = (); $self->{_thrs}  = (); $self->{_tids} = ();
-   $self->{_status} = ();
+   $self->{_status} = (); $self->{_state} = ();
 
    $self->{_out_r_sock} = $self->{_out_w_sock} = undef;
    $self->{_que_r_sock} = $self->{_que_w_sock} = undef;
@@ -2386,7 +2406,8 @@ sub _worker_main {
    $self->{user_error}   = $self->{user_output}  = undef;
    $self->{flush_file}   = undef;
 
-   delete $self->{_pids}; delete $self->{_thrs}; delete $self->{_tids};
+   $self->{_pids}   = (); $self->{_thrs}  = (); $self->{_tids} = ();
+   $self->{_status} = (); $self->{_state} = ();
 
    foreach (keys %_mce_spawned) {
       delete $_mce_spawned{$_} unless ($_ eq $_mce_sid);
