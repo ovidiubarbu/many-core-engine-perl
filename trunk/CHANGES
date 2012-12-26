@@ -1,6 +1,9 @@
 Revision history for MCE
 
-1.202_001 Wed Dec 26 08:22:00 EST 2012
+1.201_002 Wed Dec 26 16:00:00 EST 2012
+    * Renamed on_exit_post, on_run_post method names back to
+      on_post_exit, on_post_run
+1.201_001 Wed Dec 26 08:22:00 EST 2012
     * Enabled executable bit for test files
     * Removed localtime output in die and warn handlers
     * All 3 delay options are consistent whether or not user_tasks is specified
