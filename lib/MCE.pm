@@ -142,7 +142,7 @@ my %_valid_fields = map { $_ => 1 } qw(
    _mce_sid _mce_tid _pids _sess_dir _spawned _task0_max_workers _thrs _tids
    _com_r_sock _com_w_sock _dat_r_sock _dat_w_sock _out_r_sock _out_w_sock
    _que_r_sock _que_w_sock _abort_msg _run_mode _single_dim _task_id _wid
-   _exiting _exit_pid _status _total_exited _state
+   _exiting _exit_pid _state _status _total_exited _total_workers
 );
 
 my %_params_allowed_args = map { $_ => 1 } qw(
@@ -911,7 +911,7 @@ sub shutdown {
    }
 
    ## Reset vars.
-   $self->{_total_exited} = 0;
+   $self->{_total_exited} = $self->{_total_workers} = 0;
 
    $self->{_pids}   = (); $self->{_thrs}  = (); $self->{_tids} = ();
    $self->{_status} = (); $self->{_state} = ();
@@ -1486,7 +1486,7 @@ sub _validate_args {
    my %_output_function = (
 
       OUTPUT_W_DNE.$LF => sub {                   ## Worker has completed job
-         $_total_workers -= 1;
+         $self->{_total_workers} -= 1;
 
          if ($_has_user_tasks) {
             chomp($_task_id = <$_DAT_R_SOCK>);
@@ -1833,8 +1833,10 @@ sub _validate_args {
       $_user_error   = $self->{user_error};
       $_single_dim   = $self->{_single_dim};
 
-      $self->{_total_exited} = $_eof_flag = 0;
       $_has_user_tasks = (defined $self->{user_tasks});
+
+      $self->{_total_workers} = $_total_workers;
+      $self->{_total_exited} = $_eof_flag = 0;
 
       if ($_has_user_tasks) {
          push @_task_max_workers, $_->{max_workers} for (
@@ -1902,7 +1904,7 @@ sub _validate_args {
 
          if (exists $_output_function{$_func}) {
             $_output_function{$_func}();
-            last unless ($_total_workers);
+            last unless ($self->{_total_workers});
          }
       }
 
