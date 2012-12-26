@@ -394,6 +394,73 @@ Methods listed below are callable by the main process only.
    $mce->process($array_ref, { stdout_file => $output_file });
    $mce->shutdown();
 
+=head2 respawn_worker ( $wid )
+
+   ## One can respawn a worker who has died or exited.
+   ## The job never ends below due to respawning each time.
+   ## It's recommended to specify the same wid which has exited.
+   ## Press ctrl-c to exit.
+
+   my $mce = MCE->new(
+
+      on_post_exit => sub {
+         my ($self, $wid, $pid, $status, $msg, $id) = @_;
+         print "$wid: $pid: status $status: $msg";
+         $self->respawn_worker($wid);
+      },
+
+      user_begin => sub {
+         my $self = $_[0];
+         ## Not interested in die messages going to STDERR.
+         ## The die handler calls $self->exit(255, $_[0]).
+         close STDERR;
+      },
+
+      user_tasks => [{
+         max_workers => 5,
+         user_func   => sub {
+            my $self = $_[0]; sleep $self->wid();
+            $self->exit(3, "exited from " . $self->wid() . "\n");
+         }
+      },{
+         max_workers => 4,
+         user_func   => sub {
+            my $self = $_[0]; sleep $self->wid();
+            die("died from " . $self->wid() . "\n");
+         }
+      }]
+   );
+
+   $mce->run();
+
+   -- Output
+
+   1: PID_85388: status 3: exited from 1
+   2: PID_85389: status 3: exited from 2
+   1: PID_85397: status 3: exited from 1
+   3: PID_85390: status 3: exited from 3
+   1: PID_85399: status 3: exited from 1
+   4: PID_85391: status 3: exited from 4
+   2: PID_85398: status 3: exited from 2
+   1: PID_85401: status 3: exited from 1
+   5: PID_85392: status 3: exited from 5
+   1: PID_85404: status 3: exited from 1
+   6: PID_85393: status 255: died from 6
+   3: PID_85400: status 3: exited from 3
+   2: PID_85403: status 3: exited from 2
+   1: PID_85406: status 3: exited from 1
+   7: PID_85394: status 255: died from 7
+   1: PID_85410: status 3: exited from 1
+   8: PID_85395: status 255: died from 8
+   4: PID_85402: status 3: exited from 4
+   2: PID_85409: status 3: exited from 2
+   1: PID_85412: status 3: exited from 1
+   9: PID_85396: status 255: died from 9
+   3: PID_85408: status 3: exited from 3
+   1: PID_85416: status 3: exited from 1
+
+   ...
+
 =head2 run ( [ $auto_shutdown [, { options } ] ] )
 
    ## The run method, by default, spawns workers, processes once,
