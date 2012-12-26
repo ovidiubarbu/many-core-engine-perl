@@ -6,6 +6,15 @@
 
 package MCE;
 
+use strict;
+use warnings;
+
+use Fcntl qw( :flock O_CREAT O_TRUNC O_RDWR O_RDONLY );
+use Storable 2.04 qw( store retrieve freeze thaw );
+use Socket qw( :DEFAULT :crlf );
+
+use MCE::Signal;
+
 my ($_que_template, $_que_read_size);
 my ($_has_threads, $_max_files, $_max_procs);
 
@@ -35,8 +44,8 @@ BEGIN {
          $_max_files = $1 || 256;
          $_max_procs = $2 || 256;
 
-         $_max_files = ($_max_files =~ /\A\d+\z/) ? $_max_files : 3152;
-         $_max_procs = ($_max_procs =~ /\A\d+\z/) ? $_max_procs :  788;
+         $_max_files = ($_max_files =~ /\A\d+\z/) ? $_max_files : 256;
+         $_max_procs = ($_max_procs =~ /\A\d+\z/) ? $_max_procs : 256;
       }
       else {
          $_max_files = $_max_procs = 256;
@@ -61,7 +70,6 @@ our $_MCE_LOCK : shared = 1;
 
 INIT {
    unless (defined $_has_threads) {
-
       if (defined $threads::VERSION) {
          unless (defined $threads::shared::VERSION) {
             local $@; local $SIG{__DIE__} = \&_NOOP;
@@ -69,22 +77,12 @@ INIT {
          }
          $_has_threads = 1;
       }
-
       $_has_threads = $_has_threads || 0;
    }
 }
 
-use strict;
-use warnings;
-
 our $VERSION = '1.201';
 $VERSION = eval $VERSION;
-
-use Fcntl qw( :flock O_CREAT O_TRUNC O_RDWR O_RDONLY );
-use Storable 2.04 qw( store retrieve freeze thaw );
-use Socket qw( :DEFAULT :crlf );
-
-use MCE::Signal;
 
 ###############################################################################
 ## ----------------------------------------------------------------------------

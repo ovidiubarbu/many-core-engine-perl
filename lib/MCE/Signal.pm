@@ -7,21 +7,22 @@
 
 package MCE::Signal;
 
+use strict;
+use warnings;
+
+use Fcntl qw( :flock );
+use base qw( Exporter );
+
+require File::Path;
+
 our ($has_threads, $main_proc_id, $prog_name);
 
 BEGIN {
    $main_proc_id = $$; $prog_name = $0; $prog_name =~ s{^.*[\\/]}{}g;
 }
 
-use strict;
-use warnings;
-
 our $VERSION = '1.201';
 $VERSION = eval $VERSION;
-
-use Fcntl qw( :flock );
-use File::Path qw( rmtree );
-use base 'Exporter';
 
 our $tmp_dir = undef;
 our @EXPORT_OK = qw( $tmp_dir sys_cmd stop_and_exit );
@@ -238,7 +239,7 @@ sub sys_cmd {
                }
                else {
                   if ($tmp_dir ne '/tmp' && $tmp_dir ne '/var/tmp') {
-                     rmtree($tmp_dir);
+                     File::Path::rmtree($tmp_dir);
                   }
                }
                $tmp_dir = undef;
@@ -291,7 +292,7 @@ sub sys_cmd {
       }
 
       threads->exit($_exit_status) if ($has_threads && threads->can('exit'));
-      exit $_exit_status;
+      CORE::exit($_exit_status);
    }
 }
 
