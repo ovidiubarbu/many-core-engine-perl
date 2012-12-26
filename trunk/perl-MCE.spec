@@ -51,7 +51,7 @@ rm -rf $RPM_BUILD_ROOT
 
 %files
 %defattr(-,root,root,-)
-%doc Copying CHANGES CREDITS README TODO examples
+%doc CHANGES CREDITS LICENSE README TODO examples
 %{perl_vendorlib}/*
 %{_mandir}/man3/*
 
