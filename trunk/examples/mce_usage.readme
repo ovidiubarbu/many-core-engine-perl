@@ -200,7 +200,7 @@
    $mce->shutdown();
 
    -------------------------------------------------------------------------
-   SYNTAX for ON_POST_EXIT
+   SYNTAX for ON_EXIT_POST
    -------------------------------------------------------------------------
 
    ## Executed following a worker exiting (exit, $self->exit, or die).
@@ -213,7 +213,7 @@
    }
 
    -------------------------------------------------------------------------
-   SYNTAX for ON_POST_RUN
+   SYNTAX for ON_RUN_POST
    -------------------------------------------------------------------------
 
    ## Executed after running ($self->process or $self->run).
