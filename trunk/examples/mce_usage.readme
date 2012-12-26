@@ -88,8 +88,8 @@
           ## For example, use job_delay when wanting to stagger
           ## many workers connecting to a database.
 
-      on_post_exit => \&on_post_exit,    ## Default is undef
-      on_post_run  => \&on_post_run,     ## Default is undef
+      on_exit_post => \&on_exit_post,    ## Default is undef
+      on_run_post  => \&on_run_post,     ## Default is undef
 
           ## Execute code block immediately after a worker exits
           ## (exit, $self->exit, or die). Execute code block after
@@ -206,7 +206,7 @@
    ## Executed following a worker exiting (exit, $self->exit, or die).
    ## e.g. $pid: PID_1234 or THR_123
 
-   sub on_post_exit {
+   sub on_exit_post {
 
       my ($self, $wid, $pid, $status, $msg, $id) = @_;
 
@@ -218,7 +218,7 @@
 
    ## Executed after running ($self->process or $self->run).
 
-   sub on_post_run {
+   sub on_run_post {
 
       my ($self, $status_ref) = @_;
 
@@ -415,7 +415,7 @@
    ## Allowable options { key => value, ... } are:
    ##   chunk_size input_data job_delay spawn_delay submit_delay
    ##   flush_file flush_stderr flush_stdout stderr_file stdout_file
-   ##   on_post_exit on_post_run user_begin user_end user_func
+   ##   on_exit_post on_run_post user_begin user_end user_func
    ##   user_error user_output use_slurpio
    ##
    ## Options remain persistent going forward unless changed. Setting
@@ -441,7 +441,7 @@
 
    my $mce = MCE->new(
 
-      on_post_exit => sub {
+      on_exit_post => sub {
          my ($self, $wid, $pid, $status, $msg, $id) = @_;
          print "$wid: $pid: status $status: $msg";
          $self->restart_worker($wid);
