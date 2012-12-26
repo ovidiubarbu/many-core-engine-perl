@@ -189,7 +189,7 @@
    $mce->shutdown();
 
    -------------------------------------------------------------------------
-   SYNTAX FOR USER_BEGIN & USER_END
+   SYNTAX for USER_BEGIN and USER_END
    -------------------------------------------------------------------------
 
    ## Both user_begin and user_end functions, if specified, behave
@@ -216,7 +216,7 @@
    }
 
    -------------------------------------------------------------------------
-   SYNTAX FOR USER_FUNC (with use_slurpio => 0 option)
+   SYNTAX for USER_FUNC with use_slurpio => 0 option
    -------------------------------------------------------------------------
 
    ## MCE passes a reference to an array containing the chunk data.
@@ -232,7 +232,7 @@
    }
 
    -------------------------------------------------------------------------
-   SYNTAX FOR USER_FUNC (with use_slurpio => 1 option)
+   SYNTAX for USER_FUNC with use_slurpio => 1 option
    -------------------------------------------------------------------------
 
    ## MCE passes a reference to a scalar containing the raw chunk data.
@@ -245,7 +245,7 @@
    }
 
    -------------------------------------------------------------------------
-   SYNTAX FOR USER_ERROR & USER_OUTPUT
+   SYNTAX for USER_ERROR and USER_OUTPUT
    -------------------------------------------------------------------------
 
    ## MCE will direct $self->sendto('stderr/out', ...) calls to these
@@ -268,7 +268,7 @@
 
 ===============================================================================
 
-<> METHODS for MANAGER PROCESS & WORKERS
+<> METHODS for MANAGER PROCESS and WORKERS
 
    Methods listed below are callable by the main process and workers.
 
@@ -291,7 +291,7 @@
 
 ===============================================================================
 
-<> METHODS for MANAGER PROCESS ONLY
+<> METHODS for MANAGER PROCESS only
 
    Methods listed below are callable by the main process only.
 
@@ -392,7 +392,7 @@
    $mce->shutdown();
 
    -------------------------------------------------------------------------  
-   run ( [ $auto_shutdown ] [, { options } ] )
+   run ( [ $auto_shutdown [, { options } ] ] )
    -------------------------------------------------------------------------
 
    ## The run method, by default, spawns workers, processes once,
@@ -442,7 +442,7 @@
 
 ===============================================================================
 
-<> METHODS for WORKERS ONLY
+<> METHODS for WORKERS only
 
    Methods listed below are callable by workers only.
 
@@ -801,7 +801,7 @@
    });
 
    -------------------------------------------------------------------------
-   MULTIPLE WORKERS RUNNING IN PARALLEL (no input data)
+   MULTIPLE WORKERS RUNNING IN PARALLEL
    -------------------------------------------------------------------------
 
    The input_data option is optional. One can simply use MCE to parallelize
