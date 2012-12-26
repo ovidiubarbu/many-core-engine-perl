@@ -2434,7 +2434,10 @@ sub _worker_main {
    $self->{user_end}   = $_task->{user_end}   if (defined $_task->{user_end});
 
    ## Define status ID.
-   if ($_has_threads && $self->{use_threads}) {
+   my $_use_threads = (defined $_task->{use_threads})
+      ? $_task->{use_threads} : $self->{use_threads};
+
+   if ($_has_threads && $_use_threads) {
       $self->{_exit_pid} = "TID_" . threads->tid();
    } else {
       $self->{_exit_pid} = "PID_" . $$;
