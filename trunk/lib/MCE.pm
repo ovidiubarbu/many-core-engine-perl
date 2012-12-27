@@ -2525,7 +2525,7 @@ sub _dispatch_child {
    }
 
    if (defined $_pid) {
-      ## Store into an available slot, otherwise append.
+      ## Store into an available slot, otherwise append to array.
       if (defined $_params) { for (0 .. @{ $self->{_pids} } - 1) {
          unless (defined $self->{_pids}->[$_]) {
             $self->{_pids}->[$_] = $_pid;
@@ -2567,7 +2567,7 @@ sub _dispatch_thread {
       unless (defined $_thr);
 
    if (defined $_thr) {
-      ## Store into an available slot, otherwise append.
+      ## Store into an available slot, otherwise append to arrays.
       if (defined $_params) { for (0 .. @{ $self->{_tids} } - 1) {
          unless (defined $self->{_tids}->[$_]) {
             $self->{_thrs}->[$_] = \$_thr;
