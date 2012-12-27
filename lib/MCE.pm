@@ -2524,7 +2524,16 @@ sub _dispatch_child {
       CORE::exit();
    }
 
-   push @{ $self->{_pids} }, $_pid if (defined $_pid);
+   if (defined $_pid) {
+      ## Store into an available slot, otherwise append.
+      if (defined $_params) { for (0 .. @{ $self->{_pids} } - 1) {
+         unless (defined $self->{_pids}->[$_]) {
+            $self->{_pids}->[$_] = $_pid;
+            return;
+         }
+      }}
+      push @{ $self->{_pids} }, $_pid;
+   }
 
    return;
 }
@@ -2558,6 +2567,14 @@ sub _dispatch_thread {
       unless (defined $_thr);
 
    if (defined $_thr) {
+      ## Store into an available slot, otherwise append.
+      if (defined $_params) { for (0 .. @{ $self->{_tids} } - 1) {
+         unless (defined $self->{_tids}->[$_]) {
+            $self->{_thrs}->[$_] = \$_thr;
+            $self->{_tids}->[$_] = $_thr->tid();
+            return;
+         }
+      }}
       push @{ $self->{_thrs} }, \$_thr;
       push @{ $self->{_tids} }, $_thr->tid();
    }
