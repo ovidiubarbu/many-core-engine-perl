@@ -651,8 +651,6 @@ sub restart_worker {
       $self->_dispatch_child($_wid, $_task, $_task_id, $_params);
    }
 
-   select(undef, undef, undef, 0.003);
-
    return;
 }
 
@@ -1025,7 +1023,7 @@ sub exit {
    _croak("MCE::exit: method cannot be called by the manager process")
       unless ($self->wid());
 
-   $SIG{__DIE__} = $SIG{__WARN__} = sub { };
+   delete $_mce_spawned{ $self->{_mce_sid} };
 
    unless ($self->{_exiting}) {
       $self->{_exiting} = 1;
@@ -1040,6 +1038,9 @@ sub exit {
          local $\ = undef;
          flock $_DAT_LOCK, LOCK_EX;
 
+         flock $_DAT_LOCK, LOCK_EX          if ($_is_cygwin);  ## Humm, needed.
+         select(undef, undef, undef, 0.001) if ($_is_cygwin);  ## This as well.
+
          print $_OUT_W_SOCK OUTPUT_W_EXT,  $LF,
             ((defined $_task_id) ? "$_task_id${LF}" : "-1${LF}");
 
@@ -1047,14 +1048,16 @@ sub exit {
                             $_exit_status, $LF, $_exit_id,          $LF,
                             $_len,         $LF, $_exit_msg;
 
-         delete $_mce_spawned{ $self->{_mce_sid} };
          flock $_DAT_LOCK, LOCK_UN;
       }
    }
 
-   select(undef, undef, undef, 0.003);
-
    ## Exit thread/child process.
+   $SIG{__DIE__} = $SIG{__WARN__} = sub { };
+
+   close $_DAT_LOCK; close $_COM_LOCK;
+   undef $_DAT_LOCK; undef $_COM_LOCK;
+
    threads->exit($_exit_status) if ($_has_threads && threads->can('exit'));
 
    close STDERR; close STDOUT;
@@ -2505,9 +2508,10 @@ sub _worker_main {
 
    eval {
       flock $_DAT_LOCK, LOCK_SH; flock $_DAT_LOCK, LOCK_UN;
-      close $_DAT_LOCK; close $_COM_LOCK;
-      undef $_DAT_LOCK; undef $_COM_LOCK;
    };
+
+   close $_DAT_LOCK; close $_COM_LOCK;
+   undef $_DAT_LOCK; undef $_COM_LOCK;
 
    return;
 }
