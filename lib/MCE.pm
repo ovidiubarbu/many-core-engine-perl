@@ -101,7 +101,7 @@ use constant {
    QUE_TEMPLATE     => $_que_template,   ## Pack template for queue socket
    QUE_READ_SIZE    => $_que_read_size,  ## Read size
 
-   OUTPUT_W_DNE     => ':W~DNE',         ## Worker has completed job
+   OUTPUT_W_DNE     => ':W~DNE',         ## Worker has completed
    OUTPUT_W_EXT     => ':W~EXT',         ## Worker has exited
    OUTPUT_A_ARY     => ':A~ARY',         ## Array  << Array
    OUTPUT_S_GLB     => ':S~GLB',         ## Scalar << Glob FH
@@ -143,6 +143,7 @@ my %_valid_fields = map { $_ => 1 } qw(
    _com_r_sock _com_w_sock _dat_r_sock _dat_w_sock _out_r_sock _out_w_sock
    _que_r_sock _que_w_sock _abort_msg _run_mode _single_dim _task_id _wid
    _exiting _exit_pid _state _status _total_exited _total_workers
+   _task_max_workers
 );
 
 my %_params_allowed_args = map { $_ => 1 } qw(
@@ -486,6 +487,7 @@ sub spawn {
 
    ## Release lock.
    flock $_COM_LOCK, LOCK_UN;
+   select(undef, undef, undef, 0.003);
    close $_COM_LOCK; undef $_COM_LOCK;
 
    $SIG{__DIE__}  = $_die_handler;
@@ -642,11 +644,12 @@ sub restart_worker {
 
    if (defined $_use_threads && $_use_threads == 1) {
       $self->_dispatch_thread($_wid, $_task, $_task_id, $_params);
-      $self->{_total_exited} -= 1; $self->{_total_workers} += 1;
    } else {
       $self->_dispatch_child($_wid, $_task, $_task_id, $_params);
-      $self->{_total_exited} -= 1; $self->{_total_workers} += 1;
    }
+
+   $self->{_task_max_workers}->[$_task_id] += 1 if (defined $_task_id);
+   $self->{_total_exited} -= 1; $self->{_total_workers} += 1;
 
    return;
 }
@@ -780,6 +783,8 @@ sub run {
       '_max_workers' => $_max_workers
    );
 
+   my $_COM_LOCK;
+
    ## Begin processing.
    {
       local $\ = undef; local $/ = $LF;
@@ -793,7 +798,7 @@ sub run {
       my $_frozen_nodata = freeze(\%_params_nodata)
          if (defined $self->{user_tasks});
 
-      ## Obtain lock.
+      ## Obtain lock 1 of 2.
       open my $_DAT_LOCK, '+>> :stdio', "$_sess_dir/dat.lock";
       flock $_DAT_LOCK, LOCK_EX;
 
@@ -823,20 +828,25 @@ sub run {
          <$_COM_R_SOCK>;
       }
 
-      select(undef, undef, undef, $_submit_delay)
-         if ($_submit_delay && $_submit_delay > 0.0);
+      ## Obtain lock 2 of 2.
+      open $_COM_LOCK, '+>> :stdio', "$_sess_dir/com.lock";
+      flock $_COM_LOCK, LOCK_EX;
 
-      ## Release lock.
+      ## Release lock 1 of 2.
       flock $_DAT_LOCK, LOCK_UN;
+      select(undef, undef, undef, 0.003);
       close $_DAT_LOCK; undef $_DAT_LOCK;
    }
 
    ## -------------------------------------------------------------------------
 
+   $self->{_total_workers} = $_max_workers;
+   $self->{_total_exited}  = 0;
+
    ## Call the output function.
    if ($_max_workers > 0) {
       $self->{_abort_msg} = $_abort_msg;
-      $self->_output_loop($_max_workers, $_input_data, $_input_glob);
+      $self->_output_loop($_input_data, $_input_glob);
       undef $self->{_abort_msg};
    }
 
@@ -850,8 +860,13 @@ sub run {
       }
    }
 
-   ## Shutdown workers.
-   $self->shutdown() if ($_auto_shutdown == 1);
+   ## Release lock 2 of 2.
+   flock $_COM_LOCK, LOCK_UN;
+   select(undef, undef, undef, 0.003);
+   close $_COM_LOCK; undef $_COM_LOCK;
+
+   ## Shutdown workers (also if one or more workers have exited).
+   $self->shutdown() if ($_auto_shutdown == 1 || $self->{_total_exited} > 0);
 
    return $self;
 }
@@ -904,6 +919,8 @@ sub shutdown {
    }
 
    flock $_DAT_LOCK, LOCK_UN;
+   select(undef, undef, undef, 0.003);
+   close $_DAT_LOCK; undef $_DAT_LOCK;
 
    ## Reap children/threads.
    if ( $self->{_pids} && @{ $self->{_pids} } > 0 ) {
@@ -918,8 +935,6 @@ sub shutdown {
          ${ $_list->[$i] }->join() if ($_list->[$i]);
       }
    }
-
-   close $_DAT_LOCK; undef $_DAT_LOCK;
 
    ## Close sockets.
    shutdown $self->{_out_r_sock}, 0;              ## Output channels
@@ -1023,15 +1038,12 @@ sub exit {
          local $\ = undef;
          flock $_DAT_LOCK, LOCK_EX;
 
-         print $_OUT_W_SOCK OUTPUT_W_EXT,  $LF;
+         print $_OUT_W_SOCK OUTPUT_W_EXT,  $LF, OUTPUT_W_DNE,       $LF,
+            (defined $_task_id) ? "$_task_id${LF}" : "-1${LF}";
+
          print $_DAT_W_SOCK $self->wid(),  $LF, $self->{_exit_pid}, $LF,
                             $_exit_status, $LF, $_exit_id,          $LF,
-                            $_len,         $LF;
-
-         print $_DAT_W_SOCK $_exit_msg          if ($_len);
-
-         print $_OUT_W_SOCK OUTPUT_W_DNE,  $LF;
-         print $_DAT_W_SOCK $_task_id,     $LF  if (defined $_task_id);
+                            $_len,         $LF, $_exit_msg;
 
          delete $_mce_spawned{ $self->{_mce_sid} };
          flock $_DAT_LOCK, LOCK_UN;
@@ -1517,21 +1529,20 @@ sub _validate_args {
    my ($_I_SEP, $_O_SEP, $_input_glob, $_chunk_size);
    my ($_input_size, $_offset_pos, $_single_dim, $_use_slurpio);
 
-   my ($_has_user_tasks, $_task_id, @_task_max_workers);
+   my ($_has_user_tasks, $_on_post_exit, $_on_post_run, $_task_id);
    my ($_exit_wid, $_exit_pid, $_exit_status, $_exit_id);
-   my ($_on_post_exit, $_on_post_run);
 
    ## Create hash structure containing various output functions.
    my %_output_function = (
 
-      OUTPUT_W_DNE.$LF => sub {                   ## Worker has completed job
+      OUTPUT_W_DNE.$LF => sub {                   ## Worker has completed
          $self->{_total_workers} -= 1;
+         chomp($_task_id = <$_OUT_R_SOCK>);
 
-         if ($_has_user_tasks) {
-            chomp($_task_id = <$_DAT_R_SOCK>);
-            $_task_max_workers[$_task_id] -= 1;
+         if ($_has_user_tasks && $_task_id >= 0) {
+            $self->{_task_max_workers}->[$_task_id] -= 1;
 
-            unless ($_task_max_workers[$_task_id]) {
+            unless ($self->{_task_max_workers}->[$_task_id]) {
                if (defined $self->{user_tasks}->[$_task_id]->{task_end}) {
                   $self->{user_tasks}->[$_task_id]->{task_end}();
                }
@@ -1854,10 +1865,9 @@ sub _validate_args {
 
    sub _output_loop {
 
-      $self           = $_[0];
-      $_total_workers = $_[1];
-      $_input_data    = $_[2];
-      $_input_glob    = $_[3];
+      $self        = $_[0];
+      $_input_data = $_[1];
+      $_input_glob = $_[2];
 
       @_ = ();
 
@@ -1874,12 +1884,11 @@ sub _validate_args {
       $_single_dim   = $self->{_single_dim};
 
       $_has_user_tasks = (defined $self->{user_tasks});
-
-      $self->{_total_workers} = $_total_workers;
-      $self->{_total_exited} = $_eof_flag = 0;
+      $_eof_flag = 0;
 
       if ($_has_user_tasks) {
-         push @_task_max_workers, $_->{max_workers} for (
+         $self->{_task_max_workers} = ();
+         push @{ $self->{_task_max_workers} }, $_->{max_workers} for (
             @{ $self->{user_tasks} }
          );
       }
@@ -1951,7 +1960,7 @@ sub _validate_args {
       ## Call on_post_run callback.
       $_on_post_run->($self, $self->{_status}) if (defined $_on_post_run);
 
-      @_task_max_workers = undef if ($_has_user_tasks);
+      $self->{_task_max_workers} = undef if ($_has_user_tasks);
 
       ## Close opened sendto file handles.
       for (keys %_sendto_fhs) {
@@ -1965,9 +1974,6 @@ sub _validate_args {
 
       close $_MCE_STDOUT; undef $_MCE_STDOUT;
       close $_MCE_STDERR; undef $_MCE_STDERR;
-
-      ## Shutdown remaining workers if one or more have exited.
-      $self->shutdown() if ($self->{_total_exited} > 0);
 
       return;
    }
@@ -2303,12 +2309,9 @@ sub _worker_do {
 
    ## Notify the main process a worker has completed.
    local $\ = undef;
-   flock $_DAT_LOCK, LOCK_EX;
 
-   print $_OUT_W_SOCK OUTPUT_W_DNE, $LF;
-   print $_DAT_W_SOCK $_task_id,    $LF  if (defined $_task_id);
-
-   flock $_DAT_LOCK, LOCK_UN;
+   print $_OUT_W_SOCK OUTPUT_W_DNE, $LF,
+      (defined $_task_id) ? "$_task_id${LF}" : "-1${LF}";
 
    return;
 }
@@ -2365,11 +2368,9 @@ sub _worker_loop {
          $_params_ref = thaw($_buffer);
       }
 
-      ## Wait until MCE completes job submission.
-      if (defined $self->{user_tasks}) {
-         flock $_DAT_LOCK, LOCK_SH;
-         flock $_DAT_LOCK, LOCK_UN;
-      }
+      ## Wait until MCE completes params submission to all workers.
+      flock $_DAT_LOCK, LOCK_SH;
+      flock $_DAT_LOCK, LOCK_UN;
 
       ## Update ID. Process request.
       $self->{_wid} = $_response unless (defined $self->{user_tasks});
@@ -2379,6 +2380,10 @@ sub _worker_loop {
 
       $self->_worker_do($_params_ref);
       undef $_params_ref;
+
+      ## Wait until all workers completed processing.
+      flock $_COM_LOCK, LOCK_SH;
+      flock $_COM_LOCK, LOCK_UN;
    }
 
    ## Notify the main process a worker has ended. The following is executed
@@ -2450,7 +2455,7 @@ sub _worker_main {
    $self->{on_post_exit} = $self->{on_post_run}  = undef;
    $self->{stderr_file}  = $self->{stdout_file}  = undef;
    $self->{user_error}   = $self->{user_output}  = undef;
-   $self->{flush_file}   = undef;
+   $self->{flush_file}   = $self->{_task_max_workers} = undef;
 
    $self->{_pids}   = (); $self->{_thrs}  = (); $self->{_tids} = ();
    $self->{_status} = (); $self->{_state} = ();
@@ -2459,18 +2464,16 @@ sub _worker_main {
       delete $_mce_spawned{$_} unless ($_ eq $_mce_sid);
    }
 
-   ## Wait until MCE completes spawning.
-   unless (defined $_params) {
-      flock $_COM_LOCK, LOCK_SH;
-      flock $_COM_LOCK, LOCK_UN;
-   }
-
-   ## Otherwise, a new worker was spawned taking place of a previous worker.
-   else {
+   ## Begin processing (occurs when a new worker was added while processing).
+   if (defined $_params) {
       $self->{_wid} = $_wid;
       $self->_worker_do($_params);
       undef $_params;
    }
+
+   ## Wait until MCE completes spawning or workers complete processing above.
+   flock $_COM_LOCK, LOCK_SH;
+   flock $_COM_LOCK, LOCK_UN;
 
    ## Enter worker loop.
    my $_status = $self->_worker_loop();
@@ -2479,12 +2482,11 @@ sub _worker_main {
    ## Wait until MCE completes exit notification.
    $SIG{__DIE__} = $SIG{__WARN__} = sub { };
 
-   eval {
-      flock $_DAT_LOCK, LOCK_SH;
-      flock $_DAT_LOCK, LOCK_UN;
-      close $_DAT_LOCK; undef $_DAT_LOCK;
-      close $_COM_LOCK; undef $_COM_LOCK;
-   };
+ # eval {
+ #    flock $_DAT_LOCK, LOCK_SH; flock $_DAT_LOCK, LOCK_UN;
+ #    close $_DAT_LOCK; close $_COM_LOCK;
+ #    undef $_DAT_LOCK; undef $_COM_LOCK;
+ # };
 
    return;
 }
