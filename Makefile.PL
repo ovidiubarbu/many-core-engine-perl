@@ -23,7 +23,7 @@ WriteMakefile(
       'Storable'   => 2.04
    },
 
-   VERSION        => '1.201_002',
+   VERSION        => '1.201_003',
 
    (($ExtUtils::MakeMaker::VERSION lt '6.25') ?
       (PL_FILES => { }) : ()),
@@ -36,7 +36,6 @@ WriteMakefile(
          build_requires => {
             'Pod::Coverage'       => 0,
             'Test::More'          => 0.45,
-            'Test::NoWarnings'    => 0,
             'Test::Pod'           => 0,
             'Test::Pod::Coverage' => 0
          },
@@ -57,11 +56,11 @@ WriteMakefile(
          provides => {
             'MCE' => {
                'file'    => 'lib/MCE.pm',
-               'version' => '1.201_002'
+               'version' => '1.201_003'
             },
             'MCE::Signal' => {
                'file'    => 'lib/MCE/Signal.pm',
-               'version' => '1.201_002'
+               'version' => '1.201_003'
             }
          }
       }) : ()),

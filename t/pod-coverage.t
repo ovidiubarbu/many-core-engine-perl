@@ -28,8 +28,3 @@ $SIG{__WARN__} = sub {
 
 all_pod_coverage_ok();
 
-exit 0;
-
-# kwalitee hack
-require Test::NoWarnings;
-

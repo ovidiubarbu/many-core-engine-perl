@@ -1,8 +1,13 @@
 Revision history for MCE
 
+1.201_003 Fri Dec 28 03:20:00 EST 2012
+    * Removed Test::NoWarnings -- many testers do not have this installed
+    * Update to core logic. Windows is passing with workers exiting/restarting
+
 1.201_002 Wed Dec 26 16:00:00 EST 2012
     * Renamed on_exit_post, on_run_post method names back to
       on_post_exit, on_post_run
+
 1.201_001 Wed Dec 26 08:22:00 EST 2012
     * Enabled executable bit for test files
     * Removed localtime output in die and warn handlers
@@ -18,7 +23,6 @@ Revision history for MCE
     * Added new restart_worker method
 
 1.201 Fri Dec 21 00:00:00 EST 2012
-    * Merry Christmas and Happy Holidays -- releasing a polished MCE
     * Added MCE.pod -- moved documentation from MCE.pm to pod file
     * Added missing use strict/warnings to test scripts
     * Default to 1 for chunk_size and max_workers if not specified

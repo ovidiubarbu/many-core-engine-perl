@@ -3,8 +3,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 3+1;
-use Test::NoWarnings;
+use Test::More tests => 3;
 
 ## Default is $MCE::Signal::tmp_dir which points to $ENV{TEMP} if defined.
 ## Otherwise, pass argument to module wanting /dev/shm versus /tmp for
