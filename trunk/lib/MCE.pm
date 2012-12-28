@@ -642,14 +642,16 @@ sub restart_worker {
    my $_use_threads = (defined $_task->{use_threads})
       ? $_task->{use_threads} : $self->{use_threads};
 
+   $self->{_task_max_workers}->[$_task_id] += 1 if (defined $_task_id);
+   $self->{_total_exited} -= 1; $self->{_total_workers} += 1;
+
    if (defined $_use_threads && $_use_threads == 1) {
       $self->_dispatch_thread($_wid, $_task, $_task_id, $_params);
    } else {
       $self->_dispatch_child($_wid, $_task, $_task_id, $_params);
    }
 
-   $self->{_task_max_workers}->[$_task_id] += 1 if (defined $_task_id);
-   $self->{_total_exited} -= 1; $self->{_total_workers} += 1;
+   select(undef, undef, undef, 0.003);
 
    return;
 }
@@ -1038,8 +1040,8 @@ sub exit {
          local $\ = undef;
          flock $_DAT_LOCK, LOCK_EX;
 
-         print $_OUT_W_SOCK OUTPUT_W_EXT,  $LF, OUTPUT_W_DNE,       $LF,
-            (defined $_task_id) ? "$_task_id${LF}" : "-1${LF}";
+         print $_OUT_W_SOCK OUTPUT_W_EXT,  $LF,
+            ((defined $_task_id) ? "$_task_id${LF}" : "-1${LF}");
 
          print $_DAT_W_SOCK $self->wid(),  $LF, $self->{_exit_pid}, $LF,
                             $_exit_status, $LF, $_exit_id,          $LF,
@@ -1049,6 +1051,8 @@ sub exit {
          flock $_DAT_LOCK, LOCK_UN;
       }
    }
+
+   select(undef, undef, undef, 0.003);
 
    ## Exit thread/child process.
    threads->exit($_exit_status) if ($_has_threads && threads->can('exit'));
@@ -1539,6 +1543,7 @@ sub _validate_args {
          $self->{_total_workers} -= 1;
          chomp($_task_id = <$_OUT_R_SOCK>);
 
+         ## Call on task_end if the last worker for the task.
          if ($_has_user_tasks && $_task_id >= 0) {
             $self->{_task_max_workers}->[$_task_id] -= 1;
 
@@ -1555,7 +1560,14 @@ sub _validate_args {
       ## ----------------------------------------------------------------------
 
       OUTPUT_W_EXT.$LF => sub {                   ## Worker has exited
-         $self->{_total_exited} += 1;
+         $self->{_total_exited}  += 1;
+         $self->{_total_workers} -= 1;
+
+         chomp($_task_id = <$_OUT_R_SOCK>);
+
+         $self->{_task_max_workers}->[$_task_id] -= 1
+            if ($_has_user_tasks && $_task_id >= 0);
+
          my $_exit_msg = '';
 
          chomp($_exit_wid    = <$_DAT_R_SOCK>);
@@ -1605,6 +1617,15 @@ sub _validate_args {
                msg    => $_exit_msg,
                id     => $_exit_id
             };
+         }
+
+         ## Call on task_end if the last worker for the task.
+         if ($_has_user_tasks && $_task_id >= 0) {
+            unless ($self->{_task_max_workers}->[$_task_id]) {
+               if (defined $self->{user_tasks}->[$_task_id]->{task_end}) {
+                  $self->{user_tasks}->[$_task_id]->{task_end}();
+               }
+            }
          }
 
          return;
