@@ -3,8 +3,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 2+1;
-use Test::NoWarnings;
+use Test::More tests => 2;
 
 ## Always load MCE::Signal before MCE when wanting to export or pass options.
 

@@ -4,13 +4,12 @@ use strict;
 use warnings;
 
 use Test::More;
-use Test::NoWarnings;
 
 if ($^O ne 'MSWin32') {
-   plan 'tests' => 6+1;
+   plan 'tests' => 6;
 }
 else {
-   plan 'tests' => 5+1;
+   plan 'tests' => 5;
 }
 
 ## Optional signals detected by MCE::Signal and not tested here are
