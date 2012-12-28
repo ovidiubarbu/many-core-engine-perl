@@ -2482,11 +2482,11 @@ sub _worker_main {
    ## Wait until MCE completes exit notification.
    $SIG{__DIE__} = $SIG{__WARN__} = sub { };
 
- # eval {
- #    flock $_DAT_LOCK, LOCK_SH; flock $_DAT_LOCK, LOCK_UN;
- #    close $_DAT_LOCK; close $_COM_LOCK;
- #    undef $_DAT_LOCK; undef $_COM_LOCK;
- # };
+   eval {
+      flock $_DAT_LOCK, LOCK_SH; flock $_DAT_LOCK, LOCK_UN;
+      close $_DAT_LOCK; close $_COM_LOCK;
+      undef $_DAT_LOCK; undef $_COM_LOCK;
+   };
 
    return;
 }
