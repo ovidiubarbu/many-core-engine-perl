@@ -1,5 +1,9 @@
 Revision history for MCE
 
+1.201_004 Sat Dec 29 01:00:00 EST 2012
+    * Update to exit and restart_worker methods
+    * Code refactoring plus update to documentation
+
 1.201_003 Fri Dec 28 03:20:00 EST 2012
     * Removed Test::NoWarnings -- many testers do not have this installed
     * Update to core logic. Windows is passing with workers exiting/restarting
