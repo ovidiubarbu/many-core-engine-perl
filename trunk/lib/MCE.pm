@@ -1028,7 +1028,8 @@ sub exit {
       my $_task_id    = $self->{_task_id};
 
       if (defined $_DAT_LOCK) {
-         my $_len = length($_exit_msg);
+         my $_len  =  length($_exit_msg);
+         $_exit_id =~ s/[\r\n][\r\n]*/ /mg;
 
          local $\ = undef;
          flock $_DAT_LOCK, LOCK_EX;
