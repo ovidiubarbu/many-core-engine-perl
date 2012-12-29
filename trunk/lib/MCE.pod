@@ -197,8 +197,12 @@ have many workers run in parallel.
    sub on_post_exit {
 
       my ($self, $wid, $pid, $status, $msg, $id) = @_;
-
+      print "$wid: $pid: $status: $msg: $id\n";
    }
+
+   -- Output
+
+   2: PID_7625: 0: ok: pebbles
 
 =head2 SYNTAX for ON_POST_RUN
 
@@ -538,15 +542,18 @@ Methods listed below are callable by workers only.
 
 =head2 exit ( [ $status [, $message [, $id ] ] ] )
 
-   ## The worker exits the current job.
+   ## Worker exits entirely from MCE. $id (optional) can be used to pass
+   ## the primary key or a string along with the message. Please look at
+   ## the on_post_exit and on_post_run options for callback support.
 
    $self->exit();          ## default is 0
    $self->exit(1);
    $self->exit(2, 'error: entire chunk failed', $chunk_id);
+   $self->exit(0, 'ok', 'pebbles');
 
 =head2 last ( void )
 
-   ## Worker immediately exits the chunking loop or user func.
+   ## Worker immediately leaves the chunking loop or user func.
    ## Call this inside foreach, forchunk, and user_func.
 
    my @list = (1 .. 80);
