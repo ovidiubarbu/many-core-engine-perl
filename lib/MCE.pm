@@ -483,7 +483,7 @@ sub spawn {
 
    ## Release lock.
    flock $_COM_LOCK, LOCK_UN;
-   select(undef, undef, undef, 0.003);
+   select(undef, undef, undef, 0.002);
    close $_COM_LOCK; undef $_COM_LOCK;
 
    $SIG{__DIE__}  = $_die_handler;
@@ -829,7 +829,7 @@ sub run {
 
       ## Release lock 1 of 2.
       flock $_DAT_LOCK, LOCK_UN;
-      select(undef, undef, undef, 0.003);
+      select(undef, undef, undef, 0.002);
       close $_DAT_LOCK; undef $_DAT_LOCK;
    }
 
@@ -857,7 +857,6 @@ sub run {
 
    ## Release lock 2 of 2.
    flock $_COM_LOCK, LOCK_UN;
-   select(undef, undef, undef, 0.003);
    close $_COM_LOCK; undef $_COM_LOCK;
 
    ## Shutdown workers (also if one or more workers have exited).
@@ -902,20 +901,12 @@ sub shutdown {
 
    ## Notify workers to exit loop.
    local $\ = undef; local $/ = $LF;
-
-   open my $_DAT_LOCK, '+>> :stdio', "$_sess_dir/dat.lock";
-   flock $_DAT_LOCK, LOCK_EX;
-
    my $_total_exited = $self->{_total_exited} || 0;
 
    for (1 .. $_max_workers - $_total_exited) {
       print $_COM_R_SOCK "_exit${LF}";
       <$_COM_R_SOCK>;
    }
-
-   flock $_DAT_LOCK, LOCK_UN;
-   select(undef, undef, undef, 0.003);
-   close $_DAT_LOCK; undef $_DAT_LOCK;
 
    ## Reap children/threads.
    if ( $self->{_pids} && @{ $self->{_pids} } > 0 ) {
