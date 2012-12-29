@@ -239,6 +239,8 @@ sub new {
       for my $_task (@{ $self->{user_tasks} }) {
          $_task->{max_workers} = $self->{max_workers}
             unless (defined $_task->{max_workers});
+         $_task->{use_threads} = $self->{use_threads}
+            unless (defined $_task->{use_threads});
       }
       if ($_is_cygwin) {
          ## File locking fails among children & threads.
@@ -297,8 +299,7 @@ sub new {
       if ($self->{use_threads}) {
          $self->{max_workers} = int(MAX_OPEN_FILES / 2) - 32
             if ($self->{max_workers} > int(MAX_OPEN_FILES / 2) - 32);
-      }
-      else {
+      } else {
          $self->{max_workers} = MAX_USER_PROCS - 64
             if ($self->{max_workers} > MAX_USER_PROCS - 64);
       }
@@ -352,12 +353,9 @@ sub spawn {
       $self->{_mce_sid} = $$ .'.'. $self->{_mce_tid} .'.'. (++$_mce_count);
    }
 
-   my $_mce_sid      = $self->{_mce_sid};
-   my $_mce_tid      = $self->{_mce_tid};
-   my $_sess_dir     = $self->{_sess_dir};
-   my $_tmp_dir      = $self->{tmp_dir};
-   my $_max_workers  = $self->{max_workers};
-   my $_use_threads  = $self->{use_threads};
+   my $_mce_sid  = $self->{_mce_sid};
+   my $_sess_dir = $self->{_sess_dir};
+   my $_tmp_dir  = $self->{tmp_dir};
 
    ## Create temp dir.
    unless ($_sess_dir) {
@@ -425,6 +423,9 @@ sub spawn {
 
    ## -------------------------------------------------------------------------
 
+   my $_max_workers = $self->{max_workers};
+   my $_use_threads = $self->{use_threads};
+
    $self->{_pids}   = (); $self->{_thrs}  = (); $self->{_tids} = ();
    $self->{_status} = (); $self->{_state} = (); $self->{_task} = ();
 
@@ -451,15 +452,15 @@ sub spawn {
       }}
    }
    else {
-      my $_task_id = 0; my $_wid = 0; $self->{_total_workers} = 0;
+      my ($_task_id, $_wid);
+
+      $_task_id = $_wid = $self->{_total_workers} = 0;
+
+      $self->{_total_workers} += $_->{max_workers}
+         for (@{ $self->{user_tasks} });
 
       for my $_task (@{ $self->{user_tasks} }) {
-         $self->{_total_workers} += $_task->{max_workers};
-      }
-
-      for my $_task (@{ $self->{user_tasks} }) {
-         my $_use_threads = (defined $_task->{use_threads})
-            ? $_task->{use_threads} : $self->{use_threads};
+         my $_use_threads = $_task->{use_threads};
 
          if (defined $_use_threads && $_use_threads == 1) {
             $self->_dispatch_thread(++$_wid, $_task, $_task_id)
@@ -472,13 +473,13 @@ sub spawn {
          $_task_id++;
       }
 
-      $_task_id = 0;
+      $_task_id = $_wid = 0;
 
       for my $_task (@{ $self->{user_tasks} }) {
          $self->{_task}->[$_task_id] = {
             _total_running => 0, _total_workers => $_task->{max_workers}
          };
-         for (1 .. $_task->{max_workers}) { $self->{_state}->[$_] = {
+         for (1 .. $_task->{max_workers}) { $self->{_state}->[++$_wid] = {
             _task_id => $_task_id, _task => $_task, _params => undef
          }}
 
@@ -636,7 +637,7 @@ sub restart_worker {
    my $_task_id = $self->{_state}->[$_wid]->{_task_id};
    my $_task    = $self->{_state}->[$_wid]->{_task};
 
-   my $_use_threads = (defined $_task->{use_threads})
+   my $_use_threads = (defined $_task_id)
       ? $_task->{use_threads} : $self->{use_threads};
 
    $self->{_task}->[$_task_id]->{_total_running} += 1 if (defined $_task_id);
@@ -900,10 +901,8 @@ sub shutdown {
 
    my $_COM_R_SOCK    = $self->{_com_r_sock};
    my $_mce_sid       = $self->{_mce_sid};
-   my $_mce_tid       = $self->{_mce_tid};
    my $_sess_dir      = $self->{_sess_dir};
    my $_total_workers = $self->{_total_workers};
-   my $_use_threads   = $self->{use_threads};
 
    ## Delete entry.
    delete $_mce_spawned{$_mce_sid};
@@ -957,7 +956,7 @@ sub shutdown {
       rmdir  "$_sess_dir";
    }
 
-   ## Reset this instance.
+   ## Reset instance.
    $self->{_total_exited}  = 0;
    $self->{_total_running} = $self->{_total_workers} = 0;
 
@@ -1527,8 +1526,9 @@ sub _validate_args {
    my %_output_function = (
 
       OUTPUT_W_DNE.$LF => sub {                   ## Worker has completed
-         $self->{_total_running} -= 1;
          chomp($_task_id = <$_OUT_R_SOCK>);
+
+         $self->{_total_running} -= 1;
 
          ## Call on task_end if the last worker for the task.
          if ($_has_user_tasks && $_task_id >= 0) {
@@ -1547,14 +1547,16 @@ sub _validate_args {
       ## ----------------------------------------------------------------------
 
       OUTPUT_W_EXT.$LF => sub {                   ## Worker has exited
+         chomp($_task_id = <$_OUT_R_SOCK>);
+
          $self->{_total_exited}  += 1;
          $self->{_total_running} -= 1;
          $self->{_total_workers} -= 1;
 
-         chomp($_task_id = <$_OUT_R_SOCK>);
-
-         $self->{_task}->[$_task_id]->{_total_running} -= 1
-            if ($_has_user_tasks && $_task_id >= 0);
+         if ($_has_user_tasks && $_task_id >= 0) {
+            $self->{_task}->[$_task_id]->{_total_running} -= 1;
+            $self->{_task}->[$_task_id]->{_total_workers} -= 1;
+         }
 
          my $_exit_msg = '';
 
