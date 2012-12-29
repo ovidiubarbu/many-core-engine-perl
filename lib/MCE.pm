@@ -142,7 +142,7 @@ my %_valid_fields = map { $_ => 1 } qw(
    _abort_msg _mce_sid _mce_tid _pids _run_mode _single_dim _thrs _tids _wid
    _com_r_sock _com_w_sock _dat_r_sock _dat_w_sock _out_r_sock _out_w_sock
    _que_r_sock _que_w_sock _sess_dir _spawned _state _status _task _task_id
-   _exiting _exit_pid _total_exited _total_workers
+   _exiting _exit_pid _total_exited _total_running _total_workers
 );
 
 my %_params_allowed_args = map { $_ => 1 } qw(
@@ -235,6 +235,27 @@ sub new {
    _croak("MCE::new: '$self->{tmp_dir}' is not writeable")
       unless (-w $self->{tmp_dir});
 
+   if (defined $self->{user_tasks}) {
+      for my $_task (@{ $self->{user_tasks} }) {
+         $_task->{max_workers} = $self->{max_workers}
+            unless (defined $_task->{max_workers});
+      }
+      if ($_is_cygwin) {
+         ## File locking fails among children & threads.
+         ## Must be all children or all threads, not intermixed.
+         my (%_values, $_value);
+
+         for my $_task (@{ $self->{user_tasks} }) {
+            $_value = (defined $_task->{use_threads})
+               ? $_task->{use_threads} : $self->{use_threads};
+            $_values{$_value} = '';
+         }
+
+         _croak("MCE::new: 'cannot mix' use_threads => 0/1 in Cygwin")
+            if (keys %_values > 1);
+      }
+   }
+
    _validate_args($self);
 
    %argv = ();
@@ -258,8 +279,8 @@ sub new {
    $self->{_out_w_sock} = undef; ## Workers write to this for serialized writes
    $self->{_que_r_sock} = undef; ## Queue channel for MCE
    $self->{_que_w_sock} = undef; ## Queue channel for workers
-   $self->{_state}      = undef; ## State info: worker (task_id/task/params)
-   $self->{_task}       = undef; ## Task info: max_workers
+   $self->{_state}      = undef; ## State info: worker task_id/task/params
+   $self->{_task}       = undef; ## Task info: total_running/total_workers
 
    ## -------------------------------------------------------------------------
 
@@ -331,7 +352,6 @@ sub spawn {
       $self->{_mce_sid} = $$ .'.'. $self->{_mce_tid} .'.'. (++$_mce_count);
    }
 
-   ## Local vars.
    my $_mce_sid      = $self->{_mce_sid};
    my $_mce_tid      = $self->{_mce_tid};
    my $_sess_dir     = $self->{_sess_dir};
@@ -405,8 +425,6 @@ sub spawn {
 
    ## -------------------------------------------------------------------------
 
-   my $_wid = 0;
-
    $self->{_pids}   = (); $self->{_thrs}  = (); $self->{_tids} = ();
    $self->{_status} = (); $self->{_state} = (); $self->{_task} = ();
 
@@ -418,41 +436,28 @@ sub spawn {
    $_mce_spawned{$_mce_sid} = $self;
 
    unless (defined $self->{user_tasks}) {
+      $self->{_total_workers} = $_max_workers;
+
       if (defined $_use_threads && $_use_threads == 1) {
-         $self->_dispatch_thread(++$_wid) for (1 .. $_max_workers);
+         $self->_dispatch_thread($_) for (1 .. $_max_workers);
       } else {
-         $self->_dispatch_child(++$_wid) for (1 .. $_max_workers);
+         $self->_dispatch_child($_) for (1 .. $_max_workers);
       }
 
       $self->{_task}->[0] = { _total_workers => $_max_workers };
-      $_wid = 0;
 
-      for (1 .. $_max_workers) { $self->{_state}->[++$_wid] = {
+      for (1 .. $_max_workers) { $self->{_state}->[$_] = {
          _task_id => undef, _task => undef, _params => undef
       }}
    }
    else {
-      if ($_is_cygwin) {
-         ## File locking fails when being locked by both children & threads.
-         ## Must be all children or all threads, but not both.
-         my (%_values, $_value);
-
-         for my $_task (@{ $self->{user_tasks} }) {
-            $_value = (defined $_task->{use_threads})
-               ? $_task->{use_threads} : $self->{use_threads};
-            $_values{$_value} = '';
-         }
-
-         _croak("MCE::spawn: 'cannot mix' use_threads => 0/1 in Cygwin")
-            if (keys %_values > 1);
-      }
-
-      my $_task_id = 0;
+      my $_task_id = 0; my $_wid = 0; $self->{_total_workers} = 0;
 
       for my $_task (@{ $self->{user_tasks} }) {
-         $_task->{max_workers} = $self->{max_workers}
-            unless (defined $_task->{max_workers});
+         $self->{_total_workers} += $_task->{max_workers};
+      }
 
+      for my $_task (@{ $self->{user_tasks} }) {
          my $_use_threads = (defined $_task->{use_threads})
             ? $_task->{use_threads} : $self->{use_threads};
 
@@ -467,13 +472,13 @@ sub spawn {
          $_task_id++;
       }
 
-      $_wid = $_task_id = 0;
+      $_task_id = 0;
 
       for my $_task (@{ $self->{user_tasks} }) {
          $self->{_task}->[$_task_id] = {
-            _total_workers => $_task->{max_workers}
+            _total_running => 0, _total_workers => $_task->{max_workers}
          };
-         for (1 .. $_task->{max_workers}) { $self->{_state}->[++$_wid] = {
+         for (1 .. $_task->{max_workers}) { $self->{_state}->[$_] = {
             _task_id => $_task_id, _task => $_task, _params => undef
          }}
 
@@ -481,17 +486,20 @@ sub spawn {
       }
    }
 
+   ## Await reply from the last worker spawned.
+   {
+      my $_COM_R_SOCK = $self->{_com_r_sock};
+      local $/ = $LF; <$_COM_R_SOCK>;
+   }
+
+   $self->{_spawned} = 1;
+
    ## Release lock.
    flock $_COM_LOCK, LOCK_UN;
-   select(undef, undef, undef, 0.002);
    close $_COM_LOCK; undef $_COM_LOCK;
 
    $SIG{__DIE__}  = $_die_handler;
    $SIG{__WARN__} = $_warn_handler;
-
-   ## Update max workers spawned.
-   $self->{max_workers} = $_wid;
-   $self->{_spawned} = 1;
 
    return $self;
 }
@@ -631,8 +639,10 @@ sub restart_worker {
    my $_use_threads = (defined $_task->{use_threads})
       ? $_task->{use_threads} : $self->{use_threads};
 
+   $self->{_task}->[$_task_id]->{_total_running} += 1 if (defined $_task_id);
    $self->{_task}->[$_task_id]->{_total_workers} += 1 if (defined $_task_id);
-   $self->{_total_exited} -= 1; $self->{_total_workers} += 1;
+
+   $self->{_total_running} += 1; $self->{_total_workers} += 1;
 
    if (defined $_use_threads && $_use_threads == 1) {
       $self->_dispatch_thread($_wid, $_task, $_task_id, $_params);
@@ -696,15 +706,8 @@ sub run {
    local $SIG{__DIE__}  = \&_die;
    local $SIG{__WARN__} = \&_warn;
 
-   ## Local vars.
    my ($_input_data, $_input_file, $_input_glob);
    my ($_abort_msg, $_first_msg, $_run_mode, $_single_dim);
-
-   my $_mce_tid     = $self->{_mce_tid};
-   my $_sess_dir    = $self->{_sess_dir};
-   my $_chunk_size  = $self->{chunk_size};
-   my $_max_workers = $self->{max_workers};
-   my $_use_slurpio = $self->{use_slurpio};
 
    ## Determine run mode for workers.
    if (defined $self->{input_data}) {
@@ -754,22 +757,25 @@ sub run {
       $_abort_msg = undef;
    }
 
-   ## Set flag on whether array is single dimension.
+   ## Set flag on whether or not array is single dimension.
    $self->{_single_dim} = $_single_dim;
 
    ## -------------------------------------------------------------------------
 
+   my $_chunk_size    = $self->{chunk_size};
+   my $_sess_dir      = $self->{_sess_dir};
+   my $_total_workers = $self->{_total_workers};
+   my $_use_slurpio   = $self->{use_slurpio};
+
    my %_params = (
       '_abort_msg'   => $_abort_msg,    '_run_mode'    => $_run_mode,
       '_chunk_size'  => $_chunk_size,   '_single_dim'  => $_single_dim,
-      '_input_file'  => $_input_file,   '_use_slurpio' => $_use_slurpio,
-      '_max_workers' => $_max_workers
+      '_input_file'  => $_input_file,   '_use_slurpio' => $_use_slurpio
    );
    my %_params_nodata = (
       '_abort_msg'   => undef,          '_run_mode'    => 'nodata',
       '_chunk_size'  => $_chunk_size,   '_single_dim'  => $_single_dim,
-      '_input_file'  => $_input_file,   '_use_slurpio' => $_use_slurpio,
-      '_max_workers' => $_max_workers
+      '_input_file'  => $_input_file,   '_use_slurpio' => $_use_slurpio
    );
 
    my $_COM_LOCK;
@@ -805,7 +811,7 @@ sub run {
       }
 
       ## Submit params data to workers.
-      for (1 .. $_max_workers) {
+      for (1 .. $_total_workers) {
          select(undef, undef, undef, $_submit_delay)
             if ($_submit_delay && $_submit_delay > 0.0);
 
@@ -835,11 +841,15 @@ sub run {
 
    ## -------------------------------------------------------------------------
 
-   $self->{_total_workers} = $_max_workers;
    $self->{_total_exited}  = 0;
+   $self->{_total_running} = $_total_workers;
+
+   if (defined $self->{user_tasks}) {
+      $_->{_total_running} = $_->{_total_workers} for (@{ $self->{_task} });
+   }
 
    ## Call the output function.
-   if ($_max_workers > 0) {
+   if ($_total_workers > 0) {
       $self->{_abort_msg} = $_abort_msg;
       $self->_output_loop($_input_data, $_input_glob);
       undef $self->{_abort_msg};
@@ -859,7 +869,7 @@ sub run {
    flock $_COM_LOCK, LOCK_UN;
    close $_COM_LOCK; undef $_COM_LOCK;
 
-   ## Shutdown workers (also if one or more workers have exited).
+   ## Shutdown workers (also if any workers have exited).
    $self->shutdown() if ($_auto_shutdown == 1 || $self->{_total_exited} > 0);
 
    return $self;
@@ -888,22 +898,20 @@ sub shutdown {
 
    lock $_MCE_LOCK if ($_has_threads);            ## Obtain MCE lock.
 
-   ## Local vars.
-   my $_COM_R_SOCK  = $self->{_com_r_sock};
-   my $_mce_sid     = $self->{_mce_sid};
-   my $_mce_tid     = $self->{_mce_tid};
-   my $_sess_dir    = $self->{_sess_dir};
-   my $_max_workers = $self->{max_workers};
-   my $_use_threads = $self->{use_threads};
+   my $_COM_R_SOCK    = $self->{_com_r_sock};
+   my $_mce_sid       = $self->{_mce_sid};
+   my $_mce_tid       = $self->{_mce_tid};
+   my $_sess_dir      = $self->{_sess_dir};
+   my $_total_workers = $self->{_total_workers};
+   my $_use_threads   = $self->{use_threads};
 
    ## Delete entry.
    delete $_mce_spawned{$_mce_sid};
 
    ## Notify workers to exit loop.
    local $\ = undef; local $/ = $LF;
-   my $_total_exited = $self->{_total_exited} || 0;
 
-   for (1 .. $_max_workers - $_total_exited) {
+   for (1 .. $_total_workers) {
       print $_COM_R_SOCK "_exit${LF}";
       <$_COM_R_SOCK>;
    }
@@ -945,13 +953,13 @@ sub shutdown {
 
    ## Remove session directory.
    if (defined $_sess_dir) {
-      unlink "$_sess_dir/com.lock";
-      unlink "$_sess_dir/dat.lock";
+      unlink "$_sess_dir/com.lock"; unlink "$_sess_dir/dat.lock";
       rmdir  "$_sess_dir";
    }
 
-   ## Reset vars.
-   $self->{_total_exited} = $self->{_total_workers} = 0;
+   ## Reset this instance.
+   $self->{_total_exited}  = 0;
+   $self->{_total_running} = $self->{_total_workers} = 0;
 
    $self->{_pids}   = (); $self->{_thrs}  = (); $self->{_tids} = ();
    $self->{_status} = (); $self->{_state} = (); $self->{_task} = ();
@@ -970,7 +978,7 @@ sub shutdown {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Miscellaneous routines.
+## Miscellaneous routines (abort exit last next wid).
 ##
 ###############################################################################
 
@@ -995,7 +1003,7 @@ sub abort {
    return;
 }
 
-## Worker exits current job.
+## Worker exits from MCE.
 
 sub exit {
 
@@ -1288,8 +1296,6 @@ sub _validate_args {
          if ($_s->{user_tasks} && ref $_s->{user_tasks} ne 'ARRAY');
 
       for my $_t (@{ $_s->{user_tasks} }) {
-         $_t->{max_workers} = $_s->{max_workers} unless ($_t->{max_workers});
-
          _croak "$_tag: 'max_workers' is not valid"
             if ($_t->{max_workers} !~ /\A\d+\z/ or $_t->{max_workers} == 0);
          _croak "$_tag: 'use_threads' is not 0 or 1"
@@ -1506,8 +1512,8 @@ sub _validate_args {
 ###############################################################################
 
 {
-   my ($_total_workers, $_value, $_want_id, $_input_data, $_eof_flag);
-   my ($_max_workers, $_user_error, $_user_output, $_flush_file, $self);
+   my ($_value, $_want_id, $_input_data, $_eof_flag);
+   my ($_user_error, $_user_output, $_flush_file, $self);
    my ($_callback, $_file, %_sendto_fhs, $_len);
 
    my ($_DAT_R_SOCK, $_OUT_R_SOCK, $_MCE_STDERR, $_MCE_STDOUT);
@@ -1521,14 +1527,14 @@ sub _validate_args {
    my %_output_function = (
 
       OUTPUT_W_DNE.$LF => sub {                   ## Worker has completed
-         $self->{_total_workers} -= 1;
+         $self->{_total_running} -= 1;
          chomp($_task_id = <$_OUT_R_SOCK>);
 
          ## Call on task_end if the last worker for the task.
          if ($_has_user_tasks && $_task_id >= 0) {
-            $self->{_task}->[$_task_id]->{_total_workers} -= 1;
+            $self->{_task}->[$_task_id]->{_total_running} -= 1;
 
-            unless ($self->{_task}->[$_task_id]->{_total_workers}) {
+            unless ($self->{_task}->[$_task_id]->{_total_running}) {
                if (defined $self->{user_tasks}->[$_task_id]->{task_end}) {
                   $self->{user_tasks}->[$_task_id]->{task_end}();
                }
@@ -1542,11 +1548,12 @@ sub _validate_args {
 
       OUTPUT_W_EXT.$LF => sub {                   ## Worker has exited
          $self->{_total_exited}  += 1;
+         $self->{_total_running} -= 1;
          $self->{_total_workers} -= 1;
 
          chomp($_task_id = <$_OUT_R_SOCK>);
 
-         $self->{_task}->[$_task_id]->{_total_workers} -= 1
+         $self->{_task}->[$_task_id]->{_total_running} -= 1
             if ($_has_user_tasks && $_task_id >= 0);
 
          my $_exit_msg = '';
@@ -1602,7 +1609,7 @@ sub _validate_args {
 
          ## Call on task_end if the last worker for the task.
          if ($_has_user_tasks && $_task_id >= 0) {
-            unless ($self->{_task}->[$_task_id]->{_total_workers}) {
+            unless ($self->{_task}->[$_task_id]->{_total_running}) {
                if (defined $self->{user_tasks}->[$_task_id]->{task_end}) {
                   $self->{user_tasks}->[$_task_id]->{task_end}();
                }
@@ -1879,7 +1886,6 @@ sub _validate_args {
       $_on_post_run  = $self->{on_post_run};
       $_chunk_size   = $self->{chunk_size};
       $_flush_file   = $self->{flush_file};
-      $_max_workers  = $self->{max_workers};
       $_use_slurpio  = $self->{use_slurpio};
       $_user_output  = $self->{user_output};
       $_user_error   = $self->{user_error};
@@ -1948,7 +1954,7 @@ sub _validate_args {
 
          if (exists $_output_function{$_func}) {
             $_output_function{$_func}();
-            last unless ($self->{_total_workers});
+            last unless ($self->{_total_running});
          }
       }
 
@@ -2011,7 +2017,7 @@ sub _worker_read_handle {
 
    die "Private method called" unless (caller)[0]->isa( ref($self) );
 
-   my $_many_wrks   = ($self->{max_workers} > 1) ? 1 : 0;
+   my $_many_wrks   = ($self->{_total_workers} > 1) ? 1 : 0;
 
    my $_QUE_R_SOCK  = $self->{_que_r_sock};
    my $_QUE_W_SOCK  = $self->{_que_w_sock};
@@ -2261,7 +2267,6 @@ sub _worker_do {
    $self->{_run_mode}   = $_params_ref->{_run_mode};
    $self->{_single_dim} = $_params_ref->{_single_dim};
    $self->{chunk_size}  = $_params_ref->{_chunk_size};
-   $self->{max_workers} = $_params_ref->{_max_workers};
    $self->{use_slurpio} = $_params_ref->{_use_slurpio};
 
    ## Init local vars.
@@ -2458,10 +2463,16 @@ sub _worker_main {
    }
 
    ## Begin processing if a new worker was added while running.
+   ## Respond back to the main process if the last worker spawned.
    if (defined $_params) {
       $self->{_wid} = $_wid;
       $self->_worker_do($_params);
       undef $_params;
+   }
+   elsif ($self->{_wid} == $self->{_total_workers}) {
+      my $_COM_W_SOCK = $self->{_com_w_sock};
+      local $\ = undef;
+      print $_COM_W_SOCK $LF;
    }
 
    ## Wait until MCE completes spawning or worker completes running.
