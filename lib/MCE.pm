@@ -234,6 +234,8 @@ sub new {
       unless (-d $self->{tmp_dir});
    _croak("MCE::new: '$self->{tmp_dir}' is not writeable")
       unless (-w $self->{tmp_dir});
+   _croak("MCE::new: 'user_tasks' is not an ARRAY reference")
+      if ($self->{user_tasks} && ref $self->{user_tasks} ne 'ARRAY');
 
    if (defined $self->{user_tasks}) {
       for my $_task (@{ $self->{user_tasks} }) {
@@ -258,7 +260,7 @@ sub new {
       }
    }
 
-   _validate_args($self);
+   $self->_validate_args();
 
    %argv = ();
 
@@ -688,7 +690,7 @@ sub run {
    ## Set user specified params if specified.
    if (defined $_params_ref && ref $_params_ref eq 'HASH') {
       $_requires_shutdown = _sync_params($self, $_params_ref);
-      _validate_args($self);
+      $self->_validate_args();
    }
 
    ## Shutdown workers if determined by _sync_params or if processing a
@@ -1252,13 +1254,8 @@ sub _validate_args {
 
    _croak "$_tag: 'chunk_size' is not valid"
       if ($_s->{chunk_size} !~ /\A\d+\z/ or $_s->{chunk_size} == 0);
-   _croak "$_tag: 'max_workers' is not valid"
-      if ($_s->{max_workers} !~ /\A\d+\z/ or $_s->{max_workers} == 0);
    _croak "$_tag: 'use_slurpio' is not 0 or 1"
       if ($_s->{use_slurpio} && $_s->{use_slurpio} !~ /\A[01]\z/);
-   _croak "$_tag: 'use_threads' is not 0 or 1"
-      if ($_s->{use_threads} && $_s->{use_threads} !~ /\A[01]\z/);
-
    _croak "$_tag: 'job_delay' is not valid"
       if ($_s->{job_delay} && $_s->{job_delay} !~ /\A[\d\.]+\z/);
    _croak "$_tag: 'spawn_delay' is not valid"
@@ -1270,12 +1267,6 @@ sub _validate_args {
       if ($_s->{on_post_exit} && ref $_s->{on_post_exit} ne 'CODE');
    _croak "$_tag: 'on_post_run' is not a CODE reference"
       if ($_s->{on_post_run} && ref $_s->{on_post_run} ne 'CODE');
-   _croak "$_tag: 'user_begin' is not a CODE reference"
-      if ($_s->{user_begin} && ref $_s->{user_begin} ne 'CODE');
-   _croak "$_tag: 'user_func' is not a CODE reference"
-      if ($_s->{user_func} && ref $_s->{user_func} ne 'CODE');
-   _croak "$_tag: 'user_end' is not a CODE reference"
-      if ($_s->{user_end} && ref $_s->{user_end} ne 'CODE');
    _croak "$_tag: 'user_error' is not a CODE reference"
       if ($_s->{user_error} && ref $_s->{user_error} ne 'CODE');
    _croak "$_tag: 'user_output' is not a CODE reference"
@@ -1288,27 +1279,41 @@ sub _validate_args {
    _croak "$_tag: 'flush_stdout' is not 0 or 1"
       if ($_s->{flush_stdout} && $_s->{flush_stdout} !~ /\A[01]\z/);
 
+   $_s->_validate_args_s();
+
    if (defined $_s->{user_tasks}) {
-      _croak "$_tag: 'user_tasks' is not an ARRAY reference"
-         if ($_s->{user_tasks} && ref $_s->{user_tasks} ne 'ARRAY');
-
       for my $_t (@{ $_s->{user_tasks} }) {
-         _croak "$_tag: 'max_workers' is not valid"
-            if ($_t->{max_workers} !~ /\A\d+\z/ or $_t->{max_workers} == 0);
-         _croak "$_tag: 'use_threads' is not 0 or 1"
-            if ($_t->{use_threads} && $_t->{use_threads} !~ /\A[01]\z/);
-
-         _croak "$_tag: 'user_begin' is not a CODE reference"
-            if ($_t->{user_begin} && ref $_t->{user_begin} ne 'CODE');
-         _croak "$_tag: 'user_func' is not a CODE reference"
-            if ($_t->{user_func} && ref $_t->{user_func} ne 'CODE');
-         _croak "$_tag: 'user_end' is not a CODE reference"
-            if ($_t->{user_end} && ref $_t->{user_end} ne 'CODE');
-
+         $_s->_validate_args_s($_t);
          _croak "$_tag: 'task_end' is not a CODE reference"
             if ($_t->{task_end} && ref $_t->{task_end} ne 'CODE');
       }
    }
+
+   return;
+}
+
+sub _validate_args_s {
+
+   my MCE $self = $_[0];
+   my $_s       = $_[1] || $self;
+
+   @_ = ();
+
+   die "Private method called" unless (caller)[0]->isa( ref($_s) );
+
+   my $_tag = 'MCE::_validate_args_s';
+
+   _croak "$_tag: 'max_workers' is not valid"
+      if ($_s->{max_workers} !~ /\A\d+\z/ or $_s->{max_workers} == 0);
+   _croak "$_tag: 'use_threads' is not 0 or 1"
+      if ($_s->{use_threads} && $_s->{use_threads} !~ /\A[01]\z/);
+
+   _croak "$_tag: 'user_begin' is not a CODE reference"
+      if ($_s->{user_begin} && ref $_s->{user_begin} ne 'CODE');
+   _croak "$_tag: 'user_func' is not a CODE reference"
+      if ($_s->{user_func} && ref $_s->{user_func} ne 'CODE');
+   _croak "$_tag: 'user_end' is not a CODE reference"
+      if ($_s->{user_end} && ref $_s->{user_end} ne 'CODE');
 
    return;
 }
@@ -2495,7 +2500,12 @@ sub _worker_main {
    close $_DAT_LOCK; close $_COM_LOCK;
    undef $_DAT_LOCK; undef $_COM_LOCK;
 
-   return;
+   threads->exit() if ($_has_threads && threads->can('exit'));
+
+   close STDERR; close STDOUT;
+   kill 9, $$ unless ($_is_winperl);
+
+   CORE::exit();
 }
 
 ###############################################################################
@@ -2526,11 +2536,6 @@ sub _dispatch_child {
 
    unless ($_pid) {
       _worker_main($self, $_wid, $_task, $_task_id, $_params);
-
-      close STDERR; close STDOUT;
-      kill 9, $$ unless ($_is_winperl);
-
-      CORE::exit();
    }
 
    if (defined $_pid) {
