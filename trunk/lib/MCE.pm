@@ -1594,18 +1594,15 @@ sub _validate_args {
          ## Call on_post_exit callback if defined. Otherwise, append status
          ## information if on_post_run is defined for later retrieval.
          if (defined $_on_post_exit) {
-            $_on_post_exit->(
-               $self, $_exit_wid, $_exit_pid, $_exit_status,
-               $_exit_msg, $_exit_id
-            );
+            $_on_post_exit->($self, {
+               wid => $_exit_wid, pid => $_exit_pid, status => $_exit_status,
+               msg => $_exit_msg, id  => $_exit_id
+            });
          }
          elsif (defined $_on_post_run) {
             push @{ $self->{_status} }, {
-               wid    => $_exit_wid,
-               pid    => $_exit_pid,
-               status => $_exit_status,
-               msg    => $_exit_msg,
-               id     => $_exit_id
+               wid => $_exit_wid, pid => $_exit_pid, status => $_exit_status,
+               msg => $_exit_msg, id  => $_exit_id
             };
          }
 
