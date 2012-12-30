@@ -2500,12 +2500,7 @@ sub _worker_main {
    close $_DAT_LOCK; close $_COM_LOCK;
    undef $_DAT_LOCK; undef $_COM_LOCK;
 
-   threads->exit() if ($_has_threads && threads->can('exit'));
-
-   close STDERR; close STDOUT;
-   kill 9, $$ unless ($_is_winperl);
-
-   CORE::exit();
+   return;
 }
 
 ###############################################################################
@@ -2536,6 +2531,11 @@ sub _dispatch_child {
 
    unless ($_pid) {
       _worker_main($self, $_wid, $_task, $_task_id, $_params);
+
+      close STDERR; close STDOUT;
+      kill 9, $$ unless ($_is_winperl);
+
+      CORE::exit();
    }
 
    if (defined $_pid) {
