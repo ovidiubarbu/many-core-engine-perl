@@ -196,8 +196,9 @@ have many workers run in parallel.
 
    sub on_post_exit {
 
-      my ($self, $wid, $pid, $status, $msg, $id) = @_;
-      print "$wid: $pid: $status: $msg: $id\n";
+      my ($self, $e) = @_;
+
+      print "$e->{wid}: $e->{pid}: $e->{status}: $e->{msg}: $e->{id}\n";
    }
 
    -- Output
@@ -207,13 +208,16 @@ have many workers run in parallel.
 =head2 SYNTAX for ON_POST_RUN
 
    ## Executed after running ($self->process or $self->run).
+   ## The on_post_exit is immediately after a worker exits,
+   ## whereas on_post_run is after running. The reference
+   ## is an array of hashes.
 
    sub on_post_run {
 
       my ($self, $status_ref) = @_;
 
-      foreach my $h ( @{ $status_ref } ) {
-         print "$h->{wid}: $h->{pid}: $h->{status}: $h->{msg}: $h->{id}\n";
+      foreach my $e ( @{ $status_ref } ) {
+         print "$e->{wid}: $e->{pid}: $e->{status}: $e->{msg}: $e->{id}\n";
       }
    }
 
@@ -408,9 +412,9 @@ Methods listed below are callable by the main process only.
    my $mce = MCE->new(
 
       on_post_exit => sub {
-         my ($self, $wid, $pid, $status, $msg, $id) = @_;
-         print "$wid: $pid: status $status: $msg";
-         $self->restart_worker($wid);
+         my ($self, $e) = @_;
+         print "$e->{wid}: $e->{pid}: status $e->{status}: $e->{msg}";
+         $self->restart_worker($e->{wid});
       },
 
       user_begin => sub {
