@@ -137,7 +137,7 @@ my %_valid_fields = map { $_ => 1 } qw(
 
    chunk_size input_data job_delay spawn_delay submit_delay use_slurpio
    flush_file flush_stderr flush_stdout stderr_file stdout_file on_post_exit
-   user_begin user_end user_func user_error user_output on_post_run
+   sequence user_begin user_end user_func user_error user_output on_post_run
 
    _abort_msg _mce_sid _mce_tid _pids _run_mode _single_dim _thrs _tids _wid
    _com_r_sock _com_w_sock _dat_r_sock _dat_w_sock _out_r_sock _out_w_sock
@@ -148,7 +148,7 @@ my %_valid_fields = map { $_ => 1 } qw(
 my %_params_allowed_args = map { $_ => 1 } qw(
    chunk_size input_data job_delay spawn_delay submit_delay use_slurpio
    flush_file flush_stderr flush_stdout stderr_file stdout_file on_post_exit
-   user_begin user_end user_func user_error user_output on_post_run
+   sequence user_begin user_end user_func user_error user_output on_post_run
 );
 
 my $_is_cygwin   = ($^O eq 'cygwin');
@@ -209,6 +209,7 @@ sub new {
    $self->{submit_delay} = $argv{submit_delay} || undef;
    $self->{on_post_exit} = $argv{on_post_exit} || undef;
    $self->{on_post_run}  = $argv{on_post_run}  || undef;
+   $self->{sequence}     = $argv{sequence}     || undef;
    $self->{user_begin}   = $argv{user_begin}   || undef;
    $self->{user_func}    = $argv{user_func}    || undef;
    $self->{user_end}     = $argv{user_end}     || undef;
@@ -511,6 +512,43 @@ sub spawn {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
+## For "seq" method.
+##
+###############################################################################
+
+sub forseq {
+
+   my MCE $self = $_[0]; my $_sequence = $_[1];
+
+   _croak("MCE::forseq: method cannot be called by the worker process")
+      if ($self->wid());
+
+   my ($_user_func, $_params_ref);
+
+   if (ref $_[2] eq 'HASH') {
+      $_user_func = $_[3]; $_params_ref = $_[2];
+   } else {
+      $_user_func = $_[2]; $_params_ref = {};
+   }
+
+   @_ = ();
+
+   _croak("MCE::forseq: 'sequence' is not specified")
+      unless (defined $_sequence);
+   _croak("MCE::forseq: 'code_block' is not specified")
+      unless (defined $_user_func);
+
+   $_params_ref->{chunk_size} = 1;
+   $_params_ref->{sequence}   = $_sequence;
+   $_params_ref->{user_func}  = $_user_func;
+
+   $self->run(1, $_params_ref);
+
+   return $self;
+}
+
+###############################################################################
+## ----------------------------------------------------------------------------
 ## For "each" method.
 ##
 ###############################################################################
@@ -763,6 +801,7 @@ sub run {
    my $_chunk_size    = $self->{chunk_size};
    my $_sess_dir      = $self->{_sess_dir};
    my $_total_workers = $self->{_total_workers};
+   my $_sequence      = $self->{sequence};
    my $_use_slurpio   = $self->{use_slurpio};
 
    my %_params = (
@@ -1304,6 +1343,31 @@ sub _validate_args_s {
       if ($_s->{user_func} && ref $_s->{user_func} ne 'CODE');
    _croak "$_tag: 'user_end' is not a CODE reference"
       if ($_s->{user_end} && ref $_s->{user_end} ne 'CODE');
+
+   if (defined $_s->{sequence}) {
+      my $_seq = $_s->{sequence};
+
+      _croak "$_tag: 'sequence' is not a HASH reference"
+         if (ref $_seq ne 'HASH');
+      _croak "$_tag: 'begin' is not defined for sequence"
+         unless (exists $_seq->{begin});
+      _croak "$_tag: 'end' is not defined for sequence"
+         unless (exists $_seq->{end});
+
+      unless (exists $_seq->{step}) {
+         $_seq->{step} = ($_seq->{begin} < $_seq->{end}) ? 1 : -1;
+      }
+      for (qw(begin end step)) {
+         _croak "$_tag: '$_' is not valid for sequence"
+            if ($_seq->{$_} eq '' || $_seq->{$_} !~ /\A-?\d*\.?\d*\z/);
+      }
+      if ( ($_seq->{step} < 0 && $_seq->{begin} < $_seq->{end}) ||
+           ($_seq->{step} > 0 && $_seq->{begin} > $_seq->{end}) ||
+           ($_seq->{step} == 0)
+      ) {
+         _croak "$_tag: impossible 'step' size for sequence";
+      }
+   }
 
    return;
 }
@@ -2235,6 +2299,60 @@ sub _worker_request_chunk {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
+## Worker process -- Seq.
+##
+###############################################################################
+
+sub _worker_seq {
+
+   my MCE $self = $_[0];
+
+   @_ = ();
+
+   die "Private method called" unless (caller)[0]->isa( ref($self) );
+
+   my $_max_workers = $self->{max_workers};
+   my $_format      = $self->{sequence}->{format};
+   my $_begin       = $self->{sequence}->{begin};
+   my $_step        = $self->{sequence}->{step};
+   my $_end         = $self->{sequence}->{end};
+   my $_user_func   = $self->{user_func};
+   my $_wid         = $self->{_task_wid} || $self->wid();
+   my $_next        = ($_wid - 1) * $_step + $_begin;
+   my $_chunk_id    = $_wid;
+   my $_i;
+
+   $self->{_next_jmp} = sub { goto _WORKER_SEQ__NEXT; };
+   $self->{_last_jmp} = sub { goto _WORKER_SEQ__LAST; };
+
+   my $_do_seq = sub {
+      $_i = (defined $_format) ? sprintf("%$_format", $_next) : $_next;
+
+      $_user_func->($self, $_i, $_chunk_id);
+      _WORKER_SEQ__NEXT:
+
+      $_next += $_step * $_max_workers; $_chunk_id += $_max_workers;
+
+      return;
+   };
+
+   if ($_begin < $_end) {
+      while (1) { last if ($_next > $_end); $_do_seq->(); }
+   }
+   elsif ($_begin > $_end) {
+      while (1) { last if ($_next < $_end); $_do_seq->(); }
+   }
+   elsif ($_wid == 1) {
+      $_do_seq->();
+   }
+
+   _WORKER_SEQ__LAST:
+
+   return;
+}
+
+###############################################################################
+## ----------------------------------------------------------------------------
 ## Worker process -- Do.
 ##
 ###############################################################################
@@ -2263,7 +2381,10 @@ sub _worker_do {
    $self->{user_begin}->($self) if (defined $self->{user_begin});
 
    ## Call worker function.
-   if ($_run_mode eq 'array') {
+   if (defined $self->{sequence}) {
+      $self->_worker_seq();
+   }
+   elsif ($_run_mode eq 'array') {
       $self->_worker_request_chunk(REQUEST_ARRAY);
    }
    elsif ($_run_mode eq 'glob') {
@@ -2401,6 +2522,7 @@ sub _worker_main {
    $self->{user_begin} = $_task->{user_begin} if (defined $_task->{user_begin});
    $self->{user_func}  = $_task->{user_func}  if (defined $_task->{user_func});
    $self->{user_end}   = $_task->{user_end}   if (defined $_task->{user_end});
+   $self->{sequence}   = $_task->{sequence}   if (defined $_task->{sequence});
 
    $self->{max_workers} = $_task->{max_workers}
       if (defined $_task->{max_workers});
