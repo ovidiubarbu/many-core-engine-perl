@@ -2332,15 +2332,15 @@ sub _worker_seq {
    my $_wid         = $self->{_task_wid} || $self->{_wid};
    my $_next        = ($_wid - 1) * $_step + $_begin;
    my $_chunk_id    = $_wid;
-   my $_i;
+   my $_seq_n;
 
    $self->{_next_jmp} = sub { goto _WORKER_SEQ__NEXT; };
    $self->{_last_jmp} = sub { goto _WORKER_SEQ__LAST; };
 
    my $_do_seq = sub {
-      $_i = (defined $_format) ? sprintf("%$_format", $_next) : $_next;
+      $_seq_n = (defined $_format) ? sprintf("%$_format", $_next) : $_next;
 
-      $_user_func->($self, $_i, $_chunk_id);
+      $_user_func->($self, $_seq_n, $_chunk_id);
       _WORKER_SEQ__NEXT:
 
       $_next += $_step * $_max_workers; $_chunk_id += $_max_workers;
