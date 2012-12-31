@@ -1,5 +1,5 @@
 Name:           perl-MCE
-Version:        1.201
+Version:        1.300
 Release:        1%{?dist}
 Summary:        Many-Core Engine for Perl. Provides parallel processing capabilities.
 License:        CHECK(Distributable)
@@ -56,6 +56,18 @@ rm -rf $RPM_BUILD_ROOT
 %{_mandir}/man3/*
 
 %changelog
+* Mon Dec 31 2012 Mario Roy 1.300-1
+- New methods...: chunk_size, restart_worker, task_id, task_wid, tmp_dir
+- New options...: on_post_exit, on_post_run, sequence
+- New examples..: forseq.pl, seq_demo.pl
+- Overhaul to exit method
+  Workers can exit or die without impacting the manager process
+- Enabled executable bit for test files
+- Removed localtime output in die and warn handlers
+- All 3 delay options are consistent whether or not user_tasks is specified
+- Removed logic around total_ended count -- replaced with new exit logic
+- Code refactoring plus documentation updates
+- Added LICENSE file
 * Fri Dec 21 2012 Mario Roy 1.201-1
 - Added MCE.pod -- moved documentation from MCE.pm to pod file
 - Added missing use strict/warnings to test scripts
