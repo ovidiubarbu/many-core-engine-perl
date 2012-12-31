@@ -14,8 +14,10 @@ examples/egrep.pl
 examples/findnull.pl
 examples/forchunk.pl
 examples/foreach.pl
+examples/forseq.pl
 examples/mce_usage.readme
 examples/scaling_pings.pl
+examples/seq_demo.pl
 examples/tbray/README
 examples/tbray/tbray_baseline1.pl
 examples/tbray/tbray_baseline2.pl

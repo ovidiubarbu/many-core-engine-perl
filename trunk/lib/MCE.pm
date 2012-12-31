@@ -262,6 +262,7 @@ sub new {
    $self->_validate_args(); %argv = ();
 
    ## Private options.
+
    $self->{_pids}       = undef; ## Array for joining children when completed
    $self->{_thrs}       = undef; ## Array for joining threads when completed
    $self->{_tids}       = undef; ## Array for joining threads when completed
@@ -270,8 +271,6 @@ sub new {
    $self->{_mce_sid}    = undef; ## Spawn ID defined at time of spawning
    $self->{_mce_tid}    = undef; ## Thread ID when spawn was called
    $self->{_sess_dir}   = undef; ## Unique session dir when spawn was called
-   $self->{_spawned}    = 0;     ## 1 equals workers have been spawned
-   $self->{_wid}        = 0;     ## Unique Worker ID
    $self->{_com_r_sock} = undef; ## Communication channel for MCE
    $self->{_com_w_sock} = undef; ## Communication channel for workers
    $self->{_dat_r_sock} = undef; ## Data channel for MCE
@@ -282,6 +281,11 @@ sub new {
    $self->{_que_w_sock} = undef; ## Queue channel for workers
    $self->{_state}      = undef; ## State info: task/task_id/task_wid/params
    $self->{_task}       = undef; ## Task info: total_running/total_workers
+
+   $self->{_spawned}    =     0; ## Workers spawned
+   $self->{_task_id}    =     0; ## Task ID        starts at 0 (array index)
+   $self->{_task_wid}   =     0; ## Task Worker ID starts at 1 per task
+   $self->{_wid}        =     0; ## MCE Worker ID  starts at 1 per MCE instance
 
    ## -------------------------------------------------------------------------
 
@@ -1004,6 +1008,7 @@ sub shutdown {
 
    $self->{_mce_sid}    = $self->{_mce_tid}    = undef;
    $self->{_spawned}    = $self->{_wid}        = 0;
+   $self->{_task_id}    = $self->{_task_wid}   = 0;
    $self->{_sess_dir}   = undef;
 
    return $self;
@@ -1011,7 +1016,8 @@ sub shutdown {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Miscellaneous methods (abort exit last next wid).
+## Miscellaneous methods.
+##    abort  exit  last  next  task_id  task_wid  wid  chunk_size  tmp_dir
 ##
 ###############################################################################
 
@@ -1126,16 +1132,16 @@ sub next {
    return;
 }
 
-## Return worker ID.
+## Return the (Task ID), (Task Worker ID), or (MCE Worker ID).
 
-sub wid {
+sub task_id    { my MCE $self = $_[0]; @_ = (); return $self->{_task_id};   }
+sub task_wid   { my MCE $self = $_[0]; @_ = (); return $self->{_task_wid};  }
+sub wid        { my MCE $self = $_[0]; @_ = (); return $self->{_wid};       }
 
-   my MCE $self = $_[0];
+## Return the (Chunk Size) or (Temporary Directory) MCE is using.
 
-   @_ = ();
-
-   return $self->{_wid};
-}
+sub chunk_size { my MCE $self = $_[0]; @_ = (); return $self->{chunk_size}; }
+sub tmp_dir    { my MCE $self = $_[0]; @_ = (); return $self->{tmp_dir};    }
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -1347,14 +1353,18 @@ sub _validate_args_s {
    if (defined $_s->{sequence}) {
       my $_seq = $_s->{sequence};
 
+      _croak "$_tag: cannot specify both 'input_data' and 'sequence'"
+         if (defined $self->{input_data});
       _croak "$_tag: 'sequence' is not a HASH reference"
          if (ref $_seq ne 'HASH');
       _croak "$_tag: 'begin' is not defined for sequence"
-         unless (exists $_seq->{begin});
+         unless (defined $_seq->{begin});
       _croak "$_tag: 'end' is not defined for sequence"
-         unless (exists $_seq->{end});
+         unless (defined $_seq->{end});
 
-      unless (exists $_seq->{step}) {
+      $self->{chunk_size} = 1; ## Set to 1 when sequence is specified.
+
+      unless (defined $_seq->{step}) {
          $_seq->{step} = ($_seq->{begin} < $_seq->{end}) ? 1 : -1;
       }
       for (qw(begin end step)) {
@@ -2471,7 +2481,8 @@ sub _worker_loop {
       flock $_DAT_LOCK, LOCK_SH; flock $_DAT_LOCK, LOCK_UN;
 
       ## Update ID. Process request.
-      $self->{_wid} = $_wid = $_response unless (defined $self->{user_tasks});
+      $self->{_task_wid} = $self->{_wid} = $_wid = $_response
+         unless (defined $self->{user_tasks});
 
       select(undef, undef, undef, $_job_delay * $_wid)
          if ($_job_delay && $_job_delay > 0.0);
@@ -2527,8 +2538,9 @@ sub _worker_main {
    ## Init runtime vars. Obtain handle to lock files.
    my $_mce_sid = $self->{_mce_sid}; my $_sess_dir = $self->{_sess_dir};
 
-   $self->{_task_id} = $_task_id; $self->{_task_wid} = $_task_wid;
-   $self->{_wid} = $_wid;
+   $self->{_task_id}  = (defined $_task_id ) ? $_task_id  : 0;
+   $self->{_task_wid} = (defined $_task_wid) ? $_task_wid : $_wid;
+   $self->{_wid}      = $_wid;
 
    _do_send_init($self);
 

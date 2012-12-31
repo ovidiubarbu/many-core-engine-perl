@@ -7,8 +7,11 @@
 ## The number below indicates the size of @input_data which can be submitted
 ## and displayed in 1 second. Output was directed to /dev/null during testing.
 ##
+## Parallel::Loops is based on Parallel::ForkManager.
+##
 ## Parallel::Loops..:       600  Forking each @input is expensive
 ## MCE foreach......:    18,000  Sends result after each @input
+## MCE forseq.......:    60,000  Loop through a sequence of numbers
 ## MCE forchunk.....:   385,000  Chunking reduces overhead even more so
 ##
 ## usage: foreach.pl [size]
@@ -50,7 +53,7 @@ sub display_result {
    while (1) {
       last unless exists $result{$order_id};
 
-      printf "i: %d sqrt(i): %f\n",
+      printf "n: %d sqrt(n): %f\n",
          $input_data[$order_id - 1], $result{$order_id};
 
       delete $result{$order_id};
