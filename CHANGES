@@ -1,5 +1,12 @@
 Revision history for MCE
 
+1.301 Mon Dec 31 15:00:00 EST 2012
+    * Note: MCE is pretty much feature complete. Therefore, releases
+      will slow down going forward.  Enjoy MCE.
+    * Emphasis on documentation -- better flow plus additional clarity
+    * Minor update to sequence option validation
+    * Minor update to included examples
+
 1.300 Mon Dec 31 06:00:00 EST 2012
     * New methods...: chunk_size, restart_worker, task_id, task_wid, tmp_dir
     * New options...: on_post_exit, on_post_run, sequence

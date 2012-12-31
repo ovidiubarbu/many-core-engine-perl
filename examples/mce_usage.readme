@@ -604,7 +604,7 @@
          my ($self, $e) = @_;
          print "$e->{wid}: $e->{pid}: status $e->{status}: $e->{msg}";
 
-         $self->restart_worker($e->{wid});   ## Pass same wid as arg.
+         $self->restart_worker($e->{wid});  ## Passing same wid as arg.
       },
 
       user_begin => sub {
