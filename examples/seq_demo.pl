@@ -7,9 +7,9 @@ use FindBin;
 use lib "$FindBin::Bin/../lib";
 
 ##
-## A demonstration applying sequence with user_tasks. Each task can be
-## configured with a unique sequence specification. Look at the forseq.pl
-## example as well.
+## A demonstration applying sequences with user_tasks. Each task can be
+## configured independently. The following is taken from the forseq.pl
+## example.
 ##
 ## Run with seq_demo.pl | sort
 ##
@@ -17,15 +17,15 @@ use lib "$FindBin::Bin/../lib";
 use MCE;
 
 sub user_func {
-   my ($self, $seq_i, $chunk_id) = @_;
+   my ($self, $seq_n, $chunk_id) = @_;
 
    my $wid      = $self->wid();
    my $task_id  = $self->task_id();
    my $task_wid = $self->task_wid();
 
    printf(
-      "task_id %d: seq_i %s: chunk_id %d: wid %d: task_wid %d\n",
-      $task_id,    $seq_i,   $chunk_id,   $wid,   $task_wid
+      "task_id %d: seq_n %s: chunk_id %d: wid %d: task_wid %d\n",
+      $task_id,    $seq_n,   $chunk_id,   $wid,   $task_wid
    );
 }
 
