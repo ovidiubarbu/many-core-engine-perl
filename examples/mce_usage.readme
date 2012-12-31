@@ -161,6 +161,9 @@
    ## string (without the %) is passed to sprintf behind the scene.
    ##    e.g. $seq_n_formated = sprintf("%4.1f", $seq_n);
 
+   ## STEP, if omitted, defaults to 1 if BEGIN is smaller than END.
+   ## Otherwise, -1 if BEGIN is greater than END.
+
    ## Note: Brackets below indicate optional attributes. Remove them if
    ## wanting to run this code snippet as is.
 
@@ -526,12 +529,18 @@
    ## Forseq always implies chunk_size => 1 (cannot be overwritten).
 
    my $mce = MCE->new(
-      max_workers => $max_workers
+      max_workers => 3
    );
 
-   $mce->forseq({ begin => 10, end => 15 }, sub {
+   $mce->forseq({ begin => 15, end => 10, step => -1 }, sub {
       my ($self, $n, $chunk_id) = @_;
       print $n, " from ", $self->wid(), "\n";
+   });
+
+   $mce->forseq({ begin => 20, end => 40 }, sub {
+      my ($self, $n, $chunk_id) = @_;
+      my $result = `ping 192.168.1.${n}`;
+      ...
    });
 
    -------------------------------------------------------------------------  
@@ -888,11 +897,14 @@
              These take the same sqrt example from Parallel::Loops
              and measures the overhead of the engine. The number
              indicates the size of @input which can be submitted
-             and results displayed in 1 second.
+             and results displayed in under 1 second.
+
+             Parallel::Loops is based on Parallel::ForkManager.
+             MCE utilizes a pool of workers.
 
              Parallel::Loops:     600  Forking each @input is expensive
              MCE foreach....:  18,000  Sends result after each @input
-             MCE forseq.....:  60,000  Loop through a sequence of numbers
+             MCE forseq.....:  60,000  Loops through sequence of numbers
              MCE forchunk...: 385,000  Chunking reduces overhead
 
    -------------------------------------------------------------------------
