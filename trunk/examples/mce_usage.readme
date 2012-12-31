@@ -1062,6 +1062,79 @@
    });
 
    -------------------------------------------------------------------------
+   DEMO SEQUENCES AND USER_TASKS
+   -------------------------------------------------------------------------
+
+   A demonstration applying sequences with user_tasks. Each task can be
+   configured independently. The following is taken from the forseq.pl
+   example.
+
+   ## Run with seq_demo.pl | sort
+
+   use MCE;
+
+   sub user_func {
+      my ($self, $seq_n, $chunk_id) = @_;
+
+      my $wid      = $self->wid();
+      my $task_id  = $self->task_id();
+      my $task_wid = $self->task_wid();
+
+      printf(
+         "task_id %d: seq_n %s: chunk_id %d: wid %d: task_wid %d\n",
+         $task_id,    $seq_n,   $chunk_id,   $wid,   $task_wid
+      );
+   }
+
+   my $mce = MCE->new(
+      user_tasks => [{
+         max_workers => 2,
+         sequence => { begin => 11, end => 19, step => 1 },
+         user_func => \&user_func
+      },{
+         max_workers => 2,
+         sequence => { begin => 21, end => 29, step => 1 },
+         user_func => \&user_func
+      },{
+         max_workers => 2,
+         sequence => { begin => 31, end => 39, step => 1 },
+         user_func => \&user_func
+      }]
+   );
+
+   $mce->run();
+
+   -- Output
+
+   task_id 0: seq_n 11: chunk_id 1: wid 1: task_wid 1
+   task_id 0: seq_n 12: chunk_id 2: wid 2: task_wid 2
+   task_id 0: seq_n 13: chunk_id 3: wid 1: task_wid 1
+   task_id 0: seq_n 14: chunk_id 4: wid 2: task_wid 2
+   task_id 0: seq_n 15: chunk_id 5: wid 1: task_wid 1
+   task_id 0: seq_n 16: chunk_id 6: wid 2: task_wid 2
+   task_id 0: seq_n 17: chunk_id 7: wid 1: task_wid 1
+   task_id 0: seq_n 18: chunk_id 8: wid 2: task_wid 2
+   task_id 0: seq_n 19: chunk_id 9: wid 1: task_wid 1
+   task_id 1: seq_n 21: chunk_id 1: wid 3: task_wid 1
+   task_id 1: seq_n 22: chunk_id 2: wid 4: task_wid 2
+   task_id 1: seq_n 23: chunk_id 3: wid 3: task_wid 1
+   task_id 1: seq_n 24: chunk_id 4: wid 4: task_wid 2
+   task_id 1: seq_n 25: chunk_id 5: wid 3: task_wid 1
+   task_id 1: seq_n 26: chunk_id 6: wid 4: task_wid 2
+   task_id 1: seq_n 27: chunk_id 7: wid 3: task_wid 1
+   task_id 1: seq_n 28: chunk_id 8: wid 4: task_wid 2
+   task_id 1: seq_n 29: chunk_id 9: wid 3: task_wid 1
+   task_id 2: seq_n 31: chunk_id 1: wid 5: task_wid 1
+   task_id 2: seq_n 32: chunk_id 2: wid 6: task_wid 2
+   task_id 2: seq_n 33: chunk_id 3: wid 5: task_wid 1
+   task_id 2: seq_n 34: chunk_id 4: wid 6: task_wid 2
+   task_id 2: seq_n 35: chunk_id 5: wid 5: task_wid 1
+   task_id 2: seq_n 36: chunk_id 6: wid 6: task_wid 2
+   task_id 2: seq_n 37: chunk_id 7: wid 5: task_wid 1
+   task_id 2: seq_n 38: chunk_id 8: wid 6: task_wid 2
+   task_id 2: seq_n 39: chunk_id 9: wid 5: task_wid 1
+
+   -------------------------------------------------------------------------
    MULTIPLE WORKERS RUNNING IN PARALLEL
    -------------------------------------------------------------------------
 
