@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## This example demonstrates the sqrt example from Parallel::Loops, with MCE.
+## This example demonstrates the sqrt example from Parallel::Loops.
 ## MCE does not fork a new child process for each @input_data.
 ##
 ## The number below indicates the size of @input_data which can be submitted
@@ -14,7 +14,11 @@
 ## MCE forseq.......:    60,000  Loop through a sequence of numbers
 ## MCE forchunk.....:   385,000  Chunking reduces overhead even more so
 ##
-## usage: forchunk.pl [size]
+## usage: forseq.pl [size]
+## usage: forseq.pl [begin end [step [format]]]
+##
+##   For format arg, think as if passing to sprintf (without the %)
+##   forseq.pl 20 30 0.2 4.1f
 ##
 ###############################################################################
 
@@ -29,37 +33,44 @@ my $prog_name = $0; $prog_name =~ s{^.*[\\/]}{}g;
 use Time::HiRes qw(time);
 use MCE;
 
-my $size = shift || 3000;
+my $s_begin  = shift;  $s_begin = 3000 unless (defined $s_begin);
+my $s_end    = shift;
+my $s_step   = shift;
+my $s_format = shift;
+
+unless (defined $s_end) {
+   $s_end = $s_begin - 1; $s_begin = 0;
+}
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Parallelize via MCE's foreach method.
+## Parallelize via MCE's forseq method.
 ##
 ###############################################################################
 
-my @input_data = (0 .. $size - 1);
-my (%result, $start, $end);
+my (%result_n, %result, $start, $end);
 
 my $max_workers = 3;
-my $chunk_size  = 500;
 my $order_id    = 1;
 
 ## Callback function for displaying results. Output order is preserved.
 
 sub display_result {
 
-   my ($wk_result, $chunk_id) = @_;
-   $result{$chunk_id} = $wk_result;
+   my ($wk_i, $wk_result, $chunk_id) = @_;
+
+   $result_n{$chunk_id} = $wk_i;
+   $result{$chunk_id}   = $wk_result;
 
    while (1) {
       last unless exists $result{$order_id};
-      my $i = ($order_id - 1) * $chunk_size;
 
-      for ( @{ $result{$order_id} } ) {
-         printf "n: %d sqrt(n): %f\n", $input_data[$i++], $_;
-      }
+      printf "n: %s sqrt(n): %f\n",
+         $result_n{$order_id}, $result{$order_id};
 
+      delete $result_n{$order_id};
       delete $result{$order_id};
+
       $order_id++;
    }
 }
@@ -67,25 +78,20 @@ sub display_result {
 ## Compute via MCE.
 
 my $mce = MCE->new(
-   max_workers => $max_workers,
-   chunk_size  => $chunk_size
+   max_workers => $max_workers
 );
+
+my $seq = {
+   begin => $s_begin, end => $s_end, step => $s_step,
+   format => $s_format
+};
 
 $start = time();
 
-## Below, $chunk_ref is a reference to an array containing the next
-## $chunk_size items from @input_data.
-
-$mce->forchunk(\@input_data, sub {
-
-   my ($self, $chunk_ref, $chunk_id) = @_;
-   my @wk_result;
-
-   for ( @{ $chunk_ref } ) {
-      push @wk_result, sqrt($_);
-   }
-
-   $self->do('display_result', \@wk_result, $chunk_id);
+$mce->forseq($seq, sub {
+   my ($self, $i, $chunk_id) = @_;
+   my $result = sqrt($i);
+   $self->do('display_result', $i, $result, $chunk_id);
 });
 
 $end = time();

@@ -46,7 +46,11 @@
           ## input_data => '/path/to/file' for input file
           ## input_data => \@array for input array
           ## input_data => \*FILE_HNDL for file handle
-          ## input_data => \$scalar to treat like file
+          ## input_data => \$scalar to treat like a file
+
+          ## Use the sequence option if simply wanting to loop
+          ## through a sequence of numbers in parallel. Leave
+          ## input_data undef when specifying the sequence option.
 
       chunk_size   => 2000,              ## Default is 1
 
@@ -58,6 +62,9 @@
           ## chunk_size =>  1000,        ## Consists of 1000 records
           ## chunk_size => 16384,        ## Approximate 16384 bytes
           ## chunk_size => 50000,        ## Approximate 50000 bytes
+
+          ## Chunk_size is set to 1 when specifying sequence or
+          ## calling $self->foreach or $self->forseq methods.
 
       max_workers  => 8,                 ## Default is 1
       use_slurpio  => 1,                 ## Default is 0
@@ -128,7 +135,68 @@
       flush_stdout => 1,                 ## Default is 0
 
           ## Flush sendto file, standard error, or standard output.
+
+      sequence     => {                  ## Default is undef
+          -- See below
+      },
+
+      user_tasks   => [                  ## Default is undef
+          -- See below
+      ],
+
    );
+
+   -------------------------------------------------------------------------
+   SEQUENCE
+   -------------------------------------------------------------------------
+
+   ## The 1.300 release allows workers to loop through a sequence of
+   ## numbers in parallel. Sequence can also be specified per task
+   ## when specifying user_tasks for even greater flexibility. Take
+   ## a look at the seq_demo.pl example to see sequence applied with
+   ## user_tasks.
+
+   ## The sequence option takes a hash reference containing up to four
+   ## key => value pairs. Both step and format are optional. The format
+   ## string (without the %) is passed to sprintf behind the scene.
+   ##    e.g. $seq_n_formated = sprintf("%4.1f", $seq_n);
+
+   ## Note: Brackets below indicate optional attributes. Remove them if
+   ## wanting to run this code snippet as is.
+
+   use MCE;
+
+   my $seq = {
+      begin => 10, end => 19 [, step => 0.7, [ format => "4.1f" ] ]
+   };
+
+   my $mce = MCE->new(
+      max_workers => 3,
+      sequence    => $seq,
+
+      user_func   => sub {
+         my ($self, $n, $chunk_id) = @_;
+         print $n, " from ", $self->wid(), " id ", $chunk_id, "\n";
+      }
+   );
+
+   $mce->run();
+
+   -- Output (sorted afterwards, notice wid and chunk_id in output)
+
+   10.0 from 1 id 1
+   10.7 from 2 id 2
+   11.4 from 3 id 3
+   12.1 from 1 id 4
+   12.8 from 2 id 5
+   13.5 from 3 id 6
+   14.2 from 1 id 7
+   14.9 from 2 id 8
+   15.6 from 3 id 9
+   16.3 from 1 id 10
+   17.0 from 2 id 11
+   17.7 from 3 id 12
+   18.4 from 1 id 13
 
    -------------------------------------------------------------------------
    USER_TASKS
@@ -136,8 +204,9 @@
 
    ## The 1.200 release introduces a new option to allow for flexible
    ## workers. The user_tasks option takes an array of tasks. Each task
-   ## allows for 5 options:
-   ##   max_workers, use_threads, user_begin, user_func, and user_end
+   ## allows for 6 options:
+   ##   max_workers, use_threads, user_begin, user_func, user_end, and
+   ##   sequence (new in 1.300)
    ##
    ## In addition, task_end can be specified for the manager process
    ## to run when workers under task have completed processing.
@@ -149,6 +218,8 @@
    ##
    ## Go here for further reading on the new user_tasks option.
    ## http://code.google.com/p/many-core-engine-perl/wiki/MCE_Tasks
+
+   use MCE;
 
    my $mce = MCE->new(
       input_data => $list_file,
@@ -329,10 +400,46 @@
    $self->abort();
 
    -------------------------------------------------------------------------
+   chunk_size ( void )
+   -------------------------------------------------------------------------
+
+   ## Returns the Chunk Size used by MCE.
+
+   my $chunk_size = $self->chunk_size();
+
+   -------------------------------------------------------------------------
+   task_id ( void )
+   -------------------------------------------------------------------------
+
+   ## Returns the Task ID. Applies to user_tasks option.
+   ## Starts at 0 (array index for user_tasks).
+
+   my $task_id = $self->task_id();
+
+   -------------------------------------------------------------------------
+   task_wid ( void )
+   -------------------------------------------------------------------------
+
+   ## Returns the Task Worker ID. Applies to user_tasks option.
+   ## Starts at 1 per each task configured with user_tasks.
+   ## The value is set to 0 for the manager process.
+
+   my $task_wid = $self->task_wid();
+
+   -------------------------------------------------------------------------
+   tmp_dir ( void )
+   -------------------------------------------------------------------------
+
+   ## Returns the temporary directory used by MCE.
+
+   my $tmp_dir = $self->tmp_dir();
+
+   -------------------------------------------------------------------------
    wid ( void )
    -------------------------------------------------------------------------
 
-   ## Returns the worker ID of worker.
+   ## Returns the MCE Worker ID. Starts at 1 per MCE instance.
+   ## The value is set to 0 for the manager process.
 
    my $wid = $self->wid();
 
@@ -410,6 +517,21 @@
       my ($self, $chunk_ref, $chunk_id) = @_;
       my $i = $chunk_ref->[0];  (OR)  my $i = $chunk_id - 1;
       ...  ## Runs in parallel
+   });
+
+   -------------------------------------------------------------------------  
+   forseq ( $sequence_spec [, { options } ], sub { ... } )
+   -------------------------------------------------------------------------
+
+   ## Forseq always implies chunk_size => 1 (cannot be overwritten).
+
+   my $mce = MCE->new(
+      max_workers => $max_workers
+   );
+
+   $mce->forseq({ begin => 10, end => 15 }, sub {
+      my ($self, $n, $chunk_id) = @_;
+      print $n, " from ", $self->wid(), "\n";
    });
 
    -------------------------------------------------------------------------  
@@ -751,6 +873,10 @@
              Perform ping test and report back failing IPs to
              standard output.
 
+   seq_demo.pl
+             A demonstration of the new sequence option appearing
+             in MCE 1.300. Run with seq_demo.pl | sort
+
    tbray/wf_mce1.pl, wf_mce2.pl, wf_mce3.pl
              An implementation of wide finder utilizing MCE.
              As fast as MMAP IO when file resides in OS FS cache.
@@ -758,6 +884,7 @@
 
    foreach.pl
    forchunk.pl
+   forseq.pl
              These take the same sqrt example from Parallel::Loops
              and measures the overhead of the engine. The number
              indicates the size of @input which can be submitted
@@ -765,6 +892,7 @@
 
              Parallel::Loops:     600  Forking each @input is expensive
              MCE foreach....:  18,000  Sends result after each @input
+             MCE forseq.....:  60,000  Loop through a sequence of numbers
              MCE forchunk...: 385,000  Chunking reduces overhead
 
    -------------------------------------------------------------------------
