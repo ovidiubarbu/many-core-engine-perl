@@ -11,10 +11,10 @@
 ##
 ## Parallel::Loops..:       600  Forking each @input is expensive
 ## MCE foreach......:    18,000  Sends result after each @input
-## MCE forseq.......:    60,000  Loop through a sequence of numbers
-## MCE forchunk.....:   385,000  Chunking reduces overhead even more so
+## MCE forseq.......:    60,000  Loops through sequence of numbers
+## MCE forchunk.....:   385,000  Chunking reduces overhead
 ##
-## usage: forchunk.pl [size]
+## usage: forchunk.pl [ size ]
 ##
 ###############################################################################
 
@@ -30,6 +30,11 @@ use Time::HiRes qw(time);
 use MCE;
 
 my $size = shift || 3000;
+
+unless ($size =~ /\A\d+\z/) {
+   print STDERR "usage: $prog_name [ size ]\n";
+   exit;
+}
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -79,13 +84,13 @@ $start = time();
 $mce->forchunk(\@input_data, sub {
 
    my ($self, $chunk_ref, $chunk_id) = @_;
-   my @wk_result;
+   my @result;
 
    for ( @{ $chunk_ref } ) {
-      push @wk_result, sqrt($_);
+      push @result, sqrt($_);
    }
 
-   $self->do('display_result', \@wk_result, $chunk_id);
+   $self->do('display_result', \@result, $chunk_id);
 });
 
 $end = time();

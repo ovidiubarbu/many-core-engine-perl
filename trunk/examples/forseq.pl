@@ -11,11 +11,11 @@
 ##
 ## Parallel::Loops..:       600  Forking each @input is expensive
 ## MCE foreach......:    18,000  Sends result after each @input
-## MCE forseq.......:    60,000  Loop through a sequence of numbers
-## MCE forchunk.....:   385,000  Chunking reduces overhead even more so
+## MCE forseq.......:    60,000  Loops through sequence of numbers
+## MCE forchunk.....:   385,000  Chunking reduces overhead
 ##
-## usage: forseq.pl [size]
-## usage: forseq.pl [begin end [step [format]]]
+## usage: forseq.pl [ size ]
+## usage: forseq.pl [ begin end [ step [ format ] ] ]
 ##
 ##   For format arg, think as if passing to sprintf (without the %)
 ##   forseq.pl 20 30 0.2 4.1f
@@ -37,6 +37,12 @@ my $s_begin  = shift;  $s_begin = 3000 unless (defined $s_begin);
 my $s_end    = shift;
 my $s_step   = shift;
 my $s_format = shift;
+
+if ($s_begin !~ /\A\d*\.?\d*\z/) {
+   print STDERR "usage: $prog_name [ size ]\n";
+   print STDERR "usage: $prog_name [ begin end [ step [ format ] ] ]\n";
+   exit;
+}
 
 unless (defined $s_end) {
    $s_end = $s_begin - 1; $s_begin = 0;
@@ -89,9 +95,9 @@ my $seq = {
 $start = time();
 
 $mce->forseq($seq, sub {
-   my ($self, $i, $chunk_id) = @_;
-   my $result = sqrt($i);
-   $self->do('display_result', $i, $result, $chunk_id);
+   my ($self, $n, $chunk_id) = @_;
+   my $result = sqrt($n);
+   $self->do('display_result', $n, $result, $chunk_id);
 });
 
 $end = time();
