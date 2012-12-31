@@ -334,7 +334,7 @@ sub spawn {
    @_ = ();
 
    _croak("MCE::spawn: method cannot be called by the worker process")
-      if ($self->wid());
+      if ($self->{_wid});
 
    ## Return if workers have already been spawned.
    return $self unless ($self->{_spawned} == 0);
@@ -521,7 +521,7 @@ sub forseq {
    my MCE $self = $_[0]; my $_sequence = $_[1];
 
    _croak("MCE::forseq: method cannot be called by the worker process")
-      if ($self->wid());
+      if ($self->{_wid});
 
    my ($_user_func, $_params_ref);
 
@@ -558,7 +558,7 @@ sub foreach {
    my MCE $self = $_[0]; my $_input_data = $_[1];
 
    _croak("MCE::foreach: method cannot be called by the worker process")
-      if ($self->wid());
+      if ($self->{_wid});
 
    my ($_user_func, $_params_ref);
 
@@ -595,7 +595,7 @@ sub forchunk {
    my MCE $self = $_[0]; my $_input_data = $_[1];
 
    _croak("MCE::forchunk: method cannot be called by the worker process")
-      if ($self->wid());
+      if ($self->{_wid});
 
    my ($_user_func, $_params_ref);
 
@@ -633,7 +633,7 @@ sub process {
    @_ = ();
 
    _croak("MCE::process: method cannot be called by the worker process")
-      if ($self->wid());
+      if ($self->{_wid});
 
    ## Set input data.
    if (defined $_input_data) {
@@ -659,7 +659,7 @@ sub restart_worker {
    my MCE $self = $_[0]; my $_wid = $_[1];
 
    _croak("MCE::restart_worker: method cannot be called by the worker process")
-      if ($self->wid());
+      if ($self->{_wid});
 
    @_ = ();
 
@@ -701,7 +701,7 @@ sub run {
    my MCE $self = $_[0];
 
    _croak("MCE::run: method cannot be called by the worker process")
-      if ($self->wid());
+      if ($self->{_wid});
 
    ## Parse args.
    my ($_auto_shutdown, $_params_ref);
@@ -924,7 +924,7 @@ sub shutdown {
    @_ = ();
 
    _croak("MCE::shutdown: method cannot be called by the worker process")
-      if ($self->wid());
+      if ($self->{_wid});
 
    ## Return if workers have not been spawned or have already been shutdown.
    return $self unless ($self->{_spawned});
@@ -1048,7 +1048,7 @@ sub exit {
    @_ = ();
 
    _croak("MCE::exit: method cannot be called by the manager process")
-      unless ($self->wid());
+      unless ($self->{_wid});
 
    delete $_mce_spawned{ $self->{_mce_sid} };
 
@@ -1072,7 +1072,7 @@ sub exit {
          print $_OUT_W_SOCK OUTPUT_W_EXT,  $LF,
             ((defined $_task_id) ? "$_task_id${LF}" : "-1${LF}");
 
-         print $_DAT_W_SOCK $self->wid(),  $LF, $self->{_exit_pid}, $LF,
+         print $_DAT_W_SOCK $self->{_wid}, $LF, $self->{_exit_pid}, $LF,
                             $_exit_status, $LF, $_exit_id,          $LF,
                             $_len,         $LF, $_exit_msg;
 
@@ -1103,7 +1103,7 @@ sub last {
    @_ = ();
 
    _croak("MCE::last: method cannot be called by the manager process")
-      unless ($self->wid());
+      unless ($self->{_wid});
 
    $self->{_last_jmp}() if (defined $self->{_last_jmp});
 
@@ -1119,7 +1119,7 @@ sub next {
    @_ = ();
 
    _croak("MCE::next: method cannot be called by the manager process")
-      unless ($self->wid());
+      unless ($self->{_wid});
 
    $self->{_next_jmp}() if (defined $self->{_next_jmp});
 
@@ -1150,7 +1150,7 @@ sub do {
    my MCE $self = shift; my $_callback = shift;
 
    _croak("MCE::do: method cannot be called by the manager process")
-      unless ($self->wid());
+      unless ($self->{_wid});
    _croak("MCE::do: 'callback' is not specified")
       unless (defined $_callback);
 
@@ -1176,7 +1176,7 @@ sub do {
       my MCE $self = shift; my $_to = shift;
 
       _croak("MCE::sendto: method cannot be called by the manager process")
-         unless ($self->wid());
+         unless ($self->{_wid});
 
       return unless (defined $_[0]);
 
@@ -2317,7 +2317,7 @@ sub _worker_seq {
    my $_step        = $self->{sequence}->{step};
    my $_end         = $self->{sequence}->{end};
    my $_user_func   = $self->{user_func};
-   my $_wid         = $self->{_task_wid} || $self->wid();
+   my $_wid         = $self->{_task_wid} || $self->{_wid};
    my $_next        = ($_wid - 1) * $_step + $_begin;
    my $_chunk_id    = $_wid;
    my $_i;
@@ -2468,21 +2468,18 @@ sub _worker_loop {
       }
 
       ## Wait until MCE completes params submission to all workers.
-      flock $_DAT_LOCK, LOCK_SH;
-      flock $_DAT_LOCK, LOCK_UN;
+      flock $_DAT_LOCK, LOCK_SH; flock $_DAT_LOCK, LOCK_UN;
 
       ## Update ID. Process request.
-      $self->{_wid} = $_response unless (defined $self->{user_tasks});
+      $self->{_wid} = $_wid = $_response unless (defined $self->{user_tasks});
 
       select(undef, undef, undef, $_job_delay * $_wid)
          if ($_job_delay && $_job_delay > 0.0);
 
-      $self->_worker_do($_params_ref);
-      undef $_params_ref;
+      $self->_worker_do($_params_ref); undef $_params_ref;
 
-      ## Wait until all workers completed processing.
-      flock $_COM_LOCK, LOCK_SH;
-      flock $_COM_LOCK, LOCK_UN;
+      ## Wait until remaining workers complete processing.
+      flock $_COM_LOCK, LOCK_SH; flock $_COM_LOCK, LOCK_UN;
    }
 
    ## Notify the main process a worker has ended. The following is executed
@@ -2563,12 +2560,10 @@ sub _worker_main {
       delete $_mce_spawned{$_} unless ($_ eq $_mce_sid);
    }
 
-   ## Begin processing if a new worker was added while running.
+   ## Begin processing if worker was added during processing.
    ## Respond back to the main process if the last worker spawned.
    if (defined $_params) {
-      $self->{_wid} = $_wid;
-      $self->_worker_do($_params);
-      undef $_params;
+      $self->_worker_do($_params); undef $_params;
    }
    elsif ($self->{_wid} == $self->{_total_workers}) {
       my $_COM_W_SOCK = $self->{_com_w_sock};
@@ -2577,8 +2572,7 @@ sub _worker_main {
    }
 
    ## Wait until MCE completes spawning or worker completes running.
-   flock $_COM_LOCK, LOCK_SH;
-   flock $_COM_LOCK, LOCK_UN;
+   flock $_COM_LOCK, LOCK_SH; flock $_COM_LOCK, LOCK_UN;
 
    ## Enter worker loop.
    my $_status = $self->_worker_loop();
