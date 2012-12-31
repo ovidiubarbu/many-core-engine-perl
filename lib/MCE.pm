@@ -81,7 +81,7 @@ INIT {
    }
 }
 
-our $VERSION = '1.300';
+our $VERSION = '1.301';
 $VERSION = eval $VERSION;
 
 ###############################################################################
@@ -1362,20 +1362,22 @@ sub _validate_args_s {
       _croak "$_tag: 'end' is not defined for sequence"
          unless (defined $_seq->{end});
 
-      $self->{chunk_size} = 1; ## Set to 1 when sequence is specified.
-
-      unless (defined $_seq->{step}) {
-         $_seq->{step} = ($_seq->{begin} < $_seq->{end}) ? 1 : -1;
-      }
       for (qw(begin end step)) {
          _croak "$_tag: '$_' is not valid for sequence"
             if ($_seq->{$_} eq '' || $_seq->{$_} !~ /\A-?\d*\.?\d*\z/);
       }
+
       if ( ($_seq->{step} < 0 && $_seq->{begin} < $_seq->{end}) ||
            ($_seq->{step} > 0 && $_seq->{begin} > $_seq->{end}) ||
            ($_seq->{step} == 0)
       ) {
          _croak "$_tag: impossible 'step' size for sequence";
+      }
+
+      $self->{chunk_size} = 1; ## Set to 1 when sequence is specified.
+
+      unless (defined $_seq->{step}) {
+         $_seq->{step} = ($_seq->{begin} < $_seq->{end}) ? 1 : -1;
       }
    }
 

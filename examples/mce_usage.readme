@@ -7,7 +7,7 @@
 
 <> VERSION
 
-   This document describes MCE version 1.300
+   This document describes MCE version 1.301
 
 <> DESCRIPTION
 
@@ -39,7 +39,11 @@
 
           ## Default is $MCE::Signal::tmp_dir which points to
           ## $ENV{TEMP} if defined. Otherwise, tmp_dir points
-          ## to /tmp.
+          ## to a location under /tmp.
+
+      max_workers  => 8,                 ## Default is 1
+
+          ## Number of workers to spawn.
 
       input_data   => $input_file,       ## Default is undef
 
@@ -49,8 +53,7 @@
           ## input_data => \$scalar to treat like a file
 
           ## Use the sequence option if simply wanting to loop
-          ## through a sequence of numbers in parallel. Leave
-          ## input_data undef when specifying the sequence option.
+          ## through a sequence of numbers in parallel.
 
       chunk_size   => 2000,              ## Default is 1
 
@@ -66,13 +69,11 @@
           ## Chunk_size is set to 1 when specifying sequence or
           ## calling $self->foreach or $self->forseq methods.
 
-      max_workers  => 8,                 ## Default is 1
       use_slurpio  => 1,                 ## Default is 0
       use_threads  => 1,                 ## Default is 0 or 1
 
-          ## Number of workers to spawn, whether or not to enable
-          ## slurpio when reading files (passes raw chunk to user
-          ## function), and whether or not to use threads.
+          ## Whether or not to enable slurpio when reading files
+          ## (passes raw chunk to user function).
 
           ## By default MCE does forking (spawns child processes).
           ## MCE also supports threads via 2 threading libraries.
@@ -137,45 +138,92 @@
           ## Flush sendto file, standard error, or standard output.
 
       sequence     => {                  ## Default is undef
-          -- See below
+
+          begin => -1, end => 1 [, step => 0.1 [, format => "4.1f" ] ]
       },
 
+          ## For looping through a sequence of numbers in parallel.
+          ## STEP, if omitted, defaults to 1 if BEGIN is smaller than
+          ## END or -1 if BEGIN is greater than END. The FORMAT string
+          ## (without the %) is passed to sprintf behind the scene.
+          ## e.g. $seq_n_formated = sprintf("%4.1f", $seq_n);
+
+          ## Leave input_data set to undef when specifying the sequence
+          ## option. One cannot specify both options together.
+
       user_tasks   => [                  ## Default is undef
-          -- See below
+
+         { ... },                        ## Options for task 0
+         { ... },                        ## Options for task 1
+         { ... },                        ## Options for task 2
       ],
 
+          ## Takes a list of hash references, each allowing for 6
+          ## options: max_workers, sequence, user_begin, user_func,
+          ## user_end, and task_end. Other options specified here
+          ## are ignored. Input_data, if specified from the main
+          ## MCE instance, is only applicable to task 0.
+
+          ## Options not specified here (excluding task_end) will
+          ## default to same option specified from the main MCE
+          ## instance.
+
+          ## The task_end, if specified, is called after the task
+          ## has completed processing.
+
    );
+
+   -------------------------------------------------------------------------
+   RUNNING
+   -------------------------------------------------------------------------
+
+   ## Run calls spawn, kicks off job, workers call user_begin,
+   ## user_func, user_end. Run shuts down workers afterwards.
+
+   $mce->run();
+
+   ## OR, spawn workers early.
+
+   $mce->spawn();
+
+   ## Acquire data arrays and/or input_files. The same pool of
+   ## workers are used.
+
+   $mce->process(\@input_data_1);        ## Process arrays
+   $mce->process(\@input_data_2);
+   $mce->process(\@input_data_n);
+
+   $mce->process('input_file_1');        ## Process files
+   $mce->process('input_file_2');
+   $mce->process('input_file_n');
+
+   ## Shutdown workers afterwards.
+
+   $mce->shutdown();
 
    -------------------------------------------------------------------------
    SEQUENCE
    -------------------------------------------------------------------------
 
    ## The 1.300 release allows workers to loop through a sequence of
-   ## numbers in parallel. Sequence can also be specified per task
-   ## when specifying user_tasks for even greater flexibility. Take
-   ## a look at the seq_demo.pl example to see sequence applied with
-   ## user_tasks.
+   ## numbers in parallel. The distinct difference betweeen specifying
+   ## input_data and sequence is input_data follows a bank queuing
+   ## model when walking through the data. For sequence, workers walk
+   ## through a sequence of numbers calculated mathematically without
+   ## the overhead of an array. The latter can also be specified per
+   ## each user_task. Input_data is only applicable to the first task.
 
-   ## The sequence option takes a hash reference containing up to four
-   ## key => value pairs. Both step and format are optional. The format
-   ## string (without the %) is passed to sprintf behind the scene.
-   ##    e.g. $seq_n_formated = sprintf("%4.1f", $seq_n);
-
-   ## STEP, if omitted, defaults to 1 if BEGIN is smaller than END.
-   ## Otherwise, -1 if BEGIN is greater than END.
-
-   ## Note: Brackets below indicate optional attributes. Remove them if
-   ## wanting to run this code snippet as is.
+   ## See a demo at the end of this documentation applying sequences
+   ## with the user_tasks option.
 
    use MCE;
 
-   my $seq = {
-      begin => 10, end => 19 [, step => 0.7, [ format => "4.1f" ] ]
-   };
-
    my $mce = MCE->new(
       max_workers => 3,
-      sequence    => $seq,
+
+      sequence    => {
+         begin => 10, end => 19, step => 0.7, format => "4.1f"
+      },
 
       user_func   => sub {
          my ($self, $n, $chunk_id) = @_;
@@ -205,7 +253,7 @@
    USER_TASKS
    -------------------------------------------------------------------------
 
-   ## The 1.200 release introduces a new option to allow for flexible
+   ## The 1.200 release introduced a new option to allow for flexible
    ## workers. The user_tasks option takes an array of tasks. Each task
    ## allows for 6 options:
    ##   max_workers, use_threads, user_begin, user_func, user_end, and
@@ -246,34 +294,6 @@
    $mce->run();
 
    -------------------------------------------------------------------------
-   RUNNING
-   -------------------------------------------------------------------------
-
-   ## Run calls spawn, kicks off job, workers call user_begin,
-   ## user_func, user_end. Run shuts down workers afterwards.
-
-   $mce->run();
-
-   ## OR, spawn workers early.
-
-   $mce->spawn();
-
-   ## Acquire data arrays and/or input_files. The same pool of
-   ## workers are used.
-
-   $mce->process(\@input_data_1);        ## Process arrays
-   $mce->process(\@input_data_2);
-   $mce->process(\@input_data_n);
-
-   $mce->process('input_file_1');        ## Process files
-   $mce->process('input_file_2');
-   $mce->process('input_file_n');
-
-   ## Shutdown workers afterwards.
-
-   $mce->shutdown();
-
-   -------------------------------------------------------------------------
    SYNTAX for ON_POST_EXIT
    -------------------------------------------------------------------------
 
@@ -295,9 +315,9 @@
    SYNTAX for ON_POST_RUN
    -------------------------------------------------------------------------
 
-   ## Executed after running ($self->process or $self->run).
-   ## The on_post_exit is immediately after a worker exits,
-   ## whereas on_post_run is after running. The reference
+   ## Executed after running ($self->process or $self->run). The
+   ## on_post_exit above is called immediately after a worker exits,
+   ## whereas on_post_run below is called after running. The reference
    ## is an array of hashes.
 
    sub on_post_run {
@@ -741,8 +761,8 @@
    last ( void )
    -------------------------------------------------------------------------
 
-   ## Worker immediately leaves the chunking loop or user func.
-   ## Call this inside foreach, forchunk, and user_func.
+   ## Worker immediately leaves the chunking loop or user func. Can
+   ## be called from inside foreach, forchunk, forseq, and user_func.
 
    my @list = (1 .. 80);
 
@@ -775,8 +795,8 @@
    next ( void )
    -------------------------------------------------------------------------
 
-   ## Worker starts the next iteration of the chunking loop.
-   ## Call this inside foreach, forchunk, and user_func.
+   ## Worker starts the next iteration of the chunking loop. Can be
+   ## called from inside foreach, forchunk, forseq, and user_func.
 
    my @list = (1 .. 80);
 
@@ -809,7 +829,7 @@
    standard error, or to end of file. The action is done by the main process or
    thread.
 
-   Release 1.100 adds the ability to pass multiple arguments.
+   Release 1.100 added the ability to pass multiple arguments.
 
    ----------------
    syntax for 1.00x
@@ -1063,12 +1083,12 @@
    });
 
    -------------------------------------------------------------------------
-   DEMO SEQUENCES AND USER_TASKS
+   DEMO APPLYING SEQUENCES WITH USER_TASKS
    -------------------------------------------------------------------------
 
-   A demonstration applying sequences with user_tasks. Each task can be
-   configured independently. The following is taken from the forseq.pl
-   example.
+   One may specify the sequence option per each task. The following is taken
+   directly from the forseq.pl example. Think of the following demonstration
+   as having 3 mini-MCEs running simultaneously in parallel.
 
    ## Run with seq_demo.pl | sort
 

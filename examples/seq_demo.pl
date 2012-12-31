@@ -7,9 +7,8 @@ use FindBin;
 use lib "$FindBin::Bin/../lib";
 
 ##
-## A demonstration applying sequences with user_tasks. Each task can be
-## configured independently. The following is taken from the forseq.pl
-## example.
+## A demonstration applying sequences with user_tasks.
+## Each task can be configured independently.
 ##
 ## Run with seq_demo.pl | sort
 ##
