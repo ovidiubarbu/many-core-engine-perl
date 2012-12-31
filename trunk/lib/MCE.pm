@@ -142,7 +142,7 @@ my %_valid_fields = map { $_ => 1 } qw(
    _abort_msg _mce_sid _mce_tid _pids _run_mode _single_dim _thrs _tids _wid
    _com_r_sock _com_w_sock _dat_r_sock _dat_w_sock _out_r_sock _out_w_sock
    _que_r_sock _que_w_sock _sess_dir _spawned _state _status _task _task_id
-   _exiting _exit_pid _total_exited _total_running _total_workers
+   _exiting _exit_pid _total_exited _total_running _total_workers _task_wid
 );
 
 my %_params_allowed_args = map { $_ => 1 } qw(
@@ -177,9 +177,7 @@ sub new {
 
    @_ = ();
 
-   my $self = { };
-
-   bless($self, ref($class) || $class);
+   my $self = {}; bless($self, ref($class) || $class);
 
    ## Public options.
    $self->{tmp_dir}      = $argv{tmp_dir}      || $_mce_tmp_dir;
@@ -260,9 +258,7 @@ sub new {
       }
    }
 
-   $self->_validate_args();
-
-   %argv = ();
+   $self->_validate_args(); %argv = ();
 
    ## Private options.
    $self->{_pids}       = undef; ## Array for joining children when completed
@@ -283,7 +279,7 @@ sub new {
    $self->{_out_w_sock} = undef; ## Workers write to this for serialized writes
    $self->{_que_r_sock} = undef; ## Queue channel for MCE
    $self->{_que_w_sock} = undef; ## Queue channel for workers
-   $self->{_state}      = undef; ## State info: worker task_id/task/params
+   $self->{_state}      = undef; ## State info: task/task_id/task_wid/params
    $self->{_task}       = undef; ## Task info: total_running/total_workers
 
    ## -------------------------------------------------------------------------
@@ -355,9 +351,8 @@ sub spawn {
       $self->{_mce_sid} = $$ .'.'. $self->{_mce_tid} .'.'. (++$_mce_count);
    }
 
-   my $_mce_sid  = $self->{_mce_sid};
-   my $_sess_dir = $self->{_sess_dir};
-   my $_tmp_dir  = $self->{tmp_dir};
+   my $_mce_sid = $self->{_mce_sid}; my $_sess_dir = $self->{_sess_dir};
+   my $_tmp_dir = $self->{tmp_dir};
 
    ## Create temp dir.
    unless ($_sess_dir) {
@@ -368,8 +363,7 @@ sub spawn {
       _croak("MCE::spawn: '$_tmp_dir' is not writeable")
          unless (-w $_tmp_dir);
 
-      $_sess_dir = $self->{_sess_dir} = "$_tmp_dir/$_mce_sid";
-      my $_cnt = 0;
+      my $_cnt = 0; $_sess_dir = $self->{_sess_dir} = "$_tmp_dir/$_mce_sid";
 
       while ( !(mkdir $_sess_dir, 0770) ) {
          $_sess_dir = $self->{_sess_dir} = "$_tmp_dir/$_mce_sid." . (++$_cnt);
@@ -449,9 +443,13 @@ sub spawn {
 
       $self->{_task}->[0] = { _total_workers => $_max_workers };
 
-      for (1 .. $_max_workers) { $self->{_state}->[$_] = {
-         _task_id => undef, _task => undef, _params => undef
-      }}
+      for (1 .. $_max_workers) {
+         keys(%{ $self->{_state}->[$_] }) = 4;
+         $self->{_state}->[$_] = {
+            _task => undef, _task_id => undef, _task_wid => undef,
+            _params => undef
+         }
+      }
    }
    else {
       my ($_task_id, $_wid);
@@ -465,10 +463,10 @@ sub spawn {
          my $_use_threads = $_task->{use_threads};
 
          if (defined $_use_threads && $_use_threads == 1) {
-            $self->_dispatch_thread(++$_wid, $_task, $_task_id)
+            $self->_dispatch_thread(++$_wid, $_task, $_task_id, $_)
                for (1 .. $_task->{max_workers});
          } else {
-            $self->_dispatch_child(++$_wid, $_task, $_task_id)
+            $self->_dispatch_child(++$_wid, $_task, $_task_id, $_)
                for (1 .. $_task->{max_workers});
          }
 
@@ -481,9 +479,13 @@ sub spawn {
          $self->{_task}->[$_task_id] = {
             _total_running => 0, _total_workers => $_task->{max_workers}
          };
-         for (1 .. $_task->{max_workers}) { $self->{_state}->[++$_wid] = {
-            _task_id => $_task_id, _task => $_task, _params => undef
-         }}
+         for (1 .. $_task->{max_workers}) {
+            keys(%{ $self->{_state}->[++$_wid] }) = 4;
+            $self->{_state}->[$_wid] = {
+               _task => $_task, _task_id => $_task_id, _task_wid => $_,
+               _params => undef
+            }
+         }
 
          $_task_id++;
       }
@@ -515,8 +517,7 @@ sub spawn {
 
 sub foreach {
 
-   my MCE $self    = $_[0];
-   my $_input_data = $_[1];
+   my MCE $self = $_[0]; my $_input_data = $_[1];
 
    _croak("MCE::foreach: method cannot be called by the worker process")
       if ($self->wid());
@@ -553,8 +554,7 @@ sub foreach {
 
 sub forchunk {
 
-   my MCE $self    = $_[0];
-   my $_input_data = $_[1];
+   my MCE $self = $_[0]; my $_input_data = $_[1];
 
    _croak("MCE::forchunk: method cannot be called by the worker process")
       if ($self->wid());
@@ -590,9 +590,7 @@ sub forchunk {
 
 sub process {
 
-   my MCE $self    = $_[0];
-   my $_input_data = $_[1];
-   my $_params_ref = $_[2] || undef;
+   my MCE $self = $_[0]; my $_input_data = $_[1]; my $_params_ref = $_[2];
 
    @_ = ();
 
@@ -620,8 +618,7 @@ sub process {
 
 sub restart_worker {
 
-   my MCE $self = $_[0];
-   my $_wid     = $_[1];
+   my MCE $self = $_[0]; my $_wid = $_[1];
 
    _croak("MCE::restart_worker: method cannot be called by the worker process")
       if ($self->wid());
@@ -633,9 +630,10 @@ sub restart_worker {
    _croak("MCE::restart_worker: 'wid' is not valid")
       unless (defined $self->{_state}->[$_wid]);
 
-   my $_params  = $self->{_state}->[$_wid]->{_params};
-   my $_task_id = $self->{_state}->[$_wid]->{_task_id};
-   my $_task    = $self->{_state}->[$_wid]->{_task};
+   my $_params   = $self->{_state}->[$_wid]->{_params};
+   my $_task_wid = $self->{_state}->[$_wid]->{_task_wid};
+   my $_task_id  = $self->{_state}->[$_wid]->{_task_id};
+   my $_task     = $self->{_state}->[$_wid]->{_task};
 
    my $_use_threads = (defined $_task_id)
       ? $_task->{use_threads} : $self->{use_threads};
@@ -646,9 +644,9 @@ sub restart_worker {
    $self->{_total_running} += 1; $self->{_total_workers} += 1;
 
    if (defined $_use_threads && $_use_threads == 1) {
-      $self->_dispatch_thread($_wid, $_task, $_task_id, $_params);
+      $self->_dispatch_thread($_wid, $_task, $_task_id, $_task_wid, $_params);
    } else {
-      $self->_dispatch_child($_wid, $_task, $_task_id, $_params);
+      $self->_dispatch_child($_wid, $_task, $_task_id, $_task_wid, $_params);
    }
 
    return;
@@ -676,7 +674,7 @@ sub run {
    }
    else {
       $_auto_shutdown = (defined $_[1]) ? $_[1] : 1;
-      $_params_ref    = $_[2] || undef;
+      $_params_ref    = $_[2];
    }
 
    @_ = ();
@@ -704,8 +702,7 @@ sub run {
    ## Spawn workers.
    $self->spawn() if ($self->{_spawned} == 0);
 
-   local $SIG{__DIE__}  = \&_die;
-   local $SIG{__WARN__} = \&_warn;
+   local $SIG{__DIE__} = \&_die; local $SIG{__WARN__} = \&_warn;
 
    my ($_input_data, $_input_file, $_input_glob);
    my ($_abort_msg, $_first_msg, $_run_mode, $_single_dim);
@@ -816,8 +813,7 @@ sub run {
          select(undef, undef, undef, $_submit_delay)
             if ($_submit_delay && $_submit_delay > 0.0);
 
-         print $_COM_R_SOCK $_, $LF;
-         chomp($_wid = <$_COM_R_SOCK>);
+         print $_COM_R_SOCK $_, $LF; chomp($_wid = <$_COM_R_SOCK>);
 
          if (!$_has_user_tasks || exists $_task0_wids{$_wid}) {
             print $_COM_R_SOCK length($_frozen_params), $LF, $_frozen_params;
@@ -894,8 +890,7 @@ sub shutdown {
    ## Return if workers have not been spawned or have already been shutdown.
    return $self unless ($self->{_spawned});
 
-   local $SIG{__DIE__}  = \&_die;
-   local $SIG{__WARN__} = \&_warn;
+   local $SIG{__DIE__} = \&_die; local $SIG{__WARN__} = \&_warn;
 
    lock $_MCE_LOCK if ($_has_threads);            ## Obtain MCE lock.
 
@@ -1113,12 +1108,10 @@ sub wid {
 
 sub do {
 
-   my MCE $self  = shift;
-   my $_callback = shift;
+   my MCE $self = shift; my $_callback = shift;
 
    _croak("MCE::do: method cannot be called by the manager process")
       unless ($self->wid());
-
    _croak("MCE::do: 'callback' is not specified")
       unless (defined $_callback);
 
@@ -1141,8 +1134,7 @@ sub do {
 
    sub sendto {
 
-      my MCE $self = shift;
-      my $_to      = shift;
+      my MCE $self = shift; my $_to = shift;
 
       _croak("MCE::sendto: method cannot be called by the manager process")
          unless ($self->wid());
@@ -1189,8 +1181,7 @@ sub do {
 
 sub _croak {
 
-   $SIG{__DIE__}  = \&_die;
-   $SIG{__WARN__} = \&_warn;
+   $SIG{__DIE__} = \&_die; $SIG{__WARN__} = \&_warn;
 
    $\ = undef; require Carp; goto &Carp::croak;
 
@@ -1210,8 +1201,7 @@ sub _warn { MCE::Signal->_warn_handler(@_); }
 
 sub _sync_params {
 
-   my MCE $self    = $_[0];
-   my $_params_ref = $_[1];
+   my MCE $self = $_[0]; my $_params_ref = $_[1];
 
    @_ = ();
 
@@ -1299,7 +1289,7 @@ sub _validate_args_s {
 
    @_ = ();
 
-   die "Private method called" unless (caller)[0]->isa( ref($_s) );
+   die "Private method called" unless (caller)[0]->isa( ref($self) );
 
    my $_tag = 'MCE::_validate_args_s';
 
@@ -1376,9 +1366,7 @@ sub _validate_args_s {
 
    sub _do_callback {
 
-      my MCE $self = $_[0];
-      $_value      = $_[1];
-      $_data_ref   = $_[2];
+      my MCE $self = $_[0]; $_value = $_[1]; $_data_ref = $_[2];
 
       die "Improper use of function call" unless ($_send_init_called);
 
@@ -1471,9 +1459,7 @@ sub _validate_args_s {
 
    sub _do_send {
 
-      my MCE $self = shift;
-      $_dest       = shift;
-      $_value      = shift;
+      my MCE $self = shift; $_dest = shift; $_value = shift;
 
       die "Improper use of function call" unless ($_send_init_called);
 
@@ -1665,7 +1651,8 @@ sub _validate_args_s {
          ## far as what was previously read into the buffer.
 
          if ($_eof_flag) {
-            local $\ = undef; print $_DAT_R_SOCK "0${LF}"; return;
+            local $\ = undef; print $_DAT_R_SOCK "0${LF}";
+            return;
          }
 
          {
@@ -1876,9 +1863,7 @@ sub _validate_args_s {
 
    sub _output_loop {
 
-      $self        = $_[0];
-      $_input_data = $_[1];
-      $_input_glob = $_[2];
+      $self = $_[0]; $_input_data = $_[1]; $_input_glob = $_[2];
 
       @_ = ();
 
@@ -1988,9 +1973,7 @@ sub _validate_args_s {
 
 sub _sync_buffer_to_array {
 
-   my $_buffer_ref = $_[0];
-   my $_array_ref  = $_[1];
-   my $_cnt        = 0;
+   my $_buffer_ref = $_[0]; my $_array_ref = $_[1]; my $_cnt = 0;
 
    open my $_MEM_FILE, '<', $_buffer_ref;
    binmode $_MEM_FILE;
@@ -2011,16 +1994,13 @@ sub _sync_buffer_to_array {
 
 sub _worker_read_handle {
 
-   my MCE $self    = $_[0];
-   my $_proc_type  = $_[1];
-   my $_input_data = $_[2];
+   my MCE $self = $_[0]; my $_proc_type = $_[1]; my $_input_data = $_[2];
 
    @_ = ();
 
    die "Private method called" unless (caller)[0]->isa( ref($self) );
 
-   my $_many_wrks   = ($self->{_total_workers} > 1) ? 1 : 0;
-
+   my $_many_wrks   = ($self->{max_workers} > 1) ? 1 : 0;
    my $_QUE_R_SOCK  = $self->{_que_r_sock};
    my $_QUE_W_SOCK  = $self->{_que_w_sock};
    my $_chunk_size  = $self->{chunk_size};
@@ -2153,8 +2133,7 @@ sub _worker_read_handle {
 
 sub _worker_request_chunk {
 
-   my MCE $self   = $_[0];
-   my $_proc_type = $_[1];
+   my MCE $self = $_[0]; my $_proc_type = $_[1];
 
    @_ = ();
 
@@ -2262,14 +2241,13 @@ sub _worker_request_chunk {
 
 sub _worker_do {
 
-   my MCE $self    = $_[0];
-   my $_params_ref = $_[1];
+   my MCE $self = $_[0]; my $_params_ref = $_[1];
 
    @_ = ();
 
    die "Private method called" unless (caller)[0]->isa( ref($self) );
 
-   ## Set parameters.
+   ## Set options.
    $self->{_abort_msg}  = $_params_ref->{_abort_msg};
    $self->{_run_mode}   = $_params_ref->{_run_mode};
    $self->{_single_dim} = $_params_ref->{_single_dim};
@@ -2277,17 +2255,12 @@ sub _worker_do {
    $self->{use_slurpio} = $_params_ref->{_use_slurpio};
 
    ## Init local vars.
-   my $_OUT_W_SOCK  = $self->{_out_w_sock};
-   my $_DAT_W_SOCK  = $self->{_dat_w_sock};
-   my $_run_mode    = $self->{_run_mode};
-   my $_task_id     = $self->{_task_id};
-   my $_use_slurpio = $self->{use_slurpio};
-   my $_user_begin  = $self->{user_begin};
-   my $_user_func   = $self->{user_func};
-   my $_user_end    = $self->{user_end};
+   my $_OUT_W_SOCK = $self->{_out_w_sock};
+   my $_run_mode   = $self->{_run_mode};
+   my $_task_id    = $self->{_task_id};
 
    ## Call user_begin if defined.
-   $_user_begin->($self) if (defined $_user_begin);
+   $self->{user_begin}->($self) if (defined $self->{user_begin});
 
    ## Call worker function.
    if ($_run_mode eq 'array') {
@@ -2303,14 +2276,14 @@ sub _worker_do {
       $self->_worker_read_handle(READ_MEMORY, $self->{input_data});
    }
    else {
-      $_user_func->($self);
+      $self->{user_func}->($self);
    }
 
    undef $self->{_next_jmp} if (defined $self->{_next_jmp});
    undef $self->{_last_jmp} if (defined $self->{_last_jmp});
 
    ## Call user_end if defined.
-   $_user_end->($self) if (defined $_user_end);
+   $self->{user_end}->($self) if (defined $self->{user_end});
 
    ## Notify the main process a worker has completed.
    local $\ = undef;
@@ -2408,11 +2381,8 @@ sub _worker_loop {
 
 sub _worker_main {
 
-   my MCE $self = $_[0];
-   my $_wid     = $_[1];
-   my $_task    = $_[2];
-   my $_task_id = $_[3];
-   my $_params  = $_[4];
+   my MCE $self = $_[0]; my $_wid      = $_[1]; my $_task   = $_[2];
+   my $_task_id = $_[3]; my $_task_wid = $_[4]; my $_params = $_[5];
 
    @_ = ();
 
@@ -2427,17 +2397,19 @@ sub _worker_main {
       $self->exit(255, $_[0]);
    };
 
-   ## Use code references from user task if defined.
+   ## Use options from user task if defined.
    $self->{user_begin} = $_task->{user_begin} if (defined $_task->{user_begin});
    $self->{user_func}  = $_task->{user_func}  if (defined $_task->{user_func});
    $self->{user_end}   = $_task->{user_end}   if (defined $_task->{user_end});
 
-   ## Init runtime vars. Obtain handle to lock files.
-   my $_mce_sid  = $self->{_mce_sid};
-   my $_sess_dir = $self->{_sess_dir};
+   $self->{max_workers} = $_task->{max_workers}
+      if (defined $_task->{max_workers});
 
-   $self->{_task_id} = $_task_id;
-   $self->{_wid}     = $_wid;
+   ## Init runtime vars. Obtain handle to lock files.
+   my $_mce_sid = $self->{_mce_sid}; my $_sess_dir = $self->{_sess_dir};
+
+   $self->{_task_id} = $_task_id; $self->{_task_wid} = $_task_wid;
+   $self->{_wid} = $_wid;
 
    _do_send_init($self);
 
@@ -2455,15 +2427,15 @@ sub _worker_main {
    }
 
    ## Undef vars not required after being spawned.
-   $self->{_com_r_sock}  = $self->{_dat_r_sock}  = $self->{_out_r_sock} = undef;
-   $self->{flush_stderr} = $self->{flush_stdout} = undef;
-   $self->{on_post_exit} = $self->{on_post_run}  = undef;
-   $self->{stderr_file}  = $self->{stdout_file}  = undef;
-   $self->{user_error}   = $self->{user_output}  = undef;
-   $self->{flush_file}   = undef;
+   $self->{_com_r_sock} = $self->{_dat_r_sock} = $self->{_out_r_sock} =
+      $self->{flush_file} = $self->{flush_stderr} = $self->{flush_stdout} =
+      $self->{on_post_exit} = $self->{on_post_run} = $self->{stderr_file} =
+      $self->{stdout_file} = $self->{user_error} = $self->{user_output} =
+   undef;
 
-   $self->{_pids}   = (); $self->{_thrs}  = (); $self->{_tids} = ();
-   $self->{_status} = (); $self->{_state} = (); $self->{_task} = ();
+   $self->{_pids} = $self->{_thrs} = $self->{_tids} = $self->{_status} =
+      $self->{_state} = $self->{_task} =
+   ();
 
    foreach (keys %_mce_spawned) {
       delete $_mce_spawned{$_} unless ($_ eq $_mce_sid);
@@ -2511,11 +2483,8 @@ sub _worker_main {
 
 sub _dispatch_child {
 
-   my MCE $self = $_[0];
-   my $_wid     = $_[1];
-   my $_task    = $_[2];
-   my $_task_id = $_[3];
-   my $_params  = $_[4];
+   my MCE $self = $_[0]; my $_wid      = $_[1]; my $_task   = $_[2];
+   my $_task_id = $_[3]; my $_task_wid = $_[4]; my $_params = $_[5];
 
    @_ = ();
 
@@ -2530,7 +2499,7 @@ sub _dispatch_child {
       unless (defined $_pid);
 
    unless ($_pid) {
-      _worker_main($self, $_wid, $_task, $_task_id, $_params);
+      _worker_main($self, $_wid, $_task, $_task_id, $_task_wid, $_params);
 
       close STDERR; close STDOUT;
       kill 9, $$ unless ($_is_winperl);
@@ -2560,11 +2529,8 @@ sub _dispatch_child {
 
 sub _dispatch_thread {
 
-   my MCE $self = $_[0];
-   my $_wid     = $_[1];
-   my $_task    = $_[2];
-   my $_task_id = $_[3];
-   my $_params  = $_[4];
+   my MCE $self = $_[0]; my $_wid      = $_[1]; my $_task   = $_[2];
+   my $_task_id = $_[3]; my $_task_wid = $_[4]; my $_params = $_[5];
 
    @_ = ();
 
@@ -2573,8 +2539,8 @@ sub _dispatch_thread {
    select(undef, undef, undef, $self->{spawn_delay})
       if ($self->{spawn_delay} && $self->{spawn_delay} > 0.0);
 
-   my $_thr = threads->create(
-      \&_worker_main, $self, $_wid, $_task, $_task_id, $_params
+   my $_thr = threads->create( \&_worker_main,
+      $self, $_wid, $_task, $_task_id, $_task_wid, $_params
    );
 
    _croak "MCE::_dispatch_thread: Failed to spawn worker $_wid: $!"
