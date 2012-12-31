@@ -5,7 +5,7 @@ MCE - Many-Core Engine for Perl. Provides parallel processing capabilities.
 
 =head1 VERSION
 
-This document describes MCE version 1.201_004
+This document describes MCE version 1.300
 
 =head1 DESCRIPTION
 
@@ -525,15 +525,16 @@ Methods listed below are callable by the main process only.
 
    ## One can restart a worker who has died or exited.
    ## The job never ends below due to restarting each time.
-   ## It's recommended to specify the same wid which has exited.
-   ## Press ctrl-c to exit.
+
+   ## Please use the same wid from the worker which has exited.
 
    my $mce = MCE->new(
 
       on_post_exit => sub {
          my ($self, $e) = @_;
          print "$e->{wid}: $e->{pid}: status $e->{status}: $e->{msg}";
-         $self->restart_worker($e->{wid});
+
+         $self->restart_worker($e->{wid});   ## Pass same wid as arg.
       },
 
       user_begin => sub {
