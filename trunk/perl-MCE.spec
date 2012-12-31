@@ -1,5 +1,5 @@
 Name:           perl-MCE
-Version:        1.300
+Version:        1.301
 Release:        1%{?dist}
 Summary:        Many-Core Engine for Perl. Provides parallel processing capabilities.
 License:        CHECK(Distributable)
@@ -56,6 +56,12 @@ rm -rf $RPM_BUILD_ROOT
 %{_mandir}/man3/*
 
 %changelog
+* Mon Dec 31 2012 Mario Roy 1.301-1
+- Note: MCE is pretty much feature complete. Therefore, releases
+  will slow down going forward.  Enjoy MCE.
+- Emphasis on documentation -- better flow plus additional clarity
+- Minor update to sequence option validation
+- Minor update to included examples
 * Mon Dec 31 2012 Mario Roy 1.300-1
 - New methods...: chunk_size, restart_worker, task_id, task_wid, tmp_dir
 - New options...: on_post_exit, on_post_run, sequence
