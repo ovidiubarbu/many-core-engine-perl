@@ -7,7 +7,7 @@
 
 <> VERSION
 
-   This document describes MCE version 1.301
+   This document describes MCE version 1.302
 
 <> DESCRIPTION
 
@@ -66,8 +66,8 @@
           ## chunk_size => 16384,        ## Approximate 16384 bytes
           ## chunk_size => 50000,        ## Approximate 50000 bytes
 
-          ## Chunk_size is set to 1 when specifying sequence or
-          ## calling $self->foreach or $self->forseq methods.
+          ## Chunk_size is set to 1 for $self->foreach and
+          ## the $self->forseq methods.
 
       use_slurpio  => 1,                 ## Default is 0
       use_threads  => 1,                 ## Default is 0 or 1
@@ -158,11 +158,11 @@
          { ... },                        ## Options for task 2
       ],
 
-          ## Takes a list of hash references, each allowing for 6
-          ## options: max_workers, sequence, user_begin, user_func,
-          ## user_end, and task_end. Other options specified here
-          ## are ignored. Input_data, if specified from the main
-          ## MCE instance, is only applicable to task 0.
+          ## Takes a list of hash references, each allowing for 7
+          ## options: max_workers, user_begin, user_func, user_end
+          ## chunk_size, sequence, and task_end. Other options
+          ## specified here are ignored. Input_data, if specified
+          ## from the main MCE instance, is only applicable to task 0.
 
           ## Options not specified here (excluding task_end) will
           ## default to same option specified from the main MCE
@@ -214,7 +214,7 @@
    ## each user_task. Input_data is only applicable to the first task.
 
    ## See a demo at the end of this documentation applying sequences
-   ## with the user_tasks option.
+   ## with the user_tasks option including chunking.
 
    use MCE;
 
@@ -912,9 +912,7 @@
              As fast as MMAP IO when file resides in OS FS cache.
              2x ~ 3x faster when reading directly from disk.
 
-   foreach.pl
-   forchunk.pl
-   forseq.pl
+   foreach.pl, forseq.pl, forchunk.pl
              These take the same sqrt example from Parallel::Loops
              and measures the overhead of the engine. The number
              indicates the size of @input which can be submitted
@@ -1087,39 +1085,59 @@
    -------------------------------------------------------------------------
 
    One may specify the sequence option per each task. The following is taken
-   directly from the forseq.pl example. Think of the following demonstration
-   as having 3 mini-MCEs running simultaneously in parallel.
-
-   ## Run with seq_demo.pl | sort
+   directly from the seq_demo.pl example. Think of the following demonstration
+   as having 3 mini-MCEs running simultaneously in parallel. Chunking can
+   also be configured independently as well.
 
    use MCE;
 
+   ## A demonstration applying sequences with user_tasks.
+   ## Both non-chunking and chunking of sequences are supported.
+
+   ## Run with seq_demo.pl | sort
+
    sub user_func {
-      my ($self, $seq_n, $chunk_id) = @_;
+      my ($self, $seq_ref, $chunk_id) = @_;
 
       my $wid      = $self->wid();
       my $task_id  = $self->task_id();
       my $task_wid = $self->task_wid();
 
-      printf(
-         "task_id %d: seq_n %s: chunk_id %d: wid %d: task_wid %d\n",
-         $task_id,    $seq_n,   $chunk_id,   $wid,   $task_wid
-      );
+      if (ref $seq_ref eq 'ARRAY') {
+         foreach my $seq_n (@{ $seq_ref }) {
+            printf(
+               "task_id %d: seq_n %s: chunk_id %d: wid %d: task_wid %d\n",
+               $task_id,    $seq_n,   $chunk_id,   $wid,   $task_wid
+            );
+         }
+      }
+      else {
+         my $seq_n = $seq_ref;
+         printf(
+            "task_id %d: seq_n %s: chunk_id %d: wid %d: task_wid %d\n",
+            $task_id,    $seq_n,   $chunk_id,   $wid,   $task_wid
+         );
+      }
    }
+
+   ## Each task can be configured independently.
 
    my $mce = MCE->new(
       user_tasks => [{
          max_workers => 2,
-         sequence => { begin => 11, end => 19, step => 1 },
-         user_func => \&user_func
+         chunk_size  => 1,
+         sequence    => { begin => 11, end => 19, step => 1 },
+         user_func   => \&user_func
       },{
          max_workers => 2,
-         sequence => { begin => 21, end => 29, step => 1 },
-         user_func => \&user_func
+         chunk_size  => 5,
+         sequence    => { begin => 21, end => 29, step => 1 },
+         user_func   => \&user_func
       },{
          max_workers => 2,
-         sequence => { begin => 31, end => 39, step => 1 },
-         user_func => \&user_func
+         chunk_size  => 3,
+         sequence    => { begin => 31, end => 39, step => 1 },
+         user_func   => \&user_func
       }]
    );
 
@@ -1137,23 +1155,23 @@
    task_id 0: seq_n 18: chunk_id 8: wid 2: task_wid 2
    task_id 0: seq_n 19: chunk_id 9: wid 1: task_wid 1
    task_id 1: seq_n 21: chunk_id 1: wid 3: task_wid 1
-   task_id 1: seq_n 22: chunk_id 2: wid 4: task_wid 2
-   task_id 1: seq_n 23: chunk_id 3: wid 3: task_wid 1
-   task_id 1: seq_n 24: chunk_id 4: wid 4: task_wid 2
-   task_id 1: seq_n 25: chunk_id 5: wid 3: task_wid 1
-   task_id 1: seq_n 26: chunk_id 6: wid 4: task_wid 2
-   task_id 1: seq_n 27: chunk_id 7: wid 3: task_wid 1
-   task_id 1: seq_n 28: chunk_id 8: wid 4: task_wid 2
-   task_id 1: seq_n 29: chunk_id 9: wid 3: task_wid 1
+   task_id 1: seq_n 22: chunk_id 1: wid 3: task_wid 1
+   task_id 1: seq_n 23: chunk_id 1: wid 3: task_wid 1
+   task_id 1: seq_n 24: chunk_id 1: wid 3: task_wid 1
+   task_id 1: seq_n 25: chunk_id 1: wid 3: task_wid 1
+   task_id 1: seq_n 26: chunk_id 2: wid 4: task_wid 2
+   task_id 1: seq_n 27: chunk_id 2: wid 4: task_wid 2
+   task_id 1: seq_n 28: chunk_id 2: wid 4: task_wid 2
+   task_id 1: seq_n 29: chunk_id 2: wid 4: task_wid 2
    task_id 2: seq_n 31: chunk_id 1: wid 5: task_wid 1
-   task_id 2: seq_n 32: chunk_id 2: wid 6: task_wid 2
-   task_id 2: seq_n 33: chunk_id 3: wid 5: task_wid 1
-   task_id 2: seq_n 34: chunk_id 4: wid 6: task_wid 2
-   task_id 2: seq_n 35: chunk_id 5: wid 5: task_wid 1
-   task_id 2: seq_n 36: chunk_id 6: wid 6: task_wid 2
-   task_id 2: seq_n 37: chunk_id 7: wid 5: task_wid 1
-   task_id 2: seq_n 38: chunk_id 8: wid 6: task_wid 2
-   task_id 2: seq_n 39: chunk_id 9: wid 5: task_wid 1
+   task_id 2: seq_n 32: chunk_id 1: wid 5: task_wid 1
+   task_id 2: seq_n 33: chunk_id 1: wid 5: task_wid 1
+   task_id 2: seq_n 34: chunk_id 2: wid 6: task_wid 2
+   task_id 2: seq_n 35: chunk_id 2: wid 6: task_wid 2
+   task_id 2: seq_n 36: chunk_id 2: wid 6: task_wid 2
+   task_id 2: seq_n 37: chunk_id 3: wid 5: task_wid 1
+   task_id 2: seq_n 38: chunk_id 3: wid 5: task_wid 1
+   task_id 2: seq_n 39: chunk_id 3: wid 5: task_wid 1
 
    -------------------------------------------------------------------------
    MULTIPLE WORKERS RUNNING IN PARALLEL
