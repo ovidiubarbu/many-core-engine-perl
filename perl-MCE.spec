@@ -1,5 +1,5 @@
 Name:           perl-MCE
-Version:        1.301
+Version:        1.302
 Release:        1%{?dist}
 Summary:        Many-Core Engine for Perl. Provides parallel processing capabilities.
 License:        CHECK(Distributable)
@@ -56,6 +56,12 @@ rm -rf $RPM_BUILD_ROOT
 %{_mandir}/man3/*
 
 %changelog
+* Tue Jan 01 2013 Mario Roy 1.302-1
+- Fixed validation logic for sequence 
+- Updated the sequence generator -- now supports chunking
+- Updated seq_demo.pl example to demo user_tasks, sequence, and
+  chunk_size applied together
+- Documentation updates 
 * Mon Dec 31 2012 Mario Roy 1.301-1
 - Note: MCE is pretty much feature complete. Therefore, releases
   will slow down going forward.  Enjoy MCE.

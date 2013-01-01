@@ -1,8 +1,13 @@
 Revision history for MCE
 
+1.302 Tue Jan 01 07:30:00 EST 2013
+    * Fixed validation logic for sequence
+    * Updated the sequence generator -- now supports chunking
+    * Updated seq_demo.pl example to demo user_tasks, sequence, and
+      chunk_size applied together
+    * Documentation updates
+
 1.301 Mon Dec 31 15:00:00 EST 2012
-    * Note: MCE is pretty much feature complete. Therefore, releases
-      will slow down going forward.  Enjoy MCE.
     * Emphasis on documentation -- better flow plus additional clarity
     * Minor update to sequence option validation
     * Minor update to included examples

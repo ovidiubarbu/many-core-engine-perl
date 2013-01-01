@@ -805,7 +805,6 @@ sub run {
    my $_chunk_size    = $self->{chunk_size};
    my $_sess_dir      = $self->{_sess_dir};
    my $_total_workers = $self->{_total_workers};
-   my $_sequence      = $self->{sequence};
    my $_use_slurpio   = $self->{use_slurpio};
 
    my %_params = (
@@ -818,6 +817,16 @@ sub run {
       '_chunk_size' => $_chunk_size,   '_single_dim'  => $_single_dim,
       '_input_file' => $_input_file,   '_use_slurpio' => $_use_slurpio
    );
+
+   if (defined $self->{user_tasks}) {
+      my $_has_chunk_size_option = 0;
+      for my $_task (@{ $self->{user_tasks} }) {
+         $_has_chunk_size_option = 1 if (defined $_task->{chunk_size});
+      }
+      if ($_has_chunk_size_option) {
+         delete $_params{_chunk_size}; delete $_params_nodata{_chunk_size};
+      }
+   }
 
    my $_COM_LOCK;
 
@@ -1287,8 +1296,6 @@ sub _validate_args {
          unless (-e $_s->{input_data});
    }
 
-   _croak "$_tag: 'chunk_size' is not valid"
-      if ($_s->{chunk_size} !~ /\A\d+\z/ or $_s->{chunk_size} == 0);
    _croak "$_tag: 'use_slurpio' is not 0 or 1"
       if ($_s->{use_slurpio} && $_s->{use_slurpio} !~ /\A[01]\z/);
    _croak "$_tag: 'job_delay' is not valid"
@@ -1319,6 +1326,7 @@ sub _validate_args {
    if (defined $_s->{user_tasks}) {
       for my $_t (@{ $_s->{user_tasks} }) {
          $_s->_validate_args_s($_t);
+
          _croak "$_tag: 'task_end' is not a CODE reference"
             if ($_t->{task_end} && ref $_t->{task_end} ne 'CODE');
       }
@@ -1338,11 +1346,17 @@ sub _validate_args_s {
 
    my $_tag = 'MCE::_validate_args_s';
 
+   _croak "$_tag: 'chunk_size' is not valid"
+      if (defined $_s->{chunk_size} && (
+         $_s->{chunk_size} !~ /\A\d+\z/ or $_s->{chunk_size} == 0
+      ));
    _croak "$_tag: 'max_workers' is not valid"
-      if ($_s->{max_workers} !~ /\A\d+\z/ or $_s->{max_workers} == 0);
+      if (defined $_s->{max_workers} && (
+         $_s->{max_workers} !~ /\A\d+\z/ or $_s->{max_workers} == 0
+      ));
+
    _croak "$_tag: 'use_threads' is not 0 or 1"
       if ($_s->{use_threads} && $_s->{use_threads} !~ /\A[01]\z/);
-
    _croak "$_tag: 'user_begin' is not a CODE reference"
       if ($_s->{user_begin} && ref $_s->{user_begin} ne 'CODE');
    _croak "$_tag: 'user_func' is not a CODE reference"
@@ -1379,8 +1393,6 @@ sub _validate_args_s {
       ) {
          _croak "$_tag: impossible 'step' size for sequence";
       }
-
-      $self->{chunk_size} = 1; ## Set to 1 when sequence is specified.
    }
 
    return;
@@ -2200,6 +2212,7 @@ sub _worker_read_handle {
    _WORKER_READ_HANDLE__LAST:
 
    close $_IN_FILE; undef $_IN_FILE;
+
    return;
 }
 
@@ -2313,11 +2326,11 @@ sub _worker_request_chunk {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Worker process -- Seq.
+## Worker process -- Sequence Generator.
 ##
 ###############################################################################
 
-sub _worker_seq {
+sub _worker_sequence_generator {
 
    my MCE $self = $_[0];
 
@@ -2326,38 +2339,83 @@ sub _worker_seq {
    die "Private method called" unless (caller)[0]->isa( ref($self) );
 
    my $_max_workers = $self->{max_workers};
-   my $_format      = $self->{sequence}->{format};
-   my $_begin       = $self->{sequence}->{begin};
-   my $_step        = $self->{sequence}->{step};
-   my $_end         = $self->{sequence}->{end};
+   my $_chunk_size  = $self->{chunk_size};
    my $_user_func   = $self->{user_func};
-   my $_wid         = $self->{_task_wid} || $self->{_wid};
-   my $_next        = ($_wid - 1) * $_step + $_begin;
-   my $_chunk_id    = $_wid;
-   my $_seq_n;
 
-   $self->{_next_jmp} = sub { goto _WORKER_SEQ__NEXT; };
+   my $_begin       = $self->{sequence}->{begin};
+   my $_end         = $self->{sequence}->{end};
+   my $_step        = $self->{sequence}->{step};
+   my $_fmt         = $self->{sequence}->{format};
+
+   my $_wid         = $self->{_task_wid} || $self->{_wid};
+   my $_next        = ($_wid - 1) * $_chunk_size * $_step + $_begin;
+   my $_chunk_id    = $_wid;
+
    $self->{_last_jmp} = sub { goto _WORKER_SEQ__LAST; };
 
-   my $_do_seq = sub {
-      $_seq_n = (defined $_format) ? sprintf("%$_format", $_next) : $_next;
+   ## -------------------------------------------------------------------------
 
-      $_user_func->($self, $_seq_n, $_chunk_id);
-      _WORKER_SEQ__NEXT:
+   if ($_begin == $_end) {                        ## Begin & End are identical.
 
-      $_next += $_step * $_max_workers; $_chunk_id += $_max_workers;
+      if ($_wid == 1) {
+         $self->{_next_jmp} = sub { goto _WORKER_SEQ__LAST; };
 
-      return;
-   };
+         my $_seq_n = (defined $_fmt) ? sprintf("%$_fmt", $_next) : $_next;
 
-   if ($_begin < $_end) {
-      while (1) { last if ($_next > $_end); $_do_seq->(); }
+         if ($_chunk_size > 1) {
+            $_user_func->($self, [ $_seq_n ], $_chunk_id);
+         } else {
+            $_user_func->($self, $_seq_n, $_chunk_id);
+         }
+      }
    }
-   elsif ($_begin > $_end) {
-      while (1) { last if ($_next < $_end); $_do_seq->(); }
+   elsif ($_chunk_size == 1) {                    ## Does no chunking.
+
+      $self->{_next_jmp} = sub { goto _WORKER_SEQ__NEXT_A; };
+
+      my $_flag = ($_begin < $_end);
+
+      while (1) {
+         return if ( $_flag && $_next > $_end);
+         return if (!$_flag && $_next < $_end);
+
+         my $_seq_n = (defined $_fmt) ? sprintf("%$_fmt", $_next) : $_next;
+
+         $_user_func->($self, $_seq_n, $_chunk_id);
+         _WORKER_SEQ__NEXT_A:
+
+         $_next += $_step * $_max_workers;
+         $_chunk_id += $_max_workers;
+      }
    }
-   elsif ($_wid == 1) {
-      $_do_seq->();
+   else {                                         ## Yes, does chunking.
+
+      $self->{_next_jmp} = sub { goto _WORKER_SEQ__NEXT_B; };
+
+      while (1) {
+         my @_n = ();
+
+         if ($_begin < $_end) {
+            for (1 .. $_chunk_size) { last if ($_next > $_end);
+               push @_n, (defined $_fmt) ? sprintf("%$_fmt", $_next) : $_next;
+               $_next += $_step;
+            }
+         }
+         else {
+            for (1 .. $_chunk_size) { last if ($_next < $_end);
+               push @_n, (defined $_fmt) ? sprintf("%$_fmt", $_next) : $_next;
+               $_next += $_step;
+            }
+         }
+
+         return unless (@_n > 0);
+
+         $_user_func->($self, \@_n, $_chunk_id);
+         _WORKER_SEQ__NEXT_B:
+
+         $_next += $_step * ($_chunk_size * $_max_workers - $_chunk_size);
+         $_chunk_id += $_max_workers;
+      }
    }
 
    _WORKER_SEQ__LAST:
@@ -2383,8 +2441,10 @@ sub _worker_do {
    $self->{_abort_msg}  = $_params_ref->{_abort_msg};
    $self->{_run_mode}   = $_params_ref->{_run_mode};
    $self->{_single_dim} = $_params_ref->{_single_dim};
-   $self->{chunk_size}  = $_params_ref->{_chunk_size};
    $self->{use_slurpio} = $_params_ref->{_use_slurpio};
+
+   $self->{chunk_size}  = $_params_ref->{_chunk_size}
+      if (defined $_params_ref->{_chunk_size});
 
    ## Init local vars.
    my $_OUT_W_SOCK = $self->{_out_w_sock};
@@ -2396,7 +2456,7 @@ sub _worker_do {
 
    ## Call worker function.
    if (defined $self->{sequence}) {
-      $self->_worker_seq();
+      $self->_worker_sequence_generator();
    }
    elsif ($_run_mode eq 'array') {
       $self->_worker_request_chunk(REQUEST_ARRAY);
@@ -2530,11 +2590,12 @@ sub _worker_main {
       $self->exit(255, $_[0]);
    };
 
-   ## Use options from user task if defined.
+   ## Use options from user_tasks if defined.
    $self->{user_begin} = $_task->{user_begin} if (defined $_task->{user_begin});
    $self->{user_func}  = $_task->{user_func}  if (defined $_task->{user_func});
    $self->{user_end}   = $_task->{user_end}   if (defined $_task->{user_end});
    $self->{sequence}   = $_task->{sequence}   if (defined $_task->{sequence});
+   $self->{chunk_size} = $_task->{chunk_size} if (defined $_task->{chunk_size});
 
    $self->{max_workers} = $_task->{max_workers}
       if (defined $_task->{max_workers});
