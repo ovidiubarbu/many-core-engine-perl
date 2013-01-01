@@ -1364,7 +1364,13 @@ sub _validate_args_s {
 
       for (qw(begin end step)) {
          _croak "$_tag: '$_' is not valid for sequence"
-            if ($_seq->{$_} eq '' || $_seq->{$_} !~ /\A-?\d*\.?\d*\z/);
+            if (defined $_seq->{$_} && (
+               $_seq->{$_} eq '' || $_seq->{$_} !~ /\A-?\d*\.?\d*\z/
+            ));
+      }
+
+      unless (defined $_seq->{step}) {
+         $_seq->{step} = ($_seq->{begin} < $_seq->{end}) ? 1 : -1;
       }
 
       if ( ($_seq->{step} < 0 && $_seq->{begin} < $_seq->{end}) ||
@@ -1375,10 +1381,6 @@ sub _validate_args_s {
       }
 
       $self->{chunk_size} = 1; ## Set to 1 when sequence is specified.
-
-      unless (defined $_seq->{step}) {
-         $_seq->{step} = ($_seq->{begin} < $_seq->{end}) ? 1 : -1;
-      }
    }
 
    return;
