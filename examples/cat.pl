@@ -24,7 +24,7 @@ use lib "$FindBin::Bin/../lib";
 
 my $prog_name = $0; $prog_name =~ s{^.*[\\/]}{}g;
 
-INIT {
+sub INIT {
    ## Provide file globbing support under Windows similar to Unix.
    @ARGV = <@ARGV> if ($^O eq 'MSWin32');
 }
