@@ -7,7 +7,7 @@
 
 <> VERSION
 
-   This document describes MCE version 1.302
+   This document describes MCE version 1.303
 
 <> DESCRIPTION
 
@@ -53,7 +53,7 @@
           ## input_data => \$scalar to treat like a file
 
           ## Use the sequence option if simply wanting to loop
-          ## through a sequence of numbers in parallel.
+          ## through a sequence of numbers instead.
 
       chunk_size   => 2000,              ## Default is 1
 
@@ -104,7 +104,7 @@
           ## running a job ($self->process or $self->run).
 
           ## One can take action immediately after a worker exits
-          ## or wait till after the job has completed.
+          ## or wait until after the job has completed.
 
       user_begin   => \&user_begin,      ## Default is undef
       user_func    => \&user_func,       ## Default is undef
@@ -138,7 +138,6 @@
           ## Flush sendto file, standard error, or standard output.
 
       sequence     => {                  ## Default is undef
-
           begin => -1, end => 1 [, step => 0.1 [, format => "4.1f" ] ]
       },
 
@@ -152,7 +151,6 @@
           ## option. One cannot specify both options together.
 
       user_tasks   => [                  ## Default is undef
-
          { ... },                        ## Options for task 0
          { ... },                        ## Options for task 1
          { ... },                        ## Options for task 2
@@ -178,7 +176,7 @@
    -------------------------------------------------------------------------
 
    ## Run calls spawn, kicks off job, workers call user_begin,
-   ## user_func, user_end. Run shuts down workers afterwards.
+   ## user_func, and user_end. Run shuts down workers afterwards.
 
    $mce->run();
 
@@ -211,7 +209,7 @@
    ## model when walking through the data. For sequence, workers walk
    ## through a sequence of numbers calculated mathematically without
    ## the overhead of an array. The latter can also be specified per
-   ## each user_task. Input_data is only applicable to the first task.
+   ## each user_task. Input_data is applicable to the first task only.
 
    ## See a demo at the end of this documentation applying sequences
    ## with the user_tasks option including chunking.
@@ -253,21 +251,21 @@
    USER_TASKS
    -------------------------------------------------------------------------
 
-   ## The 1.200 release introduced a new option to allow for flexible
-   ## workers. The user_tasks option takes an array of tasks. Each task
-   ## allows for 6 options:
-   ##   max_workers, use_threads, user_begin, user_func, user_end, and
-   ##   sequence (new in 1.300)
+   ## The 1.2 release introduced the user_tasks option to allow for
+   ## flexible workers. This takes an array of tasks. Each task allows
+   ## for 7 options:
+   ##   max_workers, use_threads, user_begin, user_func, user_end,
+   ##   sequence, and chunk_size (the latter 2 coming from 1.3)
    ##
    ## In addition, task_end can be specified for the manager process
    ## to run when workers under task have completed processing.
    ##
    ## Forking and threading can be inter-mixed among tasks except under
-   ## CYGWIN. Input data (if defined) can only be processed by the first
-   ## task. The run method will remain running until all workers have
-   ## completed processing.
+   ## Cygwin. Input data (if defined) can be processed by the first
+   ## task only. The run method will remain running until all workers
+   ## have completed processing.
    ##
-   ## Go here for further reading on the new user_tasks option.
+   ## Visit this URL for further reading on the new user_tasks option.
    ## http://code.google.com/p/many-core-engine-perl/wiki/MCE_Tasks
 
    use MCE;
@@ -307,6 +305,16 @@
       print "$e->{wid}: $e->{pid}: $e->{status}: $e->{msg}: $e->{id}\n";
    }
 
+   my $mce = MCE->new(
+
+      user_func => sub {
+
+         my $self = $_[0]; $self->exit(0, 'ok', 'pebbles');
+      }
+   );
+
+   $mce->run();
+
    -- Output
 
    2: PID_7625: 0: ok: pebbles
@@ -317,8 +325,8 @@
 
    ## Executed after running ($self->process or $self->run). The
    ## on_post_exit above is called immediately after a worker exits,
-   ## whereas on_post_run below is called after running. The reference
-   ## is an array of hashes.
+   ## whereas on_post_run below is called after running. The method
+   ## receives an array reference of hashes.
 
    sub on_post_run {
 
@@ -361,6 +369,7 @@
    -------------------------------------------------------------------------
 
    ## MCE passes a reference to an array containing the chunk data.
+   ## e.g. $chunk_ref = [ record1, record2, record3, ... ]
 
    sub user_func {
 
@@ -377,6 +386,7 @@
    -------------------------------------------------------------------------
 
    ## MCE passes a reference to a scalar containing the raw chunk data.
+   ## e.g. $chunk_ref = \$chunk_slurped_data
 
    sub user_func {
 
@@ -391,7 +401,7 @@
 
    ## MCE will direct $self->sendto('stderr/out', ...) calls to these
    ## functions in a serialized fashion. This is handy if one wants to
-   ## filter, modify, and/or send the data elsewhere.
+   ## filter, modify, and/or direct the data elsewhere.
 
    sub user_error {                   ## Optional via user_error option
 
@@ -418,7 +428,12 @@
    -------------------------------------------------------------------------
 
    ## Notifies workers to abort after processing the current chunk.
-   ## The abort method is only meaningful when processing input data.
+   ## The abort method is applicable when processing input_data only.
+   ## Workers write the next offset position, to the queue socket, for
+   ## the next available worker. In essense, the abort method writes
+   ## the last offset position. Workers, on requesting the next offset
+   ## position, will think the end of input_data has been reached and
+   ## leave the chunking loop.
 
    $self->abort();
 
@@ -426,7 +441,7 @@
    chunk_size ( void )
    -------------------------------------------------------------------------
 
-   ## Returns the Chunk Size used by MCE.
+   ## Returns the chunk_size used by MCE.
 
    my $chunk_size = $self->chunk_size();
 
@@ -434,7 +449,7 @@
    task_id ( void )
    -------------------------------------------------------------------------
 
-   ## Returns the Task ID. Applies to user_tasks option.
+   ## Returns the task ID. Applies to user_tasks option.
    ## Starts at 0 (array index for user_tasks).
 
    my $task_id = $self->task_id();
@@ -443,7 +458,7 @@
    task_wid ( void )
    -------------------------------------------------------------------------
 
-   ## Returns the Task Worker ID. Applies to user_tasks option.
+   ## Returns the task worker ID. Applies to user_tasks option.
    ## Starts at 1 per each task configured with user_tasks.
    ## The value is set to 0 for the manager process.
 
@@ -461,7 +476,7 @@
    wid ( void )
    -------------------------------------------------------------------------
 
-   ## Returns the MCE Worker ID. Starts at 1 per MCE instance.
+   ## Returns the MCE worker ID. Starts at 1 per MCE instance.
    ## The value is set to 0 for the manager process.
 
    my $wid = $self->wid();
@@ -476,10 +491,10 @@
    forchunk ( $input_data [, { options } ], sub { ... } )
    -------------------------------------------------------------------------
 
-   ## Both forchunk & foreach are sugar methods in MCE. Workers are
+   ## Forchunk, foreach, and forseq are sugar methods. Workers are
    ## automatically spawned, the code block is executed in parallel,
-   ## and workers are shut down afterwards. Do not call these methods
-   ## if wanting workers to remain up after processing.
+   ## and workers are shut down afterwards. Do not use these methods
+   ## if wanting workers to remain alive after processing.
    ##
    ## Specifying options is optional. Valid options are the same as
    ## for the process method.
@@ -509,7 +524,7 @@
    foreach ( $input_data [, { options } ], sub { ... } )
    -------------------------------------------------------------------------
 
-   ## Foreach always implies chunk_size => 1 (cannot be overwritten).
+   ## Foreach implies chunk_size => 1 (cannot be overwritten).
 
    my $mce = MCE->new(
       max_workers => $max_workers
@@ -546,7 +561,7 @@
    forseq ( $sequence_spec [, { options } ], sub { ... } )
    -------------------------------------------------------------------------
 
-   ## Forseq always implies chunk_size => 1 (cannot be overwritten).
+   ## Forseq implies chunk_size => 1 (cannot be overwritten).
 
    my $mce = MCE->new(
       max_workers => 3
@@ -574,7 +589,7 @@
    ## Allowable options { key => value, ... } are:
    ##   chunk_size input_data job_delay spawn_delay submit_delay
    ##   flush_file flush_stderr flush_stdout stderr_file stdout_file
-   ##   on_post_exit on_post_run user_begin user_end user_func
+   ##   on_post_exit on_post_run sequence user_begin user_end user_func
    ##   user_error user_output use_slurpio
    ##
    ## Options remain persistent going forward unless changed. Setting
@@ -596,7 +611,7 @@
    ## One can restart a worker who has died or exited.
    ## The job never ends below due to restarting each time.
 
-   ## Please use the same wid from the worker which has exited.
+   ## Pass the same wid from the worker which has exited.
 
    my $mce = MCE->new(
 
@@ -604,7 +619,7 @@
          my ($self, $e) = @_;
          print "$e->{wid}: $e->{pid}: status $e->{status}: $e->{msg}";
 
-         $self->restart_worker($e->{wid});  ## Passing same wid as arg.
+         $self->restart_worker($e->{wid});
       },
 
       user_begin => sub {
@@ -933,6 +948,9 @@
    ## Imagine a long running process and wanting to parallelize an array
    ## against a pool of workers.
 
+   ## 3.0: The sequence option can be used when knowing the sequence of
+   ## numbers up front: sequence => { begin => 0, end => 18000 - 1 }
+
    my @input_data  = (0 .. 18000 - 1);
    my $max_workers = 3;
    my $order_id    = 1;
@@ -1003,8 +1021,11 @@
    -------------------------------------------------------------------------
 
    ## Chunking reduces overhead many folds. Instead of passing a single
-   ## item from @input_data, a chunk of $chunk_size is sent instead to
-   ## the next available worker.
+   ## item from @input_data, a chunk of $chunk_size is sent to the next
+   ## available worker.
+
+   ## 3.0: The sequence option can be used when knowing the sequence of
+   ## numbers up front: sequence => { begin => 0, end => 385000 - 1 }
 
    my @input_data  = (0 .. 385000 - 1);
    my $max_workers = 3;
@@ -1091,28 +1112,27 @@
 
    use MCE;
 
-   ## A demonstration applying sequences with user_tasks.
-   ## Both non-chunking and chunking of sequences are supported.
-
    ## Run with seq_demo.pl | sort
 
    sub user_func {
-      my ($self, $seq_ref, $chunk_id) = @_;
+      my ($self, $seq_n, $chunk_id) = @_;
 
       my $wid      = $self->wid();
       my $task_id  = $self->task_id();
       my $task_wid = $self->task_wid();
 
-      if (ref $seq_ref eq 'ARRAY') {
-         foreach my $seq_n (@{ $seq_ref }) {
+      if (ref $seq_n eq 'ARRAY') {
+         ## Received the next "chunked" sequence of numbers
+         ## e.g. when chunk_size > 1, $seq_n will be an array ref above
+
+         foreach (@{ $seq_n }) {
             printf(
                "task_id %d: seq_n %s: chunk_id %d: wid %d: task_wid %d\n",
-               $task_id,    $seq_n,   $chunk_id,   $wid,   $task_wid
+               $task_id,    $_,       $chunk_id,   $wid,   $task_wid
             );
          }
       }
       else {
-         my $seq_n = $seq_ref;
          printf(
             "task_id %d: seq_n %s: chunk_id %d: wid %d: task_wid %d\n",
             $task_id,    $seq_n,   $chunk_id,   $wid,   $task_wid
@@ -1177,12 +1197,13 @@
    MULTIPLE WORKERS RUNNING IN PARALLEL
    -------------------------------------------------------------------------
 
-   The input_data option is optional. One can simply use MCE to parallelize
-   multiple workers. The "do" & "sendto" methods are used to pass data back
-   to the main process or thread. One doesn't have to wait until the worker
-   has completed processing to pass data back. Both "do" & "sendto" methods
-   are processed serially by the main process on a first come, first serve
-   basis. All 4 workers run in parallel for the demonstration below.
+   Both input_data and sequence options are optional in MCE. One can simply
+   use MCE to parallelize multiple workers. The "do" & "sendto" methods can
+   be used to pass data back to the manager process. One doesn't have to
+   wait until the worker has completed processing to pass data back. Both
+   "do" & "sendto" methods are processed serially by the main process on a
+   first come, first serve basis. All 4 workers run in parallel for the
+   demonstration below.
 
    use MCE;
 

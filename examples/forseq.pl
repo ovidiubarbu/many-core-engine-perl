@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## This example demonstrates the sqrt example from Parallel::Loops.
+## This example demonstrates the sqrt example from Parallel::Loops, with MCE.
 ## MCE does not fork a new child process for each @input_data.
 ##
 ## The number below indicates the size of @input_data which can be submitted
