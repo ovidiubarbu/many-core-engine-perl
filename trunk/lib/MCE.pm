@@ -81,7 +81,7 @@ INIT {
    }
 }
 
-our $VERSION = '1.301';
+our $VERSION = '1.303';
 $VERSION = eval $VERSION;
 
 ###############################################################################
@@ -233,6 +233,7 @@ sub new {
       unless (-d $self->{tmp_dir});
    _croak("MCE::new: '$self->{tmp_dir}' is not writeable")
       unless (-w $self->{tmp_dir});
+
    _croak("MCE::new: 'user_tasks' is not an ARRAY reference")
       if ($self->{user_tasks} && ref $self->{user_tasks} ne 'ARRAY');
 
@@ -244,7 +245,7 @@ sub new {
             unless (defined $_task->{use_threads});
       }
       if ($_is_cygwin) {
-         ## File locking fails among children & threads.
+         ## File locking fails among children and threads under Cygwin.
          ## Must be all children or all threads, not intermixed.
          my (%_values, $_value);
 
@@ -424,11 +425,11 @@ sub spawn {
 
    ## -------------------------------------------------------------------------
 
-   my $_max_workers = $self->{max_workers};
-   my $_use_threads = $self->{use_threads};
-
    $self->{_pids}   = (); $self->{_thrs}  = (); $self->{_tids} = ();
    $self->{_status} = (); $self->{_state} = (); $self->{_task} = ();
+
+   my $_max_workers = $self->{max_workers};
+   my $_use_threads = $self->{use_threads};
 
    ## Obtain lock.
    open my $_COM_LOCK, '+>> :stdio', "$_sess_dir/com.lock";
@@ -516,15 +517,15 @@ sub spawn {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## For "seq" method.
+## For "chunk" method.
 ##
 ###############################################################################
 
-sub forseq {
+sub forchunk {
 
-   my MCE $self = $_[0]; my $_sequence = $_[1];
+   my MCE $self = $_[0]; my $_input_data = $_[1];
 
-   _croak("MCE::forseq: method cannot be called by the worker process")
+   _croak("MCE::forchunk: method cannot be called by the worker process")
       if ($self->{_wid});
 
    my ($_user_func, $_params_ref);
@@ -537,13 +538,12 @@ sub forseq {
 
    @_ = ();
 
-   _croak("MCE::forseq: 'sequence' is not specified")
-      unless (defined $_sequence);
-   _croak("MCE::forseq: 'code_block' is not specified")
+   _croak("MCE::forchunk: 'input_data' is not specified")
+      unless (defined $_input_data);
+   _croak("MCE::forchunk: 'code_block' is not specified")
       unless (defined $_user_func);
 
-   $_params_ref->{chunk_size} = 1;
-   $_params_ref->{sequence}   = $_sequence;
+   $_params_ref->{input_data} = $_input_data;
    $_params_ref->{user_func}  = $_user_func;
 
    $self->run(1, $_params_ref);
@@ -590,15 +590,15 @@ sub foreach {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## For "chunk" method.
+## For "seq" method.
 ##
 ###############################################################################
 
-sub forchunk {
+sub forseq {
 
-   my MCE $self = $_[0]; my $_input_data = $_[1];
+   my MCE $self = $_[0]; my $_sequence = $_[1];
 
-   _croak("MCE::forchunk: method cannot be called by the worker process")
+   _croak("MCE::forseq: method cannot be called by the worker process")
       if ($self->{_wid});
 
    my ($_user_func, $_params_ref);
@@ -611,12 +611,13 @@ sub forchunk {
 
    @_ = ();
 
-   _croak("MCE::forchunk: 'input_data' is not specified")
-      unless (defined $_input_data);
-   _croak("MCE::forchunk: 'code_block' is not specified")
+   _croak("MCE::forseq: 'sequence' is not specified")
+      unless (defined $_sequence);
+   _croak("MCE::forseq: 'code_block' is not specified")
       unless (defined $_user_func);
 
-   $_params_ref->{input_data} = $_input_data;
+   $_params_ref->{chunk_size} = 1;
+   $_params_ref->{sequence}   = $_sequence;
    $_params_ref->{user_func}  = $_user_func;
 
    $self->run(1, $_params_ref);
@@ -818,8 +819,13 @@ sub run {
       '_input_file' => $_input_file,   '_use_slurpio' => $_use_slurpio
    );
 
-   if (defined $self->{user_tasks}) {
+   ## One can configure chunk_size independently with sequence per each
+   ## task under user_tasks. Remove chunk_size from params in order to
+   ## not be overwritten once the worker receives it.
+
+   if (!defined $self->{input_data} && defined $self->{user_tasks}) {
       my $_has_chunk_size_option = 0;
+
       for my $_task (@{ $self->{user_tasks} }) {
          $_has_chunk_size_option = 1 if (defined $_task->{chunk_size});
       }
@@ -1004,11 +1010,11 @@ sub shutdown {
    }
 
    ## Reset instance.
-   $self->{_total_exited}  = 0;
-   $self->{_total_running} = $self->{_total_workers} = 0;
-
    $self->{_pids}   = (); $self->{_thrs}  = (); $self->{_tids} = ();
    $self->{_status} = (); $self->{_state} = (); $self->{_task} = ();
+
+   $self->{_total_running} = $self->{_total_workers} = 0;
+   $self->{_total_exited}  = 0;
 
    $self->{_out_r_sock} = $self->{_out_w_sock} = undef;
    $self->{_que_r_sock} = $self->{_que_w_sock} = undef;
@@ -1016,8 +1022,8 @@ sub shutdown {
    $self->{_dat_r_sock} = $self->{_dat_w_sock} = undef;
 
    $self->{_mce_sid}    = $self->{_mce_tid}    = undef;
-   $self->{_spawned}    = $self->{_wid}        = 0;
    $self->{_task_id}    = $self->{_task_wid}   = 0;
+   $self->{_spawned}    = $self->{_wid}        = 0;
    $self->{_sess_dir}   = undef;
 
    return $self;
@@ -1084,8 +1090,7 @@ sub exit {
          flock $_DAT_LOCK, LOCK_EX          if ($_is_cygwin);  ## Humm, needed.
          select(undef, undef, undef, 0.001) if ($_is_cygwin);  ## This as well.
 
-         print $_OUT_W_SOCK OUTPUT_W_EXT,  $LF,
-            ((defined $_task_id) ? "$_task_id${LF}" : "-1${LF}");
+         print $_OUT_W_SOCK OUTPUT_W_EXT,  $LF, $_task_id,          $LF;
 
          print $_DAT_W_SOCK $self->{_wid}, $LF, $self->{_exit_pid}, $LF,
                             $_exit_status, $LF, $_exit_id,          $LF,
@@ -2351,11 +2356,11 @@ sub _worker_sequence_generator {
    my $_next        = ($_wid - 1) * $_chunk_size * $_step + $_begin;
    my $_chunk_id    = $_wid;
 
-   $self->{_last_jmp} = sub { goto _WORKER_SEQ__LAST; };
-
    ## -------------------------------------------------------------------------
 
-   if ($_begin == $_end) {                        ## Begin & End are identical.
+   $self->{_last_jmp} = sub { goto _WORKER_SEQ__LAST; };
+
+   if ($_begin == $_end) {                        ## Both are identical.
 
       if ($_wid == 1) {
          $self->{_next_jmp} = sub { goto _WORKER_SEQ__LAST; };
@@ -2384,7 +2389,7 @@ sub _worker_sequence_generator {
          $_user_func->($self, $_seq_n, $_chunk_id);
          _WORKER_SEQ__NEXT_A:
 
-         $_next += $_step * $_max_workers;
+         $_next     += $_step * $_max_workers;
          $_chunk_id += $_max_workers;
       }
    }
@@ -2413,7 +2418,7 @@ sub _worker_sequence_generator {
          $_user_func->($self, \@_n, $_chunk_id);
          _WORKER_SEQ__NEXT_B:
 
-         $_next += $_step * ($_chunk_size * $_max_workers - $_chunk_size);
+         $_next     += $_step * ($_chunk_size * $_max_workers - $_chunk_size);
          $_chunk_id += $_max_workers;
       }
    }
@@ -2483,8 +2488,7 @@ sub _worker_do {
    ## Notify the main process a worker has completed.
    local $\ = undef;
 
-   print $_OUT_W_SOCK OUTPUT_W_DNE, $LF,
-      (defined $_task_id) ? "$_task_id${LF}" : "-1${LF}";
+   print $_OUT_W_SOCK OUTPUT_W_DNE, $LF, $_task_id, $LF;
 
    return;
 }

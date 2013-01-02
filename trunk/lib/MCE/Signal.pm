@@ -16,15 +16,17 @@ use base qw( Exporter );
 require File::Path;
 
 our ($has_threads, $main_proc_id, $prog_name);
+our ($display_die_with_localtime, $display_warn_with_localtime);
 
 BEGIN {
    $main_proc_id = $$; $prog_name = $0; $prog_name =~ s{^.*[\\/]}{}g;
 }
 
-our $VERSION = '1.302';
+our $VERSION = '1.303';
 $VERSION = eval $VERSION;
 
 our $tmp_dir = undef;
+
 our @EXPORT_OK = qw( $tmp_dir sys_cmd stop_and_exit );
 our %EXPORT_TAGS = (
    all     => \@EXPORT_OK,
@@ -47,6 +49,7 @@ my $_loaded;
 sub import {
 
    my $class = shift;
+
    return if ($_loaded++);
 
    my $_use_dev_shm = 0;
@@ -81,7 +84,7 @@ sub import {
    _croak("MCE::Signal::import: '$_tmp_dir_base' is not writeable")
       unless (-w $_tmp_dir_base);
 
-   $_count = 0;
+   $_count  = 0;
    $tmp_dir = "$_tmp_dir_base/$prog_name.$$.$_count";
 
    while ( !(mkdir "$tmp_dir", 0770) ) {
@@ -337,7 +340,18 @@ sub _die_handler {
    shift @_ if (defined $_[0] && $_[0] eq 'MCE::Signal');
 
    local $SIG{__DIE__} = sub { };
-   local $\ = undef; print STDERR $_[0];
+   local $\ = undef;
+
+   ## Set $MCE::Signal::display_die_with_localtime = 1;
+   ## when wanting the output to contain the localtime.
+
+   if ($MCE::Signal::display_die_with_localtime) {
+      my $_time_stamp = localtime();
+      print STDERR "## $_time_stamp: $prog_name: ERROR:\n", $_[0];
+   }
+   else {
+      print STDERR $_[0];
+   }
 
    MCE::Signal->stop_and_exit('__DIE__');
 }
@@ -349,12 +363,23 @@ sub _warn_handler {
    ## Ignore thread warnings during exiting.
 
    return if (
-      $_[0] =~ /^Attempt to free unreferenced scalar/            ||
       $_[0] =~ /^A thread exited while \d+ threads were running/ ||
+      $_[0] =~ /^Attempt to free unreferenced scalar/            ||
       $_[0] =~ /^Perl exited with active threads/
    );
 
-   local $\ = undef; print STDERR $_[0];
+   local $\ = undef;
+
+   ## Set $MCE::Signal::display_warn_with_localtime = 1;
+   ## when wanting the output to contain the localtime.
+
+   if ($MCE::Signal::display_warn_with_localtime) {
+      my $_time_stamp = localtime();
+      print STDERR "## $_time_stamp: $prog_name: WARNING:\n", $_[0];
+   }
+   else {
+      print STDERR $_[0];
+   }
 }
 
 1;
@@ -373,7 +398,7 @@ MCE::Signal - Provides tmp_dir creation & signal handling for Many-Core Engine.
 
 =head1 VERSION
 
-This document describes MCE::Signal version 1.302
+This document describes MCE::Signal version 1.303
 
 =head1 SYNOPSIS
 

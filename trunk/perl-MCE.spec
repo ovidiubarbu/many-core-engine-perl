@@ -1,5 +1,5 @@
 Name:           perl-MCE
-Version:        1.302
+Version:        1.303
 Release:        1%{?dist}
 Summary:        Many-Core Engine for Perl. Provides parallel processing capabilities.
 License:        CHECK(Distributable)
@@ -56,6 +56,16 @@ rm -rf $RPM_BUILD_ROOT
 %{_mandir}/man3/*
 
 %changelog
+* Tue Jan 01 2013 Mario Roy 1.303-1
+- Bump version -- MCE.pm VERSION now matches with META.yml
+- Sorted forchunk, foreach, forseq methods inside MCE.pm
+- Modified if statement in run method
+- Task ID is never undef, therefore removed check inside 
+  restart_worker and worker_do methods
+- Added 2 package variables to MCE::Signal
+  $display_die_with_localtime and $display_warn_with_localtime
+- Completed updates to documentation
+- Update to forseq.pl and seq_demo.pl examples
 * Tue Jan 01 2013 Mario Roy 1.302-1
 - Fixed validation logic for sequence 
 - Updated the sequence generator -- now supports chunking

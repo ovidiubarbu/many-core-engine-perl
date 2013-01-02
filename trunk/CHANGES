@@ -1,5 +1,16 @@
 Revision history for MCE
 
+1.303 Tue Jan 01 20:00:00 EST 2013
+    * Bump version -- MCE.pm VERSION now matches with META.yml
+    * Sorted forchunk, foreach, forseq methods inside MCE.pm
+    * Modified if statement in run method
+    * Task ID is never undef, therefore removed check inside
+      restart_worker and worker_do methods
+    * Added 2 package variables to MCE::Signal
+      $display_die_with_localtime and $display_warn_with_localtime
+    * Completed updates to documentation
+    * Update to forseq.pl and seq_demo.pl examples
+
 1.302 Tue Jan 01 07:30:00 EST 2013
     * Fixed validation logic for sequence
     * Updated the sequence generator -- now supports chunking

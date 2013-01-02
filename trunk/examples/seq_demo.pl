@@ -9,27 +9,29 @@ use lib "$FindBin::Bin/../lib";
 use MCE;
 
 ## A demonstration applying sequences with user_tasks.
-## Both non-chunking and chunking of sequences are supported.
+## Chunking can also be configured independently as well.
 
 ## Run with seq_demo.pl | sort
 
 sub user_func {
-   my ($self, $seq_ref, $chunk_id) = @_;
+   my ($self, $seq_n, $chunk_id) = @_;
 
    my $wid      = $self->wid();
    my $task_id  = $self->task_id();
    my $task_wid = $self->task_wid();
 
-   if (ref $seq_ref eq 'ARRAY') {
-      foreach my $seq_n (@{ $seq_ref }) {
+   if (ref $seq_n eq 'ARRAY') {
+      ## Received the next "chunked" sequence of numbers
+      ## e.g. when chunk_size > 1, $seq_n will be an array ref above
+
+      foreach (@{ $seq_n }) {
          printf(
             "task_id %d: seq_n %s: chunk_id %d: wid %d: task_wid %d\n",
-            $task_id,    $seq_n,   $chunk_id,   $wid,   $task_wid
+            $task_id,    $_,       $chunk_id,   $wid,   $task_wid
          );
       }
    }
    else {
-      my $seq_n = $seq_ref;
       printf(
          "task_id %d: seq_n %s: chunk_id %d: wid %d: task_wid %d\n",
          $task_id,    $seq_n,   $chunk_id,   $wid,   $task_wid
