@@ -1,6 +1,6 @@
 
 All the people reporting problems and fixes or additions. More specifically in
-alphabetical order:
+alphabetical order by last name:
 
 David Cantrell (DrHyde on perlmonks.org)
   For reporting on MCE hanging with cpan -t MCE under his environment. Also,
@@ -8,6 +8,17 @@ David Cantrell (DrHyde on perlmonks.org)
   issue. Added writeable check and croak if tmp dir is not writeable.
   One cannot assume that /dev/shm is writeable by everyone. :)
 
+Oliver Gorwits
+  For reporting on a couple issues with MCE along with a solution for each.
+  * Pointed me in the right direction for improving the logic for the die
+    handler. Basically, eval { die 'this should not cause MCE to die' };
+  * Changed INIT { ... } to sub import { ... } inside MCE.pm.
+
 Joseph Ogulin
   For providing me the perl-MCE.spec file.
+
+
+Thank you all for your help,
+
+Mario
 
