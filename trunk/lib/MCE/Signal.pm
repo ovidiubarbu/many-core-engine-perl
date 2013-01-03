@@ -132,9 +132,9 @@ END {
 ## ----------------------------------------------------------------------------
 ## Run command via the system(...) function.
 ##
-## The system function in Perl ignores SIGINT and SIGQUIT.  These 2 signals
+## The system function in Perl ignores SIGINT and SIGQUIT. These 2 signals
 ## are sent to the command being executed via system() but not back to
-## the underlying Perl script.  The code below will ensure the Perl script
+## the underlying Perl script. The code below will ensure the Perl script
 ## receives the same signal in order to raise an exception immediately
 ## after the system call.
 ##
@@ -190,9 +190,8 @@ sub sys_cmd {
          $_exit_status = $_sig_name if ($_sig_name ne '0');
       }
 
-      $SIG{TERM}     = sub { } if ($_sig_name ne 'TERM');
-      $SIG{__DIE__}  = sub { };
-      $SIG{__WARN__} = sub { };
+      $SIG{TERM} = sub { } if ($_sig_name ne 'TERM');
+      $SIG{__DIE__} = $SIG{__WARN__} = sub { };
 
       ## ----------------------------------------------------------------------
 
@@ -217,6 +216,9 @@ sub sys_cmd {
                   $_err_msg = "exceeded file size limit, exiting";
                }
                elsif ($_sig_name eq 'TERM' && -f "$tmp_dir/died") {
+                  $_err_msg = "caught signal '__DIE__', exiting";
+               }
+               elsif ($_sig_name eq '__DIE__') {
                   $_err_msg = "caught signal '__DIE__', exiting";
                }
                elsif ($_sig_name ne 'PIPE') {
@@ -339,7 +341,8 @@ sub _die_handler {
 
    shift @_ if (defined $_[0] && $_[0] eq 'MCE::Signal');
 
-   local $SIG{__DIE__} = sub { };
+   CORE::die(@_) if $^S;      ## Direct to CORE:::die if executing an eval
+
    local $\ = undef;
 
    ## Set $MCE::Signal::display_die_with_localtime = 1;
@@ -354,6 +357,8 @@ sub _die_handler {
    }
 
    MCE::Signal->stop_and_exit('__DIE__');
+
+   CORE::exit;
 }
 
 sub _warn_handler {
