@@ -1,5 +1,5 @@
 Name:           perl-MCE
-Version:        1.303
+Version:        1.304
 Release:        1%{?dist}
 Summary:        Many-Core Engine for Perl. Provides parallel processing capabilities.
 License:        CHECK(Distributable)
@@ -56,6 +56,11 @@ rm -rf $RPM_BUILD_ROOT
 %{_mandir}/man3/*
 
 %changelog
+* Wed Jan 02 2013 Mario Roy 1.304-1
+- Added Oliver Gorwits to CREDITS for identifying 2 issues
+- Direct die to CORE::die inside handler if executing an eval
+- Undef $mce_spawned_ref if signal was caught (stop_and_exit)
+- Changed INIT to sub import in MCE.pm
 * Tue Jan 01 2013 Mario Roy 1.303-1
 - Bump version -- MCE.pm VERSION now matches with META.yml
 - Sorted forchunk, foreach, forseq methods inside MCE.pm

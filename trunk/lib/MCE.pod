@@ -5,7 +5,7 @@ MCE - Many-Core Engine for Perl. Provides parallel processing capabilities.
 
 =head1 VERSION
 
-This document describes MCE version 1.303
+This document describes MCE version 1.304
 
 =head1 DESCRIPTION
 
@@ -401,7 +401,8 @@ Methods listed below are callable by the main process and workers.
 
    ## Notifies workers to abort after processing the current chunk.
    ## The abort method is applicable when processing input_data only.
-   ## Workers write the next offset position, to the queue socket, for
+   ##
+   ## Workers write the next offset position to the queue socket for
    ## the next available worker. In essense, the abort method writes
    ## the last offset position. Workers, on requesting the next offset
    ## position, will think the end of input_data has been reached and
