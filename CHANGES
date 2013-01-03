@@ -1,5 +1,11 @@
 Revision history for MCE
 
+1.304 Wed Jan 02 22:00:00 EST 2013
+    * Added Oliver Gorwits to CREDITS for identifying 2 issues
+    * Direct die to CORE::die inside handler if executing an eval
+    * Undef $mce_spawned_ref if signal was caught (stop_and_exit)
+    * Changed INIT to sub import in MCE.pm
+
 1.303 Tue Jan 01 20:00:00 EST 2013
     * Bump version -- MCE.pm VERSION now matches with META.yml
     * Sorted forchunk, foreach, forseq methods inside MCE.pm

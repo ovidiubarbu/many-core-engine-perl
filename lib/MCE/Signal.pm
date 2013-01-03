@@ -22,7 +22,7 @@ BEGIN {
    $main_proc_id = $$; $prog_name = $0; $prog_name =~ s{^.*[\\/]}{}g;
 }
 
-our $VERSION = '1.303';
+our $VERSION = '1.304';
 $VERSION = eval $VERSION;
 
 our $tmp_dir = undef;
@@ -124,8 +124,12 @@ our $mce_spawned_ref = undef;
 
 END {
    my $_exit_status = $?;
-   MCE::Signal->_shutdown_mce($_exit_status);
-   MCE::Signal->stop_and_exit($_exit_status) if ($$ == $main_proc_id);
+
+   MCE::Signal->_shutdown_mce($_exit_status)
+      if (defined $mce_spawned_ref);
+
+   MCE::Signal->stop_and_exit($_exit_status)
+      if ($$ == $main_proc_id);
 }
 
 ###############################################################################
@@ -183,6 +187,7 @@ sub sys_cmd {
       my $_is_sig      = 0;
 
       if (exists $_sig_name_lkup{$_sig_name}) {
+         $mce_spawned_ref = undef;
          $SIG{$_sig_name} = sub { };
          $_exit_status = $_is_sig = 1;
       }
@@ -234,7 +239,7 @@ sub sys_cmd {
 
                ## Pause a bit.
                if ($_sig_name ne 'PIPE') {
-                  select(undef, undef, undef, 0.066) for (1..3);
+                  select(undef, undef, undef, 0.066) for (1..4);
                }
             }
 
@@ -294,7 +299,7 @@ sub sys_cmd {
 
       ## Exit thread/process with status.
       if ($_is_sig == 1) {
-         select(undef, undef, undef, 0.133) for (1..3);
+         select(undef, undef, undef, 0.066) for (1..8);
       }
 
       threads->exit($_exit_status) if ($has_threads && threads->can('exit'));
@@ -341,7 +346,7 @@ sub _die_handler {
 
    shift @_ if (defined $_[0] && $_[0] eq 'MCE::Signal');
 
-   CORE::die(@_) if $^S;      ## Direct to CORE:::die if executing an eval
+   CORE::die(@_) if $^S;      ## Direct to CORE::die if executing an eval
 
    local $\ = undef;
 
@@ -403,7 +408,7 @@ MCE::Signal - Provides tmp_dir creation & signal handling for Many-Core Engine.
 
 =head1 VERSION
 
-This document describes MCE::Signal version 1.303
+This document describes MCE::Signal version 1.304
 
 =head1 SYNOPSIS
 

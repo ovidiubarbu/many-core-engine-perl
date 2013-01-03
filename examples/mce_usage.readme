@@ -7,7 +7,7 @@
 
 <> VERSION
 
-   This document describes MCE version 1.303
+   This document describes MCE version 1.304
 
 <> DESCRIPTION
 
@@ -429,7 +429,8 @@
 
    ## Notifies workers to abort after processing the current chunk.
    ## The abort method is applicable when processing input_data only.
-   ## Workers write the next offset position, to the queue socket, for
+   ##
+   ## Workers write the next offset position to the queue socket for
    ## the next available worker. In essense, the abort method writes
    ## the last offset position. Workers, on requesting the next offset
    ## position, will think the end of input_data has been reached and
