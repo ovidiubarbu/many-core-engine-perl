@@ -2589,6 +2589,7 @@ sub _worker_main {
    $SIG{PIPE} = \&_NOOP;
 
    $SIG{__DIE__} = sub {
+      CORE::die(@_) if $^S;         ## Direct to CORE::die if executing an eval
       local $SIG{__DIE__} = sub { };
       local $\ = undef; print STDERR $_[0];
       $self->exit(255, $_[0]);
