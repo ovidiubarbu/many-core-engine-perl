@@ -1,5 +1,5 @@
 Name:           perl-MCE
-Version:        1.304
+Version:        1.305
 Release:        1%{?dist}
 Summary:        Many-Core Engine for Perl. Provides parallel processing capabilities.
 License:        CHECK(Distributable)
@@ -56,6 +56,13 @@ rm -rf $RPM_BUILD_ROOT
 %{_mandir}/man3/*
 
 %changelog
+* Sat Jan 05 2013 Mario Roy 1.305-1
+- Added check for $^S to the DIE handler inside the _worker_main method
+- Added setpgrp(0,0) to MCE::Signal's BEGIN block
+- MCE::Signal points to a _mce_sess_dir hash in the event of a signal,
+  will remove the sess_dir(s) as well. This is needed when tmp_dir is
+  specified during instantiation and pointing to another location than
+  MCE::Signal::tmp_dir.
 * Wed Jan 02 2013 Mario Roy 1.304-1
 - Added Oliver Gorwits to CREDITS for identifying 2 issues
 - Direct die to CORE::die inside handler if executing an eval
