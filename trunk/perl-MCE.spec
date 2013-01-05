@@ -1,5 +1,5 @@
 Name:           perl-MCE
-Version:        1.305
+Version:        1.306
 Release:        1%{?dist}
 Summary:        Many-Core Engine for Perl. Provides parallel processing capabilities.
 License:        CHECK(Distributable)
@@ -56,6 +56,11 @@ rm -rf $RPM_BUILD_ROOT
 %{_mandir}/man3/*
 
 %changelog
+* Sat Jan 05 2013 Mario Roy 1.306-1
+- Added if statement around setpgrp(0,0). That function is not supported
+  under Windows.
+- Updated logic for removing any remaining MCE session directories inside
+  MCE::Signal.
 * Sat Jan 05 2013 Mario Roy 1.305-1
 - Added check for $^S to the DIE handler inside the _worker_main method
 - Added setpgrp(0,0) to MCE::Signal's BEGIN block
