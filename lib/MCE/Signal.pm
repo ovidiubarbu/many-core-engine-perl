@@ -19,14 +19,15 @@ our ($has_threads, $main_proc_id, $prog_name);
 our ($display_die_with_localtime, $display_warn_with_localtime);
 
 BEGIN {
-   setpgrp(0,0);    ## Sets the current process group for the current process.
+   ## Sets the current process group for the current process.
+   setpgrp(0,0) if ($^O ne 'MSWin32');
 
    $main_proc_id =  $$;
    $prog_name    =  $0;
    $prog_name    =~ s{^.*[\\/]}{}g;
 }
 
-our $VERSION = '1.305';
+our $VERSION = '1.306';
 $VERSION = eval $VERSION;
 
 our $tmp_dir = undef;
@@ -250,19 +251,23 @@ sub sys_cmd {
 
             ## Remove temp directory.
             if (defined $tmp_dir && $tmp_dir ne '' && -d $tmp_dir) {
+
+               if (defined $mce_sess_dir_ref) {
+                  foreach my $_sess_dir (keys %{ $mce_sess_dir_ref }) {
+                     File::Path::rmtree($_sess_dir);
+                     delete $mce_sess_dir_ref->{$_sess_dir};
+                  }
+               }
+
                if ($_keep_tmp_dir == 1) {
                   print STDERR "$prog_name: saved tmp_dir = $tmp_dir\n";
                }
                else {
-                  if (defined $mce_sess_dir_ref) {
-                     foreach my $_sess_dir (keys %{ $mce_sess_dir_ref }) {
-                        File::Path::rmtree($_sess_dir);
-                     }
-                  }
                   if ($tmp_dir ne '/tmp' && $tmp_dir ne '/var/tmp') {
                      File::Path::rmtree($tmp_dir);
                   }
                }
+
                $tmp_dir = undef;
             }
 
@@ -418,7 +423,7 @@ MCE::Signal - Provides tmp_dir creation & signal handling for Many-Core Engine.
 
 =head1 VERSION
 
-This document describes MCE::Signal version 1.305
+This document describes MCE::Signal version 1.306
 
 =head1 SYNOPSIS
 

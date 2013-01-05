@@ -1,5 +1,11 @@
 Revision history for MCE
 
+1.306 Sat Jan 05 18:00:00 EST 2013
+    * Added if statement around setpgrp(0,0). That function is not supported
+      under Windows.
+    * Updated logic for removing any remaining MCE session directories inside
+      MCE::Signal.
+
 1.305 Sat Jan 05 16:00:00 EST 2013
     * Added check for $^S to the DIE handler inside the _worker_main method
     * Added setpgrp(0,0) to MCE::Signal's BEGIN block
