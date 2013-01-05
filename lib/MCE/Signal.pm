@@ -19,14 +19,14 @@ our ($has_threads, $main_proc_id, $prog_name);
 our ($display_die_with_localtime, $display_warn_with_localtime);
 
 BEGIN {
-   setpgrp(0, 0);   ## Sets the current process group for the current process.
+   setpgrp(0,0);    ## Sets the current process group for the current process.
 
    $main_proc_id =  $$;
    $prog_name    =  $0;
    $prog_name    =~ s{^.*[\\/]}{}g;
 }
 
-our $VERSION = '1.304';
+our $VERSION = '1.305';
 $VERSION = eval $VERSION;
 
 our $tmp_dir = undef;
@@ -418,7 +418,7 @@ MCE::Signal - Provides tmp_dir creation & signal handling for Many-Core Engine.
 
 =head1 VERSION
 
-This document describes MCE::Signal version 1.304
+This document describes MCE::Signal version 1.305
 
 =head1 SYNOPSIS
 

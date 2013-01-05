@@ -1,5 +1,13 @@
 Revision history for MCE
 
+1.305 Sat Jan 05 16:00:00 EST 2013
+    * Added check for $^S to the DIE handler inside the _worker_main method
+    * Added setpgrp(0,0) to MCE::Signal's BEGIN block
+    * MCE::Signal points to a _mce_sess_dir hash in the event of a signal,
+      will remove the sess_dir(s) as well. This is needed when tmp_dir is
+      specified during instantiation and pointing to another location than
+      MCE::Signal::tmp_dir.
+
 1.304 Wed Jan 02 22:00:00 EST 2013
     * Added Oliver Gorwits to CREDITS for identifying 2 issues
     * Direct die to CORE::die inside handler if executing an eval
