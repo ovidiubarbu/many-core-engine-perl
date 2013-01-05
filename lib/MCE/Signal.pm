@@ -102,6 +102,9 @@ sub import {
 ##
 ###############################################################################
 
+our $mce_sess_dir_ref = undef;
+our $mce_spawned_ref  = undef;
+
 ## Set traps to catch signals.
 $SIG{XCPU} = \&stop_and_exit if (exists $SIG{XCPU});   ## UNIX SIG 24
 $SIG{XFSZ} = \&stop_and_exit if (exists $SIG{XFSZ});   ## UNIX SIG 25
@@ -123,8 +126,6 @@ $SIG{CHLD} = 'DEFAULT' if ($^O ne 'MSWin32');
 ## Call stop_and_exit when exiting the script.
 ##
 ###############################################################################
-
-our $mce_spawned_ref = undef;
 
 END {
    my $_exit_status = $?;
@@ -253,6 +254,11 @@ sub sys_cmd {
                   print STDERR "$prog_name: saved tmp_dir = $tmp_dir\n";
                }
                else {
+                  if (defined $mce_sess_dir_ref) {
+                     foreach my $_sess_dir (keys %{ $mce_sess_dir_ref }) {
+                        File::Path::rmtree($_sess_dir);
+                     }
+                  }
                   if ($tmp_dir ne '/tmp' && $tmp_dir ne '/var/tmp') {
                      File::Path::rmtree($tmp_dir);
                   }

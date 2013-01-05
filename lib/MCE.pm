@@ -151,13 +151,15 @@ my %_params_allowed_args = map { $_ => 1 } qw(
    sequence user_begin user_end user_func user_error user_output on_post_run
 );
 
-my $_is_cygwin   = ($^O eq 'cygwin');
-my $_is_winperl  = ($^O eq 'MSWin32');
-my $_mce_tmp_dir = $MCE::Signal::tmp_dir;
-my %_mce_spawned = ();
-my $_mce_count   = 0;
+my $_is_cygwin    = ($^O eq 'cygwin');
+my $_is_winperl   = ($^O eq 'MSWin32');
+my $_mce_tmp_dir  = $MCE::Signal::tmp_dir;
+my %_mce_sess_dir = ();
+my %_mce_spawned  = ();
+my $_mce_count    = 0;
 
-$MCE::Signal::mce_spawned_ref = \%_mce_spawned;
+$MCE::Signal::mce_sess_dir_ref = \%_mce_sess_dir;
+$MCE::Signal::mce_spawned_ref  = \%_mce_spawned;
 
 ## Warnings are disabled to minimize bits of noise when user or OS signals
 ## the script to exit. e.g. MCE_script.pl < infile | head
@@ -374,6 +376,8 @@ sub spawn {
       while ( !(mkdir $_sess_dir, 0770) ) {
          $_sess_dir = $self->{_sess_dir} = "$_tmp_dir/$_mce_sid." . (++$_cnt);
       }
+
+      $_mce_sess_dir{$_sess_dir} = 1;
    }
 
    ## -------------------------------------------------------------------------
@@ -1007,6 +1011,8 @@ sub shutdown {
    if (defined $_sess_dir) {
       unlink "$_sess_dir/com.lock"; unlink "$_sess_dir/dat.lock";
       rmdir  "$_sess_dir";
+
+      delete $_mce_sess_dir{$_sess_dir};
    }
 
    ## Reset instance.
