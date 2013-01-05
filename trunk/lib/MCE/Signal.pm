@@ -19,7 +19,11 @@ our ($has_threads, $main_proc_id, $prog_name);
 our ($display_die_with_localtime, $display_warn_with_localtime);
 
 BEGIN {
-   $main_proc_id = $$; $prog_name = $0; $prog_name =~ s{^.*[\\/]}{}g;
+   setpgrp(0, 0);   ## Sets the current process group for the current process.
+
+   $main_proc_id =  $$;
+   $prog_name    =  $0;
+   $prog_name    =~ s{^.*[\\/]}{}g;
 }
 
 our $VERSION = '1.304';
