@@ -1530,12 +1530,8 @@ sub _validate_args_s {
          read $_DAT_W_SOCK, $_buffer, $_len;
 
          flock $_DAT_LOCK, LOCK_UN;
-         if ($_want_id == WANTS_SCALAR) {
-            return $_buffer;
-         }
-         else {
-            return thaw($_buffer);
-         }
+         return $_buffer if ($_want_id == WANTS_SCALAR);
+         return thaw($_buffer);
       }
    }
 
