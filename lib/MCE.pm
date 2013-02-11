@@ -946,12 +946,15 @@ sub send {
    _croak("MCE::send: method cannot be called by the worker process")
       if ($self->{_wid});
 
+   _croak("MCE::send: method cannot be called while running")
+      if ($self->{_total_running} && $self->{_total_running} > 0);
+
    my $_data_ref;
 
-   if (ref $_[1] eq 'ARRAY' || ref $_[1] eq 'HASH') {
+   if (ref $_[1] eq 'ARRAY' || ref $_[1] eq 'HASH' || ref $_[1] eq 'PDL') {
       $_data_ref = $_[1];
    } else {
-      _croak("MCE::send: ARRAY or HASH reference is not specified");
+      _croak("MCE::send: ARRAY, HASH, or PDL reference is not specified");
    }
 
    $self->{_send_cnt} = 0 unless (defined $self->{_send_cnt});
