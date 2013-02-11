@@ -1258,7 +1258,8 @@ demonstration below.
 
 =head1 REQUIREMENTS
 
-Perl 5.8.0 or later
+Perl 5.8.0 or later. The PDL::IO::Storable module is required in scripts
+parallelizing PDL with MCE.
 
 =head1 SEE ALSO
 
