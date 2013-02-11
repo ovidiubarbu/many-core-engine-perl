@@ -1,5 +1,14 @@
 Revision history for MCE
 
+1.400 Mon Feb 11 07:00:00 EST 2013
+    * Slight optimization in the _do_callback method
+    * Added 2 new options: user_args and RS (record separator)
+    * Added new send method for sending data to workers after spawning and
+      prior to running
+    * The sequence option can now take an ARRAY reference
+    * Updated documentation on new features
+    * Added matrix multiplication examples
+
 1.306 Sat Jan 05 18:00:00 EST 2013
     * Added if statement around setpgrp(0,0). That function is not supported
       under Windows.
