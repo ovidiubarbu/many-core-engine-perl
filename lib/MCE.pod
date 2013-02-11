@@ -903,19 +903,6 @@ patterns and word count aggregation.
              egrep command. Try against a large file containing
              very long lines.
 
-   scaling_pings.pl
-             Perform ping test and report back failing IPs to
-             standard output.
-
-   seq_demo.pl
-             A demonstration of the new sequence option appearing
-             in MCE 1.3. Run with seq_demo.pl | sort
-
-   tbray/wf_mce1.pl, wf_mce2.pl, wf_mce3.pl
-             An implementation of wide finder utilizing MCE.
-             As fast as MMAP IO when file resides in OS FS cache.
-             2x ~ 3x faster when reading directly from disk.
-
    foreach.pl, forseq.pl, forchunk.pl
              These take the same sqrt example from Parallel::Loops
              and measures the overhead of the engine. The number
@@ -929,6 +916,25 @@ patterns and word count aggregation.
              MCE foreach....:  18,000  Sends result after each @input
              MCE forseq.....:  60,000  Loops through sequence of numbers
              MCE forchunk...: 385,000  Chunking reduces overhead
+
+   matmult/matmult_pdl_b.pl, matmult_pdl_m.pl, strassen_pdl_m.pl
+             Various matrix multiplication demonstrations benchmarking
+             PDL, PDL + MCE, as well as parallelizing Strassen's
+             divide-and-conquer algorithm. Also included are 2 plain
+             Perl examples.
+
+   scaling_pings.pl
+             Perform ping test and report back failing IPs to
+             standard output.
+
+   seq_demo.pl
+             A demonstration of the new sequence option appearing
+             in MCE 1.3. Run with seq_demo.pl | sort
+
+   tbray/wf_mce1.pl, wf_mce2.pl, wf_mce3.pl
+             An implementation of wide finder utilizing MCE.
+             As fast as MMAP IO when file resides in OS FS cache.
+             2x ~ 3x faster when reading directly from disk.
 
 =head2 CHUNK_SIZE => 1 (in essence, wanting no chunking on input data)
 
