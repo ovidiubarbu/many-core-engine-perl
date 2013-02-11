@@ -1461,9 +1461,11 @@ sub _validate_args_s {
             begin => $_begin, end => $_end, step => $_step, format => $_format
          };
       }
+      else {
+         _croak("$_tag: 'sequence' is not a HASH or ARRAY reference")
+            if (ref $_seq ne 'HASH');
+      }
 
-      _croak("$_tag: 'sequence' is not a HASH reference")
-         if (ref $_seq ne 'HASH');
       _croak("$_tag: 'begin' is not defined for sequence")
          unless (defined $_seq->{begin});
       _croak("$_tag: 'end' is not defined for sequence")
@@ -2550,7 +2552,7 @@ sub _worker_do {
    $self->{_single_dim} = $_params_ref->{_single_dim};
    $self->{use_slurpio} = $_params_ref->{_use_slurpio};
 
-   ## Do not override params if defined under user_tasks during instantiation.
+   ## Do not override params if defined in user_tasks during instantiation.
    for (qw(chunk_size sequence user_args)) {
       if (defined $_params_ref->{"_$_"}) {
          $self->{$_} = $_params_ref->{"_$_"}
