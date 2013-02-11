@@ -15,6 +15,12 @@ examples/findnull.pl
 examples/forchunk.pl
 examples/foreach.pl
 examples/forseq.pl
+examples/matmult/README
+examples/matmult/matmult_pdl_b.pl
+examples/matmult/matmult_pdl_m.pl
+examples/matmult/matmult_perl_m.pl
+examples/matmult/strassen_pdl_m.pl
+examples/matmult/strassen_perl_m.pl
 examples/mce_usage.readme
 examples/scaling_pings.pl
 examples/seq_demo.pl
