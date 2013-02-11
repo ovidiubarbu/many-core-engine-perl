@@ -135,7 +135,7 @@ undef $_que_template; undef $_que_read_size;
 my %_valid_fields = map { $_ => 1 } qw(
    max_workers tmp_dir use_threads user_tasks task_end
 
-   chunk_size input_data job_delay spawn_delay submit_delay use_slurpio
+   chunk_size input_data job_delay spawn_delay submit_delay use_slurpio RS
    flush_file flush_stderr flush_stdout stderr_file stdout_file on_post_exit
    sequence user_begin user_end user_func user_error user_output on_post_run
 
@@ -146,7 +146,7 @@ my %_valid_fields = map { $_ => 1 } qw(
 );
 
 my %_params_allowed_args = map { $_ => 1 } qw(
-   chunk_size input_data job_delay spawn_delay submit_delay use_slurpio
+   chunk_size input_data job_delay spawn_delay submit_delay use_slurpio RS
    flush_file flush_stderr flush_stdout stderr_file stdout_file on_post_exit
    sequence user_begin user_end user_func user_error user_output on_post_run
 );
@@ -224,6 +224,7 @@ sub new {
    $self->{stdout_file}  = $argv{stdout_file}  || undef;
    $self->{user_tasks}   = $argv{user_tasks}   || undef;
    $self->{task_end}     = $argv{task_end}     || undef;
+   $self->{RS}           = $argv{RS}           || undef;
 
    ## Validation.
    for (keys %argv) {
@@ -1366,6 +1367,8 @@ sub _validate_args_s {
          $_s->{max_workers} !~ /\A\d+\z/ or $_s->{max_workers} == 0
       ));
 
+   _croak("$_tag: 'RS' is not valid")
+      if ($_s->{RS} && ref $_s->{RS} ne '');
    _croak("$_tag: 'use_threads' is not 0 or 1")
       if ($_s->{use_threads} && $_s->{use_threads} !~ /\A[01]\z/);
    _croak("$_tag: 'user_begin' is not a CODE reference")
@@ -1602,7 +1605,7 @@ sub _validate_args_s {
    my ($_callback, $_file, %_sendto_fhs, $_len);
 
    my ($_DAT_R_SOCK, $_OUT_R_SOCK, $_MCE_STDERR, $_MCE_STDOUT);
-   my ($_I_SEP, $_O_SEP, $_input_glob, $_chunk_size);
+   my ($_RS, $_I_SEP, $_O_SEP, $_input_glob, $_chunk_size);
    my ($_input_size, $_offset_pos, $_single_dim, $_use_slurpio);
 
    my ($_has_user_tasks, $_on_post_exit, $_on_post_run, $_task_id);
@@ -1753,7 +1756,7 @@ sub _validate_args_s {
          }
 
          {
-            local $/ = $_I_SEP;
+            local $/ = $_RS;
 
             if ($_chunk_size <= MAX_RECS_SIZE) {
                for (1 .. $_chunk_size) {
@@ -2025,6 +2028,7 @@ sub _validate_args_s {
       $_OUT_R_SOCK = $self->{_out_r_sock};        ## For serialized reads
       $_DAT_R_SOCK = $self->{_dat_r_sock};
 
+      $_RS    = $self->{RS} || $/;
       $_O_SEP = $\; local $\ = undef;
       $_I_SEP = $/; local $/ = $LF;
 
@@ -2070,7 +2074,10 @@ sub _validate_args_s {
 
 sub _sync_buffer_to_array {
 
-   my $_buffer_ref = $_[0]; my $_array_ref = $_[1]; my $_cnt = 0;
+   my $_buffer_ref = $_[0]; my $_array_ref = $_[1]; my $_RS = $_[2];
+   my $_cnt = 0;
+
+   local $/ = $_RS;
 
    open my $_MEM_FILE, '<', $_buffer_ref;
    binmode $_MEM_FILE;
@@ -2103,6 +2110,7 @@ sub _worker_read_handle {
    my $_chunk_size  = $self->{chunk_size};
    my $_use_slurpio = $self->{use_slurpio};
    my $_user_func   = $self->{user_func};
+   my $_RS          = $self->{RS} || $/;
 
    my ($_data_size, $_next, $_chunk_id, $_offset_pos, $_IN_FILE);
    my @_records = (); $_chunk_id = $_offset_pos = 0;
@@ -2154,6 +2162,7 @@ sub _worker_read_handle {
 
       ## Read data.
       if ($_chunk_size <= MAX_RECS_SIZE) {        ## One or many records.
+         local $/ = $_RS;
          seek $_IN_FILE, $_offset_pos, 0 if ($_many_wrks);
          if ($_chunk_size == 1) {
             $_buffer = <$_IN_FILE>;
@@ -2174,6 +2183,7 @@ sub _worker_read_handle {
          }
       }
       else {                                      ## Large chunk.
+         local $/ = $_RS;
          if ($_proc_type == READ_MEMORY) {
             seek $_IN_FILE, $_offset_pos, 0 if ($_many_wrks);
             if (read($_IN_FILE, $_buffer, $_chunk_size) == $_chunk_size) {
@@ -2209,7 +2219,7 @@ sub _worker_read_handle {
          }
          else {
             if ($_chunk_size > MAX_RECS_SIZE) {
-               _sync_buffer_to_array(\$_buffer, \@_records);
+               _sync_buffer_to_array(\$_buffer, \@_records, $_RS);
             }
             $_user_func->($self, \@_records, $_chunk_id);
          }
@@ -2245,6 +2255,7 @@ sub _worker_request_chunk {
    my $_chunk_size  = $self->{chunk_size};
    my $_use_slurpio = $self->{use_slurpio};
    my $_user_func   = $self->{user_func};
+   my $_RS          = $self->{RS} || $/;
 
    my ($_next, $_chunk_id, $_has_data, $_len, $_chunk_ref);
    my ($_output_tag, @_records);
@@ -2319,7 +2330,7 @@ sub _worker_request_chunk {
                $_user_func->($self, [ $_buffer ], $_chunk_id);
             }
             else {
-               _sync_buffer_to_array(\$_buffer, \@_records);
+               _sync_buffer_to_array(\$_buffer, \@_records, $_RS);
                $_user_func->($self, \@_records, $_chunk_id);
             }
          }
