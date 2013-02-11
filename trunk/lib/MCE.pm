@@ -809,35 +809,24 @@ sub run {
    ## -------------------------------------------------------------------------
 
    my $_chunk_size    = $self->{chunk_size};
+   my $_sequence      = $self->{sequence};
+   my $_use_slurpio   = $self->{use_slurpio};
+
    my $_sess_dir      = $self->{_sess_dir};
    my $_total_workers = $self->{_total_workers};
-   my $_use_slurpio   = $self->{use_slurpio};
 
    my %_params = (
       '_abort_msg'  => $_abort_msg,    '_run_mode'    => $_run_mode,
       '_chunk_size' => $_chunk_size,   '_single_dim'  => $_single_dim,
-      '_input_file' => $_input_file,   '_use_slurpio' => $_use_slurpio
+      '_input_file' => $_input_file,   '_sequence'    => $_sequence,
+      '_use_slurpio' => $_use_slurpio
    );
    my %_params_nodata = (
       '_abort_msg'  => undef,          '_run_mode'    => 'nodata',
       '_chunk_size' => $_chunk_size,   '_single_dim'  => $_single_dim,
-      '_input_file' => $_input_file,   '_use_slurpio' => $_use_slurpio
+      '_input_file' => $_input_file,   '_sequence'    => $_sequence,
+      '_use_slurpio' => $_use_slurpio
    );
-
-   ## One can configure chunk_size independently with sequence per each
-   ## task under user_tasks. Remove chunk_size from params in order to
-   ## not be overwritten once the worker receives it.
-
-   if (!defined $self->{input_data} && defined $self->{user_tasks}) {
-      my $_has_chunk_size_option = 0;
-
-      for my $_task (@{ $self->{user_tasks} }) {
-         $_has_chunk_size_option = 1 if (defined $_task->{chunk_size});
-      }
-      if ($_has_chunk_size_option) {
-         delete $_params{_chunk_size}; delete $_params_nodata{_chunk_size};
-      }
-   }
 
    my $_COM_LOCK;
 
@@ -1383,6 +1372,14 @@ sub _validate_args_s {
 
       _croak("$_tag: cannot specify both 'input_data' and 'sequence'")
          if (defined $self->{input_data});
+
+      if (ref $_seq eq 'ARRAY') {
+         my ($_begin, $_end, $_step, $_format) = @{ $_seq };
+         $_seq = {
+            begin => $_begin, end => $_end, step => $_step, format => $_format
+         };
+      }
+
       _croak("$_tag: 'sequence' is not a HASH reference")
          if (ref $_seq ne 'HASH');
       _croak("$_tag: 'begin' is not defined for sequence")
@@ -1399,6 +1396,9 @@ sub _validate_args_s {
 
       unless (defined $_seq->{step}) {
          $_seq->{step} = ($_seq->{begin} < $_seq->{end}) ? 1 : -1;
+         if (ref $_s->{sequence} eq 'ARRAY') {
+            $_s->{sequence}->[2] = $_seq->{step};
+         }
       }
 
       if ( ($_seq->{step} < 0 && $_seq->{begin} < $_seq->{end}) ||
@@ -2360,10 +2360,17 @@ sub _worker_sequence_generator {
    my $_chunk_size  = $self->{chunk_size};
    my $_user_func   = $self->{user_func};
 
-   my $_begin       = $self->{sequence}->{begin};
-   my $_end         = $self->{sequence}->{end};
-   my $_step        = $self->{sequence}->{step};
-   my $_fmt         = $self->{sequence}->{format};
+   my ($_begin, $_end, $_step, $_fmt);
+
+   if (ref $self->{sequence} eq 'ARRAY') {
+      ($_begin, $_end, $_step, $_fmt) = @{ $self->{sequence} };
+   }
+   else {
+      $_begin       = $self->{sequence}->{begin};
+      $_end         = $self->{sequence}->{end};
+      $_step        = $self->{sequence}->{step};
+      $_fmt         = $self->{sequence}->{format};
+   }
 
    my $_wid         = $self->{_task_wid} || $self->{_wid};
    my $_next        = ($_wid - 1) * $_chunk_size * $_step + $_begin;
@@ -2461,8 +2468,13 @@ sub _worker_do {
    $self->{_single_dim} = $_params_ref->{_single_dim};
    $self->{use_slurpio} = $_params_ref->{_use_slurpio};
 
-   $self->{chunk_size}  = $_params_ref->{_chunk_size}
-      if (defined $_params_ref->{_chunk_size});
+   ## Do not override params if defined under user_tasks during instantiation.
+   for (qw(chunk_size sequence)) {
+      if (defined $_params_ref->{"_$_"}) {
+         $self->{$_} = $_params_ref->{"_$_"}
+            unless (defined $self->{_task}->{$_});
+      }
+   }
 
    ## Init local vars.
    my $_OUT_W_SOCK = $self->{_out_w_sock};
@@ -2623,6 +2635,7 @@ sub _worker_main {
 
    $self->{_task_id}  = (defined $_task_id ) ? $_task_id  : 0;
    $self->{_task_wid} = (defined $_task_wid) ? $_task_wid : $_wid;
+   $self->{_task}     = $_task;
    $self->{_wid}      = $_wid;
 
    _do_send_init($self);
@@ -2648,7 +2661,7 @@ sub _worker_main {
    undef;
 
    $self->{_pids} = $self->{_thrs} = $self->{_tids} = $self->{_status} =
-      $self->{_state} = $self->{_task} =
+      $self->{_state} =
    ();
 
    foreach (keys %_mce_spawned) {
