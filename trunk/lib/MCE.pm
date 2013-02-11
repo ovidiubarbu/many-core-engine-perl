@@ -144,6 +144,8 @@ my %_valid_fields = map { $_ => 1 } qw(
    _com_r_sock _com_w_sock _dat_r_sock _dat_w_sock _out_r_sock _out_w_sock
    _que_r_sock _que_w_sock _sess_dir _spawned _state _status _task _task_id
    _exiting _exit_pid _total_exited _total_running _total_workers _task_wid
+   _send_cnt
+
 );
 
 my %_params_allowed_args = map { $_ => 1 } qw(
@@ -289,6 +291,7 @@ sub new {
    $self->{_state}      = undef; ## State info: task/task_id/task_wid/params
    $self->{_task}       = undef; ## Task info: total_running/total_workers
 
+   $self->{_send_cnt}   =     0; ## Number of times data was sent via send
    $self->{_spawned}    =     0; ## Workers spawned
    $self->{_task_id}    =     0; ## Task ID        starts at 0 (array index)
    $self->{_task_wid}   =     0; ## Task Worker ID starts at 1 per task
@@ -511,7 +514,8 @@ sub spawn {
       local $/ = $LF; <$_COM_R_SOCK>;
    }
 
-   $self->{_spawned} = 1;
+   $self->{_send_cnt} = 0;
+   $self->{_spawned}  = 1;
 
    ## Release lock.
    flock $_COM_LOCK, LOCK_UN;
@@ -894,6 +898,7 @@ sub run {
 
    ## -------------------------------------------------------------------------
 
+   $self->{_send_cnt}      = 0;
    $self->{_total_exited}  = 0;
    $self->{_total_running} = $_total_workers;
 
@@ -924,6 +929,75 @@ sub run {
 
    ## Shutdown workers (also if any workers have exited).
    $self->shutdown() if ($_auto_shutdown == 1 || $self->{_total_exited} > 0);
+
+   return $self;
+}
+
+###############################################################################
+## ----------------------------------------------------------------------------
+## Send method.
+##
+###############################################################################
+
+sub send {
+
+   my MCE $self = $_[0];
+
+   _croak("MCE::send: method cannot be called by the worker process")
+      if ($self->{_wid});
+
+   my $_data_ref;
+
+   if (ref $_[1] eq 'ARRAY' || ref $_[1] eq 'HASH') {
+      $_data_ref = $_[1];
+   } else {
+      _croak("MCE::send: ARRAY or HASH reference is not specified");
+   }
+
+   $self->{_send_cnt} = 0 unless (defined $self->{_send_cnt});
+
+   _croak("MCE::send: Sending greater than # of workers is not allowed")
+      if ($self->{_send_cnt} >= $self->{_task}->[0]->{_total_workers});
+
+   @_ = ();
+
+   ## -------------------------------------------------------------------------
+
+   ## Spawn workers.
+   $self->spawn() if ($self->{_spawned} == 0);
+
+   local $SIG{__DIE__} = \&_die; local $SIG{__WARN__} = \&_warn;
+
+   ## Begin data submission.
+   {
+      local $\ = undef; local $/ = $LF;
+
+      my $_COM_R_SOCK   = $self->{_com_r_sock};
+      my $_sess_dir     = $self->{_sess_dir};
+      my $_submit_delay = $self->{submit_delay};
+
+      my $_frozen_data  = freeze($_data_ref);
+      my $_has_data;
+
+      ## Submit data to worker.
+      select(undef, undef, undef, $_submit_delay)
+         if ($_submit_delay && $_submit_delay > 0.0);
+
+      while (1) {
+         print $_COM_R_SOCK "_data${LF}";
+         <$_COM_R_SOCK>;
+
+         chomp($_has_data = <$_COM_R_SOCK>);
+
+         if ($_has_data eq 'no') {
+            print $_COM_R_SOCK length($_frozen_data), $LF, $_frozen_data;
+            <$_COM_R_SOCK>;
+            last;
+         }
+      }
+   }
+
+   $self->{_send_cnt} += 1;
 
    return $self;
 }
@@ -1025,6 +1099,7 @@ sub shutdown {
    $self->{_task_id}    = $self->{_task_wid}   = 0;
    $self->{_spawned}    = $self->{_wid}        = 0;
    $self->{_sess_dir}   = undef;
+   $self->{_send_cnt}   = 0;
 
    return $self;
 }
@@ -2510,6 +2585,7 @@ sub _worker_do {
 
    undef $self->{_next_jmp} if (defined $self->{_next_jmp});
    undef $self->{_last_jmp} if (defined $self->{_last_jmp});
+   undef $self->{user_data} if (defined $self->{user_data});
 
    ## Call user_end if defined.
    $self->{user_end}->($self) if (defined $self->{user_end});
@@ -2540,6 +2616,7 @@ sub _worker_loop {
 
    my $_COM_W_SOCK = $self->{_com_w_sock};
    my $_job_delay  = $self->{job_delay};
+   my $_task_id    = $self->{_task_id};
    my $_wid        = $self->{_wid};
 
    while (1) {
@@ -2556,23 +2633,53 @@ sub _worker_loop {
          chomp $_response;
 
          ## End loop if an invalid reply.
-         last if ($_response !~ /\A(?:\d+|_exit)\z/);
+         last if ($_response !~ /\A(?:\d+|_data|_exit)\z/);
 
-         ## Return to caller if instructed to exit.
-         if ($_response eq '_exit') {
-            flock $_COM_LOCK, LOCK_UN;
-            return 0;
+         if ($_response eq '_data') {
+            ## Reply 'yes' if I already have user data or I'm a
+            ## worker not belonging to the first user_tasks.
+            if (defined $self->{user_data} || $_task_id > 0) {
+               print $_COM_W_SOCK 'yes', $LF;
+               flock $_COM_LOCK, LOCK_UN;
+
+               select(undef, undef, undef, 0.003);
+            }
+            ## Otherwise, acquire user data.
+            else {
+               print $_COM_W_SOCK 'no', $LF;
+
+               chomp($_len = <$_COM_W_SOCK>);
+               read $_COM_W_SOCK, $_buffer, $_len;
+
+               print $_COM_W_SOCK $_wid, $LF;
+               flock $_COM_LOCK, LOCK_UN;
+
+               $self->{user_data} = thaw($_buffer);
+               undef $_buffer;
+
+               select(undef, undef, undef, 0.003);
+            }
          }
+         else {
+            ## Return to caller if instructed to exit.
+            if ($_response eq '_exit') {
+               flock $_COM_LOCK, LOCK_UN;
+               return 0;
+            }
 
-         ## Retrieve params data.
-         chomp($_len = <$_COM_W_SOCK>);
-         read $_COM_W_SOCK, $_buffer, $_len;
+            ## Retrieve params data.
+            chomp($_len = <$_COM_W_SOCK>);
+            read $_COM_W_SOCK, $_buffer, $_len;
 
-         print $_COM_W_SOCK $_wid, $LF;
-         flock $_COM_LOCK, LOCK_UN;
+            print $_COM_W_SOCK $_wid, $LF;
+            flock $_COM_LOCK, LOCK_UN;
 
-         $_params_ref = thaw($_buffer);
+            $_params_ref = thaw($_buffer);
+         }
       }
+
+      ## Start over if the last response was for acquiring user data.
+      next if ($_response eq '_data');
 
       ## Wait until MCE completes params submission to all workers.
       flock $_DAT_LOCK, LOCK_SH; flock $_DAT_LOCK, LOCK_UN;
