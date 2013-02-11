@@ -138,6 +138,7 @@ my %_valid_fields = map { $_ => 1 } qw(
    chunk_size input_data job_delay spawn_delay submit_delay use_slurpio RS
    flush_file flush_stderr flush_stdout stderr_file stdout_file on_post_exit
    sequence user_begin user_end user_func user_error user_output on_post_run
+   user_args
 
    _abort_msg _mce_sid _mce_tid _pids _run_mode _single_dim _thrs _tids _wid
    _com_r_sock _com_w_sock _dat_r_sock _dat_w_sock _out_r_sock _out_w_sock
@@ -149,6 +150,7 @@ my %_params_allowed_args = map { $_ => 1 } qw(
    chunk_size input_data job_delay spawn_delay submit_delay use_slurpio RS
    flush_file flush_stderr flush_stdout stderr_file stdout_file on_post_exit
    sequence user_begin user_end user_func user_error user_output on_post_run
+   user_args
 );
 
 my $_is_cygwin    = ($^O eq 'cygwin');
@@ -212,6 +214,7 @@ sub new {
    $self->{on_post_exit} = $argv{on_post_exit} || undef;
    $self->{on_post_run}  = $argv{on_post_run}  || undef;
    $self->{sequence}     = $argv{sequence}     || undef;
+   $self->{user_args}    = $argv{user_args}    || undef;
    $self->{user_begin}   = $argv{user_begin}   || undef;
    $self->{user_func}    = $argv{user_func}    || undef;
    $self->{user_end}     = $argv{user_end}     || undef;
@@ -810,6 +813,7 @@ sub run {
 
    my $_chunk_size    = $self->{chunk_size};
    my $_sequence      = $self->{sequence};
+   my $_user_args     = $self->{user_args};
    my $_use_slurpio   = $self->{use_slurpio};
 
    my $_sess_dir      = $self->{_sess_dir};
@@ -819,13 +823,13 @@ sub run {
       '_abort_msg'  => $_abort_msg,    '_run_mode'    => $_run_mode,
       '_chunk_size' => $_chunk_size,   '_single_dim'  => $_single_dim,
       '_input_file' => $_input_file,   '_sequence'    => $_sequence,
-      '_use_slurpio' => $_use_slurpio
+      '_user_args'  => $_user_args,    '_use_slurpio' => $_use_slurpio
    );
    my %_params_nodata = (
       '_abort_msg'  => undef,          '_run_mode'    => 'nodata',
       '_chunk_size' => $_chunk_size,   '_single_dim'  => $_single_dim,
       '_input_file' => $_input_file,   '_sequence'    => $_sequence,
-      '_use_slurpio' => $_use_slurpio
+      '_user_args'  => $_user_args,    '_use_slurpio' => $_use_slurpio
    );
 
    my $_COM_LOCK;
@@ -2469,7 +2473,7 @@ sub _worker_do {
    $self->{use_slurpio} = $_params_ref->{_use_slurpio};
 
    ## Do not override params if defined under user_tasks during instantiation.
-   for (qw(chunk_size sequence)) {
+   for (qw(chunk_size sequence user_args)) {
       if (defined $_params_ref->{"_$_"}) {
          $self->{$_} = $_params_ref->{"_$_"}
             unless (defined $self->{_task}->{$_});
@@ -2537,7 +2541,7 @@ sub _worker_loop {
    my $_COM_W_SOCK = $self->{_com_w_sock};
    my $_job_delay  = $self->{job_delay};
    my $_wid        = $self->{_wid};
- 
+
    while (1) {
 
       {
@@ -2621,6 +2625,7 @@ sub _worker_main {
    };
 
    ## Use options from user_tasks if defined.
+   $self->{user_args}  = $_task->{user_args}  if (defined $_task->{user_args});
    $self->{user_begin} = $_task->{user_begin} if (defined $_task->{user_begin});
    $self->{user_func}  = $_task->{user_func}  if (defined $_task->{user_func});
    $self->{user_end}   = $_task->{user_end}   if (defined $_task->{user_end});
@@ -2658,6 +2663,7 @@ sub _worker_main {
       $self->{flush_file} = $self->{flush_stderr} = $self->{flush_stdout} =
       $self->{on_post_exit} = $self->{on_post_run} = $self->{stderr_file} =
       $self->{stdout_file} = $self->{user_error} = $self->{user_output} =
+      $self->{user_data} =
    undef;
 
    $self->{_pids} = $self->{_thrs} = $self->{_tids} = $self->{_status} =
