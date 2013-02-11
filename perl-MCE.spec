@@ -1,5 +1,5 @@
 Name:           perl-MCE
-Version:        1.306
+Version:        1.400
 Release:        1%{?dist}
 Summary:        Many-Core Engine for Perl. Provides parallel processing capabilities.
 License:        CHECK(Distributable)
@@ -56,6 +56,14 @@ rm -rf $RPM_BUILD_ROOT
 %{_mandir}/man3/*
 
 %changelog
+* Mon Feb 11 2013 Mario Roy 1.400-1
+- Slight optimization in the _do_callback method
+- Added 2 new options: user_args and RS (record separator)
+- Added new send method for sending data to workers after spawning and
+  prior to running
+- The sequence option can now take an ARRAY reference
+- Updated documentation on new features
+- Added matrix multiplication examples
 * Sat Jan 05 2013 Mario Roy 1.306-1
 - Added if statement around setpgrp(0,0). That function is not supported
   under Windows.
