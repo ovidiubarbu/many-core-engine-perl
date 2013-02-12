@@ -2,7 +2,7 @@
 
 ##
 ## Usage:
-##    perl matmult_perl_m.pl  1024  ## Default size is 512:  $c = $a * $b
+##    perl matmult_perl_m.pl 1024  ## Default size is 512:  $c = $a * $b
 ##
 
 use strict;
@@ -31,55 +31,10 @@ unless ($tam > 1) {
    exit 1;
 }
 
-my $cols = $tam;
-my $rows = $tam;
+my $mce  = configure_and_spawn_mce(8);
+my $cols = $tam; my $rows = $tam;
 
-my $mce = MCE->new(
-
-   max_workers => 8,
-   sequence    => { begin => 0, end => $rows - 1, step => 1 },
-
-   user_begin  => sub {
-      my ($self) = @_;
-      my $buffer;
-
-      open my $fh, '<', "$tmp_dir/cache.b";
-      $self->{cache_b} = [ ];
-
-      for my $j (0 .. $rows - 1) {
-         read $fh, $buffer, <$fh>;
-         $self->{cache_b}->[$j] = thaw $buffer;
-      }
-
-      close $fh;
-   },
-
-   user_func   => sub {
-      my ($self, $i, $chunk_id) = @_;
-
-      my $a_i = thaw(scalar $self->do('get_row_a', $i));
-      my $cache_b = $self->{cache_b};
-      my $result_i = [ ];
-
-      for my $j (0 .. $rows - 1) {
-         my $c_j = $cache_b->[$j];
-         $result_i->[$j] = 0;
-         for my $k (0 .. $cols - 1) {
-            $result_i->[$j] += $a_i->[$k] * $c_j->[$k];
-         }
-      }
-
-      $self->do('insert_row', $i, $result_i);
-
-      return;
-   }
-);
-
-$mce->spawn();
-
-my $a = [ ];
-my $b = [ ];
-my $c = [ ];
+my $a = [ ]; my $b = [ ]; my $c = [ ];
 my $cnt;
 
 $cnt = 0; for (0 .. $rows - 1) {
@@ -87,8 +42,7 @@ $cnt = 0; for (0 .. $rows - 1) {
    $cnt += $cols;
 }
 
-## Transpose $b into a cache file
-
+## Transpose $b to a cache file
 open my $fh, '>', "$tmp_dir/cache.b";
 
 for my $col (0 .. $rows - 1) {
@@ -104,7 +58,10 @@ close $fh;
 
 my $start = time();
 
-$mce->run(0);
+$mce->run(0, {
+   sequence  => { begin => 0, end => $rows - 1, step => 1 },
+   user_args => { cols => $cols, rows => $rows, path_b => "$tmp_dir/cache.b" }
+} );
 
 my $end = time();
 
@@ -129,5 +86,54 @@ sub get_row_a {
 sub insert_row {
    $c->[ $_[0] ] = $_[1];
    return;
+}
+
+sub configure_and_spawn_mce {
+
+   my $max_workers = shift || 8;
+
+   return MCE->new(
+
+      max_workers => $max_workers,
+
+      user_begin  => sub {
+         my ($self) = @_;
+         my $buffer;
+
+         open my $fh, '<', $self->{user_args}->{path_b};
+         $self->{cache_b} = [ ];
+
+         for my $j (0 .. $self->{user_args}->{rows} - 1) {
+            read $fh, $buffer, <$fh>;
+            $self->{cache_b}->[$j] = thaw $buffer;
+         }
+
+         close $fh;
+      },
+
+      user_func   => sub {
+         my ($self, $i, $chunk_id) = @_;
+
+         my $a_i = thaw(scalar $self->do('get_row_a', $i));
+         my $cache_b = $self->{cache_b};
+         my $result_i = [ ];
+
+         my $rows = $self->{user_args}->{rows};
+         my $cols = $self->{user_args}->{cols};
+
+         for my $j (0 .. $rows - 1) {
+            my $c_j = $cache_b->[$j];
+            $result_i->[$j] = 0;
+            for my $k (0 .. $cols - 1) {
+               $result_i->[$j] += $a_i->[$k] * $c_j->[$k];
+            }
+         }
+
+         $self->do('insert_row', $i, $result_i);
+
+         return;
+      }
+
+   )->spawn;
 }
 

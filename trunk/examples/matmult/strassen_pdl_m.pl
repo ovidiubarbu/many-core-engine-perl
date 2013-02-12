@@ -2,7 +2,7 @@
 
 ##
 ## Usage:
-##    perl strassen_pdl_m.pl  1024  ## Default size is 512:  divide-and-conquer
+##    perl strassen_pdl_m.pl 1024  ## Default size is 512:  divide-and-conquer
 ##
 
 use strict;
