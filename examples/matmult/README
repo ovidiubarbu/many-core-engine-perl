@@ -1,5 +1,4 @@
 
-##
 ## Demonstration of parallelizing PDL with Many-core Engine for Perl (MCE)
 ## using Strassen's divide-and-conquer algorithm for matrix multiplication.
 ##
@@ -17,7 +16,11 @@
 ##
 
 matmul_pdl_b.pl
-      Baseline PDL matrix multiplication -- very low-level C behind the scene.
+      Baseline PDL matrix multiplication using PDL.
+
+      my $a = sequence $size,$size;
+      my $b = sequence $size,$size;
+      my $c = $a x $b;
 
 matmul_pdl_m.pl
       PDL matrix multiplication + MCE (8 workers).
@@ -27,7 +30,7 @@ matmul_pdl_m.pl
       performs quite well. It also has low memory utilization.
 
 matmul_perl_m.pl
-      PDL matrix multiplication + MCE (8 workers).
+      Perl matrix multiplication + MCE (8 workers).
 
       This is a plain Perl implementation showing how one can parallelize the
       classic matrix multiplication without having to copy the matrices to each
@@ -41,18 +44,17 @@ strassen_pdl_m.pl
       a recursive algorithm.
 
 strassen_perl_m.pl
-      100% plain Perl implementation + MCE (7 workers).
+      100% Perl implementation + MCE (7 workers).
 
-      This example was created to see how the plain Perl implementation
-      performs. It requires lots of memory due to the nature of how Perl
+      The example was created to see how the Perl implementation performs.
+      Execution requires lots of memory due to the nature of how Perl
       stores scalars into memory. Being 100% Perl, it's quite slow.
 
-##
 ## Times below are reported in number of seconds.
 ##
 ## Benchmarked under Linux -- RHEL 6.3, Perl 5.10.1
-## The system is configured with both Turbo-Boost and Hyper-Threads enabled
-## Hardware: Intel(R) Xeon(R) CPU E5649 @ 2.53GHz x 2 (24 logical procs)
+## System is configured with both Turbo-Boost and Hyper-Threads enabled
+## Hardware is an Intel(R) Xeon(R) CPU E5649 @ 2.53GHz x 2 (24 logical procs)
 ##
 ## My favorite is matmul_pdl_m.pl running with 24 workers. It has very low
 ## memory consumption. The strassen_pdl_m.pl is quite fast, but requires
@@ -68,6 +70,7 @@ strassen_perl_m.pl
 ##
 ##    wait
 ##
+
 ## -- Results for 1024x1024 ---------------------------------------------------
 ##
 ## matmul_pdl_b.pl    1024: compute:   2.705 secs   1 worker   ( 1 running)
@@ -87,7 +90,7 @@ strassen_perl_m.pl
 ## Output
 ##    (0,0) 365967179776  (1023,1023) 563314846859776
 ##
-##
+
 ## -- Results for 2048x2048 ---------------------------------------------------
 ##
 ## matmul_pdl_b.pl    2048: compute:  21.470 secs   1 worker   ( 1 running)
@@ -110,13 +113,41 @@ strassen_perl_m.pl
 ##    (0,0) 5859767746560  (2047,2047) 1.8020249687295e+16   strassen examples
 ##
 
+## -- Results for 4096x4096 ---------------------------------------------------
+##
+## matmul_pdl_b.pl    4096: compute: 172.220 secs   1 worker   ( 1 running)
+## matmul_pdl_m.pl    4096: compute:  68.104 secs  24 workers  ( 1 running)
+## strassen_pdl_m.pl  4096: compute:  16.941 secs   7 workers  ( 1 running)
+##
+## Output
+##    (0,0) 93790635294720  (4095,4095) 5.76554474219245e+17  matmul examples
+##    (0,0) 93790635294720  (4095,4095) 5.76554474219244e+17  strassen example
+##
+
+## -- Results for 8192x8192 ---------------------------------------------------
+##
+##    Note: At this size, only matmul_pdl_m.pl can run due to it's low
+##    memory consumption. Workers only have a local copy of the "b" matrix
+##    in memory, not the "a" or "c" matrices. MCE's do method is useful in
+##    fetching the next row as well as sending the result.
+##
+## matmul_pdl_b.pl    8192: compute: 1388.001 secs   1 worker   ( 1 running)
+## matmul_pdl_m.pl    8192: compute:  462.206 secs  24 workers  ( 1 running)
+##
+## Output
+##
+##    (0,0) 1.50092500906803e+15  (8191,8191) 1.84482444489628e+19
+##    (0,0) 1.50092500906803e+15  (8191,8191) 1.84482444489628e+19
+##
+
+
 This has been an exciting exercise for me. MCE enjoys parallelizing PDL :)
 
 Running matmul_pdl_m.pl with max_workers => 24 is quite nice. One can set this
-to 32 on servers with Intel Xeon's E5 processors (dual socket). If memory is
+to 32 on servers with Intel's Xeon E5 processor (dual socket). If memory is
 plentiful, the strassen_pdl_m.pl is quite fast. Please note that the Strassen
-algorithm introduces rounding errors and may not be a fit if wanting a high
-level of accuracy.
+algorithm introduces rounding errors and may not be a good fit if wanting a
+high level of accuracy.
 
 MCE also likes big files. Look at the egrep.pl and wc.pl examples.
 Those examples benefit from MCE's chunking engine.
