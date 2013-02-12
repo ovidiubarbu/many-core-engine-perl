@@ -2,7 +2,7 @@
 
 ##
 ## Usage:
-##    perl matmult_pdl_b.pl   1024  ## Default size is 512:  $c = $a x $b
+##    perl matmult_pdl_b.pl 1024  ## Default size is 512:  $c = $a x $b
 ##
 
 use strict;
@@ -34,7 +34,7 @@ my $b = sequence $tam,$tam;
 
 my $start = time();
 
-my $c = $a x $b;                         ## Start matrix multiplication
+my $c = $a x $b;                         ## Performs matrix multiplication
 
 my $end = time();
 
