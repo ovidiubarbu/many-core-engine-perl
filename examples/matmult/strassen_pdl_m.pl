@@ -21,12 +21,6 @@ use PDL::IO::Storable;                   ## Required for PDL + MCE combo
 use MCE::Signal qw(-use_dev_shm);
 use MCE;
 
-if ($^O eq 'MSWin32') {
-   print "PDL + MCE does not run reliably under Windows. Exiting.\n";
-   print "Not sure what the problem is at the moment.\n";
-   exit;
-}  
-
 ###############################################################################
  # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * #
 ###############################################################################
