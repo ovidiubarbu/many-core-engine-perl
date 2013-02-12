@@ -6,10 +6,6 @@
 ##    Requires MCE version 1.4 or later to run.
 ##    http://code.google.com/p/many-core-engine-perl/
 ##
-## MCE is my personal project. I'm new to PDL and wanted to see if PDL + MCE
-## can be combined to maximize on all available cores. I had no idea what to
-## expect and was pleasantly surprised. The 1.4 release adds the send method.
-##
 ## PDL is extremely powerful by itself. However, add MCE to it and be amazed.
 ##
 ## Usage:
@@ -19,18 +15,12 @@
 ##    perl strassen_pdl_m.pl  1024  ## Default size is 512:  divide-and-conquer
 ##    perl strassen_perl_m.pl 1024  ## Default size is 512:  divide-and-conquer
 ##
-## Regards,
-##    Mario Roy
-##
 
 matmul_pdl_b.pl
       Baseline PDL matrix multiplication -- very low-level C behind the scene.
-      The dimensions of the matrices do not have to be power of 2.
 
 matmul_pdl_m.pl
       PDL matrix multiplication + MCE (8 workers).
-      The dimensions of the matrices do not have to be power of 2.
-      Uses PDL::IO::FastRaw.
 
       The baseline does $m1 x $m2 whereas this one does $m1 * $2 due to running
       in parallel. Even though not able to use the 'x' operator, this example
@@ -38,8 +28,6 @@ matmul_pdl_m.pl
 
 matmul_perl_m.pl
       PDL matrix multiplication + MCE (8 workers).
-      The dimensions of the matrices do not have to be power of 2.
-      Uses Storable qw(freeze thaw).
 
       This is a plain Perl implementation showing how one can parallelize the
       classic matrix multiplication without having to copy the matrices to each
@@ -47,12 +35,12 @@ matmul_perl_m.pl
 
 strassen_pdl_m.pl
       Divide-and-conquer implementation using Strassen's algorithm.
+
       PDL + MCE (7 workers) is a very powerful combination seen here.
       This example was created to see how MCE performs when applied with
       a recursive algorithm.
 
 strassen_perl_m.pl
-      Divide-and-conquer implementation using Strassen's algorithm.
       100% plain Perl implementation + MCE (7 workers).
 
       This example was created to see how the plain Perl implementation
@@ -60,49 +48,79 @@ strassen_perl_m.pl
       stores scalars into memory. Being 100% Perl, it's quite slow.
 
 ##
-## Times below are reported in number of seconds to compute.
+## Times below are reported in number of seconds.
 ##
-##    Benchmarked under Linux -- RHEL 6.3, Perl 5.10.1
-##    Hardware: Intel(R) Xeon(R) CPU E5649 @ 2.53GHz x 2 (24 logical procs)
+## Benchmarked under Linux -- RHEL 6.3, Perl 5.10.1
+## The system is configured with both Turbo-Boost and Hyper-Threads enabled
+## Hardware: Intel(R) Xeon(R) CPU E5649 @ 2.53GHz x 2 (24 logical procs)
 ##
-##    Note: This CPU will enable Turbo-Boost when running a single process.
-##    Therefore, account for that -- times below are measured running at the
-##    same clock frequency. One way to run matmul_pdl_b.pl is to run 24 of
-##    them simultaneously on the 24-way box. Either way, I provided both
-##    numbers.
+## My favorite is matmul_pdl_m.pl running with 24 workers. It has very low
+## memory consumption. The strassen_pdl_m.pl is quite fast, but requires
+## additional memory, especially strassen_perl_m.pl.
 ##
-##    Although not visible in "top" under Linux, the baseline was seen using
-##    only 1 processor core. I suspect it was using more than that behind the
-##    scene by utilizing SSE4.x instructions across many cores. Interesting.
+## Below, (n running) indicates a shell script running number of instances:
 ##
-##    My favorite is matmul_pdl_m.pl running with 24 workers. It has a very
-##    low memory consumption. The strassen_pdl_m.pl is quite fast, but
-##    requires additional memory.
+##    #!/bin/bash
 ##
-## matmul_pdl_b.pl    1024: compute time:  2.705 secs   1 worker   ( 1 running)
-## matmul_pdl_b.pl    1024: compute time: 11.035 secs   1 worker   (24 running)
+##    perl matmul_pdl_m.pl 1024 &
+##    perl matmul_pdl_m.pl 1024 &
+##    perl matmul_pdl_m.pl 1024 &
 ##
-## matmul_pdl_m.pl    1024: compute time:  4.397 secs   8 workers  ( 1 running)
-## matmul_pdl_m.pl    1024: compute time:  8.370 secs   8 workers  ( 3 running)
-## matmul_pdl_m.pl    1024: compute time:  2.789 secs  24 workers  ( 1 running)
+##    wait
 ##
-## matmul_perl_m.pl   1024: compute time: 45.356 secs   8 workers  ( 1 running)
-## matmul_perl_m.pl   1024: compute time: 94.081 secs   8 workers  ( 3 running)
-## matmul_perl_m.pl   1024: compute time: 32.239 secs  24 workers  ( 1 running)
+## -- Results for 1024x1024 ---------------------------------------------------
 ##
-## strassen_pdl_m.pl  1024: compute time:  0.564 secs   7 workers  ( 1 running)
+## matmul_pdl_b.pl    1024: compute:   2.705 secs   1 worker   ( 1 running)
+## matmul_pdl_b.pl    1024: compute:  11.035 secs   1 worker   (24 running)
 ##
-## strassen_perl_m.pl 1024: compute time: 45.408 secs   7 workers  ( 1 running)
+## matmul_pdl_m.pl    1024: compute:   3.809 secs   8 workers  ( 1 running)
+## matmul_pdl_m.pl    1024: compute:   7.397 secs   8 workers  ( 3 running)
+## matmul_pdl_m.pl    1024: compute:   2.486 secs  24 workers  ( 1 running)
 ##
-## Output.
+## matmul_perl_m.pl   1024: compute:  33.833 secs   8 workers  ( 1 running)
+## matmul_perl_m.pl   1024: compute:  69.830 secs   8 workers  ( 3 running)
+## matmul_perl_m.pl   1024: compute:  23.995 secs  24 workers  ( 1 running)
 ##
-## (0,0) 365967179776  (1023,1023) 563314846859776
+## strassen_pdl_m.pl  1024: compute:   0.564 secs   7 workers  ( 1 running)
+## strassen_perl_m.pl 1024: compute:  45.408 secs   7 workers  ( 1 running)
 ##
-
+## Output
+##    (0,0) 365967179776  (1023,1023) 563314846859776
+##
+##
+## -- Results for 2048x2048 ---------------------------------------------------
+##
+## matmul_pdl_b.pl    2048: compute:  21.470 secs   1 worker   ( 1 running)
+## matmul_pdl_b.pl    2048: compute:  96.217 secs   1 worker   (24 running)
+##
+## matmul_pdl_m.pl    2048: compute:  18.315 secs   8 workers  ( 1 running)
+## matmul_pdl_m.pl    2048: compute:  35.954 secs   8 workers  ( 3 running)
+## matmul_pdl_m.pl    2048: compute:  11.987 secs  24 workers  ( 1 running)
+##
+## matmul_perl_m.pl   2048: compute: 270.556 secs   8 workers  ( 1 running)
+## matmul_perl_m.pl   2048: compute: 558.837 secs   8 workers  ( 3 running)
+## matmul_perl_m.pl   2048: compute: 190.302 secs  24 workers  ( 1 running)
+##
+## strassen_pdl_m.pl  2048: compute:   2.734 secs   7 workers  ( 1 running)
+## strassen_perl_m.pl 2048: compute: 322.932 secs   1 level  parallelization
+## strassen_perl_m.pl 2048: compute: 200.440 secs   2 levels parallelization
+##
+## Output
+##    (0,0) 5859767746560  (2047,2047) 1.80202496872953e+16  matmul examples
+##    (0,0) 5859767746560  (2047,2047) 1.8020249687295e+16   strassen examples
+##
 
 This has been an exciting exercise for me. MCE enjoys parallelizing PDL :)
-BTW: MCE also likes big files. Look at the egrep.pl and wc.pl examples.
-These examples benefit from MCE's chunking engine. Enjoy MCE.
 
--- mario
+Running matmul_pdl_m.pl with max_workers => 24 is quite nice. One can set this
+to 32 on servers with Intel Xeon's E5 processors (dual socket). If memory is
+plentiful, the strassen_pdl_m.pl is quite fast. Please note that the Strassen
+algorithm introduces rounding errors and may not be a fit if wanting a high
+level of accuracy.
+
+MCE also likes big files. Look at the egrep.pl and wc.pl examples.
+Those examples benefit from MCE's chunking engine.
+
+Regards,
+Mario
 
