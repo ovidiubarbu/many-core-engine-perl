@@ -41,26 +41,28 @@ my $mce = MCE->new(
 
    user_begin  => sub {
       my ($self) = @_;
-      open $self->{cache_b}, '<', "$tmp_dir/cache.b";
-   },
+      my $buffer;
 
-   user_end    => sub {
-      my ($self) = @_;
-      close $self->{cache_b};
+      open my $fh, '<', "$tmp_dir/cache.b";
+      $self->{cache_b} = [ ];
+
+      for my $j (0 .. $rows - 1) {
+         read $fh, $buffer, <$fh>;
+         $self->{cache_b}->[$j] = thaw $buffer;
+      }
+
+      close $fh;
    },
 
    user_func   => sub {
       my ($self, $i, $chunk_id) = @_;
 
       my $a_i = thaw(scalar $self->do('get_row_a', $i));
+      my $cache_b = $self->{cache_b};
       my $result_i = [ ];
-      my $buffer;
-
-      my $fh = $self->{cache_b}; seek $fh, 0, 0;
 
       for my $j (0 .. $rows - 1) {
-         read $fh, $buffer, <$fh>;
-         my $c_j = thaw($buffer);
+         my $c_j = $cache_b->[$j];
          $result_i->[$j] = 0;
          for my $k (0 .. $cols - 1) {
             $result_i->[$j] += $a_i->[$k] * $c_j->[$k];
