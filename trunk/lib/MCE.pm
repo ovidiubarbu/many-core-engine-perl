@@ -57,6 +57,13 @@ BEGIN {
    $_max_procs =  788 if ($_max_procs >  788);
 }
 
+## PDL + MCE (spawning as threads) is not stable. A comment from David Mertens
+## mentioned the fix for his PDL::Parallel::threads module. The CLONE_SKIP is
+## also needed here in order for PDL + MCE threads to not crash during exiting.
+## Thanks goes to David !!! I would have definitely struggled with this one.
+## 
+sub PDL::CLONE_SKIP { 1 }
+
 ###############################################################################
 ## ----------------------------------------------------------------------------
 ## This module does not load the threads module. Please include your threading
