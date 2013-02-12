@@ -13,20 +13,14 @@ use lib "$FindBin::Bin/../../lib";
 
 my $prog_name = $0; $prog_name =~ s{^.*[\\/]}{}g;
 
+use Storable qw(freeze thaw);
 use Time::HiRes qw(time);
 
 use PDL;
-use PDL::IO::FastRaw;                    ## Required for MMAP IO
 use PDL::IO::Storable;                   ## Required for PDL + MCE combo
 
 use MCE::Signal qw($tmp_dir -use_dev_shm);
 use MCE;
-
-if ($^O eq 'MSWin32') {
-   print "PDL + MCE does not run reliably under Windows. Exiting.\n";
-   print "Not sure what the problem is at the moment.\n";
-   exit;
-}  
 
 ###############################################################################
  # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * #
@@ -50,18 +44,28 @@ my $mce = MCE->new(
 
    user_begin  => sub {
       my ($self) = @_;
-      $self->{matrix_b} = mapfraw("$tmp_dir/matrix_b.raw", { ReadOnly => 1 });
+      my $buffer;
+
+      open my $fh, '<', "$tmp_dir/cache.b";
+      $self->{cache_b} = [ ];
+
+      for my $j (0 .. $rows - 1) {
+         read $fh, $buffer, <$fh>;
+         $self->{cache_b}->[$j] = thaw $buffer;
+      }
+
+      close $fh;
    },
 
    user_func   => sub {
       my ($self, $i, $chunk_id) = @_;
 
       my $a_i = $self->do('get_row_a', $i);
-      my $matrix_b = $self->{matrix_b};
+      my $cache_b = $self->{cache_b};
       my $result_i = [ ];
 
       for my $j (0 .. $rows - 1) {
-         my $c_j = $matrix_b->slice(":,($j)");
+         my $c_j = $cache_b->[$j];
          $result_i->[$j] = ( $a_i * $c_j )->sum();
       }
 
@@ -73,11 +77,18 @@ my $mce = MCE->new(
 
 $mce->spawn();
 
-my $a = sequence $cols,$rows;
-my $b = sequence $rows,$cols;
+my $a = sequence($cols,$rows);
+my $b = sequence($rows,$cols)->transpose;
 my $c = zeroes   $rows,$rows;
 
-writefraw($b->transpose, "$tmp_dir/matrix_b.raw");
+open my $fh, '>', "$tmp_dir/cache.b";
+
+for my $j (0 .. $rows - 1) {
+   my $row_serialized = freeze $b->slice(":,($j)");
+   print $fh length($row_serialized), "\n", $row_serialized;
+}
+
+close $fh;
 
 my $start = time();
 
