@@ -2,7 +2,7 @@
 
 ##
 ## Usage:
-##    perl matmult_pdl_m.pl 1024  ## Default size is 512:  $c = $a x $b
+##    perl matmult_pdl_n.pl 1024  ## Default size is 512:  $c = $a x $b
 ##
 
 use strict;
@@ -13,14 +13,23 @@ use lib "$FindBin::Bin/../../lib";
 
 my $prog_name = $0; $prog_name =~ s{^.*[\\/]}{}g;
 
-use Storable qw(freeze thaw);
 use Time::HiRes qw(time);
 
 use PDL;
 use PDL::IO::Storable;                   ## Required for PDL + MCE combo
+use PDL::IO::FastRaw;                    ## Required for MMAP IO
 
 use MCE::Signal qw($tmp_dir -use_dev_shm);
 use MCE;
+
+my $pdl_version = sprintf("%20s", $PDL::VERSION); $pdl_version =~ s/_.*$//;
+my $chk_version = sprintf("%20s", '2.4.11');
+
+if ($^O eq 'MSWin32' && $pdl_version lt $chk_version) {
+   print "Your PDL installation is below release 2.4.11. Please update\n";
+   print "to the current version for MMAP IO to function correctly.\n";
+   exit;
+}
 
 ###############################################################################
  # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * #
@@ -46,14 +55,7 @@ my $a = sequence $cols,$rows;
 my $b = sequence $rows,$cols;
 my $c = zeroes   $rows,$rows;
 
-open my $fh, '>', "$tmp_dir/cache.b";
-
-for my $j (0 .. $cols - 1) {
-   my $row_serialized = freeze $b->slice(":,($j)");
-   print $fh length($row_serialized), "\n", $row_serialized;
-}
-
-close $fh;
+writefraw($b, "$tmp_dir/cache.b");
 
 my $start = time();
 
@@ -106,24 +108,10 @@ sub configure_and_spawn_mce {
 
       user_begin  => sub {
          my ($self) = @_;
-         my $buffer;
 
-         my $cols = $self->{user_args}->{cols};
-         my $rows = $self->{user_args}->{rows};
-         my $b    = zeros $rows,$cols;
-
-         open my $fh, '<', $self->{user_args}->{path_b};
-         use PDL::NiceSlice;
-
-         for my $j (0 .. $self->{user_args}->{cols} - 1) {
-            read $fh, $buffer, <$fh>;
-            $b(:,$j) .= thaw $buffer;
-         }
-
-         no PDL::NiceSlice;
-         close $fh;
-
-         $self->{matrix_b} = $b;
+         $self->{matrix_b} = mapfraw(
+            $self->{user_args}->{path_b}, { ReadOnly => 1 }
+         );
       },
 
       user_func   => sub {
