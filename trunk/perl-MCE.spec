@@ -1,5 +1,5 @@
 Name:           perl-MCE
-Version:        1.400
+Version:        1.401
 Release:        1%{?dist}
 Summary:        Many-Core Engine for Perl. Provides parallel processing capabilities.
 License:        CHECK(Distributable)
@@ -56,6 +56,15 @@ rm -rf $RPM_BUILD_ROOT
 %{_mandir}/man3/*
 
 %changelog
+* Mon Feb 12 2013 Mario Roy 1.401-1
+- Added sub PDL::CLONE_SKIP { 1 } to MCE.pm. Running PDL + MCE threads no
+  longer crashes during exiting.
+- Updated matrix multiplication examples. All examples now work under the
+  windows environment no matter if threading or forking. Unix is stable as
+  well if wanting to use PDL + MCE and use_threads => 1 or 0.
+- Added benchmark results for 2048x2048, 4096x4096, and 8192x8192 to the
+  README file under examples/matmult/
+- Updated documentation
 * Mon Feb 11 2013 Mario Roy 1.400-1
 - Slight optimization in the _do_callback method
 - Added 2 new options: user_args and RS (record separator)

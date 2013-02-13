@@ -7,7 +7,7 @@
 
 <> VERSION
 
-   This document describes MCE version 1.400
+   This document describes MCE version 1.401
 
 <> DESCRIPTION
 
@@ -56,7 +56,7 @@
           ## Use the sequence option if simply wanting to loop
           ## through a sequence of numbers instead.
 
-          ## Starting with MCE release 1.4, one can specify the
+          ## Release 1.4 and later allows one to specify the
           ## record separator (RS) applicable to input files,
           ## file handles, and scalar references.
 
@@ -162,8 +162,8 @@
           ## Leave input_data set to undef when specifying the sequence
           ## option. One cannot specify both options together.
 
-          ## Beginning with MCE release 1.4, sequence can be specified
-          ## using an array reference (3rd & 4th values are optional):
+          ## Release 1.4 allows one to specify an array reference
+          ## instead (3rd & 4th values are optional):
           ##
           ##    sequence => [ -1, 1, 0.1, "4.1f" ]
 
@@ -231,9 +231,8 @@
    ## See a demo at the end of this documentation applying sequences
    ## with the user_tasks option including chunking.
 
-   ## Note: MCE release 1.4 allows sequences to be specified using an
-   ## ARRAY reference instead: sequence => [ 10, 19, 0.7, "4.1f" ]
-   ## The 3rd & 4th array values are optional.
+   ## Note: As mentioned above, sequence can be specified using an
+   ## array reference instead: sequence => [ 10, 19, 0.7, "4.1f" ]
 
    use MCE;
 
@@ -584,6 +583,7 @@
    -------------------------------------------------------------------------
 
    ## Forseq implies chunk_size => 1 (cannot be overwritten).
+   ## Sequence can be specified using a hash or array reference.
 
    my $mce = MCE->new(
       max_workers => 3
@@ -594,7 +594,7 @@
       print $n, " from ", $self->wid(), "\n";
    });
 
-   $mce->forseq({ begin => 20, end => 40 }, sub {
+   $mce->forseq([ 20, 40 ], sub {
       my ($self, $n, $chunk_id) = @_;
       my $result = `ping 192.168.1.${n}`;
       ...
