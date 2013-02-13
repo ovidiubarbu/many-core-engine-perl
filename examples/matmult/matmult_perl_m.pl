@@ -27,7 +27,7 @@ my $tam = shift;
    $tam = 512 unless (defined $tam);
 
 unless ($tam > 1) {
-   print STDERR "Error: $tam is not 2 or greater. Exiting.\n";
+   print STDERR "Error: $tam must be an integer greater than 1. Exiting.\n";
    exit 1;
 }
 

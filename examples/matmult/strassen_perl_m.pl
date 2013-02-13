@@ -26,7 +26,7 @@ my $tam = shift;                         ## Wants power of 2 only
    $tam = 512 unless (defined $tam);
 
 unless (is_power_of_two($tam)) {
-   print STDERR "Error: $tam is not a power of 2. Exiting.\n";
+   print STDERR "Error: $tam must be a power of 2 integer. Exiting.\n";
    exit 1;
 }
 
