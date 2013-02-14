@@ -1,5 +1,9 @@
 Revision history for MCE
 
+1.402 Tue Feb 14 07:30:00 EST 2013
+    * Updated matrix multiplication examples including README
+    * Added examples/matmult/matmult_pdl_n.pl
+
 1.401 Tue Feb 12 19:00:00 EST 2013
     * Added sub PDL::CLONE_SKIP { 1 } to MCE.pm. Running PDL + MCE threads no
       longer crashes during exiting.

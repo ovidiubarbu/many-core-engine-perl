@@ -26,8 +26,8 @@ my $pdl_version = sprintf("%20s", $PDL::VERSION); $pdl_version =~ s/_.*$//;
 my $chk_version = sprintf("%20s", '2.4.11');
 
 if ($^O eq 'MSWin32' && $pdl_version lt $chk_version) {
-   print "Your PDL installation is below release 2.4.11. Please update\n";
-   print "to the current version for MMAP IO to function correctly.\n";
+   print "This script requires PDL 2.4.11 or later for PDL::IO::FastRaw\n";
+   print "to work using MMAP IO under the Windows environment.\n";
    exit;
 }
 

@@ -1,5 +1,5 @@
 Name:           perl-MCE
-Version:        1.401
+Version:        1.402
 Release:        1%{?dist}
 Summary:        Many-Core Engine for Perl. Provides parallel processing capabilities.
 License:        CHECK(Distributable)
@@ -56,6 +56,9 @@ rm -rf $RPM_BUILD_ROOT
 %{_mandir}/man3/*
 
 %changelog
+* Thu Feb 14 2013 Mario Roy 1.402-1
+- Updated matrix multiplication examples including README
+- Added examples/matmult/matmult_pdl_n.pl
 * Mon Feb 12 2013 Mario Roy 1.401-1
 - Added sub PDL::CLONE_SKIP { 1 } to MCE.pm. Running PDL + MCE threads no
   longer crashes during exiting.
