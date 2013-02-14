@@ -62,7 +62,10 @@ BEGIN {
 ## also needed here in order for PDL + MCE threads to not crash during exiting.
 ## Thanks goes to David !!! I would have definitely struggled with this one.
 ## 
-sub PDL::CLONE_SKIP { 1 }
+{
+   no warnings 'redefine';
+   sub PDL::CLONE_SKIP { 1 }
+}
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
