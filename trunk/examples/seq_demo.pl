@@ -3,8 +3,8 @@
 use strict;
 use warnings;
 
-use FindBin;
-use lib "$FindBin::Bin/../lib";
+use Cwd qw(abs_path);
+use lib abs_path . "/../lib";
 
 use MCE;
 
