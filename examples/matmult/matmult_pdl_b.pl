@@ -2,7 +2,7 @@
 
 ##
 ## Usage:
-##    perl matmult_pdl_b.pl 1024  ## Default size is 512:  $c = $a x $b
+##    perl matmult_pdl_b.pl 1024         ## Default size 512
 ##
 
 use strict;

@@ -2,7 +2,7 @@
 
 ##
 ## Usage:
-##    perl matmult_pdl_n.pl 1024  ## Default size is 512:  $c = $a x $b
+##    perl matmult_pdl_n.pl 1024         ## Default size 512
 ##
 
 use strict;
@@ -28,7 +28,7 @@ my $chk_version = sprintf("%20s", '2.4.11');
 if ($^O eq 'MSWin32' && $pdl_version lt $chk_version) {
    print "This script requires PDL 2.4.11 or later for PDL::IO::FastRaw\n";
    print "to work using MMAP IO under the Windows environment.\n";
-   exit;
+   exit 1;
 }
 
 ###############################################################################
@@ -43,8 +43,8 @@ unless ($tam > 1) {
    exit 1;
 }
 
-my $max_workers = 8;
-my $step_size   = 10;
+my $step_size   = 32;
+my $max_workers =  8;
 
 my $mce = configure_and_spawn_mce($max_workers);
 
@@ -80,7 +80,7 @@ print "\n\n";
  # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * #
 ###############################################################################
 
-sub get_row_a {
+sub get_rows_a {
 
    my $start = $_[0];
    my $stop  = $start + $step_size - 1;
@@ -90,7 +90,7 @@ sub get_row_a {
    return $a->slice(":,$start:$stop");
 }
 
-sub insert_row {
+sub insert_rows {
 
    ins(inplace($c), $_[1], 0, $_[0]);
 
@@ -104,7 +104,7 @@ sub configure_and_spawn_mce {
    return MCE->new(
 
       max_workers => $max_workers,
-      job_delay   => ($tam > 2048) ? 0.043 : undef,
+      job_delay   => ($tam > 2048) ? 0.031 : undef,
 
       user_begin  => sub {
          my ($self) = @_;
@@ -115,12 +115,12 @@ sub configure_and_spawn_mce {
       },
 
       user_func   => sub {
-         my ($self, $i, $chunk_id) = @_;
+         my ($self, $seq_n, $chunk_id) = @_;
 
-         my $a_i = $self->do('get_row_a', $i);
+         my $a_i = $self->do('get_rows_a', $seq_n);
          my $result_i = $a_i x $self->{matrix_b};
 
-         $self->do('insert_row', $i, $result_i);
+         $self->do('insert_rows', $seq_n, $result_i);
 
          return;
       }
