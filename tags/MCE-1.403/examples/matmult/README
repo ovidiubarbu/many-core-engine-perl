@@ -1,0 +1,170 @@
+
+## Note: I'm most thankful for the code sample from David Mertens.
+## https://groups.google.com/forum/#!topic/the-quantified-onion/2cSWXogt5Xs
+##
+## I'm quite new to PDL. David's example pointed me on the right track.
+##
+## David has an interesting module called PDL::Parallel::threads to help
+## share PDL data across Perl threads. MCE, on the other hand, has a powerful
+## "do" method which is used to obtain data from the manager process as well
+## as send results back as often as needed.
+##
+
+## PDL is extremely powerful by itself. However, add MCE to it and be amazed.
+##
+## -- Usage -------------------------------------------------------------------
+##
+## perl script.pl 1024                        ## Default size 512
+##
+
+-- matmult_pdl_b.pl
+      Baseline matrix multiplication with PDL
+
+      my $a = sequence $size,$size;
+      my $b = sequence $size,$size;
+      my $c = $a x $b;
+
+-- matmult_pdl_m.pl
+      PDL matrix multiplication + MCE
+      Uses Storable qw(freeze thaw)
+
+-- matmult_pdl_n.pl
+      PDL matrix multiplication + MCE
+      Same as matmult_pdl_m.pl but uses PDL::IO::FastRaw to write/read matrix b
+
+-- matmult_pdl_o.pl
+      PDL matrix multiplication + MCE
+      Same as matmult_pdl_n.pl but uses PDL::Parallel::threads for matrices a,c
+
+-- matmult_pdl_p.pl
+      PDL matrix multiplication + MCE
+      Same as matmult_pdl_o.pl but uses PDL::Parallel::threads for all matrices
+      This is comparable to David Mertens's matmult_pdl_thr.pl example
+
+-- matmult_pdl_thr.pl
+      PDL matrix multiplication + PDL::Parallel::threads::SIMD
+      Can be obtained at https://gist.github.com/run4flat/4942132
+
+-- strassen_pdl_m.pl
+      Divide-and-conquer implementation using Strassen's algorithm
+
+-- strassen_pdl_n.pl
+      Divide-and-conquer implementation using Strassen's algorithm
+      Additional improvements to the reuse of allocated memory
+
+-- strassen_pdl_h.pl
+      Divide-and-conquer implementation using Strassen's algorithm
+      Same as strassen_pdl_n.pl, but running half at a time
+      Reuses the same workers for the 2nd half
+
+-- matmult_perl_m.pl
+      Perl classic matrix multiplication + MCE
+
+-- strassen_perl_m.pl
+      Divide-and-conquer 100% Perl implementation using Strassen's algorithm
+
+
+## -- Times below are reported in number of seconds ---------------------------
+##
+## Benchmarked under Linux -- RHEL 6.3, Perl 5.10.1, perl-PDL-2.4.7-1.
+## System is configured with both Turbo-Boost and Hyper-Threads enabled.
+## Hardware is an Intel(R) Xeon(R) CPU E5649 @ 2.53GHz x 2 (24 logical procs).
+## The system memory size is 32 GB.
+##
+
+## -- Results for 1024x1024 ---------------------------------------------------
+##
+## matmult_pdl_b.pl   1024: compute:    2.705 secs   1 worker
+## matmult_pdl_m.pl   1024: compute:    0.697 secs  24 workers
+## matmult_pdl_n.pl   1024: compute:    0.394 secs  24 workers
+## matmult_pdl_o.pl   1024: compute:    0.482 secs  24 workers
+## matmult_pdl_p.pl   1024: compute:    0.580 secs  24 workers
+## matmult_pdl_thr.pl 1024: compute:    0.730 secs  24 workers
+## strassen_pdl_m.pl  1024: compute:    0.512 secs   7 workers
+## strassen_pdl_n.pl  1024: compute:    0.503 secs   7 workers
+##
+## matmult_perl_m.pl  1024: compute:   23.552 secs  24 workers
+## strassen_perl_m.pl 1024: compute:   45.408 secs   7 workers
+## strassen_pdl_h.pl  1024: compute:    0.742 secs   4 workers
+##
+## Output
+##    (0,0) 365967179776  (1023,1023) 563314846859776
+##
+
+## -- Results for 2048x2048 ---------------------------------------------------
+##
+## matmult_pdl_b.pl   2048: compute:   21.470 secs   1 worker    0.3% memory
+## matmult_pdl_m.pl   2048: compute:    4.706 secs  24 workers   2.7% memory
+## matmult_pdl_n.pl   2048: compute:    2.613 secs  24 workers   2.7% memory
+## matmult_pdl_o.pl   2048: compute:    2.751 secs  24 workers   3.0% memory
+## matmult_pdl_p.pl   2048: compute:    4.313 secs  24 workers   0.9% memory
+## matmult_pdl_thr.pl 2048: compute:    4.524 secs  24 workers   0.8% memory
+## strassen_pdl_m.pl  2048: compute:    2.522 secs   7 workers   2.7% memory
+## strassen_pdl_n.pl  2048: compute:    2.496 secs   7 workers   2.0% memory
+##
+## matmult_perl_m.pl  2048: compute:  190.302 secs  24 workers   9.7% memory
+## strassen_perl_m.pl 2048: compute:  321.655 secs   7 workers   8.6% memory
+## strassen_pdl_h.pl  2048: compute:    4.023 secs   4 workers   2.0% memory
+##
+## Output
+##    (0,0) 5859767746560  (2047,2047) 1.80202496872953e+16  matmul examples
+##    (0,0) 5859767746560  (2047,2047) 1.8020249687295e+16   strassen examples
+##
+
+## -- Results for 4096x4096 ---------------------------------------------------
+##
+## matmult_pdl_b.pl   4096: compute:  172.220 secs   1 worker    1.2% memory
+## matmult_pdl_m.pl   4096: compute:   34.873 secs  24 workers  10.8% memory
+## matmult_pdl_n.pl   4096: compute:   22.941 secs  24 workers  10.8% memory
+## matmult_pdl_o.pl   4096: compute:   21.971 secs  24 workers  10.9% memory
+## matmult_pdl_p.pl   4096: compute:   34.253 secs  24 workers   1.8% memory
+## matmult_pdl_thr.pl 4096: compute:   33.664 secs  24 workers   2.0% memory
+## strassen_pdl_m.pl  4096: compute:   14.577 secs   7 workers  10.0% memory
+## strassen_pdl_n.pl  4096: compute:   14.384 secs   7 workers   9.3% memory
+##
+## strassen_pdl_h.pl  4096: compute:   24.608 secs   4 workers   7.8% memory
+##
+## Output
+##    (0,0) 93790635294720  (4095,4095) 5.76554474219245e+17  matmul examples
+##    (0,0) 93790635294720  (4095,4095) 5.76554474219244e+17  strassen example
+##
+
+## -- Results for 8192x8192 ---------------------------------------------------
+##
+## Previously, strassen_pdl_m.pl required > double memory utilization versus
+## matmult_pdl_n.pl. That's no longer the case with the updates applied to
+## MCE 1.403. Finally, I can now benchmark strassen_pdl_m.pl on the same box
+## at this size. If memory consumption is a priority, look at matmult_pdl_p.pl
+## (MCE driven) or matmult_pdl_thr.pl (PDL::Parallel::threads::SIMD driven).
+##
+## For 4096x4096, matmult_pdl_[n,o] did better than matmult_pdl_[m,p,thr].
+## It has reversed for 8192x8192. This is interesting. Furthermore, it's
+## amazing that matmult_pdl_m.pl (using do method to fetch/submit results)
+## keeps up with matmult_pdl_[p,thr].
+##
+## The updated strassen examples (MCE 1.403) is simply mind boggling.
+##
+## matmult_pdl_b.pl   8192: compute: 1388.001 secs   1 worker    4.8% memory
+## matmult_pdl_m.pl   8192: compute:  275.778 secs  24 workers  45.7% memory
+## matmult_pdl_n.pl   8192: compute:  455.516 secs  24 workers  43.2% memory
+## matmult_pdl_o.pl   8192: compute:  470.470 secs  24 workers  42.1% memory
+## matmult_pdl_p.pl   8192: compute:  269.506 secs  24 workers   5.5% memory
+## matmult_pdl_thr.pl 8192: compute:  274.152 secs  24 workers   6.9% memory
+## strassen_pdl_m.pl  8192: compute:   95.015 secs   7 workers  40.0% memory
+## strassen_pdl_n.pl  8192: compute:   92.477 secs   7 workers  37.2% memory
+##
+## strassen_pdl_h.pl  8192: compute:  161.786 secs   4 workers  31.6% memory
+##
+## Output
+##    (0,0) 1.50092500906803e+15  (8191,8191) 1.84482444489628e+19
+##
+
+Please note that the Strassen algorithm introduces rounding errors and noted
+above in the output. Most often, it's not a problem.
+
+One day, I will benchmark the same on an Intel Xeon E5-2660 dual-socket server
+with 32 workers.
+
+Regards,
+Mario
+
