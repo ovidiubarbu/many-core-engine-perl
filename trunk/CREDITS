@@ -2,6 +2,10 @@
 All the people reporting problems and fixes or additions. More specifically in
 alphabetical order by last name:
 
+###############################################################################
+ # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * #
+###############################################################################
+
 David Cantrell (DrHyde on perlmonks.org)
   For reporting on MCE hanging with cpan -t MCE under his environment. Also,
   thank you for providing me a guest account. I was able to reproduce the
@@ -26,8 +30,21 @@ David Mertens
 Joseph Ogulin
   For providing me the perl-MCE.spec file.
 
+Adam Sjøgren
+  For reporting on running /usr/bin/time mce_script.pl and pressing Ctrl-C
+  failing. The default behaviour in MCE::Signal is to call setpgrp. MCE 1.403
+  adds a new option to MCE::Signal to not call setpgrp. This also gives the
+  developer finer control as to where setpgrp should be called, if ever needed,
+  such as in the child process and not the manager process.
+  
+    use MCE::Signal qw(-no_setpgrp);
+    use MCE;
 
-Thank you all for your help,
+###############################################################################
+ # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * #
+###############################################################################
 
-Mario
+Thank you so very much,
+
+Mario :)
 
