@@ -2,7 +2,7 @@
 
 ##
 ## Usage:
-##    perl matmult_pdl_m.pl 1024         ## Default size 512
+##    perl matmult_pdl_o.pl 1024         ## Default size 512
 ##
 
 use strict;
@@ -13,14 +13,25 @@ use lib abs_path . "/../../lib";
 
 my $prog_name = $0; $prog_name =~ s{^.*[\\/]}{}g;
 
-use Storable qw(freeze thaw);
 use Time::HiRes qw(time);
 
 use PDL;
+use PDL::Parallel::threads qw(retrieve_pdls);
+
 use PDL::IO::Storable;                   ## Required for PDL + MCE combo
+use PDL::IO::FastRaw;                    ## Required for MMAP IO
 
 use MCE::Signal qw($tmp_dir -use_dev_shm);
 use MCE;
+
+my $pdl_version = sprintf("%20s", $PDL::VERSION); $pdl_version =~ s/_.*$//;
+my $chk_version = sprintf("%20s", '2.4.11');
+
+if ($^O eq 'MSWin32' && $pdl_version lt $chk_version) {
+   print "This script requires PDL 2.4.11 or later for PDL::IO::FastRaw\n";
+   print "to work using MMAP IO under the Windows environment.\n";
+   exit 1;
+}
 
 ###############################################################################
  # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * #
@@ -34,34 +45,26 @@ unless ($tam > 1) {
    exit 1;
 }
 
+my $cols = $tam;
+my $rows = $tam;
+
 my $step_size   = 32;
 my $max_workers =  8;
 
 my $mce = configure_and_spawn_mce($max_workers);
 
-my $cols = $tam;
-my $rows = $tam;
+writefraw(sequence($rows,$cols), "$tmp_dir/raw.b");
 
+my $b = mapfraw "$tmp_dir/raw.b", { ReadOnly => 1 };
 my $a = sequence $cols,$rows;
-my $b = sequence $rows,$cols;
 my $c = zeroes   $rows,$rows;
 
-open my $fh, '>', "$tmp_dir/cache.b";
-
-for my $j (0 .. $cols - 1) {
-   my $row_serialized = freeze $b->slice(":,($j)");
-   print $fh length($row_serialized), "\n", $row_serialized;
-}
-
-close $fh;
+$a->share_as('left_input');
+$b->share_as('right_input');
+$c->share_as('output');
 
 my $start = time();
-
-$mce->run(0, {
-   sequence  => { begin => 0, end => $rows - 1, step => $step_size },
-   user_args => { cols => $cols, rows => $rows, path_b => "$tmp_dir/cache.b" }
-} );
-
+$mce->run(0, { sequence => [ 0, $rows - 1, $step_size ] });
 my $end = time();
 
 $mce->shutdown();
@@ -78,61 +81,38 @@ print "\n\n";
  # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * #
 ###############################################################################
 
-sub get_rows_a {
-
-   my $start = $_[0];
-   my $stop  = $start + $step_size - 1;
-
-   $stop = $rows - 1 if ($stop >= $rows);
-
-   return $a->slice(":,$start:$stop");
-}
-
-sub insert_rows {
-
-   ins(inplace($c), $_[1], 0, $_[0]);
-
-   return;
-}
-
 sub configure_and_spawn_mce {
 
    my $max_workers = shift || 8;
 
    return MCE->new(
 
-      max_workers => $max_workers,
       job_delay   => ($tam > 2048) ? 0.031 : undef,
+      max_workers => $max_workers,
 
       user_begin  => sub {
          my ($self) = @_;
-         my $buffer;
 
-         my $cols = $self->{user_args}->{cols};
-         my $rows = $self->{user_args}->{rows};
-         my $b    = zeros $rows,$cols;
-
-         open my $fh, '<', $self->{user_args}->{path_b};
-         use PDL::NiceSlice;
-
-         for my $j (0 .. $self->{user_args}->{cols} - 1) {
-            read $fh, $buffer, <$fh>;
-            $b(:,$j) .= thaw $buffer;
-         }
-
-         no PDL::NiceSlice;
-         close $fh;
-
-         $self->{matrix_b} = $b;
+         ( $self->{l}, $self->{r}, $self->{o} ) = retrieve_pdls(
+            'left_input', 'right_input', 'output'
+         );
       },
 
       user_func   => sub {
          my ($self, $seq_n, $chunk_id) = @_;
 
-         my $a_i = $self->do('get_rows_a', $seq_n);
-         my $result_i = $a_i x $self->{matrix_b};
+         my $l = $self->{l};
+         my $r = $self->{r};
+         my $o = $self->{o};
 
-         $self->do('insert_rows', $seq_n, $result_i);
+         my $start = $seq_n;
+         my $stop  = $start + $step_size - 1;
+
+         $stop = $rows - 1 if ($stop >= $rows);
+
+         use PDL::NiceSlice;
+         $o(:,$start:$stop) .= $l(:,$start:$stop) x $r;
+         no PDL::NiceSlice;
 
          return;
       }

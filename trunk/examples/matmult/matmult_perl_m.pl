@@ -2,7 +2,7 @@
 
 ##
 ## Usage:
-##    perl matmult_perl_m.pl 1024  ## Default size is 512:  $c = $a * $b
+##    perl matmult_perl_m.pl 1024        ## Default size 512
 ##
 
 use strict;
