@@ -13,21 +13,18 @@ use warnings;
 use Fcntl qw( :flock );
 use base qw( Exporter );
 
-require File::Path;
-
 our ($has_threads, $main_proc_id, $prog_name);
 our ($display_die_with_localtime, $display_warn_with_localtime);
 
 BEGIN {
-   ## Sets the current process group for the current process.
-   setpgrp(0,0) if ($^O ne 'MSWin32');
+   require File::Path;
 
    $main_proc_id =  $$;
    $prog_name    =  $0;
    $prog_name    =~ s{^.*[\\/]}{}g;
 }
 
-our $VERSION = '1.402';
+our $VERSION = '1.403';
 $VERSION = eval $VERSION;
 
 our $tmp_dir = undef;
@@ -54,21 +51,25 @@ my $_loaded;
 sub import {
 
    my $class = shift;
-
    return if ($_loaded++);
 
-   my $_use_dev_shm = 0;
    my @_export_args = ();
+   my $_no_setpgrp  = 0;
+   my $_use_dev_shm = 0;
 
    while (my $_arg = shift) {
-      $_use_dev_shm  = _flag() and next if ($_arg eq '-use_dev_shm');
       $_keep_tmp_dir = _flag() and next if ($_arg eq '-keep_tmp_dir');
+      $_no_setpgrp   = _flag() and next if ($_arg eq '-no_setpgrp');
+      $_use_dev_shm  = _flag() and next if ($_arg eq '-use_dev_shm');
       _usage() if ($_arg =~ /^-/);
       push @_export_args, $_arg;
    }
 
    local $Exporter::ExportLevel = 1;
    Exporter::import($class, @_export_args);
+
+   ## Sets the current process group for the current process.
+   setpgrp(0,0) if ($_no_setpgrp == 0 && $^O ne 'MSWin32');
 
    my ($_tmp_dir_base, $_count);
 
@@ -423,11 +424,11 @@ MCE::Signal - Provides tmp_dir creation & signal handling for Many-Core Engine.
 
 =head1 VERSION
 
-This document describes MCE::Signal version 1.402
+This document describes MCE::Signal version 1.403
 
 =head1 SYNOPSIS
 
- use MCE::Signal qw( [-use_dev_shm] [-keep_tmp_dir] );
+ use MCE::Signal qw( [-keep_tmp_dir] [-no_setpgrp] [-use_dev_shm] );
 
 =head1 DESCRIPTION
 
@@ -442,6 +443,19 @@ The location of temp dir resides under $ENV{TEMP} if defined, otherwise
 
 The temp dir resides under $ENV{TEMP}/mce/ when running Perl on Microsoft
 Windows.
+
+By default, MCE::Signal calls setpgrp for the process including MCE::Signal
+or MCE. Pass -no_setpgrp to MCE::Signal when wanting finer control on placement
+of setpgrp such as inside a user_begin block or if not wanting setpgrp to be
+called at all.
+
+ ## Running /usr/bin/time mce_script.pl will not terminate with Ctrl-C.
+ ## The built-in time command from some shells (e.g., bash) works fine.
+ ## In this case, pass -no_setpgrp if wanting to time your script with
+ ## /usr/bin/time instead of the shell built-in.
+
+ use MCE::Signal qw(-no_setpgrp);
+ use MCE;
 
 Nothing is exported by default. Exportable are 1 variable and 2 subroutines:
 
