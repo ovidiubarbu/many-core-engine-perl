@@ -61,7 +61,7 @@ BEGIN {
 ## mentioned the fix for his PDL::Parallel::threads module. The CLONE_SKIP is
 ## also needed here in order for PDL + MCE threads to not crash during exiting.
 ## Thanks goes to David !!! I would have definitely struggled with this one.
-## 
+##
 {
    no warnings 'redefine';
    sub PDL::CLONE_SKIP { 1 }
@@ -91,7 +91,7 @@ sub import {
    }
 }
 
-our $VERSION = '1.402';
+our $VERSION = '1.403';
 $VERSION = eval $VERSION;
 
 ###############################################################################
@@ -969,15 +969,15 @@ sub send {
 
    $self->{_send_cnt} = 0 unless (defined $self->{_send_cnt});
 
-   _croak("MCE::send: Sending greater than # of workers is not allowed")
-      if ($self->{_send_cnt} >= $self->{_task}->[0]->{_total_workers});
-
    @_ = ();
 
    ## -------------------------------------------------------------------------
 
    ## Spawn workers.
    $self->spawn() if ($self->{_spawned} == 0);
+
+   _croak("MCE::send: Sending greater than # of workers is not allowed")
+      if ($self->{_send_cnt} >= $self->{_task}->[0]->{_total_workers});
 
    local $SIG{__DIE__} = \&_die; local $SIG{__WARN__} = \&_warn;
 
@@ -1566,6 +1566,8 @@ sub _validate_args_s {
 
       my MCE $self = $_[0]; $_value = $_[1]; $_data_ref = $_[2];
 
+      @_ = ();
+
       die "Improper use of function call" unless ($_send_init_called);
 
       local $\ = undef; my $_buffer;
@@ -1588,6 +1590,8 @@ sub _validate_args_s {
             print $_OUT_W_SOCK OUTPUT_A_CBK, $LF;
             print $_DAT_W_SOCK "$_want_id${LF}$_value${LF}";
             print $_DAT_W_SOCK "$_len${LF}", $_buffer;
+
+            undef $_buffer;
          }
          else {                                   ## Scalar >> Callback
             $_len = length($_data_ref->[0]);
@@ -1603,6 +1607,8 @@ sub _validate_args_s {
          print $_OUT_W_SOCK OUTPUT_N_CBK, $LF;
          print $_DAT_W_SOCK "$_want_id${LF}$_value${LF}";
       }
+
+      $_data_ref = '';
 
       ## Crossover: Receive return value
 
@@ -1889,6 +1895,8 @@ sub _validate_args_s {
 
          read $_DAT_R_SOCK, $_buffer, $_len;
          my $_data_ref = thaw($_buffer);
+
+         undef $_buffer;
 
          local $\ = $_O_SEP; local $/ = $_I_SEP;
          no strict 'refs';
