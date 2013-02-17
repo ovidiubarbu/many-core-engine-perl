@@ -1,5 +1,5 @@
 Name:           perl-MCE
-Version:        1.402
+Version:        1.403
 Release:        1%{?dist}
 Summary:        Many-Core Engine for Perl. Provides parallel processing capabilities.
 License:        CHECK(Distributable)
@@ -56,6 +56,22 @@ rm -rf $RPM_BUILD_ROOT
 %{_mandir}/man3/*
 
 %changelog
+* Sun Feb 17 2013 Mario Roy 1.403-1
+- Wrap sub PDL::CLONE_SKIP into a no warnings 'redefine' block
+  MCE now works with PDL::Parallel::threads without any warnings
+- Added missing examples/matmult/matmult_pdl_n.pl to MANIFEST
+- Refactored strassen examples, memory consumption reduced by > than 50%
+- Added matmult_pdl_o.pl -- uses PDL::Parallel::threads to share matrices
+- Added matmult_pdl_p.pl -- matrix b is read from shared memory, not mmap
+- Added strassen_pdl_n.pl -- additional improvements to memory reduction
+- Added strassen_pdl_h.pl -- shown running with 4 workers (half and half)
+- Re-ran matrix multiplication examples and updated results in README file
+- Added -no_setpgrp option to MCE::Signal.pm 
+  Ctrl-C does not respond when running /usr/bin/time mce_script.pl
+- Added undef $buffer in a couple of places within MCE.pm
+- Added David Mertens and Adam Sjøgren to CREDITS 
+- The send method now checks if sending > total workers after spawning
+  not before
 * Thu Feb 14 2013 Mario Roy 1.402-1
 - Updated matrix multiplication examples including README
 - Added examples/matmult/matmult_pdl_n.pl

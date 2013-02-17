@@ -5,7 +5,7 @@ MCE - Many-Core Engine for Perl. Provides parallel processing capabilities.
 
 =head1 VERSION
 
-This document describes MCE version 1.402
+This document describes MCE version 1.403
 
 =head1 DESCRIPTION
 
@@ -20,6 +20,25 @@ Both chunking and input are optional in MCE. One can simply use MCE to
 have many workers run in parallel.
 
 =head1 SYNOPSIS
+
+   use MCE;
+
+   my $mce = MCE->new(
+      max_workers => 4,
+      user_func => sub {
+         my ($self) = @_;
+         print "Hello from ", $self->wid, "\n";
+      }
+   );
+
+   $mce->run;
+
+   -- Output
+
+   Hello from 3
+   Hello from 1
+   Hello from 2
+   Hello from 4
 
 =head2 new ( [ options ] )
 
