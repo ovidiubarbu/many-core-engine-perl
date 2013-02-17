@@ -23,7 +23,7 @@ WriteMakefile(
       'Storable'   => 2.04
    },
 
-   VERSION        => '1.402',
+   VERSION        => '1.403',
 
    (($ExtUtils::MakeMaker::VERSION lt '6.25') ?
       (PL_FILES => { }) : ()),
@@ -56,11 +56,11 @@ WriteMakefile(
          provides => {
             'MCE' => {
                'file'    => 'lib/MCE.pm',
-               'version' => '1.402'
+               'version' => '1.403'
             },
             'MCE::Signal' => {
                'file'    => 'lib/MCE/Signal.pm',
-               'version' => '1.402'
+               'version' => '1.403'
             }
          }
       }) : ()),
