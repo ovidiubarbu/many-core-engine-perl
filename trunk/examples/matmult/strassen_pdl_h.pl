@@ -2,7 +2,7 @@
 
 ##
 ## Usage:
-##    perl strassen_pdl_m.pl 1024        ## Default size 512
+##    perl strassen_pdl_h.pl 1024        ## Default size 512
 ##
 
 use strict;
@@ -69,7 +69,7 @@ sub store_result {
 sub configure_and_spawn_mce {
 
    return MCE->new(
-      max_workers => 7,
+      max_workers => 4,
 
       user_func   => sub {
          my $self = $_[0];
@@ -112,38 +112,39 @@ sub strassen {
    my ($b11, $b12, $b21, $b22) = divide_m($b, $nTam);
 
    my $t1 = zeroes $nTam,$nTam;
-   my $t2 = zeroes $nTam,$nTam;
-
-   sum_m($a11, $a22, $t1, $nTam);
-   sum_m($b11, $b22, $t2, $nTam);
-   $mce->send([ $t1, $t2, 1, $nTam ]);
 
    sum_m($a21, $a22, $t1, $nTam);
    $mce->send([ $t1, $b11, 2, $nTam ]);
 
-   subtract_m($b12, $b22, $t2, $nTam);
-   $mce->send([ $a11, $t2, 3, $nTam ]);
+   subtract_m($b12, $b22, $t1, $nTam);
+   $mce->send([ $a11, $t1, 3, $nTam ]);
 
-   subtract_m($b21, $b11, $t2, $nTam);
-   $mce->send([ $a22, $t2, 4, $nTam ]);
+   subtract_m($b21, $b11, $t1, $nTam);
+   $mce->send([ $a22, $t1, 4, $nTam ]);
 
    sum_m($a11, $a12, $t1, $nTam);
    $mce->send([ $t1, $b22, 5, $nTam ]);
 
-   subtract_m($a21, $a11, $t1, $nTam);
-   sum_m($b11, $b12, $t2, $nTam);
-   $mce->send([ $t1, $t2, 6, $nTam ]);
+   $mce->run(0);     ## Do not shutdown workers  ## Process the 1st half
 
    subtract_m($a12, $a22, $t1, $nTam);
-   sum_m($b21, $b22, $t2, $nTam);
-   $mce->send([ $t1, $t2, 7, $nTam ]);
+   sum_m($b21, $b22, $a12, $nTam);               ## Reuse $a12 as $t2
+   $mce->send([ $t1, $a12, 7, $nTam ]);          ## Reuse $a12 as $t2
 
-   $mce->run();
+   subtract_m($a21, $a11, $t1, $nTam);
+   sum_m($b11, $b12, $a12, $nTam);               ## Reuse $a12 as $t2
+   $mce->send([ $t1, $a12, 6, $nTam ]);          ## Reuse $a12 as $t2
 
-   $p1 = $p[1]; $p2 = $p[2]; $p3 = $p[3]; $p4 = $p[4];
-   $p5 = $p[5]; $p6 = $p[6]; $p7 = $p[7];
+   sum_m($a11, $a22, $t1, $nTam);
+   sum_m($b11, $b22, $a12, $nTam);               ## Reuse $a12 as $t2
+   $mce->send([ $t1, $a12, 1, $nTam ]);          ## Reuse $a12 as $t2
 
-   calc_m($p1, $p2, $p3, $p4, $p5, $p6, $p7, $c, $nTam);
+   $mce->run();      ## Reuse existing workers   ## Process the 2nd half
+
+   $p2 = $p[2]; $p3 = $p[3]; $p4 = $p[4]; $p5 = $p[5];
+   $p1 = $p[1]; $p6 = $p[6]; $p7 = $p[7];
+
+   calc_m($p1, $p2, $p3, $p4, $p5, $p6, $p7, $c, $nTam, $t1, $a12);
 
    return;
 }
@@ -167,12 +168,8 @@ sub strassen_r {
 
    my $nTam = $tam / 2;
 
-   my $t1 = zeroes $nTam,$nTam;  my $t2 = zeroes $nTam,$nTam;
-
-   my $p1 = zeroes $nTam,$nTam;  my $p2 = zeroes $nTam,$nTam;
-   my $p3 = zeroes $nTam,$nTam;  my $p4 = zeroes $nTam,$nTam;
-   my $p5 = zeroes $nTam,$nTam;  my $p6 = zeroes $nTam,$nTam;
-   my $p7 = zeroes $nTam,$nTam;
+   my $p2 = zeroes $nTam,$nTam; my $p3 = zeroes $nTam,$nTam;
+   my $p4 = zeroes $nTam,$nTam; my $p5 = zeroes $nTam,$nTam;
 
    ## Divide the matrices into 4 sub-matrices
 
@@ -181,33 +178,58 @@ sub strassen_r {
 
    ## Calculate p1 to p7
 
-   sum_m($a11, $a22, $t1, $nTam);
-   sum_m($b11, $b22, $t2, $nTam);
-   strassen_r($t1, $t2, $p1, $nTam);
+   my $t1 = zeroes $nTam,$nTam;
 
    sum_m($a21, $a22, $t1, $nTam);
    strassen_r($t1, $b11, $p2, $nTam);
 
-   subtract_m($b12, $b22, $t2, $nTam);
-   strassen_r($a11, $t2, $p3, $nTam);
+   subtract_m($b12, $b22, $t1, $nTam);
+   strassen_r($a11, $t1, $p3, $nTam);
 
-   subtract_m($b21, $b11, $t2, $nTam);
-   strassen_r($a22, $t2, $p4, $nTam);
+   subtract_m($b21, $b11, $t1, $nTam);
+   strassen_r($a22, $t1, $p4, $nTam);
 
    sum_m($a11, $a12, $t1, $nTam);
    strassen_r($t1, $b22, $p5, $nTam);
 
+         subtract_m($p4, $p5, $t1, $nTam);       ## c11
+         ins(inplace($c), $t1, 0, 0);
+
+         sum_m($p3, $p5, $t1, $nTam);            ## c12
+         ins(inplace($c), $t1, $nTam, 0);
+
+         sum_m($p2, $p4, $t1, $nTam);            ## c21
+         ins(inplace($c), $t1, 0, $nTam);
+
+         subtract_m($p3, $p2, $t1, $nTam);       ## c22
+         ins(inplace($c), $t1, $nTam, $nTam);
+
+   my $t2 = zeroes $nTam,$nTam;
+
+   sum_m($a11, $a22, $t1, $nTam);
+   sum_m($b11, $b22, $t2, $nTam);
+   strassen_r($t1, $t2, $p2, $nTam);             ## Reuse $p2 to store p1
+
    subtract_m($a21, $a11, $t1, $nTam);
    sum_m($b11, $b12, $t2, $nTam);
-   strassen_r($t1, $t2, $p6, $nTam);
+   strassen_r($t1, $t2, $p3, $nTam);             ## Reuse $p3 to store p6
 
    subtract_m($a12, $a22, $t1, $nTam);
    sum_m($b21, $b22, $t2, $nTam);
-   strassen_r($t1, $t2, $p7, $nTam);
+   strassen_r($t1, $t2, $p4, $nTam);             ## Reuse $p4 to store p7
 
-   ## Calculate and group into a single matrix $c
+         my $n1 = $nTam - 1;
+         my $n2 = $nTam + $n1;
 
-   calc_m($p1, $p2, $p3, $p4, $p5, $p6, $p7, $c, $nTam);
+         sum_m($p2, $p4, $t1, $nTam);            ## c11
+         use PDL::NiceSlice;
+         $c(0:$n1,0:$n1) += $t1;
+         no PDL::NiceSlice;
+
+         sum_m($p2, $p3, $t1, $nTam);            ## c22
+         use PDL::NiceSlice;
+         $c($nTam:$n2,$nTam:$n2) += $t1;
+         no PDL::NiceSlice;
 
    return;
 }
@@ -237,8 +259,7 @@ sub calc_m {
    my $p5  = $_[4]; my $p6 = $_[5]; my $p7 = $_[6]; my $c  = $_[7];
    my $tam = $_[8];
 
-   my $t1  = zeroes $tam,$tam;
-   my $t2  = zeroes $tam,$tam;
+   my $t1  = $_[9]; my $t2 = $_[10];
 
    sum_m($p1, $p4, $t1, $tam);
    sum_m($t1, $p7, $t2, $tam);
