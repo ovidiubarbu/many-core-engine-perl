@@ -69,6 +69,7 @@ sub store_result {
 sub configure_and_spawn_mce {
 
    return MCE->new(
+
       max_workers => 7,
 
       user_func   => sub {
@@ -190,17 +191,17 @@ sub strassen_r {
    sum_m($a11, $a12, $t1, $nTam);
    strassen_r($t1, $b22, $p5, $nTam);
 
-         subtract_m($p4, $p5, $t1, $nTam);       ## c11
-         ins(inplace($c), $t1, 0, 0);
+   subtract_m($p4, $p5, $t1, $nTam);             ## c11
+   ins(inplace($c), $t1, 0, 0);
 
-         sum_m($p3, $p5, $t1, $nTam);            ## c12
-         ins(inplace($c), $t1, $nTam, 0);
+   sum_m($p3, $p5, $t1, $nTam);                  ## c12
+   ins(inplace($c), $t1, $nTam, 0);
 
-         sum_m($p2, $p4, $t1, $nTam);            ## c21
-         ins(inplace($c), $t1, 0, $nTam);
+   sum_m($p2, $p4, $t1, $nTam);                  ## c21
+   ins(inplace($c), $t1, 0, $nTam);
 
-         subtract_m($p3, $p2, $t1, $nTam);       ## c22
-         ins(inplace($c), $t1, $nTam, $nTam);
+   subtract_m($p3, $p2, $t1, $nTam);             ## c22
+   ins(inplace($c), $t1, $nTam, $nTam);
 
    my $t2 = zeroes $nTam,$nTam;
 
@@ -216,18 +217,18 @@ sub strassen_r {
    sum_m($b21, $b22, $t2, $nTam);
    strassen_r($t1, $t2, $p4, $nTam);             ## Reuse $p4 to store p7
 
-         my $n1 = $nTam - 1;
-         my $n2 = $nTam + $n1;
+   my $n1 = $nTam - 1;
+   my $n2 = $nTam + $n1;
 
-         sum_m($p2, $p4, $t1, $nTam);            ## c11
-         use PDL::NiceSlice;
-         $c(0:$n1,0:$n1) += $t1;
-         no PDL::NiceSlice;
+   sum_m($p2, $p4, $t1, $nTam);                  ## c11
+   use PDL::NiceSlice;
+   $c(0:$n1,0:$n1) += $t1;
+   no PDL::NiceSlice;
 
-         sum_m($p2, $p3, $t1, $nTam);            ## c22
-         use PDL::NiceSlice;
-         $c($nTam:$n2,$nTam:$n2) += $t1;
-         no PDL::NiceSlice;
+   sum_m($p2, $p3, $t1, $nTam);                  ## c22
+   use PDL::NiceSlice;
+   $c($nTam:$n2,$nTam:$n2) += $t1;
+   no PDL::NiceSlice;
 
    return;
 }

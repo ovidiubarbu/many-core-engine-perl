@@ -69,6 +69,7 @@ sub store_result {
 sub configure_and_spawn_mce {
 
    return MCE->new(
+
       max_workers => 7,
 
       user_func   => sub {
