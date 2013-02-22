@@ -2,7 +2,7 @@
 
 ##
 ## Usage:
-##    perl strassen_pdl_h.pl 1024        ## Default size 512
+##    perl strassen_pdl_o.pl 1024        ## Default size 512
 ##
 
 use strict;
@@ -33,15 +33,25 @@ unless (is_power_of_two($tam)) {
    exit 1;
 }
 
-my $mce = configure_and_spawn_mce() if ($tam > 128);
+my (@mce_a, $lvl);
+
+if ($tam > 128) {
+   $lvl = 2;  $mce_a[$_] = configure_and_spawn_mce() for (1 .. 7);
+   $lvl = 1;  $mce_a[ 0] = configure_and_spawn_mce();
+}
 
 my $a = sequence $tam,$tam;
 my $b = sequence $tam,$tam;
 my $c = zeroes   $tam,$tam;
 
 my $start = time();
-strassen($a, $b, $c, $tam, $mce);
+strassen($a, $b, $c, $tam, $mce_a[0]);
 my $end = time();
+
+if (@mce_a > 0) {
+   $mce_a[ 0]->shutdown;
+   $mce_a[$_]->shutdown for (1 .. 7);
+}
 
 printf STDERR "\n## $prog_name $tam: compute time: %0.03f secs\n\n",
    $end - $start;
@@ -70,7 +80,7 @@ sub configure_and_spawn_mce {
 
    return MCE->new(
 
-      max_workers => 4,
+      max_workers => 7,
 
       user_func   => sub {
          my $self = $_[0];
@@ -78,7 +88,7 @@ sub configure_and_spawn_mce {
          return unless (defined $data);
          my $tam  = $data->[3];
          my $result = zeroes $tam,$tam;
-         strassen_r($data->[0], $data->[1], $result, $tam);
+         strassen_r($data->[0], $data->[1], $result, $tam, $self);
          $self->do('store_result', $data->[2], $result);
       }
 
@@ -126,8 +136,6 @@ sub strassen {
    sum_m($a11, $a12, $t1, $nTam);
    $mce->send([ $t1, $b22, 5, $nTam ]);
 
-   $mce->run(0);     ## Do not shutdown workers  ## Process the 1st half
-
    subtract_m($a12, $a22, $t1, $nTam);
    sum_m($b21, $b22, $a12, $nTam);               ## Reuse $a12 as $t2
    $mce->send([ $t1, $a12, 7, $nTam ]);          ## Reuse $a12 as $t2
@@ -140,7 +148,7 @@ sub strassen {
    sum_m($b11, $b22, $a12, $nTam);               ## Reuse $a12 as $t2
    $mce->send([ $t1, $a12, 1, $nTam ]);          ## Reuse $a12 as $t2
 
-   $mce->run();      ## Reuse existing workers   ## Process the 2nd half
+   $mce->run(0);
 
    $p2 = $p[2]; $p3 = $p[3]; $p4 = $p[4]; $p5 = $p[5];
    $p1 = $p[1]; $p6 = $p[6]; $p7 = $p[7];
@@ -156,12 +164,17 @@ sub strassen {
 
 sub strassen_r {
 
-   my $a = $_[0]; my $b = $_[1]; my $c = $_[2]; my $tam = $_[3];
+   my $a   = $_[0]; my $b = $_[1]; my $c = $_[2]; my $tam = $_[3];
+   my $mce = $_[4];
 
    ## Perform the classic multiplication when matrix is <= 128 X 128
 
    if ($tam <= 128) {
       ins(inplace($c), $a x $b);
+      return;
+   }
+   elsif ($lvl < 2 && defined $mce) {
+      strassen($a, $b, $c, $tam, $mce_a[ $mce->wid ]);
       return;
    }
 
@@ -193,17 +206,17 @@ sub strassen_r {
    sum_m($a11, $a12, $t1, $nTam);
    strassen_r($t1, $b22, $p5, $nTam);
 
-         subtract_m($p4, $p5, $t1, $nTam);       ## c11
-         ins(inplace($c), $t1, 0, 0);
+   subtract_m($p4, $p5, $t1, $nTam);             ## c11
+   ins(inplace($c), $t1, 0, 0);
 
-         sum_m($p3, $p5, $t1, $nTam);            ## c12
-         ins(inplace($c), $t1, $nTam, 0);
+   sum_m($p3, $p5, $t1, $nTam);                  ## c12
+   ins(inplace($c), $t1, $nTam, 0);
 
-         sum_m($p2, $p4, $t1, $nTam);            ## c21
-         ins(inplace($c), $t1, 0, $nTam);
+   sum_m($p2, $p4, $t1, $nTam);                  ## c21
+   ins(inplace($c), $t1, 0, $nTam);
 
-         subtract_m($p3, $p2, $t1, $nTam);       ## c22
-         ins(inplace($c), $t1, $nTam, $nTam);
+   subtract_m($p3, $p2, $t1, $nTam);             ## c22
+   ins(inplace($c), $t1, $nTam, $nTam);
 
    my $t2 = zeroes $nTam,$nTam;
 
@@ -219,18 +232,18 @@ sub strassen_r {
    sum_m($b21, $b22, $t2, $nTam);
    strassen_r($t1, $t2, $p4, $nTam);             ## Reuse $p4 to store p7
 
-         my $n1 = $nTam - 1;
-         my $n2 = $nTam + $n1;
+   my $n1 = $nTam - 1;
+   my $n2 = $nTam + $n1;
 
-         sum_m($p2, $p4, $t1, $nTam);            ## c11
-         use PDL::NiceSlice;
-         $c(0:$n1,0:$n1) += $t1;
-         no PDL::NiceSlice;
+   sum_m($p2, $p4, $t1, $nTam);                  ## c11
+   use PDL::NiceSlice;
+   $c(0:$n1,0:$n1) += $t1;
+   no PDL::NiceSlice;
 
-         sum_m($p2, $p3, $t1, $nTam);            ## c22
-         use PDL::NiceSlice;
-         $c($nTam:$n2,$nTam:$n2) += $t1;
-         no PDL::NiceSlice;
+   sum_m($p2, $p3, $t1, $nTam);                  ## c22
+   use PDL::NiceSlice;
+   $c($nTam:$n2,$nTam:$n2) += $t1;
+   no PDL::NiceSlice;
 
    return;
 }
