@@ -139,12 +139,17 @@ sub strassen {
    sum_m($b21, $b22, $t2, $nTam);
    $mce->send([ $t1, $t2, 7, $nTam ]);
 
+   undef $a11;             undef $a21; undef $a22;
+   undef $b11; undef $b12; undef $b21; undef $b22;
+
    $mce->run();
 
    $p1 = $p[1]; $p2 = $p[2]; $p3 = $p[3]; $p4 = $p[4];
    $p5 = $p[5]; $p6 = $p[6]; $p7 = $p[7];
 
    calc_m($p1, $p2, $p3, $p4, $p5, $p6, $p7, $c, $nTam);
+
+   @p = ();
 
    return;
 }
