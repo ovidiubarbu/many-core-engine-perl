@@ -56,6 +56,10 @@
       Divide-and-conquer implementation using Strassen's algorithm
       Same as strassen_pdl_n.pl, but double-level parallelization
 
+-- strassen_pdl_p.pl
+      Divide-and-conquer implementation using Strassen's algorithm
+      Same as strassen_pdl_o.pl, but combines both levels into one
+
 -- strassen_pdl_h.pl
       Divide-and-conquer implementation using Strassen's algorithm
       Same as strassen_pdl_n.pl, but running half at a time
@@ -84,9 +88,11 @@
 ## matmult_pdl_o.pl   1024: compute:    0.482 secs  24 workers
 ## matmult_pdl_p.pl   1024: compute:    0.580 secs  24 workers
 ## matmult_pdl_thr.pl 1024: compute:    0.730 secs  24 workers
+##
 ## strassen_pdl_m.pl  1024: compute:    0.512 secs   7 workers
 ## strassen_pdl_n.pl  1024: compute:    0.503 secs   7 workers
-## strassen_pdl_o.pl  1024: compute:    0.510 secs   7 + 49
+## strassen_pdl_o.pl  1024: compute:    0.510 secs  56 workers
+## strassen_pdl_p.pl  1024: compute:    0.511 secs  49 workers
 ##
 ## matmult_perl_m.pl  1024: compute:   23.552 secs  24 workers
 ## strassen_perl_m.pl 1024: compute:   45.408 secs   7 workers
@@ -104,9 +110,11 @@
 ## matmult_pdl_o.pl   2048: compute:    2.751 secs  24 workers   3.0% memory
 ## matmult_pdl_p.pl   2048: compute:    4.313 secs  24 workers   0.9% memory
 ## matmult_pdl_thr.pl 2048: compute:    4.524 secs  24 workers   0.8% memory
+##
 ## strassen_pdl_m.pl  2048: compute:    2.522 secs   7 workers   2.7% memory
 ## strassen_pdl_n.pl  2048: compute:    2.496 secs   7 workers   2.0% memory
-## strassen_pdl_o.pl  2048: compute:    2.437 secs   7 + 49      7.1% memory
+## strassen_pdl_o.pl  2048: compute:    2.437 secs  56 workers   7.1% memory
+## strassen_pdl_p.pl  2048: compute:    2.360 secs  49 workers   4.6% memory
 ##
 ## matmult_perl_m.pl  2048: compute:  190.302 secs  24 workers   9.7% memory
 ## strassen_perl_m.pl 2048: compute:  321.655 secs   7 workers   8.6% memory
@@ -125,9 +133,11 @@
 ## matmult_pdl_o.pl   4096: compute:   21.971 secs  24 workers  10.9% memory
 ## matmult_pdl_p.pl   4096: compute:   34.253 secs  24 workers   1.8% memory
 ## matmult_pdl_thr.pl 4096: compute:   33.664 secs  24 workers   2.0% memory
+##
 ## strassen_pdl_m.pl  4096: compute:   14.577 secs   7 workers  10.0% memory
 ## strassen_pdl_n.pl  4096: compute:   14.384 secs   7 workers   9.3% memory
-## strassen_pdl_o.pl  4096: compute:   12.996 secs   7 + 49     23.6% memory
+## strassen_pdl_o.pl  4096: compute:   12.996 secs  56 workers  23.6% memory
+## strassen_pdl_p.pl  4096: compute:   12.557 secs  49 workers  15.1% memory
 ##
 ## strassen_pdl_h.pl  4096: compute:   24.608 secs   4 workers   7.8% memory
 ##
@@ -149,7 +159,7 @@
 ## amazing that matmult_pdl_m.pl (using do method to fetch/submit results)
 ## keeps up with matmult_pdl_[p,thr].
 ##
-## The updated strassen examples (MCE 1.403) is simply mind boggling.
+## The updated strassen examples in MCE 1.403+ are simply mind boggling.
 ##
 ## matmult_pdl_b.pl   8192: compute: 1388.001 secs   1 worker    4.8% memory
 ## matmult_pdl_m.pl   8192: compute:  275.778 secs  24 workers  45.7% memory
@@ -157,8 +167,11 @@
 ## matmult_pdl_o.pl   8192: compute:  470.470 secs  24 workers  42.1% memory
 ## matmult_pdl_p.pl   8192: compute:  269.506 secs  24 workers   5.5% memory
 ## matmult_pdl_thr.pl 8192: compute:  274.152 secs  24 workers   6.9% memory
+##
 ## strassen_pdl_m.pl  8192: compute:   95.015 secs   7 workers  40.0% memory
 ## strassen_pdl_n.pl  8192: compute:   92.477 secs   7 workers  37.2% memory
+## strassen_pdl_o.pl  8192: compute:   79.309 secs  56 workers  83.4% memory
+## strassen_pdl_p.pl  8192: compute:   73.246 secs  49 workers  54.3% memory
 ##
 ## strassen_pdl_h.pl  8192: compute:  161.786 secs   4 workers  31.6% memory
 ##
