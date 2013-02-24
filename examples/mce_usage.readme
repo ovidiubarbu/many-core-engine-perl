@@ -486,6 +486,15 @@
    my $chunk_size = $self->chunk_size();
 
    -------------------------------------------------------------------------
+   sess_dir ( void )
+   -------------------------------------------------------------------------
+
+   ## Returns the session directory used by the MCE instance.
+   ## This is defined during spawning and removed during shutdown.
+
+   my $sess_dir = $self->sess_dir();
+
+   -------------------------------------------------------------------------
    task_id ( void )
    -------------------------------------------------------------------------
 
