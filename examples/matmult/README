@@ -2,10 +2,8 @@
 ## Note: I'm most thankful for the code sample from David Mertens.
 ## https://groups.google.com/forum/#!topic/the-quantified-onion/2cSWXogt5Xs
 ##
-## I'm quite new to PDL. David's example put me on the right track.
-##
-## David has an interesting module called PDL::Parallel::threads to help
-## share PDL data across Perl threads. MCE, on the other hand, has the
+## David has an interesting module called PDL::Parallel::threads which
+## shares PDL data across Perl threads. MCE, on the other hand, has the
 ## "do" method which is used to obtain data from the manager process as
 ## well as send results back as often as needed.
 ##
@@ -204,7 +202,7 @@
 ##    (0,0) 1.50092500906803e+15  (8191,8191) 1.84482444489628e+19
 ##
 
-## -- Results for 8192x8192 on a 32-way box -----------------------------------
+## -- Results for 8192x8192 on a 32-way system --------------------------------
 ##
 ## System contains 2x Intel E5-2660 processors with 128 GB 1600 MHz RAM.
 ##
