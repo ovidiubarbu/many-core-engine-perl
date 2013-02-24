@@ -21,6 +21,7 @@ examples/matmult/matmult_pdl_m.pl
 examples/matmult/matmult_pdl_n.pl
 examples/matmult/matmult_pdl_o.pl
 examples/matmult/matmult_pdl_p.pl
+examples/matmult/matmult_pdl_q.pl
 examples/matmult/matmult_perl_m.pl
 examples/matmult/strassen_pdl_h.pl
 examples/matmult/strassen_pdl_m.pl
