@@ -87,8 +87,8 @@ sub configure_and_spawn_mce {
 
    return MCE->new(
 
-      job_delay   => ($tam > 2048) ? 0.031 : undef,
       max_workers => $max_workers,
+      job_delay   => ($tam > 2048) ? 0.031 : undef,
 
       user_begin  => sub {
          my ($self) = @_;

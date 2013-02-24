@@ -40,7 +40,7 @@ my (@mce_a, $lvl);
 
 if ($tam > 128) {
    $lvl = 2;  $mce_a[$_] = configure_and_spawn_mce() for (1 .. 7);
-   $lvl = 1;  $mce_a[ 0] = configure_and_spawn_mce();
+   $lvl = 1;  $mce_a[$_] = configure_and_spawn_mce() for (0 .. 0);
 }
 
 my $a = sequence $tam,$tam;
@@ -52,7 +52,7 @@ strassen($a, $b, $c, $tam, $mce_a[0]);
 my $end = time();
 
 if (@mce_a > 0) {
-   $mce_a[ 0]->shutdown;
+   $mce_a[$_]->shutdown for (0 .. 0);
    $mce_a[$_]->shutdown for (1 .. 7);
 }
 
@@ -89,9 +89,11 @@ sub configure_and_spawn_mce {
          my $self = $_[0];
          my $data = $self->{user_data};
          return unless (defined $data);
-         my $tam  = $data->[3];
+
+         my $tam = $data->[3];
          my $result = zeroes $tam,$tam;
          strassen_r($data->[0], $data->[1], $result, $tam, $self);
+
          $self->do('store_result', $data->[2], $result);
       }
 
@@ -112,7 +114,7 @@ sub is_power_of_two {
 sub strassen {
 
    my $a   = $_[0]; my $b = $_[1]; my $c = $_[2]; my $tam = $_[3];
-   my $mce = $_[4];
+   my $mce = $_[4]; my $mce_parent = $_[5];
 
    if ($tam <= 128) {
       ins(inplace($c), $a x $b);
@@ -181,8 +183,8 @@ sub strassen_r {
       ins(inplace($c), $a x $b);
       return;
    }
-   elsif ($lvl < 2 && defined $mce) {
-      strassen($a, $b, $c, $tam, $mce_a[ $mce->wid ]);
+   elsif (defined $mce && $lvl < 2) {
+      strassen($a, $b, $c, $tam, $mce_a[ $mce->wid ], $mce);
       return;
    }
 
