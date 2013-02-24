@@ -19,7 +19,7 @@ my ($_que_template, $_que_read_size);
 my ($_has_threads, $_max_files, $_max_procs);
 
 BEGIN {
-   ## Configure template to use for pack/unpack for writing to and reading from
+   ## Configure template to use for pack/unpack for writing to & reading from
    ## the queue. Each entry contains 2 positive numbers: chunk_id & msg_id.
    ## Attempt 64-bit size, otherwize fall back to host machine's word length.
    {
@@ -51,20 +51,6 @@ BEGIN {
          $_max_files = $_max_procs = 256;
       }
    }
-
-   ## Limit to 3152 and 788 for MCE.
-   $_max_files = 3152 if ($_max_files > 3152);
-   $_max_procs =  788 if ($_max_procs >  788);
-}
-
-## PDL + MCE (spawning as threads) is not stable. A comment from David Mertens
-## mentioned the fix for his PDL::Parallel::threads module. The CLONE_SKIP is
-## also needed here in order for PDL + MCE threads to not crash during exiting.
-## Thanks goes to David !!! I would have definitely struggled with this one.
-##
-{
-   no warnings 'redefine';
-   sub PDL::CLONE_SKIP { 1 }
 }
 
 ###############################################################################
@@ -93,6 +79,16 @@ sub import {
 
 our $VERSION = '1.403';
 $VERSION = eval $VERSION;
+
+## PDL + MCE (spawning as threads) is not stable. A comment from David Mertens
+## mentioned the fix for his PDL::Parallel::threads module. The CLONE_SKIP is
+## also needed here in order for PDL + MCE threads to not crash during exiting.
+## Thanks goes to David !!! I would have definitely struggled with this one.
+
+{
+   no warnings 'redefine';
+   sub PDL::CLONE_SKIP { 1 }
+}
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -177,6 +173,7 @@ $MCE::Signal::mce_spawned_ref  = \%_mce_spawned;
 
 ## Warnings are disabled to minimize bits of noise when user or OS signals
 ## the script to exit. e.g. MCE_script.pl < infile | head
+
 no warnings 'threads'; no warnings 'uninitialized';
 
 sub DESTROY { }
