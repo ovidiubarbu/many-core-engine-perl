@@ -37,3 +37,5 @@ my $mce = MCE->new(
 
 $mce->run;
 
+exit 0;
+

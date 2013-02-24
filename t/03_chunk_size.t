@@ -58,3 +58,5 @@ is(
 
 $mce->shutdown();
 
+exit 0;
+
