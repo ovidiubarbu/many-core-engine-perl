@@ -19,13 +19,12 @@ Oliver Gorwits
   * Changed INIT { ... } to sub import { ... } inside MCE.pm.
 
 David Mertens
-  For introducing me to the quantified onion list at
-  https://groups.google.com/forum/#!topic/the-quantified-onion/2cSWXogt5Xs
-  * I'm most thankful for the tip on making PDL + MCE a possiblity. Workers were
+  * I'm thankful for the tip on making PDL + MCE a possiblity. Workers were
     crashing during exiting. Adding "sub PDL::CLONE_SKIP { 1 }" inside MCE.pm
     solved this issue entirely.
   * In addition, for pointers on how to effectively use PDL from his example
-    matmult_pdl_thr.pl utilizing PDL::Parallel::threads::SIMD.
+    matmult_pdl_thr.pl utilizing PDL::Parallel::threads::SIMD at
+    https://gist.github.com/run4flat/4942132.
 
 Joseph Ogulin
   For providing me the perl-MCE.spec file.

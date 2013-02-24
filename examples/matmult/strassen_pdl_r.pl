@@ -78,10 +78,12 @@ sub configure_and_spawn_mce {
          my $self = $_[0];
          my $data = $self->{user_data};
          return unless (defined $data);
-         my $tam  = $data->[3];
+
+         my $tam = $data->[3];
          my $result = zeroes $tam,$tam;
          my ($a, $b) = retrieve_pdls($data->[0], $data->[1]);
          strassen_r($a, $b, $result, $tam);
+
          $self->do('store_result', $data->[2], $result);
       }
 

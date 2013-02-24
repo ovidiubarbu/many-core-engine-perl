@@ -76,9 +76,11 @@ sub configure_and_spawn_mce {
          my $self = $_[0];
          my $data = $self->{user_data};
          return unless (defined $data);
-         my $tam  = $data->[3];
+
+         my $tam = $data->[3];
          my $result = zeroes $tam,$tam;
          strassen_r($data->[0], $data->[1], $result, $tam);
+
          $self->do('store_result', $data->[2], $result);
       }
 
