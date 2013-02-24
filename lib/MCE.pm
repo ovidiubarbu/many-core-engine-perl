@@ -77,7 +77,7 @@ sub import {
    }
 }
 
-our $VERSION = '1.403';
+our $VERSION = '1.404';
 $VERSION = eval $VERSION;
 
 ## PDL + MCE (spawning as threads) is not stable. A comment from David Mertens

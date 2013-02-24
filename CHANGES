@@ -1,5 +1,13 @@
 Revision history for MCE
 
+1.404 Sun Feb 24 13:00:00 EST 2013
+    * Added sess_dir method
+    * Completed work with matmult/* examples
+      Added matmult_pdl_q.pl, removed strassen_pdl_h.pl
+      Added strassen_pdl_o/p/q/r/s.pl 
+      Added benchmark results from a 32-way box at the end of the readme
+    * Removed lines setting max limit for files/procs
+
 1.403 Sun Feb 17 15:00:00 EST 2013
     * Wrap sub PDL::CLONE_SKIP into a no warnings 'redefine' block
       MCE now works with PDL::Parallel::threads without any warnings
