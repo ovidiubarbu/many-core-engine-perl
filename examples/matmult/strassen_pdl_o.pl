@@ -13,6 +13,9 @@ use lib abs_path . "/../../lib";
 
 my $prog_name = $0; $prog_name =~ s{^.*[\\/]}{}g;
 
+die "Not supported under this environment\n"
+   if ($^O eq 'cygwin' || $^O eq 'MSWin32');
+
 use Time::HiRes qw(time);
 
 use PDL;
