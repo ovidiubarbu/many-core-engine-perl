@@ -450,7 +450,7 @@ sub spawn {
    my $_use_threads = $self->{use_threads};
 
    ## Obtain lock.
-   open my $_COM_LOCK, '+>> :stdio', "$_sess_dir/com.lock";
+   open my $_COM_LOCK, '+>> :stdio', "$_sess_dir/_com.lock";
    flock $_COM_LOCK, LOCK_EX;
 
    ## Spawn workers.
@@ -865,7 +865,7 @@ sub run {
       }}
 
       ## Obtain lock 1 of 2.
-      open my $_DAT_LOCK, '+>> :stdio', "$_sess_dir/dat.lock";
+      open my $_DAT_LOCK, '+>> :stdio', "$_sess_dir/_dat.lock";
       flock $_DAT_LOCK, LOCK_EX;
 
       ## Insert the first message into the queue if defined.
@@ -894,7 +894,7 @@ sub run {
       }
 
       ## Obtain lock 2 of 2.
-      open $_COM_LOCK, '+>> :stdio', "$_sess_dir/com.lock";
+      open $_COM_LOCK, '+>> :stdio', "$_sess_dir/_com.lock";
       flock $_COM_LOCK, LOCK_EX;
 
       ## Release lock 1 of 2.
@@ -1087,7 +1087,7 @@ sub shutdown {
 
    ## Remove session directory.
    if (defined $_sess_dir) {
-      unlink "$_sess_dir/com.lock"; unlink "$_sess_dir/dat.lock";
+      unlink "$_sess_dir/_com.lock"; unlink "$_sess_dir/_dat.lock";
       rmdir  "$_sess_dir";
 
       delete $_mce_sess_dir{$_sess_dir};
@@ -1231,8 +1231,9 @@ sub next {
    return;
 }
 
-## Return the (Task ID), (Task Worker ID), or (MCE Worker ID).
+## Return the (Session Dir), (Task ID), (Task Worker ID), or (MCE Worker ID).
 
+sub sess_dir   { my MCE $self = $_[0]; @_ = (); return $self->{_sess_dir};  }
 sub task_id    { my MCE $self = $_[0]; @_ = (); return $self->{_task_id};   }
 sub task_wid   { my MCE $self = $_[0]; @_ = (); return $self->{_task_wid};  }
 sub wid        { my MCE $self = $_[0]; @_ = (); return $self->{_wid};       }
@@ -2772,8 +2773,8 @@ sub _worker_main {
 
    _do_send_init($self);
 
-   open $_COM_LOCK, '+>> :stdio', "$_sess_dir/com.lock";
-   open $_DAT_LOCK, '+>> :stdio', "$_sess_dir/dat.lock";
+   open $_COM_LOCK, '+>> :stdio', "$_sess_dir/_com.lock";
+   open $_DAT_LOCK, '+>> :stdio', "$_sess_dir/_dat.lock";
 
    ## Define status ID.
    my $_use_threads = (defined $_task->{use_threads})
