@@ -1,5 +1,5 @@
 Name:           perl-MCE
-Version:        1.403
+Version:        1.404
 Release:        1%{?dist}
 Summary:        Many-Core Engine for Perl. Provides parallel processing capabilities.
 License:        CHECK(Distributable)
@@ -56,6 +56,13 @@ rm -rf $RPM_BUILD_ROOT
 %{_mandir}/man3/*
 
 %changelog
+* Sun Feb 24 2013 Mario Roy 1.404-1
+- Added sess_dir method 
+- Completed work with matmult/* examples
+  Added matmult_pdl_q.pl, removed strassen_pdl_h.pl
+  Added strassen_pdl_o/p/q/r/s.pl 
+  Added benchmark results from a 32-way box at the end of the readme
+- Removed lines setting max limit for files/procs
 * Sun Feb 17 2013 Mario Roy 1.403-1
 - Wrap sub PDL::CLONE_SKIP into a no warnings 'redefine' block
   MCE now works with PDL::Parallel::threads without any warnings

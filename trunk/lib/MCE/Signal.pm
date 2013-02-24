@@ -24,7 +24,7 @@ BEGIN {
    $prog_name    =~ s{^.*[\\/]}{}g;
 }
 
-our $VERSION = '1.403';
+our $VERSION = '1.404';
 $VERSION = eval $VERSION;
 
 our $tmp_dir = undef;
@@ -424,7 +424,7 @@ MCE::Signal - Provides tmp_dir creation & signal handling for Many-Core Engine.
 
 =head1 VERSION
 
-This document describes MCE::Signal version 1.403
+This document describes MCE::Signal version 1.404
 
 =head1 SYNOPSIS
 
