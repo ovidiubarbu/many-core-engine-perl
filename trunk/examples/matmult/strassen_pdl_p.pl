@@ -13,6 +13,13 @@ use lib abs_path . "/../../lib";
 
 my $prog_name = $0; $prog_name =~ s{^.*[\\/]}{}g;
 
+BEGIN {
+   ## Let's use threads when running under this environment.
+   eval 'use threads' if ($^O eq 'MSWin32');
+}
+
+die "Not supported under this environment\n" if ($^O eq 'cygwin');
+
 use Time::HiRes qw(time);
 
 use PDL;
