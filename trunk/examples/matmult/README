@@ -2,15 +2,15 @@
 ## Note: I'm most thankful for the code sample from David Mertens.
 ## https://groups.google.com/forum/#!topic/the-quantified-onion/2cSWXogt5Xs
 ##
-## I'm quite new to PDL. David's example pointed me on the right track.
+## I'm quite new to PDL. David's example put me on the right track.
 ##
 ## David has an interesting module called PDL::Parallel::threads to help
-## share PDL data across Perl threads. MCE, on the other hand, has a powerful
-## "do" method which is used to obtain data from the manager process as well
-## as send results back as often as needed.
+## share PDL data across Perl threads. MCE, on the other hand, has the
+## "do" method which is used to obtain data from the manager process as
+## well as send results back as often as needed.
 ##
 
-## PDL is extremely powerful by itself. However, add MCE to it and be amazed.
+## PDL is extremely powerful by itself. However, add MCE to it and enjoy.
 ##
 ## -- Usage -------------------------------------------------------------------
 ##
@@ -40,6 +40,11 @@
       PDL matrix multiplication + MCE
       Same as matmult_pdl_o.pl but uses PDL::Parallel::threads for all matrices
       This is comparable to David Mertens's matmult_pdl_thr.pl example
+
+-- matmult_pdl_q.pl
+      PDL matrix multiplication + MCE
+      Same as matmult_pdl_p.pl but passes input_data instead of sequence to MCE
+      MCE follows a bank-queuing model whenever processing input data
 
 -- matmult_pdl_thr.pl
       PDL matrix multiplication + PDL::Parallel::threads::SIMD
@@ -97,6 +102,7 @@
 ## matmult_pdl_n.pl   1024: compute:    0.394 secs  24 workers
 ## matmult_pdl_o.pl   1024: compute:    0.482 secs  24 workers
 ## matmult_pdl_p.pl   1024: compute:    0.580 secs  24 workers
+## matmult_pdl_q.pl   1024: compute:    0.534 secs  24 workers
 ## matmult_pdl_thr.pl 1024: compute:    0.730 secs  24 workers
 ##
 ## strassen_pdl_m.pl  1024: compute:    0.512 secs   7 workers
@@ -121,6 +127,7 @@
 ## matmult_pdl_n.pl   2048: compute:    2.613 secs  24 workers   2.7% memory
 ## matmult_pdl_o.pl   2048: compute:    2.751 secs  24 workers   3.0% memory
 ## matmult_pdl_p.pl   2048: compute:    4.313 secs  24 workers   0.9% memory
+## matmult_pdl_q.pl   2048: compute:    3.963 secs  24 workers   0.9% memory
 ## matmult_pdl_thr.pl 2048: compute:    4.524 secs  24 workers   0.8% memory
 ##
 ## strassen_pdl_m.pl  2048: compute:    2.522 secs   7 workers   2.7% memory
@@ -146,6 +153,7 @@
 ## matmult_pdl_n.pl   4096: compute:   22.941 secs  24 workers  10.8% memory
 ## matmult_pdl_o.pl   4096: compute:   21.971 secs  24 workers  10.9% memory
 ## matmult_pdl_p.pl   4096: compute:   34.253 secs  24 workers   1.8% memory
+## matmult_pdl_q.pl   4096: compute:   33.358 secs  24 workers   1.8% memory
 ## matmult_pdl_thr.pl 4096: compute:   33.664 secs  24 workers   2.0% memory
 ##
 ## strassen_pdl_m.pl  4096: compute:   14.577 secs   7 workers  10.0% memory
@@ -180,6 +188,7 @@
 ## matmult_pdl_n.pl   8192: compute:  455.516 secs  24 workers  43.2% memory
 ## matmult_pdl_o.pl   8192: compute:  470.470 secs  24 workers  42.1% memory
 ## matmult_pdl_p.pl   8192: compute:  269.506 secs  24 workers   5.5% memory
+## matmult_pdl_q.pl   8192: compute:  269.148 secs  24 workers   5.5% memory
 ## matmult_pdl_thr.pl 8192: compute:  274.152 secs  24 workers   6.9% memory
 ##
 ## strassen_pdl_m.pl  8192: compute:   95.015 secs   7 workers  40.0% memory
@@ -195,10 +204,43 @@
 ##    (0,0) 1.50092500906803e+15  (8191,8191) 1.84482444489628e+19
 ##
 
+## -- Results for 8192x8192 on a 32-way box -----------------------------------
+##
+## System contains 2x Intel E5-2660 processors with 128 GB 1600 MHz RAM.
+##
+## matmult_pdl_p.pl   8192: compute:   86.121 secs  32 workers   1.4% memory
+## matmult_pdl_q.pl   8192: compute:   76.583 secs  32 workers   1.4% memory
+## matmult_pdl_thr.pl 8192: compute:   84.957 secs  32 workers   1.7% memory
+##
+## strassen_pdl_p.pl  8192: compute:   39.199 secs  49 workers  13.5% memory
+## strassen_pdl_q.pl  8192: compute:   35.852 secs  49 workers   7.3% memory
+##
+## The difference between matmult_pdl_p.pl and q.pl is the option being passed
+## to MCE.
+##
+## ## matmult_pdl_p.pl:
+##    $mce->run(0, { sequence => [ 0, $rows - 1, $step_size ] });
+##
+##    All workers perform the same amount of work when sequence is specified
+##    It's possible that some workers may complete faster than others
+##    In the end, some workers are seen idled for a long period of time
+##
+## ## matmult_pdl_q.pl:
+##    $mce->process([ 0 .. $rows - 1 ], { chunk_size => $step_size });
+##
+##    MCE follows a bank-queuing model whenever processing input_data
+##    All workers remain busy till the very end of the job
+##    Remaining workers are processing their very last chunk
+##
+##    The process method is the same as setting the following options
+##    during instantiation
+##        
+##    input_data => [ 0 .. $rows - 1 ],
+##    chunk_size => $step_size
+##
+
 Please note that the Strassen algorithm introduces rounding errors noted
 above in the output. Most often, it's not a problem.
 
-
-Regards,
-Mario
+-- Mario
 
