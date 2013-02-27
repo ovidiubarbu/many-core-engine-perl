@@ -106,5 +106,3 @@ $mce->run;
 is(join('', sort @ans), '1234', 'check that list is correct');
 is(join('', sort @rpl), '2468', 'check that hash is correct');
 
-exit 0;
-

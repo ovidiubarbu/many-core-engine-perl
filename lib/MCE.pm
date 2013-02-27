@@ -19,7 +19,7 @@ my ($_que_template, $_que_read_size);
 my ($_has_threads, $_max_files, $_max_procs);
 
 BEGIN {
-   ## Configure template to use for pack/unpack for writing to & reading from
+   ## Configure template to use for pack/unpack for writing to and reading from
    ## the queue. Each entry contains 2 positive numbers: chunk_id & msg_id.
    ## Attempt 64-bit size, otherwize fall back to host machine's word length.
    {
@@ -80,10 +80,11 @@ sub import {
 our $VERSION = '1.404';
 $VERSION = eval $VERSION;
 
-## PDL + MCE (spawning as threads) is not stable. A comment from David Mertens
-## mentioned the fix for his PDL::Parallel::threads module. The CLONE_SKIP is
-## also needed here in order for PDL + MCE threads to not crash during exiting.
-## Thanks goes to David !!! I would have definitely struggled with this one.
+## PDL + MCE (spawning as threads) is not stable. David Mertens mentioned how
+## he fixed it for his PDL::Parallel::threads module. The same fix is also
+## needed here in order for PDL + MCE threads to not crash during exiting.
+##
+## Thanks David !!!
 
 {
    no warnings 'redefine';
@@ -307,23 +308,11 @@ sub new {
    ## -------------------------------------------------------------------------
 
    ## Limit chunk_size.
+
    $self->{chunk_size} = MAX_CHUNK_SIZE
       if ($self->{chunk_size} > MAX_CHUNK_SIZE);
 
    ## Adjust max_workers -- allow for some headroom.
-   if ($^O eq 'MSWin32') {
-      $self->{max_workers} = MAX_OPEN_FILES
-         if ($self->{max_workers} > MAX_OPEN_FILES);
-   }
-   else {
-      if ($self->{use_threads}) {
-         $self->{max_workers} = int(MAX_OPEN_FILES / 2) - 32
-            if ($self->{max_workers} > int(MAX_OPEN_FILES / 2) - 32);
-      } else {
-         $self->{max_workers} = MAX_USER_PROCS - 64
-            if ($self->{max_workers} > MAX_USER_PROCS - 64);
-      }
-   }
 
    if ($^O eq 'cygwin') {                 ## Limit to 48 threads, 24 children
       $self->{max_workers} = 48
@@ -336,6 +325,15 @@ sub new {
          if ($self->{use_threads} && $self->{max_workers} > 96);
       $self->{max_workers} = 48
          if (!$self->{use_threads} && $self->{max_workers} > 48);
+   }
+   else {
+      if ($self->{use_threads}) {
+         $self->{max_workers} = int(MAX_OPEN_FILES / 2) - 32
+            if ($self->{max_workers} > int(MAX_OPEN_FILES / 2) - 32);
+      } else {
+         $self->{max_workers} = MAX_USER_PROCS - 64
+            if ($self->{max_workers} > MAX_USER_PROCS - 64);
+      }
    }
 
    return $self;
