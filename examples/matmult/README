@@ -90,6 +90,9 @@
       Same as strassen_pdl_o.pl, but uses PDL::IO::FastRaw to reduce
       memory consumption
 
+      This example makes use of /dev/shm under Linux for fast execution
+      Otherwise, the example may run much slower due to writing to disk
+
 -- matmult_perl_m.pl
       Perl classic matrix multiplication + MCE
 

@@ -25,15 +25,12 @@ BEGIN {
    {
       local $@; local $SIG{__DIE__} = \&_NOOP;
       eval { $_que_read_size = length(pack('Q2', 0, 0)); };
-      $_que_template = ($@) ? 'I2' : 'Q2';
+      $_que_template  = ($@) ? 'I2' : 'Q2';
       $_que_read_size = length(pack($_que_template, 0, 0));
    }
 
    ## Determine the underlying maximum number of files.
-   if ($^O eq 'MSWin32') {
-      $_max_files = $_max_procs = 256;
-   }
-   else {
+   unless ($^O eq 'MSWin32') {
       my $_bash = (-x '/bin/bash') ? '/bin/bash' : undef;
          $_bash = '/usr/bin/bash' if (!$_bash && -x '/usr/bin/bash');
 
@@ -80,11 +77,10 @@ sub import {
 our $VERSION = '1.404';
 $VERSION = eval $VERSION;
 
-## PDL + MCE (spawning as threads) is not stable. David Mertens mentioned how
-## he fixed it for his PDL::Parallel::threads module. The same fix is also
-## needed here in order for PDL + MCE threads to not crash during exiting.
-##
-## Thanks David !!!
+## PDL + MCE (spawning as threads) is not stable. Thanks goes to David Mertens
+## for reporting on how he fixed it for his PDL::Parallel::threads module. The
+## same fix is also needed here in order for PDL + MCE threads to not crash
+## during exiting.
 
 {
    no warnings 'redefine';
@@ -98,42 +94,42 @@ $VERSION = eval $VERSION;
 ###############################################################################
 
 use constant {
-   MAX_CHUNK_SIZE   => 24 * 1024 * 1024, ## Set max constraints
-   MAX_OPEN_FILES   => $_max_files,
-   MAX_USER_PROCS   => $_max_procs,
+   MAX_CHUNK_SIZE  => 24 * 1024 * 1024,  ## Set max constraints
+   MAX_OPEN_FILES  => $_max_files || 256,
+   MAX_USER_PROCS  => $_max_procs || 256,
 
-   MAX_RECS_SIZE    => 8192,             ## Read # of records if <= value
+   MAX_RECS_SIZE   => 8192,              ## Read # of records if <= value
                                          ## Read # of bytes   if >  value
 
-   QUE_TEMPLATE     => $_que_template,   ## Pack template for queue socket
-   QUE_READ_SIZE    => $_que_read_size,  ## Read size
+   QUE_TEMPLATE    => $_que_template,    ## Pack template for queue socket
+   QUE_READ_SIZE   => $_que_read_size,   ## Read size
 
-   OUTPUT_W_DNE     => ':W~DNE',         ## Worker has completed
-   OUTPUT_W_EXT     => ':W~EXT',         ## Worker has exited
-   OUTPUT_A_ARY     => ':A~ARY',         ## Array  << Array
-   OUTPUT_S_GLB     => ':S~GLB',         ## Scalar << Glob FH
-   OUTPUT_A_CBK     => ':A~CBK',         ## Callback (/w arguments)
-   OUTPUT_N_CBK     => ':N~CBK',         ## Callback (no arguments)
-   OUTPUT_S_CBK     => ':S~CBK',         ## Callback (1 scalar arg)
-   OUTPUT_S_OUT     => ':S~OUT',         ## Scalar >> STDOUT
-   OUTPUT_S_ERR     => ':S~ERR',         ## Scalar >> STDERR
-   OUTPUT_S_FLE     => ':S~FLE',         ## Scalar >> File
+   OUTPUT_W_DNE    => ':W~DNE',          ## Worker has completed
+   OUTPUT_W_EXT    => ':W~EXT',          ## Worker has exited
+   OUTPUT_A_ARY    => ':A~ARY',          ## Array  << Array
+   OUTPUT_S_GLB    => ':S~GLB',          ## Scalar << Glob FH
+   OUTPUT_A_CBK    => ':A~CBK',          ## Callback (/w arguments)
+   OUTPUT_N_CBK    => ':N~CBK',          ## Callback (no arguments)
+   OUTPUT_S_CBK    => ':S~CBK',          ## Callback (1 scalar arg)
+   OUTPUT_S_OUT    => ':S~OUT',          ## Scalar >> STDOUT
+   OUTPUT_S_ERR    => ':S~ERR',          ## Scalar >> STDERR
+   OUTPUT_S_FLE    => ':S~FLE',          ## Scalar >> File
 
-   READ_FILE        => 0,                ## Worker reads file handle
-   READ_MEMORY      => 1,                ## Worker reads memory handle
+   READ_FILE       => 0,                 ## Worker reads file handle
+   READ_MEMORY     => 1,                 ## Worker reads memory handle
 
-   REQUEST_ARRAY    => 0,                ## Worker requests next array chunk
-   REQUEST_GLOB     => 1,                ## Worker requests next glob chunk
+   REQUEST_ARRAY   => 0,                 ## Worker requests next array chunk
+   REQUEST_GLOB    => 1,                 ## Worker requests next glob chunk
 
-   SENDTO_FILEV1    => 0,                ## Worker sends to 'file', $a, '/path'
-   SENDTO_FILEV2    => 1,                ## Worker sends to 'file:/path', $a
-   SENDTO_STDOUT    => 2,                ## Worker sends to STDOUT
-   SENDTO_STDERR    => 3,                ## Worker sends to STDERR
+   SENDTO_FILEV1   => 0,                 ## Worker sends to 'file', $a, '/path'
+   SENDTO_FILEV2   => 1,                 ## Worker sends to 'file:/path', $a
+   SENDTO_STDOUT   => 2,                 ## Worker sends to STDOUT
+   SENDTO_STDERR   => 3,                 ## Worker sends to STDERR
 
-   WANTS_UNDEFINE   => 0,                ## Callee wants nothing
-   WANTS_ARRAY      => 1,                ## Callee wants list
-   WANTS_SCALAR     => 2,                ## Callee wants scalar
-   WANTS_REFERENCE  => 3                 ## Callee wants H/A/S ref
+   WANTS_UNDEFINE  => 0,                 ## Callee wants nothing
+   WANTS_ARRAY     => 1,                 ## Callee wants list
+   WANTS_SCALAR    => 2,                 ## Callee wants scalar
+   WANTS_REFERENCE => 3                  ## Callee wants H/A/S ref
 };
 
 undef $_max_files; undef $_max_procs;
@@ -307,12 +303,10 @@ sub new {
 
    ## -------------------------------------------------------------------------
 
-   ## Limit chunk_size.
+   ## Limit chunk_size and max_workers -- allow for some headroom.
 
    $self->{chunk_size} = MAX_CHUNK_SIZE
       if ($self->{chunk_size} > MAX_CHUNK_SIZE);
-
-   ## Adjust max_workers -- allow for some headroom.
 
    if ($^O eq 'cygwin') {                 ## Limit to 48 threads, 24 children
       $self->{max_workers} = 48
@@ -534,7 +528,7 @@ sub spawn {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## For "chunk" method.
+## Forchunk method.
 ##
 ###############################################################################
 
@@ -570,7 +564,7 @@ sub forchunk {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## For "each" method.
+## Foreach method.
 ##
 ###############################################################################
 
@@ -607,7 +601,7 @@ sub foreach {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## For "seq" method.
+## Forseq method.
 ##
 ###############################################################################
 
@@ -762,7 +756,8 @@ sub run {
    ## Spawn workers.
    $self->spawn() if ($self->{_spawned} == 0);
 
-   local $SIG{__DIE__} = \&_die; local $SIG{__WARN__} = \&_warn;
+   local $SIG{__DIE__}  = \&_die;
+   local $SIG{__WARN__} = \&_warn;
 
    my ($_input_data, $_input_file, $_input_glob);
    my ($_abort_msg, $_first_msg, $_run_mode, $_single_dim);
@@ -824,7 +819,6 @@ sub run {
    my $_sequence      = $self->{sequence};
    my $_user_args     = $self->{user_args};
    my $_use_slurpio   = $self->{use_slurpio};
-
    my $_sess_dir      = $self->{_sess_dir};
    my $_total_workers = $self->{_total_workers};
 
@@ -974,7 +968,8 @@ sub send {
    _croak("MCE::send: Sending greater than # of workers is not allowed")
       if ($self->{_send_cnt} >= $self->{_task}->[0]->{_total_workers});
 
-   local $SIG{__DIE__} = \&_die; local $SIG{__WARN__} = \&_warn;
+   local $SIG{__DIE__}  = \&_die;
+   local $SIG{__WARN__} = \&_warn;
 
    ## Begin data submission.
    {
@@ -1028,7 +1023,8 @@ sub shutdown {
    ## Return if workers have not been spawned or have already been shutdown.
    return $self unless ($self->{_spawned});
 
-   local $SIG{__DIE__} = \&_die; local $SIG{__WARN__} = \&_warn;
+   local $SIG{__DIE__}  = \&_die;
+   local $SIG{__WARN__} = \&_warn;
 
    lock $_MCE_LOCK if ($_has_threads);            ## Obtain MCE lock.
 
@@ -1115,7 +1111,7 @@ sub shutdown {
 ###############################################################################
 ## ----------------------------------------------------------------------------
 ## Miscellaneous methods.
-##    abort  exit  last  next  task_id  task_wid  wid  chunk_size  tmp_dir
+##    abort exit last next sess_dir task_id task_wid wid chunk_size tmp_dir
 ##
 ###############################################################################
 
@@ -1324,7 +1320,8 @@ sub do {
 
 sub _croak {
 
-   $SIG{__DIE__} = \&_die; $SIG{__WARN__} = \&_warn;
+   $SIG{__DIE__}  = \&_die;
+   $SIG{__WARN__} = \&_warn;
 
    $\ = undef; require Carp; goto &Carp::croak;
 
@@ -2871,6 +2868,7 @@ sub _dispatch_child {
             return;
          }
       }}
+
       push @{ $self->{_pids} }, $_pid;
    }
 
@@ -2911,6 +2909,7 @@ sub _dispatch_thread {
             return;
          }
       }}
+
       push @{ $self->{_thrs} }, \$_thr;
       push @{ $self->{_tids} }, $_thr->tid();
    }
