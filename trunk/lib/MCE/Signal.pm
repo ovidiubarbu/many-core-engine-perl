@@ -453,6 +453,8 @@ called at all.
  ## The built-in time command from some shells (e.g., bash) works fine.
  ## In this case, pass -no_setpgrp if wanting to time your script with
  ## /usr/bin/time instead of the shell built-in.
+ ##
+ ## Running MCE through Daemon::Control requires setpgrp to be called.
 
  use MCE::Signal qw(-no_setpgrp);
  use MCE;
