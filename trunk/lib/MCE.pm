@@ -821,24 +821,26 @@ sub run {
    my $_use_slurpio   = $self->{use_slurpio};
    my $_sess_dir      = $self->{_sess_dir};
    my $_total_workers = $self->{_total_workers};
-
-   my %_params = (
-      '_abort_msg'  => $_abort_msg,    '_run_mode'    => $_run_mode,
-      '_chunk_size' => $_chunk_size,   '_single_dim'  => $_single_dim,
-      '_input_file' => $_input_file,   '_sequence'    => $_sequence,
-      '_user_args'  => $_user_args,    '_use_slurpio' => $_use_slurpio
-   );
-   my %_params_nodata = (
-      '_abort_msg'  => undef,          '_run_mode'    => 'nodata',
-      '_chunk_size' => $_chunk_size,   '_single_dim'  => $_single_dim,
-      '_input_file' => $_input_file,   '_sequence'    => $_sequence,
-      '_user_args'  => $_user_args,    '_use_slurpio' => $_use_slurpio
-   );
+   my $_send_cnt      = $self->{_send_cnt};
 
    my $_COM_LOCK;
 
    ## Begin processing.
-   {
+   unless ($_send_cnt) {
+
+      my %_params = (
+         '_abort_msg'  => $_abort_msg,    '_run_mode'    => $_run_mode,
+         '_chunk_size' => $_chunk_size,   '_single_dim'  => $_single_dim,
+         '_input_file' => $_input_file,   '_sequence'    => $_sequence,
+         '_user_args'  => $_user_args,    '_use_slurpio' => $_use_slurpio
+      );
+      my %_params_nodata = (
+         '_abort_msg'  => undef,          '_run_mode'    => 'nodata',
+         '_chunk_size' => $_chunk_size,   '_single_dim'  => $_single_dim,
+         '_input_file' => $_input_file,   '_sequence'    => $_sequence,
+         '_user_args'  => $_user_args,    '_use_slurpio' => $_use_slurpio
+      );
+
       local $\ = undef; local $/ = $LF;
       lock $_MCE_LOCK if ($_has_threads);            ## Obtain MCE lock.
 
@@ -897,34 +899,43 @@ sub run {
 
    ## -------------------------------------------------------------------------
 
-   $self->{_send_cnt}      = 0;
-   $self->{_total_exited}  = 0;
-   $self->{_total_running} = $_total_workers;
+   $self->{_total_exited} = 0;
 
-   if (defined $self->{user_tasks}) {
-      $_->{_total_running} = $_->{_total_workers} for (@{ $self->{_task} });
+   if ($_send_cnt) {
+      $self->{_total_running} = $_send_cnt;
+      $self->{_task}->[0]->{_total_running} = $_send_cnt;
+   }
+   else {
+      $self->{_total_running} = $_total_workers;
+      if (defined $self->{user_tasks}) {
+         $_->{_total_running} = $_->{_total_workers} for (@{ $self->{_task} });
+      }
    }
 
    ## Call the output function.
-   if ($_total_workers > 0) {
+   if ($self->{_total_running} > 0) {
       $self->{_abort_msg} = $_abort_msg;
       $self->_output_loop($_input_data, $_input_glob);
       undef $self->{_abort_msg};
    }
 
-   ## Remove the last message from the queue.
-   unless ($_run_mode eq 'nodata') {
-      unlink "$_sess_dir/_store.db" if ($_run_mode eq 'array');
-      if (defined $self->{_que_r_sock}) {
-         local $/ = $LF;
-         my $_next; my $_QUE_R_SOCK = $self->{_que_r_sock};
-         read $_QUE_R_SOCK, $_next, QUE_READ_SIZE;
+   unless ($_send_cnt) {
+      ## Remove the last message from the queue.
+      unless ($_run_mode eq 'nodata') {
+         unlink "$_sess_dir/_store.db" if ($_run_mode eq 'array');
+         if (defined $self->{_que_r_sock}) {
+            local $/ = $LF;
+            my $_next; my $_QUE_R_SOCK = $self->{_que_r_sock};
+            read $_QUE_R_SOCK, $_next, QUE_READ_SIZE;
+         }
       }
+
+      ## Release lock 2 of 2.
+      flock $_COM_LOCK, LOCK_UN;
+      close $_COM_LOCK; undef $_COM_LOCK;
    }
 
-   ## Release lock 2 of 2.
-   flock $_COM_LOCK, LOCK_UN;
-   close $_COM_LOCK; undef $_COM_LOCK;
+   $self->{_send_cnt} = 0;
 
    ## Shutdown workers (also if any workers have exited).
    $self->shutdown() if ($_auto_shutdown == 1 || $self->{_total_exited} > 0);
@@ -946,7 +957,11 @@ sub send {
       if ($self->{_wid});
 
    _croak("MCE::send: method cannot be called while running")
-      if ($self->{_total_running} && $self->{_total_running} > 0);
+      if (defined $self->{_total_running} && $self->{_total_running} > 0);
+   _croak("MCE::send: method cannot be used with input_data or sequence")
+      if (defined $self->{input_data} || defined $self->{sequence});
+   _croak("MCE::send: method cannot be used with user_tasks")
+      if (defined $self->{user_tasks});
 
    my $_data_ref;
 
@@ -980,24 +995,16 @@ sub send {
       my $_submit_delay = $self->{submit_delay};
 
       my $_frozen_data  = freeze($_data_ref);
-      my $_has_data;
 
       ## Submit data to worker.
       select(undef, undef, undef, $_submit_delay)
          if ($_submit_delay && $_submit_delay > 0.0);
 
-      while (1) {
-         print $_COM_R_SOCK "_data${LF}";
-         <$_COM_R_SOCK>;
+      print $_COM_R_SOCK "_data${LF}";
+      <$_COM_R_SOCK>;
 
-         chomp($_has_data = <$_COM_R_SOCK>);
-
-         if ($_has_data eq 'no') {
-            print $_COM_R_SOCK length($_frozen_data), $LF, $_frozen_data;
-            <$_COM_R_SOCK>;
-            last;
-         }
-      }
+      print $_COM_R_SOCK length($_frozen_data), $LF, $_frozen_data;
+      <$_COM_R_SOCK>;
    }
 
    $self->{_send_cnt} += 1;
@@ -1022,6 +1029,9 @@ sub shutdown {
 
    ## Return if workers have not been spawned or have already been shutdown.
    return $self unless ($self->{_spawned});
+
+   ## Wait for workers to complete processing before shutting down.
+   $self->run(0) if ($self->{_send_cnt});
 
    local $SIG{__DIE__}  = \&_die;
    local $SIG{__WARN__} = \&_warn;
@@ -2632,7 +2642,6 @@ sub _worker_loop {
 
    my $_COM_W_SOCK = $self->{_com_w_sock};
    my $_job_delay  = $self->{job_delay};
-   my $_task_id    = $self->{_task_id};
    my $_wid        = $self->{_wid};
 
    while (1) {
@@ -2652,29 +2661,20 @@ sub _worker_loop {
          last if ($_response !~ /\A(?:\d+|_data|_exit)\z/);
 
          if ($_response eq '_data') {
-            ## Reply 'yes' if I already have user data or I'm a
-            ## worker not belonging to the first user_tasks.
-            if (defined $self->{user_data} || $_task_id > 0) {
-               print $_COM_W_SOCK 'yes', $LF;
-               flock $_COM_LOCK, LOCK_UN;
+            ## Acquire and process user data.
+            chomp($_len = <$_COM_W_SOCK>);
+            read $_COM_W_SOCK, $_buffer, $_len;
 
-               select(undef, undef, undef, 0.003);
-            }
-            ## Otherwise, acquire user data.
-            else {
-               print $_COM_W_SOCK 'no', $LF;
+            print $_COM_W_SOCK $_wid, $LF;
+            flock $_COM_LOCK, LOCK_UN;
 
-               chomp($_len = <$_COM_W_SOCK>);
-               read $_COM_W_SOCK, $_buffer, $_len;
+            $self->{user_data} = thaw($_buffer);
+            undef $_buffer;
 
-               print $_COM_W_SOCK $_wid, $LF;
-               flock $_COM_LOCK, LOCK_UN;
+            select(undef, undef, undef, $_job_delay * $_wid)
+               if ($_job_delay && $_job_delay > 0.0);
 
-               $self->{user_data} = thaw($_buffer);
-               undef $_buffer;
-
-               select(undef, undef, undef, 0.003);
-            }
+            $self->_worker_do({ });
          }
          else {
             ## Return to caller if instructed to exit.
@@ -2694,7 +2694,7 @@ sub _worker_loop {
          }
       }
 
-      ## Start over if the last response was for acquiring user data.
+      ## Start over if the last response was for processing user data.
       next if ($_response eq '_data');
 
       ## Wait until MCE completes params submission to all workers.

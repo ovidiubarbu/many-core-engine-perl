@@ -689,16 +689,16 @@ Methods listed below are callable by the main process only.
 
    ## The send method is useful when wanting to spawn workers early to
    ## minimize memory consumption and afterwards send data individually
-   ## to each available worker before running. One cannot send more
-   ## than the total workers spawned. The next available worker,
-   ## without data, stores the received data as $self->{user_data}.
+   ## to each worker. One cannot send more than the total workers
+   ## spawned. Workers store the received data as $self->{user_data}.
    ##
    ## The data which can be sent is restricted to an ARRAY, HASH, or PDL
    ## reference. The send method cannot be called once MCE is running.
-   ## After running, workers set $self->{user_data} back to undef.
+   ## Workers set $self->{user_data} back to undef after processing.
    ##
-   ## Note: When specifying the user_tasks option, the send method is
-   ## applicable only to workers configured under the first task.
+   ## One cannot specify input_data, sequence, or user_tasks when wanting
+   ## to use the "send" method. Workers begin processing immediately after
+   ## receiving data.
 
    my $mce = MCE->new(
       max_workers => 5,
@@ -706,8 +706,6 @@ Methods listed below are callable by the main process only.
       user_func => sub {
          my ($self) = @_;
          my $data = $self->{user_data};
-         return unless (defined $data);
-
          my $first_name = $data->{first_name};
          print $self->wid, ": Hello from $first_name\n";
       }
@@ -720,7 +718,7 @@ Methods listed below are callable by the main process only.
    $mce->send( { first_name => "Padre"   } );
    $mce->send( { first_name => "Anthony" } );
 
-   $mce->run();
+   $mce->run(0);    ## Wait for workers to complete processing.
 
    -- Output
 
