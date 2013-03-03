@@ -115,17 +115,17 @@
 ## matmult_pdl_q.pl   1024: compute:    0.534 secs  24 workers
 ## matmult_pdl_thr.pl 1024: compute:    0.730 secs  24 workers
 ##
-## strassen_pdl_m.pl  1024: compute:    0.512 secs   7 workers
-## strassen_pdl_n.pl  1024: compute:    0.503 secs   7 workers
-## strassen_pdl_o.pl  1024: compute:    0.510 secs  56 workers
-## strassen_pdl_p.pl  1024: compute:    0.511 secs  49 workers
-## strassen_pdl_q.pl  1024: compute:    0.999 secs  49 workers
-## strassen_pdl_r.pl  1024: compute:    0.510 secs   7 workers
-## strassen_pdl_s.pl  1024: compute:    0.335 secs  56 workers
-## strassen_pdl_t.pl  1024: compute:    0.425 secs  56 workers
+## strassen_pdl_m.pl  1024: compute:    0.445 secs   7 workers
+## strassen_pdl_n.pl  1024: compute:    0.440 secs   7 workers
+## strassen_pdl_o.pl  1024: compute:    0.435 secs  56 workers
+## strassen_pdl_p.pl  1024: compute:    0.487 secs  49 workers
+## strassen_pdl_q.pl  1024: compute:    0.841 secs  49 workers
+## strassen_pdl_r.pl  1024: compute:    0.494 secs   7 workers
+## strassen_pdl_s.pl  1024: compute:    0.266 secs  56 workers
+## strassen_pdl_t.pl  1024: compute:    0.301 secs  56 workers
 ##
 ## matmult_perl_m.pl  1024: compute:   23.552 secs  24 workers
-## strassen_perl_m.pl 1024: compute:   45.408 secs   7 workers
+## strassen_perl_m.pl 1024: compute:   44.563 secs   7 workers
 ##
 ## Output
 ##    (0,0) 365967179776  (1023,1023) 563314846859776
@@ -141,14 +141,14 @@
 ## matmult_pdl_q.pl   2048: compute:    3.963 secs  24 workers   0.9% memory
 ## matmult_pdl_thr.pl 2048: compute:    4.524 secs  24 workers   0.8% memory
 ##
-## strassen_pdl_m.pl  2048: compute:    2.522 secs   7 workers   2.7% memory
-## strassen_pdl_n.pl  2048: compute:    2.496 secs   7 workers   2.0% memory
-## strassen_pdl_o.pl  2048: compute:    2.437 secs  56 workers   7.1% memory
-## strassen_pdl_p.pl  2048: compute:    2.360 secs  49 workers   4.6% memory
-## strassen_pdl_q.pl  2048: compute:    2.535 secs  49 workers   3.1% memory
-## strassen_pdl_r.pl  2048: compute:    2.236 secs   7 workers   1.9% memory
-## strassen_pdl_s.pl  2048: compute:    1.495 secs  56 workers   3.9% memory
-## strassen_pdl_t.pl  2048: compute:    1.749 secs  56 workers   3.6% memory
+## strassen_pdl_m.pl  2048: compute:    2.335 secs   7 workers   2.7% memory
+## strassen_pdl_n.pl  2048: compute:    2.304 secs   7 workers   2.0% memory
+## strassen_pdl_o.pl  2048: compute:    2.156 secs  56 workers   7.1% memory
+## strassen_pdl_p.pl  2048: compute:    1.905 secs  49 workers   4.6% memory
+## strassen_pdl_q.pl  2048: compute:    2.114 secs  49 workers   3.1% memory
+## strassen_pdl_r.pl  2048: compute:    2.087 secs   7 workers   1.9% memory
+## strassen_pdl_s.pl  2048: compute:    1.355 secs  56 workers   3.9% memory
+## strassen_pdl_t.pl  2048: compute:    1.542 secs  56 workers   3.6% memory
 ##
 ## matmult_perl_m.pl  2048: compute:  190.302 secs  24 workers   9.7% memory
 ## strassen_perl_m.pl 2048: compute:  321.655 secs   7 workers   8.6% memory
@@ -168,14 +168,14 @@
 ## matmult_pdl_q.pl   4096: compute:   33.358 secs  24 workers   1.8% memory
 ## matmult_pdl_thr.pl 4096: compute:   33.664 secs  24 workers   2.0% memory
 ##
-## strassen_pdl_m.pl  4096: compute:   14.577 secs   7 workers  10.0% memory
-## strassen_pdl_n.pl  4096: compute:   14.384 secs   7 workers   9.3% memory
-## strassen_pdl_o.pl  4096: compute:   12.996 secs  56 workers  23.6% memory
-## strassen_pdl_p.pl  4096: compute:   12.557 secs  49 workers  15.1% memory
-## strassen_pdl_q.pl  4096: compute:   11.244 secs  49 workers   8.2% memory
-## strassen_pdl_r.pl  4096: compute:   13.760 secs   7 workers   4.8% memory
-## strassen_pdl_s.pl  4096: compute:    9.077 secs  56 workers  11.3% memory
-## strassen_pdl_t.pl  4096: compute:    9.419 secs  56 workers  10.8% memory
+## strassen_pdl_m.pl  4096: compute:   14.301 secs   7 workers  10.0% memory
+## strassen_pdl_n.pl  4096: compute:   13.928 secs   7 workers   9.3% memory
+## strassen_pdl_o.pl  4096: compute:   12.106 secs  56 workers  23.6% memory
+## strassen_pdl_p.pl  4096: compute:   10.589 secs  49 workers  15.1% memory
+## strassen_pdl_q.pl  4096: compute:   10.087 secs  49 workers   8.2% memory
+## strassen_pdl_r.pl  4096: compute:   13.047 secs   7 workers   4.8% memory
+## strassen_pdl_s.pl  4096: compute:    8.404 secs  56 workers  11.3% memory
+## strassen_pdl_t.pl  4096: compute:    8.814 secs  56 workers  10.8% memory
 ##
 ## Output
 ##    (0,0) 93790635294720  (4095,4095) 5.76554474219245e+17  matmul examples
@@ -197,14 +197,14 @@
 ## matmult_pdl_q.pl   8192: compute:  269.148 secs  24 workers   5.5% memory
 ## matmult_pdl_thr.pl 8192: compute:  274.152 secs  24 workers   6.9% memory
 ##
-## strassen_pdl_m.pl  8192: compute:   95.015 secs   7 workers  40.0% memory
-## strassen_pdl_n.pl  8192: compute:   92.477 secs   7 workers  37.2% memory
-## strassen_pdl_o.pl  8192: compute:   79.309 secs  56 workers  83.4% memory
-## strassen_pdl_p.pl  8192: compute:   73.246 secs  49 workers  54.3% memory
-## strassen_pdl_q.pl  8192: compute:   68.299 secs  49 workers  29.6% memory
-## strassen_pdl_r.pl  8192: compute:   88.005 secs   7 workers  18.5% memory
-## strassen_pdl_s.pl  8192: compute:   58.635 secs  56 workers  40.8% memory
-## strassen_pdl_t.pl  8192: compute:   64.109 secs  56 workers  39.6% memory
+## strassen_pdl_m.pl  8192: compute:   91.332 secs   7 workers  40.0% memory
+## strassen_pdl_n.pl  8192: compute:   90.026 secs   7 workers  37.2% memory
+## strassen_pdl_o.pl  8192: compute:   71.278 secs  56 workers  83.4% memory
+## strassen_pdl_p.pl  8192: compute:   66.341 secs  49 workers  54.3% memory
+## strassen_pdl_q.pl  8192: compute:   66.816 secs  49 workers  29.6% memory
+## strassen_pdl_r.pl  8192: compute:   85.425 secs   7 workers  18.5% memory
+## strassen_pdl_s.pl  8192: compute:   56.438 secs  56 workers  40.8% memory
+## strassen_pdl_t.pl  8192: compute:   63.675 secs  56 workers  39.6% memory
 ##
 ## Output
 ##    (0,0) 1.50092500906803e+15  (8191,8191) 1.84482444489628e+19
@@ -218,10 +218,10 @@
 ## matmult_pdl_q.pl   8192: compute:   76.583 secs  32 workers   1.4% memory
 ## matmult_pdl_thr.pl 8192: compute:   84.957 secs  32 workers   1.7% memory
 ##
-## strassen_pdl_p.pl  8192: compute:   39.199 secs  49 workers  13.5% memory
-## strassen_pdl_q.pl  8192: compute:   35.852 secs  49 workers   7.3% memory
-## strassen_pdl_s.pl  8192: compute:   29.517 secs  56 workers  10.4% memory
-## strassen_pdl_t.pl  8192: compute:   34.840 secs  56 workers   9.8% memory
+## strassen_pdl_p.pl  8192: compute:   33.738 secs  49 workers  13.5% memory
+## strassen_pdl_q.pl  8192: compute:   36.059 secs  49 workers   7.3% memory
+## strassen_pdl_s.pl  8192: compute:   28.401 secs  56 workers  10.4% memory
+## strassen_pdl_t.pl  8192: compute:   34.825 secs  56 workers   9.8% memory
 ##
 ## The difference between matmult_pdl_p.pl and q.pl is the option being passed
 ## to MCE.
