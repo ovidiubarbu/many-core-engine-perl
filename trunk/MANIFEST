@@ -30,6 +30,7 @@ examples/matmult/strassen_pdl_p.pl
 examples/matmult/strassen_pdl_q.pl
 examples/matmult/strassen_pdl_r.pl
 examples/matmult/strassen_pdl_s.pl
+examples/matmult/strassen_pdl_t.pl
 examples/matmult/strassen_perl_m.pl
 examples/mce_usage.readme
 examples/scaling_pings.pl

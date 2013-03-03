@@ -2,7 +2,7 @@
 
 ##
 ## Usage:
-##    perl strassen_pdl_s.pl 1024        ## Default size 512
+##    perl strassen_pdl_t.pl 1024        ## Default size 512
 ##
 
 use strict;
@@ -19,7 +19,7 @@ die "Not supported under this environment\n"
 use Time::HiRes qw(time);
 
 use PDL;
-use PDL::IO::FastRaw;                    ## Required for MMAP IO
+use PDL::Parallel::threads qw(retrieve_pdls free_pdls);
 
 use MCE::Signal qw($tmp_dir -use_dev_shm);
 use MCE;
@@ -81,17 +81,13 @@ sub configure_and_spawn_mce {
 
          my $tam = $data->[3];
          my $result = zeroes $tam,$tam;
-         my $a = mapfraw($data->[0], { ReadOnly => 0 });
-         my $b = mapfraw($data->[1], { ReadOnly => 0 });
+         my ($a, $b) = retrieve_pdls($data->[0], $data->[1]);
 
          strassen_r($a, $b, $result, $tam, $self);
 
-         undef $a; undef $b;
+         free_pdls($a, $b);
 
-         unlink $data->[0];  unlink $data->[0] . ".hdr";
-         unlink $data->[1];  unlink $data->[1] . ".hdr";
-
-         writefraw($result, $self->sess_dir . "/p" . $data->[2]);
+         $result->share_as($self->sess_dir . "/p" . $data->[2]);
       }
 
    )->spawn;
@@ -129,60 +125,53 @@ sub strassen {
    my $t1 = zeroes $nTam,$nTam;
 
    sum_m($a21, $a22, $t1, $nTam);
-   writefraw($t1, "$sess_dir/2a");
-   writefraw($b11, "$sess_dir/2b");
+   $t1->copy->share_as("$sess_dir/2a");
+   $b11->copy->share_as("$sess_dir/2b");
    $mce->send([ "$sess_dir/2a", "$sess_dir/2b", 2, $nTam ]);
 
    subtract_m($b12, $b22, $t1, $nTam);
-   writefraw($a11, "$sess_dir/3a");
-   writefraw($t1, "$sess_dir/3b");
+   $a11->copy->share_as("$sess_dir/3a");
+   $t1->copy->share_as("$sess_dir/3b");
    $mce->send([ "$sess_dir/3a", "$sess_dir/3b", 3, $nTam ]);
 
    subtract_m($b21, $b11, $t1, $nTam);
-   writefraw($a22, "$sess_dir/4a");
-   writefraw($t1, "$sess_dir/4b");
+   $a22->copy->share_as("$sess_dir/4a");
+   $t1->copy->share_as("$sess_dir/4b");
    $mce->send([ "$sess_dir/4a", "$sess_dir/4b", 4, $nTam ]);
 
    sum_m($a11, $a12, $t1, $nTam);
-   writefraw($t1, "$sess_dir/5a");
-   writefraw($b22, "$sess_dir/5b");
+   $t1->copy->share_as("$sess_dir/5a");
+   $b22->copy->share_as("$sess_dir/5b");
    $mce->send([ "$sess_dir/5a", "$sess_dir/5b", 5, $nTam ]);
 
    subtract_m($a12, $a22, $t1, $nTam);
    sum_m($b21, $b22, $a12, $nTam);               ## Reuse $a12
-   writefraw($t1, "$sess_dir/7a");
-   writefraw($a12, "$sess_dir/7b");
+   $t1->copy->share_as("$sess_dir/7a");
+   $a12->copy->share_as("$sess_dir/7b");
    $mce->send([ "$sess_dir/7a", "$sess_dir/7b", 7, $nTam ]);
 
    subtract_m($a21, $a11, $t1, $nTam);
    sum_m($b11, $b12, $a12, $nTam);               ## Reuse $a12
-   writefraw($t1, "$sess_dir/6a");
-   writefraw($a12, "$sess_dir/6b");
+   $t1->copy->share_as("$sess_dir/6a");
+   $a12->copy->share_as("$sess_dir/6b");
    $mce->send([ "$sess_dir/6a", "$sess_dir/6b", 6, $nTam ]);
 
    sum_m($a11, $a22, $t1, $nTam);
    sum_m($b11, $b22, $a12, $nTam);               ## Reuse $a12
-   writefraw($t1, "$sess_dir/1a");
-   writefraw($a12, "$sess_dir/1b");
+   $t1->copy->share_as("$sess_dir/1a");
+   $a12->copy->share_as("$sess_dir/1b");
    $mce->send([ "$sess_dir/1a", "$sess_dir/1b", 1, $nTam ]);
 
    $mce->run(0);
 
-   $p1 = mapfraw("$sess_dir/p1", { ReadOnly => 0 });
-   $p2 = mapfraw("$sess_dir/p2", { ReadOnly => 0 });
-   $p3 = mapfraw("$sess_dir/p3", { ReadOnly => 0 });
-   $p4 = mapfraw("$sess_dir/p4", { ReadOnly => 0 });
-   $p5 = mapfraw("$sess_dir/p5", { ReadOnly => 0 });
-   $p6 = mapfraw("$sess_dir/p6", { ReadOnly => 0 });
-   $p7 = mapfraw("$sess_dir/p7", { ReadOnly => 0 });
+   ($p1, $p2, $p3, $p4, $p5, $p6, $p7) = retrieve_pdls(
+      "$sess_dir/p1", "$sess_dir/p2", "$sess_dir/p3", "$sess_dir/p4",
+      "$sess_dir/p5", "$sess_dir/p6", "$sess_dir/p7"
+   );
 
    calc_m($p1, $p2, $p3, $p4, $p5, $p6, $p7, $c, $nTam, $t1, $a12);
 
-   undef $p1; undef $p2; undef $p3; undef $p4; undef $p5; undef $p6; undef $p7;
-
-   for (1 .. 7) {
-      unlink "$sess_dir/p$_";  unlink "$sess_dir/p$_.hdr";
-   }
+   free_pdls($p1, $p2, $p3, $p4, $p5, $p6, $p7);
 
    return;
 }
