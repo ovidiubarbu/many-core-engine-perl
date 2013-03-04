@@ -17,7 +17,7 @@ use Storable qw(freeze thaw);
 use Time::HiRes qw(time);
 
 use PDL;
-use PDL::IO::Storable;                   ## Required for PDL + MCE combo
+use PDL::IO::Storable;                   ## Required for passing PDL data
 
 use MCE::Signal qw($tmp_dir -use_dev_shm);
 use MCE;

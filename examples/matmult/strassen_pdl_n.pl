@@ -16,7 +16,7 @@ my $prog_name = $0; $prog_name =~ s{^.*[\\/]}{}g;
 use Time::HiRes qw(time);
 
 use PDL;
-use PDL::IO::Storable;                   ## Required for PDL + MCE combo
+use PDL::IO::Storable;                   ## Required for passing PDL data
 
 use MCE::Signal qw($tmp_dir -use_dev_shm);
 use MCE;
@@ -128,16 +128,16 @@ sub strassen {
    $mce->send([ $t1, $b22, 5, $nTam ]);
 
    subtract_m($a12, $a22, $t1, $nTam);
-   sum_m($b21, $b22, $a12, $nTam);               ## Reuse $a12 as $t2
-   $mce->send([ $t1, $a12, 7, $nTam ]);          ## Reuse $a12 as $t2
+   sum_m($b21, $b22, $a12, $nTam);               ## Reuse $a12
+   $mce->send([ $t1, $a12, 7, $nTam ]);
 
    subtract_m($a21, $a11, $t1, $nTam);
-   sum_m($b11, $b12, $a12, $nTam);               ## Reuse $a12 as $t2
-   $mce->send([ $t1, $a12, 6, $nTam ]);          ## Reuse $a12 as $t2
+   sum_m($b11, $b12, $a12, $nTam);               ## Reuse $a12
+   $mce->send([ $t1, $a12, 6, $nTam ]);
 
    sum_m($a11, $a22, $t1, $nTam);
-   sum_m($b11, $b22, $a12, $nTam);               ## Reuse $a12 as $t2
-   $mce->send([ $t1, $a12, 1, $nTam ]);          ## Reuse $a12 as $t2
+   sum_m($b11, $b22, $a12, $nTam);               ## Reuse $a12
+   $mce->send([ $t1, $a12, 1, $nTam ]);
 
    undef $a11;             undef $a21; undef $a22;
    undef $b11; undef $b12; undef $b21; undef $b22;
