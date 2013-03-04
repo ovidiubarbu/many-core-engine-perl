@@ -24,7 +24,7 @@ BEGIN {
    $prog_name    =~ s{^.*[\\/]}{}g;
 }
 
-our $VERSION = '1.404';
+our $VERSION = '1.405';
 $VERSION = eval $VERSION;
 
 our $tmp_dir = undef;
@@ -55,11 +55,13 @@ sub import {
 
    my @_export_args = ();
    my $_no_setpgrp  = 0;
+   my $_setpgrp     = 0;
    my $_use_dev_shm = 0;
 
    while (my $_arg = shift) {
       $_keep_tmp_dir = _flag() and next if ($_arg eq '-keep_tmp_dir');
       $_no_setpgrp   = _flag() and next if ($_arg eq '-no_setpgrp');
+      $_setpgrp      = _flag() and next if ($_arg eq '-setpgrp');
       $_use_dev_shm  = _flag() and next if ($_arg eq '-use_dev_shm');
       _usage() if ($_arg =~ /^-/);
       push @_export_args, $_arg;
@@ -68,8 +70,12 @@ sub import {
    local $Exporter::ExportLevel = 1;
    Exporter::import($class, @_export_args);
 
+ # ## MCE will no longer call setpgrp by default as of MCE 1.405.
+ # ## Sets the current process group for the current process.
+ # setpgrp(0,0) if ($_no_setpgrp == 0 && $^O ne 'MSWin32');
+
    ## Sets the current process group for the current process.
-   setpgrp(0,0) if ($_no_setpgrp == 0 && $^O ne 'MSWin32');
+   setpgrp(0,0) if ($_setpgrp == 1 && $^O ne 'MSWin32');
 
    my ($_tmp_dir_base, $_count);
 
@@ -424,7 +430,7 @@ MCE::Signal - Provides tmp_dir creation & signal handling for Many-Core Engine.
 
 =head1 VERSION
 
-This document describes MCE::Signal version 1.404
+This document describes MCE::Signal version 1.405
 
 =head1 SYNOPSIS
 
@@ -444,19 +450,12 @@ The location of temp dir resides under $ENV{TEMP} if defined, otherwise
 The temp dir resides under $ENV{TEMP}/mce/ when running Perl on Microsoft
 Windows.
 
-By default, MCE::Signal calls setpgrp for the process including MCE::Signal
-or MCE. Pass -no_setpgrp to MCE::Signal when wanting finer control on placement
-of setpgrp such as inside a user_begin block or if not wanting setpgrp to be
-called at all.
+As of MCE 1.405, MCE::Signal no longer calls setpgrp by default. If needed,
+just pass the -setpgrp option to MCE::Signal.
 
- ## Running /usr/bin/time mce_script.pl will not terminate with Ctrl-C.
- ## The built-in time command from some shells (e.g., bash) works fine.
- ## In this case, pass -no_setpgrp if wanting to time your script with
- ## /usr/bin/time instead of the shell built-in.
- ##
  ## Running MCE through Daemon::Control requires setpgrp to be called.
 
- use MCE::Signal qw(-no_setpgrp);
+ use MCE::Signal qw(-setpgrp);
  use MCE;
 
 Nothing is exported by default. Exportable are 1 variable and 2 subroutines:
