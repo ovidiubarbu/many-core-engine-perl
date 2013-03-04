@@ -2471,24 +2471,24 @@ sub _worker_sequence_generator {
       ($_begin, $_end, $_step, $_fmt) = @{ $self->{sequence} };
    }
    else {
-      $_begin       = $self->{sequence}->{begin};
-      $_end         = $self->{sequence}->{end};
-      $_step        = $self->{sequence}->{step};
-      $_fmt         = $self->{sequence}->{format};
+      $_begin = $self->{sequence}->{begin};
+      $_end   = $self->{sequence}->{end};
+      $_step  = $self->{sequence}->{step};
+      $_fmt   = $self->{sequence}->{format};
    }
 
-   my $_wid         = $self->{_task_wid} || $self->{_wid};
-   my $_next        = ($_wid - 1) * $_chunk_size * $_step + $_begin;
-   my $_chunk_id    = $_wid;
+   my $_wid      = $self->{_task_wid} || $self->{_wid};
+   my $_next     = ($_wid - 1) * $_chunk_size * $_step + $_begin;
+   my $_chunk_id = $_wid;
 
    ## -------------------------------------------------------------------------
 
-   $self->{_last_jmp} = sub { goto _WORKER_SEQ__LAST; };
+   $self->{_last_jmp} = sub { goto _WORKER_SEQ_GEN__LAST; };
 
    if ($_begin == $_end) {                        ## Both are identical.
 
       if ($_wid == 1) {
-         $self->{_next_jmp} = sub { goto _WORKER_SEQ__LAST; };
+         $self->{_next_jmp} = sub { goto _WORKER_SEQ_GEN__LAST; };
 
          my $_seq_n = (defined $_fmt) ? sprintf("%$_fmt", $_next) : $_next;
 
@@ -2501,7 +2501,7 @@ sub _worker_sequence_generator {
    }
    elsif ($_chunk_size == 1) {                    ## Does no chunking.
 
-      $self->{_next_jmp} = sub { goto _WORKER_SEQ__NEXT_A; };
+      $self->{_next_jmp} = sub { goto _WORKER_SEQ_GEN__NEXT_A; };
 
       my $_flag = ($_begin < $_end);
 
@@ -2512,7 +2512,7 @@ sub _worker_sequence_generator {
          my $_seq_n = (defined $_fmt) ? sprintf("%$_fmt", $_next) : $_next;
 
          $_user_func->($self, $_seq_n, $_chunk_id);
-         _WORKER_SEQ__NEXT_A:
+         _WORKER_SEQ_GEN__NEXT_A:
 
          $_next     += $_step * $_max_workers;
          $_chunk_id += $_max_workers;
@@ -2520,19 +2520,21 @@ sub _worker_sequence_generator {
    }
    else {                                         ## Yes, does chunking.
 
-      $self->{_next_jmp} = sub { goto _WORKER_SEQ__NEXT_B; };
+      $self->{_next_jmp} = sub { goto _WORKER_SEQ_GEN__NEXT_B; };
 
       while (1) {
          my @_n = ();
 
          if ($_begin < $_end) {
-            for (1 .. $_chunk_size) { last if ($_next > $_end);
+            for (1 .. $_chunk_size) {
+               last if ($_next > $_end);
                push @_n, (defined $_fmt) ? sprintf("%$_fmt", $_next) : $_next;
                $_next += $_step;
             }
          }
          else {
-            for (1 .. $_chunk_size) { last if ($_next < $_end);
+            for (1 .. $_chunk_size) {
+               last if ($_next < $_end);
                push @_n, (defined $_fmt) ? sprintf("%$_fmt", $_next) : $_next;
                $_next += $_step;
             }
@@ -2541,14 +2543,14 @@ sub _worker_sequence_generator {
          return unless (@_n > 0);
 
          $_user_func->($self, \@_n, $_chunk_id);
-         _WORKER_SEQ__NEXT_B:
+         _WORKER_SEQ_GEN__NEXT_B:
 
          $_next     += $_step * ($_chunk_size * $_max_workers - $_chunk_size);
          $_chunk_id += $_max_workers;
       }
    }
 
-   _WORKER_SEQ__LAST:
+   _WORKER_SEQ_GEN__LAST:
 
    return;
 }
