@@ -25,7 +25,7 @@ use Time::HiRes qw(time);
 use PDL;
 use PDL::Parallel::threads qw(retrieve_pdls free_pdls);
 
-use PDL::IO::Storable;                   ## Required for PDL + MCE combo
+use PDL::IO::Storable;                   ## Required for passing PDL data
 
 use MCE::Signal qw($tmp_dir -use_dev_shm);
 use MCE;
@@ -191,16 +191,16 @@ sub strassen {
    submit($t1, $b22, 50, $nTam, $mce, $u1, $u2);
 
    subtract_m($a12, $a22, $t1, $nTam);
-   sum_m($b21, $b22, $a12, $nTam);               ## Reuse $a12 as $t2
-   submit($t1, $a12, 70, $nTam, $mce, $u1, $u2); ## Reuse $a12 as $t2
+   sum_m($b21, $b22, $a12, $nTam);               ## Reuse $a12
+   submit($t1, $a12, 70, $nTam, $mce, $u1, $u2);
 
    subtract_m($a21, $a11, $t1, $nTam);
-   sum_m($b11, $b12, $a12, $nTam);               ## Reuse $a12 as $t2
-   submit($t1, $a12, 60, $nTam, $mce, $u1, $u2); ## Reuse $a12 as $t2
+   sum_m($b11, $b12, $a12, $nTam);               ## Reuse $a12
+   submit($t1, $a12, 60, $nTam, $mce, $u1, $u2);
 
    sum_m($a11, $a22, $t1, $nTam);
-   sum_m($b11, $b22, $a12, $nTam);               ## Reuse $a12 as $t2
-   submit($t1, $a12, 10, $nTam, $mce, $u1, $u2); ## Reuse $a12 as $t2
+   sum_m($b11, $b22, $a12, $nTam);               ## Reuse $a12
+   submit($t1, $a12, 10, $nTam, $mce, $u1, $u2);
 
    undef $a11;             undef $a21; undef $a22;
    undef $b11; undef $b12; undef $b21; undef $b22;

@@ -18,7 +18,7 @@ use Time::HiRes qw(time);
 use PDL;
 use PDL::Parallel::threads qw(retrieve_pdls free_pdls);
 
-use PDL::IO::Storable;                   ## Required for PDL + MCE combo
+use PDL::IO::Storable;                   ## Required for passing PDL data
 
 use MCE::Signal qw($tmp_dir -use_dev_shm);
 use MCE;
@@ -139,22 +139,22 @@ sub strassen {
    $mce->send([ "w_5a", "w_5b", 5, $nTam ]);
 
    subtract_m($a12, $a22, $t1, $nTam);
-   sum_m($b21, $b22, $a12, $nTam);               ## Reuse $a12 as $t2
+   sum_m($b21, $b22, $a12, $nTam);               ## Reuse $a12
    my $w_7a = $t1->copy->share_as("w_7a");
    my $w_7b = $a12->copy->share_as("w_7b");
-   $mce->send([ "w_7a", "w_7b", 7, $nTam ]);     ## Reuse $a12 as $t2
+   $mce->send([ "w_7a", "w_7b", 7, $nTam ]);
 
    subtract_m($a21, $a11, $t1, $nTam);
-   sum_m($b11, $b12, $a12, $nTam);               ## Reuse $a12 as $t2
+   sum_m($b11, $b12, $a12, $nTam);               ## Reuse $a12
    my $w_6a = $t1->copy->share_as("w_6a");
    my $w_6b = $a12->copy->share_as("w_6b");
-   $mce->send([ "w_6a", "w_6b", 6, $nTam ]);     ## Reuse $a12 as $t2
+   $mce->send([ "w_6a", "w_6b", 6, $nTam ]);
 
    sum_m($a11, $a22, $t1, $nTam);
-   sum_m($b11, $b22, $a12, $nTam);               ## Reuse $a12 as $t2
+   sum_m($b11, $b22, $a12, $nTam);               ## Reuse $a12
    my $w_1a = $t1->copy->share_as("w_1a");
    my $w_1b = $a12->copy->share_as("w_1b");
-   $mce->send([ "w_1a", "w_1b", 1, $nTam ]);     ## Reuse $a12 as $t2
+   $mce->send([ "w_1a", "w_1b", 1, $nTam ]);
 
    undef $a11;             undef $a21; undef $a22;
    undef $b11; undef $b12; undef $b21; undef $b22;

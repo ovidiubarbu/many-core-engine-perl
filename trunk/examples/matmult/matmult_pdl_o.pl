@@ -18,7 +18,7 @@ use Time::HiRes qw(time);
 use PDL;
 use PDL::Parallel::threads qw(retrieve_pdls);
 
-use PDL::IO::Storable;                   ## Required for PDL + MCE combo
+use PDL::IO::Storable;                   ## Required for passing PDL data
 use PDL::IO::FastRaw;                    ## Required for MMAP IO
 
 use MCE::Signal qw($tmp_dir -use_dev_shm);
