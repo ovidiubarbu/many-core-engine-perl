@@ -7,7 +7,7 @@
 
 <> VERSION
 
-   This document describes MCE version 1.404
+   This document describes MCE version 1.405
 
 <> DESCRIPTION
 
@@ -749,12 +749,13 @@
    ## spawned. Workers store the received data as $self->{user_data}.
    ##
    ## The data which can be sent is restricted to an ARRAY, HASH, or PDL
-   ## reference. The send method cannot be called once MCE is running.
-   ## Workers set $self->{user_data} back to undef after processing.
+   ## reference. Workers begin processing immediately after receiving
+   ## data. Workers set $self->{user_data} to undef after processing.
    ##
-   ## One cannot specify input_data, sequence, or user_tasks when wanting
-   ## to use the "send" method. Workers begin processing immediately after
-   ## receiving data.
+   ## One cannot specify input_data, sequence, or user_tasks for the MCE
+   ## instance to receive user data via the "send" method. Passing any
+   ## options e.g. run(0, { options }) is ignored due to workers running
+   ## immediately after receiving user data.
 
    my $mce = MCE->new(
       max_workers => 5,

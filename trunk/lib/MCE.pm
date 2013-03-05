@@ -74,7 +74,7 @@ sub import {
    }
 }
 
-our $VERSION = '1.404';
+our $VERSION = '1.405';
 $VERSION = eval $VERSION;
 
 ## PDL + MCE (spawning as threads) is not stable. Thanks goes to David Mertens
@@ -538,6 +538,10 @@ sub forchunk {
 
    _croak("MCE::forchunk: method cannot be called by the worker process")
       if ($self->{_wid});
+   _croak("MCE::forchunk: method cannot be called while processing")
+      if ($self->{_send_cnt});
+   _croak("MCE::forchunk: method cannot be called while running")
+      if ($self->{_total_running});
 
    my ($_user_func, $_params_ref);
 
@@ -574,6 +578,10 @@ sub foreach {
 
    _croak("MCE::foreach: method cannot be called by the worker process")
       if ($self->{_wid});
+   _croak("MCE::foreach: method cannot be called while processing")
+      if ($self->{_send_cnt});
+   _croak("MCE::foreach: method cannot be called while running")
+      if ($self->{_total_running});
 
    my ($_user_func, $_params_ref);
 
@@ -611,6 +619,10 @@ sub forseq {
 
    _croak("MCE::forseq: method cannot be called by the worker process")
       if ($self->{_wid});
+   _croak("MCE::forseq: method cannot be called while processing")
+      if ($self->{_send_cnt});
+   _croak("MCE::forseq: method cannot be called while running")
+      if ($self->{_total_running});
 
    my ($_user_func, $_params_ref);
 
@@ -650,6 +662,10 @@ sub process {
 
    _croak("MCE::process: method cannot be called by the worker process")
       if ($self->{_wid});
+   _croak("MCE::process: method cannot be called while processing")
+      if ($self->{_send_cnt});
+   _croak("MCE::process: method cannot be called while running")
+      if ($self->{_total_running});
 
    ## Set input data.
    if (defined $_input_data) {
@@ -734,6 +750,9 @@ sub run {
    @_ = ();
 
    my $_requires_shutdown = 0;
+
+   ## Unset params if workers have been sent user_data via send.
+   $_params_ref = undef if ($self->{_send_cnt});
 
    ## Set user_func to NOOP if not specified.
    $self->{user_func} = \&_NOOP
@@ -955,9 +974,9 @@ sub send {
 
    _croak("MCE::send: method cannot be called by the worker process")
       if ($self->{_wid});
-
    _croak("MCE::send: method cannot be called while running")
-      if (defined $self->{_total_running} && $self->{_total_running} > 0);
+      if ($self->{_total_running});
+
    _croak("MCE::send: method cannot be used with input_data or sequence")
       if (defined $self->{input_data} || defined $self->{sequence});
    _croak("MCE::send: method cannot be used with user_tasks")
@@ -968,7 +987,7 @@ sub send {
    if (ref $_[1] eq 'ARRAY' || ref $_[1] eq 'HASH' || ref $_[1] eq 'PDL') {
       $_data_ref = $_[1];
    } else {
-      _croak("MCE::send: ARRAY, HASH, or PDL reference is not specified");
+      _croak("MCE::send: ARRAY, HASH, or a PDL reference is not specified");
    }
 
    $self->{_send_cnt} = 0 unless (defined $self->{_send_cnt});
@@ -1026,9 +1045,13 @@ sub shutdown {
 
    _croak("MCE::shutdown: method cannot be called by the worker process")
       if ($self->{_wid});
+   _croak("MCE::shutdown: method cannot be called while processing")
+      if ($self->{_send_cnt});
+   _croak("MCE::shutdown: method cannot be called while running")
+      if ($self->{_total_running});
 
    ## Return if workers have not been spawned or have already been shutdown.
-   return $self unless ($self->{_spawned});
+   return unless ($self->{_spawned});
 
    ## Wait for workers to complete processing before shutting down.
    $self->run(0) if ($self->{_send_cnt});
@@ -1115,7 +1138,7 @@ sub shutdown {
    $self->{_sess_dir}   = undef;
    $self->{_send_cnt}   = 0;
 
-   return $self;
+   return;
 }
 
 ###############################################################################

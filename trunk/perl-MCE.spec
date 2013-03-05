@@ -1,5 +1,5 @@
 Name:           perl-MCE
-Version:        1.404
+Version:        1.405
 Release:        1%{?dist}
 Summary:        Many-Core Engine for Perl. Provides parallel processing capabilities.
 License:        CHECK(Distributable)
@@ -56,6 +56,17 @@ rm -rf $RPM_BUILD_ROOT
 %{_mandir}/man3/*
 
 %changelog
+* Mon Mar 04 2013 Mario Roy 1.405-1
+- Added strassen_pdl_t.pl in the event folks cannot make use of /dev/shm
+  used by the strassen_pdl_s.pl example.
+- Optimized the send method -- workers process immediately after receving
+  data. Updated run times in README for the strassen examples.
+- MCE no longer calls setpgrp by default as of MCE 1.405. There is only
+  one reason to call setpgrp, but many reasons not to. The sole reason
+  was for MCE to run correctly with Daemon::Control. If needed, one can
+  pass the option to MCE::Signal qw(-setpgrp).
+- Return void in the shutdown method (previously was returning $self).
+- Tidy code inside sequence generator.
 * Sun Feb 24 2013 Mario Roy 1.404-1
 - Added sess_dir method 
 - Completed work with matmult/* examples
