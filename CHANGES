@@ -1,5 +1,17 @@
 Revision history for MCE
 
+1.405 Mon Mar 04 19:00:00 EST 2013
+    * Added strassen_pdl_t.pl in the event folks cannot make use of /dev/shm
+      used by the strassen_pdl_s.pl example.
+    * Optimized the send method -- workers process immediately after receving
+      data. Updated run times in README for the strassen examples.
+    * MCE no longer calls setpgrp by default as of MCE 1.405. There is only
+      one reason to call setpgrp, but many reasons not to. The sole reason
+      was for MCE to run correctly with Daemon::Control. If needed, one can
+      pass the option to MCE::Signal qw(-setpgrp).
+    * Return void in the shutdown method (previously was returning $self).
+    * Tidy code inside sequence generator.
+
 1.404 Sun Feb 24 13:00:00 EST 2013
     * Added sess_dir method
     * Completed work with matmult/* examples

@@ -70,7 +70,7 @@ sub import {
    local $Exporter::ExportLevel = 1;
    Exporter::import($class, @_export_args);
 
- # ## MCE will no longer call setpgrp by default as of MCE 1.405.
+ # ## MCE no longer calls setpgrp by default as of MCE 1.405.
  # ## Sets the current process group for the current process.
  # setpgrp(0,0) if ($_no_setpgrp == 0 && $^O ne 'MSWin32');
 

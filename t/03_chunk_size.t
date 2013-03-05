@@ -40,6 +40,8 @@ is(
    'check that ans is correct for chunk_size of 1'
 );
 
+select(undef, undef, undef, 0.05);
+
 @ans = ();
 $mce->process([ 0 .. 7 ], { chunk_size => 2 });
 
@@ -48,6 +50,8 @@ is(
    'check that ans is correct for chunk_size of 2'
 );
 
+select(undef, undef, undef, 0.05);
+
 @ans = ();
 $mce->process([ 0 .. 9 ], { chunk_size => 4 });
 
@@ -55,6 +59,8 @@ is(
    join('', sort @ans), '0123456789',
    'check that ans is correct for chunk_size of 4'
 );
+
+select(undef, undef, undef, 0.05);
 
 $mce->shutdown();
 
