@@ -365,8 +365,9 @@ sub spawn {
       $self->{_mce_sid} = $$ .'.'. $self->{_mce_tid} .'.'. (++$_mce_count);
    }
 
-   my $_mce_sid = $self->{_mce_sid}; my $_sess_dir = $self->{_sess_dir};
-   my $_tmp_dir = $self->{tmp_dir};
+   my $_mce_sid  = $self->{_mce_sid};
+   my $_sess_dir = $self->{_sess_dir};
+   my $_tmp_dir  = $self->{tmp_dir};
 
    ## Create temp dir.
    unless ($_sess_dir) {
@@ -711,7 +712,8 @@ sub restart_worker {
    $self->{_task}->[$_task_id]->{_total_running} += 1 if (defined $_task_id);
    $self->{_task}->[$_task_id]->{_total_workers} += 1 if (defined $_task_id);
 
-   $self->{_total_running} += 1; $self->{_total_workers} += 1;
+   $self->{_total_running} += 1;
+   $self->{_total_workers} += 1;
 
    if (defined $_use_threads && $_use_threads == 1) {
       $self->_dispatch_thread($_wid, $_task, $_task_id, $_task_wid, $_params);
@@ -1114,7 +1116,8 @@ sub shutdown {
 
    ## Remove session directory.
    if (defined $_sess_dir) {
-      unlink "$_sess_dir/_com.lock"; unlink "$_sess_dir/_dat.lock";
+      unlink "$_sess_dir/_com.lock";
+      unlink "$_sess_dir/_dat.lock";
       rmdir  "$_sess_dir";
 
       delete $_mce_sess_dir{$_sess_dir};
@@ -1215,8 +1218,8 @@ sub exit {
    ## Exit thread/child process.
    $SIG{__DIE__} = $SIG{__WARN__} = sub { };
 
-   close $_DAT_LOCK; close $_COM_LOCK;
-   undef $_DAT_LOCK; undef $_COM_LOCK;
+   close $_DAT_LOCK; undef $_DAT_LOCK;
+   close $_COM_LOCK; undef $_COM_LOCK;
 
    threads->exit($_exit_status) if ($_has_threads && threads->can('exit'));
 
@@ -2784,7 +2787,8 @@ sub _worker_main {
       if (defined $_task->{max_workers});
 
    ## Init runtime vars. Obtain handle to lock files.
-   my $_mce_sid = $self->{_mce_sid}; my $_sess_dir = $self->{_sess_dir};
+   my $_mce_sid  = $self->{_mce_sid};
+   my $_sess_dir = $self->{_sess_dir};
 
    $self->{_task_id}  = (defined $_task_id ) ? $_task_id  : 0;
    $self->{_task_wid} = (defined $_task_wid) ? $_task_wid : $_wid;
@@ -2847,8 +2851,8 @@ sub _worker_main {
       flock $_DAT_LOCK, LOCK_SH; flock $_DAT_LOCK, LOCK_UN;
    };
 
-   close $_DAT_LOCK; close $_COM_LOCK;
-   undef $_DAT_LOCK; undef $_COM_LOCK;
+   close $_DAT_LOCK; undef $_DAT_LOCK;
+   close $_COM_LOCK; undef $_COM_LOCK;
 
    return;
 }
