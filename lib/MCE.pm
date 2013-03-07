@@ -831,9 +831,6 @@ sub run {
       $_abort_msg = undef;
    }
 
-   ## Set flag on whether or not array is single dimension.
-   $self->{_single_dim} = $_single_dim;
-
    ## -------------------------------------------------------------------------
 
    my $_chunk_size    = $self->{chunk_size};
@@ -935,9 +932,15 @@ sub run {
 
    ## Call the output function.
    if ($self->{_total_running} > 0) {
-      $self->{_abort_msg} = $_abort_msg;
+      $self->{_abort_msg}  = $_abort_msg;
+      $self->{_run_mode}   = $_run_mode;
+      $self->{_single_dim} = $_single_dim;
+
       $self->_output_loop($_input_data, $_input_glob);
+
       undef $self->{_abort_msg};
+      undef $self->{_run_mode};
+      undef $self->{_single_dim};
    }
 
    unless ($_send_cnt) {
@@ -2540,8 +2543,8 @@ sub _worker_sequence_generator {
          $_user_func->($self, $_seq_n, $_chunk_id);
          _WORKER_SEQ_GEN__NEXT_A:
 
-         $_next     += $_step * $_max_workers;
          $_chunk_id += $_max_workers;
+         $_next      = ($_chunk_id - 1) * $_step + $_begin;
       }
    }
    else {                                         ## Yes, does chunking.
@@ -2549,20 +2552,21 @@ sub _worker_sequence_generator {
       $self->{_next_jmp} = sub { goto _WORKER_SEQ_GEN__NEXT_B; };
 
       while (1) {
+         my $_n_begin = $_next;
          my @_n = ();
 
          if ($_begin < $_end) {
             for (1 .. $_chunk_size) {
                last if ($_next > $_end);
                push @_n, (defined $_fmt) ? sprintf("%$_fmt", $_next) : $_next;
-               $_next += $_step;
+               $_next = $_step * $_ + $_n_begin;
             }
          }
          else {
             for (1 .. $_chunk_size) {
                last if ($_next < $_end);
                push @_n, (defined $_fmt) ? sprintf("%$_fmt", $_next) : $_next;
-               $_next += $_step;
+               $_next = $_step * $_ + $_n_begin;
             }
          }
 
@@ -2571,8 +2575,8 @@ sub _worker_sequence_generator {
          $_user_func->($self, \@_n, $_chunk_id);
          _WORKER_SEQ_GEN__NEXT_B:
 
-         $_next     += $_step * ($_chunk_size * $_max_workers - $_chunk_size);
          $_chunk_id += $_max_workers;
+         $_next      = ($_chunk_id - 1) * $_chunk_size * $_step + $_begin;
       }
    }
 
