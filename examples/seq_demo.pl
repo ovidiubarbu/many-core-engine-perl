@@ -25,17 +25,17 @@ sub user_func {
       ## e.g. when chunk_size > 1, $seq_n will be an array ref above
 
       foreach (@{ $seq_n }) {
-         printf(
+         $self->sendto('stdout', sprintf(
             "task_id %d: seq_n %s: chunk_id %d: wid %d: task_wid %d\n",
             $task_id,    $_,       $chunk_id,   $wid,   $task_wid
-         );
+         ));
       }
    }
    else {
-      printf(
+      $self->sendto('stdout', sprintf(
          "task_id %d: seq_n %s: chunk_id %d: wid %d: task_wid %d\n",
          $task_id,    $seq_n,   $chunk_id,   $wid,   $task_wid
-      );
+      ));
    }
 }
 
