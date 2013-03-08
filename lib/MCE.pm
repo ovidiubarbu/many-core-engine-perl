@@ -104,6 +104,7 @@ use constant {
    QUE_TEMPLATE    => $_que_template,    ## Pack template for queue socket
    QUE_READ_SIZE   => $_que_read_size,   ## Read size
 
+   OUTPUT_W_ABT    => ':W~ABT',          ## Worker has aborted
    OUTPUT_W_DNE    => ':W~DNE',          ## Worker has completed
    OUTPUT_W_EXT    => ':W~EXT',          ## Worker has exited
    OUTPUT_A_ARY    => ':A~ARY',          ## Array  << Array
@@ -1164,12 +1165,14 @@ sub abort {
 
    my $_QUE_R_SOCK = $self->{_que_r_sock};
    my $_QUE_W_SOCK = $self->{_que_w_sock};
+   my $_OUT_W_SOCK = $self->{_out_w_sock};
    my $_abort_msg  = $self->{_abort_msg};
 
    if (defined $_abort_msg) {
       local $\ = undef; local $/ = $LF;
       my $_next; read $_QUE_R_SOCK, $_next, QUE_READ_SIZE;
       print $_QUE_W_SOCK pack(QUE_TEMPLATE, 0, $_abort_msg);
+      print $_OUT_W_SOCK OUTPUT_W_ABT, $LF if ($self->wid > 0);
    }
 
    return;
@@ -1732,9 +1735,9 @@ sub _validate_args_s {
 ###############################################################################
 
 {
-   my ($_value, $_want_id, $_input_data, $_eof_flag);
+   my ($_value, $_want_id, $_input_data, $_eof_flag, $_aborted);
    my ($_user_error, $_user_output, $_flush_file, $self);
-   my ($_callback, $_file, %_sendto_fhs, $_len);
+   my ($_callback, $_file, %_sendto_fhs, $_len, $_chunk_id);
 
    my ($_DAT_R_SOCK, $_OUT_R_SOCK, $_MCE_STDERR, $_MCE_STDOUT);
    my ($_RS, $_I_SEP, $_O_SEP, $_input_glob, $_chunk_size);
@@ -1745,6 +1748,13 @@ sub _validate_args_s {
 
    ## Create hash structure containing various output functions.
    my %_output_function = (
+
+      OUTPUT_W_ABT.$LF => sub {                   ## Worker has aborted
+
+         $_aborted = 1;
+
+         return;
+      },
 
       OUTPUT_W_DNE.$LF => sub {                   ## Worker has completed
          chomp($_task_id = <$_OUT_R_SOCK>);
@@ -1844,7 +1854,7 @@ sub _validate_args_s {
       OUTPUT_A_ARY.$LF => sub {                   ## Array << Array
          my $_buffer;
 
-         if ($_offset_pos >= $_input_size) {
+         if ($_offset_pos >= $_input_size || $_aborted) {
             local $\ = undef;
             print $_DAT_R_SOCK "0${LF}";
             return;
@@ -1867,7 +1877,7 @@ sub _validate_args_s {
          }
 
          local $\ = undef; $_len = length($_buffer);
-         print $_DAT_R_SOCK $_len, $LF, $_buffer;
+         print $_DAT_R_SOCK $_len, $LF, (++$_chunk_id), $LF, $_buffer;
          $_offset_pos += $_chunk_size;
 
          return;
@@ -1882,7 +1892,7 @@ sub _validate_args_s {
          ## when reading from standard input. No output will be lost as
          ## far as what was previously read into the buffer.
 
-         if ($_eof_flag) {
+         if ($_eof_flag || $_aborted) {
             local $\ = undef; print $_DAT_R_SOCK "0${LF}";
             return;
          }
@@ -1911,7 +1921,10 @@ sub _validate_args_s {
          }
 
          local $\ = undef; $_len = length($_buffer);
-         print $_DAT_R_SOCK ($_len) ? $_len . $LF . $_buffer : '0' . $LF;
+
+         print $_DAT_R_SOCK ($_len)
+            ? $_len . $LF . (++$_chunk_id) . $LF . $_buffer
+            : '0' . $LF;
 
          return;
       },
@@ -2113,7 +2126,7 @@ sub _validate_args_s {
       $_single_dim   = $self->{_single_dim};
 
       $_has_user_tasks = (defined $self->{user_tasks});
-      $_eof_flag = 0;
+      $_aborted = $_chunk_id = $_eof_flag = 0;
 
       if (defined $_input_data && ref $_input_data eq 'ARRAY') {
          $_input_size = @$_input_data;
@@ -2381,8 +2394,6 @@ sub _worker_request_chunk {
 
    die "Private method called" unless (caller)[0]->isa( ref($self) );
 
-   my $_QUE_R_SOCK  = $self->{_que_r_sock};
-   my $_QUE_W_SOCK  = $self->{_que_w_sock};
    my $_OUT_W_SOCK  = $self->{_out_w_sock};
    my $_DAT_W_SOCK  = $self->{_dat_w_sock};
    my $_single_dim  = $self->{_single_dim};
@@ -2391,7 +2402,7 @@ sub _worker_request_chunk {
    my $_user_func   = $self->{user_func};
    my $_RS          = $self->{RS} || $/;
 
-   my ($_next, $_chunk_id, $_has_data, $_len, $_chunk_ref);
+   my ($_next, $_chunk_id, $_len, $_chunk_ref);
    my ($_output_tag, @_records);
 
    if ($_proc_type == REQUEST_ARRAY) {
@@ -2421,26 +2432,15 @@ sub _worker_request_chunk {
          local $\ = undef; local $/ = $LF;
          flock $_DAT_LOCK, LOCK_EX;
 
-         read $_QUE_R_SOCK, $_next, QUE_READ_SIZE;
-         ($_chunk_id, $_has_data) = unpack(QUE_TEMPLATE, $_next);
-
-         if ($_has_data == 0) {
-            print $_QUE_W_SOCK pack(QUE_TEMPLATE, 0, $_has_data);
-            flock $_DAT_LOCK, LOCK_UN;
-            return;
-         }
-
-         $_chunk_id++;
-
          print $_OUT_W_SOCK $_output_tag, $LF;
          chomp($_len = <$_DAT_W_SOCK>);
-         print $_QUE_W_SOCK pack(QUE_TEMPLATE, $_chunk_id, $_len);
 
          if ($_len == 0) {
             flock $_DAT_LOCK, LOCK_UN;
             return;
          }
 
+         chomp($_chunk_id = <$_DAT_W_SOCK>);
          read $_DAT_W_SOCK, $_buffer, $_len;
          flock $_DAT_LOCK, LOCK_UN;
       }
