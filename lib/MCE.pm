@@ -783,11 +783,22 @@ sub run {
    local $SIG{__DIE__}  = \&_die;
    local $SIG{__WARN__} = \&_warn;
 
-   my ($_input_data, $_input_file, $_input_glob);
+   my ($_input_data, $_input_file, $_input_glob, $_seq);
    my ($_abort_msg, $_first_msg, $_run_mode, $_single_dim);
 
+   $_seq = (defined $self->{user_tasks} && $self->{user_tasks}->[0]->{sequence})
+      ? $self->{user_tasks}->[0]->{sequence}
+      : $self->{sequence};
+
    ## Determine run mode for workers.
-   if (defined $self->{input_data}) {
+   if (defined $_seq) {
+      my ($_begin, $_end, $_step, $_fmt) = (ref $_seq eq 'ARRAY')
+         ? @{ $_seq } : ($_seq->{begin}, $_seq->{end}, $_seq->{step});
+      $_run_mode  = 'sequence';
+      $_abort_msg = int(($_end - $_begin) / $_step / $self->{chunk_size}) + 1;
+      $_first_msg = 0;
+   }
+   elsif (defined $self->{input_data}) {
       if (ref $self->{input_data} eq 'ARRAY') {      ## Array mode.
          $_run_mode   = 'array';
          $_input_data = $self->{input_data};
@@ -2479,7 +2490,109 @@ sub _worker_request_chunk {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Worker process -- Sequence Generator.
+## Worker process -- Sequence (distribution via bank-teller queuing model).
+##
+###############################################################################
+
+sub _worker_sequence {
+
+   my MCE $self = $_[0];
+
+   @_ = ();
+
+   die "Private method called" unless (caller)[0]->isa( ref($self) );
+
+   my $_many_wrks  = ($self->{max_workers} > 1) ? 1 : 0;
+   my $_QUE_R_SOCK = $self->{_que_r_sock};
+   my $_QUE_W_SOCK = $self->{_que_w_sock};
+   my $_chunk_size = $self->{chunk_size};
+   my $_user_func  = $self->{user_func};
+
+   my ($_next, $_chunk_id, $_seq_n, $_begin, $_end, $_step, $_fmt);
+   my ($_abort, $_offset);
+
+   if (ref $self->{sequence} eq 'ARRAY') {
+      ($_begin, $_end, $_step, $_fmt) = @{ $self->{sequence} };
+   }
+   else {
+      $_begin = $self->{sequence}->{begin};
+      $_end   = $self->{sequence}->{end};
+      $_step  = $self->{sequence}->{step};
+      $_fmt   = $self->{sequence}->{format};
+   }
+
+   $_abort    = $self->{_abort_msg};
+   $_chunk_id = $_offset = 0;
+
+   ## -------------------------------------------------------------------------
+
+   $self->{_next_jmp} = sub { goto _WORKER_SEQUENCE__NEXT; };
+   $self->{_last_jmp} = sub { goto _WORKER_SEQUENCE__LAST; };
+
+   while (1) {
+
+      ## Obtain the next chunk_id and sequence number.
+      if ($_many_wrks) {
+         local $\ = undef; local $/ = $LF;
+
+         read $_QUE_R_SOCK, $_next, QUE_READ_SIZE;
+         ($_chunk_id, $_offset) = unpack(QUE_TEMPLATE, $_next);
+
+         if ($_offset >= $_abort) {
+            print $_QUE_W_SOCK pack(QUE_TEMPLATE, 0, $_offset);
+            return;
+         }
+
+         print $_QUE_W_SOCK pack(QUE_TEMPLATE, $_chunk_id + 1, $_offset + 1);
+      }
+      else {
+         return if ($_offset >= $_abort);
+      }
+
+      $_chunk_id++;
+
+      if ($_chunk_size == 1) {
+         $_seq_n = $_offset * $_step + $_begin;
+         $_seq_n = sprintf("%$_fmt", $_seq_n) if (defined $_fmt);
+         $_user_func->($self, $_seq_n, $_chunk_id);
+      }
+      else {
+         my $_n_begin = ($_offset * $_chunk_size) * $_step + $_begin;
+         my @_n = ();
+
+         $_seq_n = $_n_begin;
+
+         if ($_begin < $_end) {
+            for (1 .. $_chunk_size) {
+               last if ($_seq_n > $_end);
+               push @_n, (defined $_fmt) ? sprintf("%$_fmt", $_seq_n) : $_seq_n;
+               $_seq_n = $_step * $_ + $_n_begin;
+            }
+         }
+         else {
+            for (1 .. $_chunk_size) {
+               last if ($_seq_n < $_end);
+               push @_n, (defined $_fmt) ? sprintf("%$_fmt", $_seq_n) : $_seq_n;
+               $_seq_n = $_step * $_ + $_n_begin;
+            }
+         }
+
+         $_user_func->($self, \@_n, $_chunk_id);
+      }
+
+      _WORKER_SEQUENCE__NEXT:
+
+      $_offset++ unless ($_many_wrks);
+   }
+
+   _WORKER_SEQUENCE__LAST:
+
+   return;
+}
+
+###############################################################################
+## ----------------------------------------------------------------------------
+## Worker process -- Sequence Generator (distributes equally among workers).
 ##
 ###############################################################################
 
@@ -2623,7 +2736,10 @@ sub _worker_do {
    $self->{user_begin}->($self) if (defined $self->{user_begin});
 
    ## Call worker function.
-   if (defined $self->{sequence}) {
+   if ($_run_mode eq 'sequence') {
+      $self->_worker_sequence();
+   }
+   elsif (defined $self->{sequence}) {
       $self->_worker_sequence_generator();
    }
    elsif ($_run_mode eq 'array') {
