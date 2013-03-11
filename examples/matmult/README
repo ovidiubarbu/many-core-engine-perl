@@ -243,6 +243,12 @@
  Output
     (0,0) 228997817958400  (5119,5119) 1.75944746804184e+18
 
+ Observation
+    The difference with memory utilization between matmult_mce_t and
+    matmult_simd is largely due to MCE working on smaller chunks (24 rows).
+    MCE would also utilize 2.9% had work been divided equally among the
+    number of workers (214 rows -- one chunk).
+
 
  -- Results for 8192x8192 on a 24-way, 32GB box ------------------------------
 
@@ -343,6 +349,11 @@
 
  Output
     (0,0) 879791667937280  (7167,7167) 9.46237929052649e+18
+
+ Observation
+    The same pattern is seen when comparing memory utilization between
+    matmult_mce_t and matmult_simd. The difference is 384MB for a matrix
+    size of 7168. MCE chunks away at 24 rows per each chunk, not 224 rows.
 
 
  -- Results for 8192x8192 on a 32-way, 128GB box -----------------------------
