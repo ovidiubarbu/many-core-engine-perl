@@ -247,16 +247,17 @@ sub new {
    _croak("MCE::new: '$self->{tmp_dir}' is not writeable")
       unless (-w $self->{tmp_dir});
 
-   _croak("MCE::new: 'user_tasks' is not an ARRAY reference")
-      if ($self->{user_tasks} && ref $self->{user_tasks} ne 'ARRAY');
-
    if (defined $self->{user_tasks}) {
+      _croak("MCE::new: 'user_tasks' is not an ARRAY reference")
+         unless (ref $self->{user_tasks} eq 'ARRAY');
+
       for my $_task (@{ $self->{user_tasks} }) {
          $_task->{max_workers} = $self->{max_workers}
             unless (defined $_task->{max_workers});
          $_task->{use_threads} = $self->{use_threads}
             unless (defined $_task->{use_threads});
       }
+
       if ($_is_cygwin) {
          ## File locking fails among children and threads under Cygwin.
          ## Must be all children or all threads, not intermixed.
@@ -510,7 +511,7 @@ sub spawn {
    }
 
    ## Await reply from the last worker spawned.
-   {
+   if ($self->{_total_workers} > 0) {
       my $_COM_R_SOCK = $self->{_com_r_sock};
       local $/ = $LF; <$_COM_R_SOCK>;
    }
@@ -777,6 +778,7 @@ sub run {
 
    ## Spawn workers.
    $self->spawn() if ($self->{_spawned} == 0);
+   return $self   if ($self->{_total_workers} == 0);
 
    local $SIG{__DIE__}  = \&_die;
    local $SIG{__WARN__} = \&_warn;
@@ -870,8 +872,7 @@ sub run {
       my $_has_user_tasks = (defined $self->{user_tasks});
 
       my $_frozen_params  = freeze(\%_params);
-      my $_frozen_nodata  = freeze(\%_params_nodata)
-         if (defined $self->{user_tasks});
+      my $_frozen_nodata  = freeze(\%_params_nodata) if ($_has_user_tasks);
 
       if ($_has_user_tasks) { for (1 .. @{ $self->{_state} } - 1) {
          $_task0_wids{$_} = 1 unless ($self->{_state}->[$_]->{_task_id});
@@ -1501,9 +1502,9 @@ sub _validate_args_s {
          if (defined $self->{input_data});
 
       if (ref $_seq eq 'ARRAY') {
-         my ($_begin, $_end, $_step, $_format) = @{ $_seq };
+         my ($_begin, $_end, $_step, $_fmt) = @{ $_seq };
          $_seq = {
-            begin => $_begin, end => $_end, step => $_step, format => $_format
+            begin => $_begin, end => $_end, step => $_step, format => $_fmt
          };
       }
       else {
@@ -2638,7 +2639,7 @@ sub _worker_do {
       $self->_worker_read_handle(READ_MEMORY, $self->{input_data});
    }
    else {
-      $self->{user_func}->($self);
+      $self->{user_func}->($self) if (defined $self->{user_func});
    }
 
    undef $self->{_next_jmp} if (defined $self->{_next_jmp});
@@ -2730,7 +2731,8 @@ sub _worker_loop {
       next if ($_response eq '_data');
 
       ## Wait until MCE completes params submission to all workers.
-      flock $_DAT_LOCK, LOCK_SH; flock $_DAT_LOCK, LOCK_UN;
+      flock $_DAT_LOCK, LOCK_SH;
+      flock $_DAT_LOCK, LOCK_UN;
 
       ## Update ID. Process request.
       $self->{_task_wid} = $self->{_wid} = $_wid = $_response
@@ -2742,7 +2744,8 @@ sub _worker_loop {
       $self->_worker_do($_params_ref); undef $_params_ref;
 
       ## Wait until remaining workers complete processing.
-      flock $_COM_LOCK, LOCK_SH; flock $_COM_LOCK, LOCK_UN;
+      flock $_COM_LOCK, LOCK_SH;
+      flock $_COM_LOCK, LOCK_UN;
    }
 
    ## Notify the main process a worker has ended. The following is executed
@@ -2842,7 +2845,8 @@ sub _worker_main {
    }
 
    ## Wait until MCE completes spawning or worker completes running.
-   flock $_COM_LOCK, LOCK_SH; flock $_COM_LOCK, LOCK_UN;
+   flock $_COM_LOCK, LOCK_SH;
+   flock $_COM_LOCK, LOCK_UN;
 
    ## Enter worker loop.
    my $_status = $self->_worker_loop();
@@ -2852,7 +2856,8 @@ sub _worker_main {
    $SIG{__DIE__} = $SIG{__WARN__} = sub { };
 
    eval {
-      flock $_DAT_LOCK, LOCK_SH; flock $_DAT_LOCK, LOCK_UN;
+      flock $_DAT_LOCK, LOCK_SH;
+      flock $_DAT_LOCK, LOCK_UN;
    };
 
    close $_DAT_LOCK; undef $_DAT_LOCK;
