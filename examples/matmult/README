@@ -14,7 +14,6 @@
        diff matmult_mce_f.pl matmult_mce_t.pl
        diff strassen_07_f.pl strassen_07_t.pl
        diff strassen_49_f.pl strassen_49_t.pl
-       diff strassen_56_f.pl strassen_56_t.pl
 
  :: All times below are reported in number of seconds.
 
@@ -71,12 +70,6 @@
     strassen_49_t.pl   MCE divide-and-conquer 2 levels submission using 1 MCE
                        PDL::Parallel::threads, 49 workers
 
-    strassen_56_f.pl   MCE divide-and-conquer 2 levels deep using 8 MCEs
-                       PDL::IO::FastRaw, 56 workers
-
-    strassen_56_t.pl   MCE divide-and-conquer 2 levels deep using 8 MCEs
-                       PDL::Parallel::threads, 56 workers
-
     strassen_perl.pl   MCE divide-and-conquer implementation in pure Perl
                        7 workers
 
@@ -84,10 +77,6 @@
  :: All examples ending in *_[df].pl spawn children via fork. Matmult_simd.pl
     and *_t.pl examples utilize threads otherwise.
 
-    Running "strassen_56_[ft].pl 8192" on a box with less than 24GB is not
-    recommended. Both the 24-way and 32-way test systems below have 32GB
-    and 128GB respectively. 
-   
 
 ###############################################################################
  # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * #
@@ -145,12 +134,11 @@
 
        http://en.wikipedia.org/wiki/Strassen_algorithm
 
-    Three implementations are provided, each with PDL::IO::FastRaw and
+    Two implementations are provided, each with PDL::IO::FastRaw and
     PDL::Parallel::threads for sharing data.
 
        One level submission, 1 MCE instance, 7 workers
        Two level submission (all-at-once), 1 MCE instance, 49 workers
-       Recursive parallelization two levels deep, 8 MCE instances, 56 workers
 
     Amazingly, the 49 workers implementation utilizing PDL::IO::FastRaw
     consumes slightly less memory than PDL::Parallel::threads.
@@ -176,8 +164,6 @@
  strassen_07_t:   0.397s compute:   7 workers:   0.992s script
  strassen_49_f:   0.326s compute:  49 workers:   0.617s script (very nice)
  strassen_49_t:   0.353s compute:  49 workers:   1.969s script
- strassen_56_f:   0.291s compute:  56 workers:   0.625s script
- strassen_56_t:   0.304s compute:  56 workers:   2.608s script
 
  matmult_perl:   23.471s compute:  24 workers:  24.175s script
  strassen_perl:  44.685s compute:   7 workers:  45.119s script
@@ -199,8 +185,6 @@
  strassen_07_t:   1.934s compute:   7 workers:   2.576s script:   1.4% memory
  strassen_49_f:   1.486s compute:  49 workers:   1.823s script:   2.5% memory
  strassen_49_t:   1.494s compute:  49 workers:   3.192s script:   2.7% memory
- strassen_56_f:   1.368s compute:  56 workers:   1.759s script:   3.6% memory
- strassen_56_t:   1.488s compute:  56 workers:   3.792s script:   3.5% memory
 
  matmult_perl:  185.343s compute:  24 workers: 187.698s script:   9.7% memory
  strassen_perl: 319.708s compute:   7 workers: 320.969s script:   8.6% memory
@@ -223,8 +207,6 @@
  strassen_07_t:  12.964s compute:   7 workers:  13.671s script:   4.8% memory
  strassen_49_f:   8.867s compute:  49 workers:   9.338s script:   7.4% memory
  strassen_49_t:   8.918s compute:  49 workers:  10.761s script:   7.9% memory
- strassen_56_f:   8.635s compute:  56 workers:   9.138s script:  11.9% memory
- strassen_56_t:   8.964s compute:  56 workers:  11.505s script:  10.4% memory
 
  Output
     (0,0) 93790635294720  (4095,4095) 5.76554474219245e+17  matmul examples
@@ -258,8 +240,6 @@
  strassen_07_t:  85.366s compute:   7 workers:  86.559s script:  18.8% memory
  strassen_49_f:  57.019s compute:  49 workers:  57.893s script:  29.5% memory
  strassen_49_t:  64.476s compute:  49 workers:  66.776s script:  29.9% memory
- strassen_56_f:  57.062s compute:  56 workers:  58.007s script:  44.8% memory
- strassen_56_t:  61.975s compute:  56 workers:  64.935s script:  38.4% memory
 
  Output
     (0,0) 1.50092500906803e+15  (8191,8191) 1.84482444489628e+19
@@ -267,8 +247,7 @@
  Observation
     Strassen_49_f consumes less memory than strassen_49_t including having
     faster processing time. This is my favorite of the bunch. The same can
-    be seen on the 32-way box. It is also on the heels of the 56 workers
-    implementation which utilizes additional memory.
+    be seen on the 32-way box.
 
     Notice the compute time with script time. There's a larger gap when
     using threads (*_t) versus forking (*_f).
@@ -302,8 +281,6 @@
  strassen_07_t:   0.221s compute:   7 workers:   0.544s script
  strassen_49_f:   0.199s compute:  49 workers:   0.386s script (very nice)
  strassen_49_t:   0.206s compute:  49 workers:   1.314s script
- strassen_56_f:   0.143s compute:  56 workers:   0.341s script (speedy)
- strassen_56_t:   0.151s compute:  56 workers:   1.417s script
 
  matmult_perl:   15.105s compute:  32 workers:  15.634s script
  strassen_perl:  38.764s compute:   7 workers:  39.063s script
@@ -369,8 +346,6 @@
  strassen_07_t:  62.259s compute:   7 workers:  63.097s script:   4.7% memory
  strassen_49_f:  29.972s compute:  49 workers:  30.663s script:   7.3% memory
  strassen_49_t:  36.392s compute:  49 workers:  38.075s script:   7.4% memory
- strassen_56_f:  28.233s compute:  56 workers:  28.946s script:  11.1% memory
- strassen_56_t:  33.609s compute:  56 workers:  35.456s script:   9.5% memory
 
  Output
     (0,0) 1.50092500906803e+15  (8191,8191) 1.84482444489628e+19
