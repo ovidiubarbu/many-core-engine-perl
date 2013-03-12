@@ -378,13 +378,6 @@
  The Strassen algorithm can introduce rounding errors noted above in the
  output. Most often, it may not be a problem.
 
- This exercise has allowed me to make further improvements to MCE. The outcome
- of it all is that the sequence option now follows a bank-teller queuing model
- when generating sequences among workers. Workers now process immediately
- after receiving data from the manager process, submitted via the send method.
- Previously, workers waited until the manager process called run.
-
-
  -- Mario
 
 
