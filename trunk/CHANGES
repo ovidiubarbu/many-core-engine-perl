@@ -1,5 +1,17 @@
 Revision history for MCE
 
+1.406 Tue Mar 12 19:00:00 EST 2013
+    * Added support for barrier synchronization (via new sync method).
+    * Addressed rounding errors with the sequence generator.
+      The sequence option now follows a bank-teller queuing model when
+      generating numbers. This applies to task 0 only. Other tasks can
+      still specify sequence where numbers will be distributed equally
+      among workers like before.
+    * Optimized the _worker_request_chunk private method.
+    * A take 2 on the matrix multiplication examples. This is better
+      organized with updated README file to include the script running
+      time in the results.
+
 1.405 Mon Mar 04 19:00:00 EST 2013
     * Added strassen_pdl_t.pl in the event folks cannot make use of /dev/shm
       used by the strassen_pdl_s.pl example.

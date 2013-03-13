@@ -1,5 +1,5 @@
 Name:           perl-MCE
-Version:        1.405
+Version:        1.406
 Release:        1%{?dist}
 Summary:        Many-Core Engine for Perl. Provides parallel processing capabilities.
 License:        CHECK(Distributable)
@@ -56,6 +56,17 @@ rm -rf $RPM_BUILD_ROOT
 %{_mandir}/man3/*
 
 %changelog
+* Tue Mar 12 2013 Mario Roy 1.406-1
+- Added support for barrier synchronization (via new sync method).
+- Addressed rounding errors with the sequence generator.
+  The sequence option now follows a bank-teller queuing model when
+  generating numbers. This applies to task 0 only. Other tasks can
+  still specify sequence where numbers will be distributed equally
+  among workers like before.
+- Optimized the _worker_request_chunk private method.
+- A take 2 on the matrix multiplication examples. This is better
+  organized with updated README file to include the script running
+  time in the results.
 * Mon Mar 04 2013 Mario Roy 1.405-1
 - Added strassen_pdl_t.pl in the event folks cannot make use of /dev/shm
   used by the strassen_pdl_s.pl example.
@@ -103,144 +114,4 @@ rm -rf $RPM_BUILD_ROOT
   README file under examples/matmult/
 - Updated documentation
 * Mon Feb 11 2013 Mario Roy 1.400-1
-- Slight optimization in the _do_callback method
-- Added 2 new options: user_args and RS (record separator)
-- Added new send method for sending data to workers after spawning and
-  prior to running
-- The sequence option can now take an ARRAY reference
-- Updated documentation on new features
-- Added matrix multiplication examples
-* Sat Jan 05 2013 Mario Roy 1.306-1
-- Added if statement around setpgrp(0,0). That function is not supported
-  under Windows.
-- Updated logic for removing any remaining MCE session directories inside
-  MCE::Signal.
-* Sat Jan 05 2013 Mario Roy 1.305-1
-- Added check for $^S to the DIE handler inside the _worker_main method
-- Added setpgrp(0,0) to MCE::Signal's BEGIN block
-- MCE::Signal points to a _mce_sess_dir hash in the event of a signal,
-  will remove the sess_dir(s) as well. This is needed when tmp_dir is
-  specified during instantiation and pointing to another location than
-  MCE::Signal::tmp_dir.
-* Wed Jan 02 2013 Mario Roy 1.304-1
-- Added Oliver Gorwits to CREDITS for identifying 2 issues
-- Direct die to CORE::die inside handler if executing an eval
-- Undef $mce_spawned_ref if signal was caught (stop_and_exit)
-- Changed INIT to sub import in MCE.pm
-* Tue Jan 01 2013 Mario Roy 1.303-1
-- Bump version -- MCE.pm VERSION now matches with META.yml
-- Sorted forchunk, foreach, forseq methods inside MCE.pm
-- Modified if statement in run method
-- Task ID is never undef, therefore removed check inside 
-  restart_worker and worker_do methods
-- Added 2 package variables to MCE::Signal
-  $display_die_with_localtime and $display_warn_with_localtime
-- Completed updates to documentation
-- Update to forseq.pl and seq_demo.pl examples
-* Tue Jan 01 2013 Mario Roy 1.302-1
-- Fixed validation logic for sequence 
-- Updated the sequence generator -- now supports chunking
-- Updated seq_demo.pl example to demo user_tasks, sequence, and
-  chunk_size applied together
-- Documentation updates 
-* Mon Dec 31 2012 Mario Roy 1.301-1
-- Note: MCE is pretty much feature complete. Therefore, releases
-  will slow down going forward.  Enjoy MCE.
-- Emphasis on documentation -- better flow plus additional clarity
-- Minor update to sequence option validation
-- Minor update to included examples
-* Mon Dec 31 2012 Mario Roy 1.300-1
-- New methods...: chunk_size, restart_worker, task_id, task_wid, tmp_dir
-- New options...: on_post_exit, on_post_run, sequence
-- New examples..: forseq.pl, seq_demo.pl
-- Overhaul to exit method
-  Workers can exit or die without impacting the manager process
-- Enabled executable bit for test files
-- Removed localtime output in die and warn handlers
-- All 3 delay options are consistent whether or not user_tasks is specified
-- Removed logic around total_ended count -- replaced with new exit logic
-- Code refactoring plus documentation updates
-- Added LICENSE file
-* Fri Dec 21 2012 Mario Roy 1.201-1
-- Added MCE.pod -- moved documentation from MCE.pm to pod file
-- Added missing use strict/warnings to test scripts
-- Default to 1 for chunk_size and max_workers if not specified
-- Test::More is not a requirement to run MCE, only for building
-- Changed the format for the change log file
-* Thu Dec 20 2012 Mario Roy 1.200-1
-- Added new user_tasks option
-- Added space between method name and left-paren for header lines in POD
-- Remove not-needed BSD::Resource and forks inside BEGIN/INIT blocks
-* Wed Dec 19 2012 Mario Roy 1.106-1
-- Added t/pod-coverage.t
-- Big overhaul of the MCE documentation -- all methods are documented
-- Croak if method suited for a MCE worker is called by the main MCE process
-- Croak if method suited for the main MCE process is called by a MCE worker
-- Updated Makefile.PL to declare the minimum Perl version
-* Sun Dec 16 2012 Mario Roy 1.105-1
-- Completed code re-factoring
-- Added t/pod.t
-* Sun Nov 25 2012 Mario Roy 1.104-1
-- Added 1 new example to MCE's Perl documentation
-- Use module::method name versus constant symbol when calling _croak
-- Croak if session directory is not writeable inside MCE::spawn
-- Renamed _mce_id to _mce_sid (met to be spawn id actually)
-- Re-calibrated maximum workers allowed
-* Fri Nov 23 2012 Mario Roy 1.103-1
-- Added writeable check on /dev/shm
-- Croak if tmp dir is not writeable inside MCE::Signal::import
-* Thu Nov 22 2012 Mario Roy 1.102-1
-- Woohoot !!! MCE now passes with Perl 5.17.x
-- Added Copying file -- same as in Perl
-* Wed Nov 21 2012 Mario Roy 1.101-1
-- Shifted white space to the left for code blocks inside documentation
-* Wed Nov 21 2012 Mario Roy 1.100-1
-- Completed optimization and shakeout for MCE's existing API
-- File handles are cached when calling sendto and appending to a file
-- The sendto method now supports multiple arguments -- see perldoc
-- Added new option: flush_file
-* Sat Nov 17 2012 Mario Roy 1.008-1
-- Update on __DIE__ and __WARN__ handling in MCE. This addresses the
-  unreferenced scalars seen in packaging logs at activestate.com for
-  Perl under Windows: http://code.activestate.com/ppm/MCE/
-- Update t/01_load_signal_arg.t -- added check for $ENV{TEMP}
-  This fixes issue seen under Cygwin
-* Thu Nov 15 2012 Mario Roy 1.007-1
-- At last, the "Voila" release :)
-- Small change to __DIE__ and __WARN__ signal handling for spawn method
-* Thu Nov 15 2012 Mario Roy 1.006-1
-- Added description section to MCE::Signal's Perl doc
-- Do not set trap on __DIE__ and __WARN__ inside MCE::Signal
-- Localized __DIE__ and __WARN__ handlers inside MCE instead
-- Clarify the use of threads in documentation
-* Tue Nov 13 2012 Mario Roy 1.005-1
-- Removed underscore from package globals in MCE::Signal
-- Optimized _worker_read_handle method in MCE
-- Updated files under examples/tbray/
-* Mon Nov 12 2012 Mario Roy 1.004-1
-- Updated examples/mce_usage.readme
-- Updated examples/wide_finder.pl
-- Added examples/tbray/README
-- Added examples/tbray/tbray_baseline1.pl
-- Added examples/tbray/tbray_baseline2.pl
-- Added examples/tbray/wf_mce1.pl
-- Added examples/tbray/wf_mce2.pl
-- Added examples/tbray/wf_mce3.pl (../wide_finder.pl moved here)
-- Added examples/tbray/wf_mmap.pl
-* Sat Nov 10 2012 Mario Roy 1.003-1
-- Updated README
-- Updated images/06_Shared_Sockets.gif
-- Updated images/10_Scaling_Pings.gif
-- Added   images/11_SNMP_Collection.gif
-- Small update to MCE::Signal
-* Thu Nov 08 2012 Mario Roy 1.002-1
-- Renamed continue method to next 
-* Wed Nov 07 2012 Mario Roy 1.001-1
-- Added perl-MCE.spec to trunk
-  http://code.google.com/p/many-core-engine-perl/source/browse/trunk/
-- Added CREDITS 
-- Added 3 new methods to MCE.pm: continue, last, and exit
-- Both foreach & forchunk now call run(1, {...}) to auto-shutdown workers
-* Tue Nov 06 2012 Joe Ogulin 1.000-1
-- Specfile autogenerated by cpanspec 1.77
-- Modified to include the examples and install into /usr/share/doc
+- 1.400 release.
