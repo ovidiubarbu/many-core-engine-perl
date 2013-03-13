@@ -5,7 +5,7 @@ MCE - Many-Core Engine for Perl. Provides parallel processing capabilities.
 
 =head1 VERSION
 
-This document describes MCE version 1.405
+This document describes MCE version 1.406
 
 =head1 DESCRIPTION
 
@@ -910,6 +910,72 @@ Release 1.100 added the ability to pass multiple arguments.
    ## Ex. print STDOUT "hello\n", \@array, \$scalar, "\n";
 
    $self->sendto('stdout', "hello\n", \@array, \$scalar, "\n");
+
+=head2 sync ( void )
+
+Barrier synchronization (sync) was added to MCE release 1.406.
+
+A sync operation in the provided code means any worker must stop at this point
+until all workers reach this barrier. Barrier syncing is useful for many
+computer algorithms.
+
+   use MCE 1.406;
+
+   ## Barrier synchronization is supported for task 0 at this time.
+   ## Note: Workers are assigned task_id 0 when ommitting user_tasks.
+   ## All workers must call sync when barrier syncing.
+
+   sub user_func {
+
+      my ($self) = @_;
+      my $wid = $self->wid();
+
+      $self->sendto('stdout', "a: $wid\n");
+      $self->sync;
+
+      $self->sendto('stdout', "b: $wid\n");
+      $self->sync;
+
+      $self->sendto('stdout', "c: $wid\n");
+      $self->sync;
+   }
+
+   my $mce = MCE->new(
+      max_workers => 4,
+      user_func   => \&user_func
+   );
+
+   $mce->run();
+
+   -- Output (without barrier synchronization)
+
+   a: 1
+   a: 2
+   b: 1
+   b: 2
+   c: 1
+   c: 2
+   a: 3
+   b: 3
+   c: 3
+   a: 4
+   b: 4
+   c: 4
+
+   -- Output (with barrier synchronization)
+
+   a: 1
+   a: 2
+   a: 4
+   a: 3
+   b: 2
+   b: 1
+   b: 3
+   b: 4
+   c: 1
+   c: 4
+   c: 2
+   c: 3
 
 =head1 EXAMPLES
 

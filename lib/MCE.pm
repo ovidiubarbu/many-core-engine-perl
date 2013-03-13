@@ -58,7 +58,7 @@ BEGIN {
 ##
 ###############################################################################
 
-my ($_COM_LOCK, $_DAT_LOCK);
+my ($_COM_LOCK, $_DAT_LOCK, $_SYN_LOCK);
 our $_MCE_LOCK : shared = 1;
 
 sub import {
@@ -74,7 +74,7 @@ sub import {
    }
 }
 
-our $VERSION = '1.405';
+our $VERSION = '1.406';
 $VERSION = eval $VERSION;
 
 ## PDL + MCE (spawning as threads) is not stable. Thanks goes to David Mertens
@@ -103,6 +103,9 @@ use constant {
 
    QUE_TEMPLATE    => $_que_template,    ## Pack template for queue socket
    QUE_READ_SIZE   => $_que_read_size,   ## Read size
+
+   OUTPUT_B_SYN    => ':B~SYN',          ## Worker barrier sync - begin
+   OUTPUT_E_SYN    => ':E~SYN',          ## Worker barrier sync - end
 
    OUTPUT_W_ABT    => ':W~ABT',          ## Worker has aborted
    OUTPUT_W_DNE    => ':W~DNE',          ## Worker has completed
@@ -316,16 +319,16 @@ sub new {
       $self->{max_workers} = 24
          if (!$self->{use_threads} && $self->{max_workers} > 24);
    }
-   elsif ($^O eq 'MSWin32') {             ## Limit to 96 threads, 48 children
-      $self->{max_workers} = 96
-         if ($self->{use_threads} && $self->{max_workers} > 96);
-      $self->{max_workers} = 48
-         if (!$self->{use_threads} && $self->{max_workers} > 48);
+   elsif ($^O eq 'MSWin32') {             ## Limit to 64 threads, 32 children
+      $self->{max_workers} = 64
+         if ($self->{use_threads} && $self->{max_workers} > 64);
+      $self->{max_workers} = 32
+         if (!$self->{use_threads} && $self->{max_workers} > 32);
    }
    else {
       if ($self->{use_threads}) {
-         $self->{max_workers} = int(MAX_OPEN_FILES / 2) - 32
-            if ($self->{max_workers} > int(MAX_OPEN_FILES / 2) - 32);
+         $self->{max_workers} = int(MAX_OPEN_FILES / 3) - 8
+            if ($self->{max_workers} > int(MAX_OPEN_FILES / 3) - 8);
       } else {
          $self->{max_workers} = MAX_USER_PROCS - 64
             if ($self->{max_workers} > MAX_USER_PROCS - 64);
@@ -1134,6 +1137,7 @@ sub shutdown {
    if (defined $_sess_dir) {
       unlink "$_sess_dir/_com.lock";
       unlink "$_sess_dir/_dat.lock";
+      unlink "$_sess_dir/_syn.lock";
       rmdir  "$_sess_dir";
 
       delete $_mce_sess_dir{$_sess_dir};
@@ -1156,6 +1160,47 @@ sub shutdown {
    $self->{_spawned}    = $self->{_wid}        = 0;
    $self->{_sess_dir}   = undef;
    $self->{_send_cnt}   = 0;
+
+   return;
+}
+
+###############################################################################
+## ----------------------------------------------------------------------------
+## Sync method.
+##
+###############################################################################
+
+sub sync {
+
+   my MCE $self = $_[0];
+
+   @_ = ();
+
+   _croak("MCE::sync: method cannot be called by the manager process")
+      unless ($self->{_wid});
+
+   ## Barrier synchronization is supported for task 0 at this time.
+   ## Note: Workers are assigned task_id 0 when ommitting user_tasks.
+
+   return if ($self->{_task_id} > 0);
+
+   my $_DAT_W_SOCK = $self->{_dat_w_sock};
+   my $_OUT_W_SOCK = $self->{_out_w_sock};
+
+   local $\ = undef; local $/ = $LF;
+
+   ## Notify the manager process.
+   flock $_DAT_LOCK, LOCK_EX;
+   print $_OUT_W_SOCK OUTPUT_B_SYN, $LF;
+   <$_DAT_W_SOCK>;
+   flock $_DAT_LOCK, LOCK_UN;
+
+   ## Wait here until all workers (task_id 0) have synced.
+   flock $_SYN_LOCK, LOCK_SH;
+   flock $_SYN_LOCK, LOCK_UN;
+
+   ## Notify the manager process.
+   print $_OUT_W_SOCK OUTPUT_E_SYN, $LF;
 
    return;
 }
@@ -1238,6 +1283,7 @@ sub exit {
 
    close $_DAT_LOCK; undef $_DAT_LOCK;
    close $_COM_LOCK; undef $_COM_LOCK;
+   close $_SYN_LOCK; under $_SYN_LOCK;
 
    threads->exit($_exit_status) if ($_has_threads && threads->can('exit'));
 
@@ -1756,7 +1802,7 @@ sub _validate_args_s {
    my ($_input_size, $_offset_pos, $_single_dim, $_use_slurpio);
 
    my ($_has_user_tasks, $_on_post_exit, $_on_post_run, $_task_id);
-   my ($_exit_wid, $_exit_pid, $_exit_status, $_exit_id);
+   my ($_exit_wid, $_exit_pid, $_exit_status, $_exit_id, $_sync_cnt);
 
    ## Create hash structure containing various output functions.
    my %_output_function = (
@@ -2114,6 +2160,36 @@ sub _validate_args_s {
          print $_OUT_FILE $_buffer;
 
          return;
+      },
+
+      ## ----------------------------------------------------------------------
+
+      OUTPUT_B_SYN.$LF => sub {                   ## Worker barrier sync - beg
+
+         local $\ = undef;
+
+         if (!defined $_sync_cnt || $_sync_cnt == 0) {
+            flock $_SYN_LOCK, LOCK_EX;
+            $_sync_cnt = 0;
+         }
+
+         print $_DAT_R_SOCK $LF;
+
+         if (++$_sync_cnt == $self->{_total_running}) {
+            flock $_DAT_LOCK, LOCK_EX;
+            flock $_SYN_LOCK, LOCK_UN;
+         }
+
+         return;
+      },
+
+      OUTPUT_E_SYN.$LF => sub {                   ## Worker barrier sync - end
+
+         if (--$_sync_cnt == 0) {
+            flock $_DAT_LOCK, LOCK_UN;
+         }
+
+         return;
       }
 
    );
@@ -2195,6 +2271,9 @@ sub _validate_args_s {
       ## Exit loop when all workers have completed or ended.
       my $_func;
 
+      open $_DAT_LOCK, '+>> :stdio', $self->{_sess_dir} . '/_dat.lock';
+      open $_SYN_LOCK, '+>> :stdio', $self->{_sess_dir} . '/_syn.lock';
+
       while (1) {
          $_func = <$_OUT_R_SOCK>;
          next unless (defined $_func);
@@ -2204,6 +2283,9 @@ sub _validate_args_s {
             last unless ($self->{_total_running});
          }
       }
+
+      close $_SYN_LOCK; undef $_SYN_LOCK;
+      close $_DAT_LOCK; undef $_DAT_LOCK;
 
       ## Call on_post_run callback.
       $_on_post_run->($self, $self->{_status}) if (defined $_on_post_run);
@@ -2922,6 +3004,7 @@ sub _worker_main {
 
    open $_COM_LOCK, '+>> :stdio', "$_sess_dir/_com.lock";
    open $_DAT_LOCK, '+>> :stdio', "$_sess_dir/_dat.lock";
+   open $_SYN_LOCK, '+>> :stdio', "$_sess_dir/_syn.lock";
 
    ## Define status ID.
    my $_use_threads = (defined $_task->{use_threads})
@@ -2978,6 +3061,7 @@ sub _worker_main {
 
    close $_DAT_LOCK; undef $_DAT_LOCK;
    close $_COM_LOCK; undef $_COM_LOCK;
+   close $_SYN_LOCK; undef $_SYN_LOCK;
 
    return;
 }
