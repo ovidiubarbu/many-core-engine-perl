@@ -308,22 +308,22 @@ sub new {
 
    ## -------------------------------------------------------------------------
 
-   ## Limit chunk_size and max_workers -- allow for some headroom.
+   ## Limit chunk_size including max_workers -- allow for some headroom.
 
    $self->{chunk_size} = MAX_CHUNK_SIZE
       if ($self->{chunk_size} > MAX_CHUNK_SIZE);
 
-   if ($^O eq 'cygwin') {                 ## Limit to 48 threads, 24 children
-      $self->{max_workers} = 48
-         if ($self->{use_threads} && $self->{max_workers} > 48);
+   if ($^O eq 'cygwin') {                 ## Limit to 32 threads, 24 children
+      $self->{max_workers} = 32
+         if ($self->{use_threads} && $self->{max_workers} > 32);
       $self->{max_workers} = 24
          if (!$self->{use_threads} && $self->{max_workers} > 24);
    }
-   elsif ($^O eq 'MSWin32') {             ## Limit to 64 threads, 32 children
+   elsif ($^O eq 'MSWin32') {             ## Limit to 64 threads, 48 children
       $self->{max_workers} = 64
          if ($self->{use_threads} && $self->{max_workers} > 64);
-      $self->{max_workers} = 32
-         if (!$self->{use_threads} && $self->{max_workers} > 32);
+      $self->{max_workers} = 48
+         if (!$self->{use_threads} && $self->{max_workers} > 48);
    }
    else {
       if ($self->{use_threads}) {
@@ -414,8 +414,9 @@ sub spawn {
 
    binmode  $self->{_out_r_sock};                 ## Set binary mode
    binmode  $self->{_out_w_sock};
-   shutdown $self->{_out_r_sock}, 1;              ## No more writing
-   shutdown $self->{_out_w_sock}, 0;              ## No more reading
+
+   CORE::shutdown $self->{_out_r_sock}, 1;        ## No more writing
+   CORE::shutdown $self->{_out_w_sock}, 0;        ## No more reading
 
    ## Create socket pairs for queue channels between MCE and workers.
    socketpair( $self->{_que_r_sock}, $self->{_que_w_sock},
@@ -423,8 +424,9 @@ sub spawn {
 
    binmode  $self->{_que_r_sock};                 ## Set binary mode
    binmode  $self->{_que_w_sock};
-   shutdown $self->{_que_r_sock}, 1;              ## No more writing
-   shutdown $self->{_que_w_sock}, 0;              ## No more reading
+
+   CORE::shutdown $self->{_que_r_sock}, 1;        ## No more writing
+   CORE::shutdown $self->{_que_w_sock}, 0;        ## No more reading
 
    ## Autoflush handles. This is done this way versus the inclusion of the
    ## large IO::Handle module just to call autoflush(1).
@@ -448,7 +450,9 @@ sub spawn {
    my $_use_threads = $self->{use_threads};
 
    ## Obtain lock.
-   open my $_COM_LOCK, '+>> :stdio', "$_sess_dir/_com.lock";
+   open my $_COM_LOCK, '+>> :stdio', "$_sess_dir/_com.lock"
+      or die "(S) open error $_sess_dir/_com.lock: $!\n";
+
    flock $_COM_LOCK, LOCK_EX;
 
    ## Spawn workers.
@@ -893,7 +897,9 @@ sub run {
       }}
 
       ## Obtain lock 1 of 2.
-      open my $_DAT_LOCK, '+>> :stdio', "$_sess_dir/_dat.lock";
+      open my $_DAT_LOCK, '+>> :stdio', "$_sess_dir/_dat.lock"
+         or die "(R) open error $_sess_dir/_dat.lock: $!\n";
+
       flock $_DAT_LOCK, LOCK_EX;
 
       ## Insert the first message into the queue if defined.
@@ -922,7 +928,9 @@ sub run {
       }
 
       ## Obtain lock 2 of 2.
-      open $_COM_LOCK, '+>> :stdio', "$_sess_dir/_com.lock";
+      open $_COM_LOCK, '+>> :stdio', "$_sess_dir/_com.lock"
+         or die "(R) open error $_sess_dir/_com.lock: $!\n";
+
       flock $_COM_LOCK, LOCK_EX;
 
       ## Release lock 1 of 2.
@@ -1093,10 +1101,38 @@ sub shutdown {
    ## Notify workers to exit loop.
    local $\ = undef; local $/ = $LF;
 
+   open my $_SYN_LOCK, '+>> :stdio', "$_sess_dir/_syn.lock"
+      or die "(S) open error $_sess_dir/_syn.lock: $!\n";
+
+   flock $_SYN_LOCK, LOCK_EX;
+
    for (1 .. $_total_workers) {
       print $_COM_R_SOCK "_exit${LF}";
       <$_COM_R_SOCK>;
    }
+
+   ## Close sockets.
+   CORE::shutdown $self->{_que_r_sock}, 0;        ## Queue channels
+   CORE::shutdown $self->{_que_w_sock}, 1;
+   CORE::shutdown $self->{_out_r_sock}, 0;        ## Output channels
+   CORE::shutdown $self->{_out_w_sock}, 1;
+
+   CORE::shutdown $self->{_dat_r_sock}, 2;        ## Data channels
+   CORE::shutdown $self->{_dat_w_sock}, 2;
+   CORE::shutdown $self->{_com_r_sock}, 2;        ## Comm channels
+   CORE::shutdown $self->{_com_w_sock}, 2;
+
+   close $self->{_que_r_sock}; undef $self->{_que_r_sock};
+   close $self->{_que_w_sock}; undef $self->{_que_w_sock};
+   close $self->{_out_r_sock}; undef $self->{_out_r_sock};
+   close $self->{_out_w_sock}; undef $self->{_out_w_sock};
+
+   close $self->{_dat_r_sock}; undef $self->{_dat_r_sock};
+   close $self->{_dat_w_sock}; undef $self->{_dat_w_sock};
+   close $self->{_com_r_sock}; undef $self->{_com_r_sock};
+   close $self->{_com_w_sock}; undef $self->{_com_w_sock};
+
+   flock $_SYN_LOCK, LOCK_UN;
 
    ## Reap children/threads.
    if ( $self->{_pids} && @{ $self->{_pids} } > 0 ) {
@@ -1105,33 +1141,14 @@ sub shutdown {
          waitpid $_list->[$i], 0 if ($_list->[$i]);
       }
    }
-   if ( $self->{_thrs} && @{ $self->{_thrs} } > 0 ) {
+   elsif ( $self->{_thrs} && @{ $self->{_thrs} } > 0 ) {
       my $_list = $self->{_thrs};
       for my $i (0 .. @$_list) {
          ${ $_list->[$i] }->join() if ($_list->[$i]);
       }
    }
 
-   ## Close sockets.
-   shutdown $self->{_out_r_sock}, 0;              ## Output channels
-   shutdown $self->{_out_w_sock}, 1;
-   shutdown $self->{_que_r_sock}, 0;              ## Queue channels
-   shutdown $self->{_que_w_sock}, 1;
-
-   close $self->{_out_r_sock}; undef $self->{_out_r_sock};
-   close $self->{_out_w_sock}; undef $self->{_out_w_sock};
-   close $self->{_que_r_sock}; undef $self->{_que_r_sock};
-   close $self->{_que_w_sock}; undef $self->{_que_w_sock};
-
-   shutdown $self->{_com_r_sock}, 2;              ## Comm channels
-   shutdown $self->{_com_w_sock}, 2;
-   shutdown $self->{_dat_r_sock}, 2;              ## Data channels
-   shutdown $self->{_dat_w_sock}, 2;
-
-   close $self->{_com_r_sock}; undef $self->{_com_r_sock};
-   close $self->{_com_w_sock}; undef $self->{_com_w_sock};
-   close $self->{_dat_r_sock}; undef $self->{_dat_r_sock};
-   close $self->{_dat_w_sock}; undef $self->{_dat_w_sock};
+   close $_SYN_LOCK; undef $_SYN_LOCK;
 
    ## Remove session directory.
    if (defined $_sess_dir) {
@@ -1281,11 +1298,13 @@ sub exit {
    ## Exit thread/child process.
    $SIG{__DIE__} = $SIG{__WARN__} = sub { };
 
+   close $_SYN_LOCK; under $_SYN_LOCK;
    close $_DAT_LOCK; undef $_DAT_LOCK;
    close $_COM_LOCK; undef $_COM_LOCK;
-   close $_SYN_LOCK; under $_SYN_LOCK;
 
-   threads->exit($_exit_status) if ($_has_threads && threads->can('exit'));
+   if ($_has_threads && threads->can('exit')) {
+      threads->exit($_exit_status);
+   }
 
    close STDERR; close STDOUT;
    kill 9, $$ unless ($_is_winperl);
@@ -1803,6 +1822,7 @@ sub _validate_args_s {
 
    my ($_has_user_tasks, $_on_post_exit, $_on_post_run, $_task_id);
    my ($_exit_wid, $_exit_pid, $_exit_status, $_exit_id, $_sync_cnt);
+   my ($_DAT_LOCK, $_SYN_LOCK);
 
    ## Create hash structure containing various output functions.
    my %_output_function = (
@@ -2269,10 +2289,14 @@ sub _validate_args_s {
 
       ## Call hash function if output value is a hash key.
       ## Exit loop when all workers have completed or ended.
+
+      my $_sess_dir = $self->{_sess_dir};
       my $_func;
 
-      open $_DAT_LOCK, '+>> :stdio', $self->{_sess_dir} . '/_dat.lock';
-      open $_SYN_LOCK, '+>> :stdio', $self->{_sess_dir} . '/_syn.lock';
+      open $_DAT_LOCK, '+>> :stdio', "$_sess_dir/_dat.lock"
+         or die "(O) open error $_sess_dir/_dat.lock: $!\n";
+      open $_SYN_LOCK, '+>> :stdio', "$_sess_dir/_syn.lock"
+         or die "(O) open error $_sess_dir/_syn.lock: $!\n";
 
       while (1) {
          $_func = <$_OUT_R_SOCK>;
@@ -2929,7 +2953,7 @@ sub _worker_loop {
       next if ($_response eq '_data');
 
       ## Wait until MCE completes params submission to all workers.
-      flock $_DAT_LOCK, LOCK_SH;
+      flock $_DAT_LOCK, LOCK_SH or die "(L) cannot obtain shared lock: $!\n";
       flock $_DAT_LOCK, LOCK_UN;
 
       ## Update ID. Process request.
@@ -2942,7 +2966,7 @@ sub _worker_loop {
       $self->_worker_do($_params_ref); undef $_params_ref;
 
       ## Wait until remaining workers complete processing.
-      flock $_COM_LOCK, LOCK_SH;
+      flock $_COM_LOCK, LOCK_SH or die "(L) cannot obtain shared lock: $!\n";
       flock $_COM_LOCK, LOCK_UN;
    }
 
@@ -3002,9 +3026,12 @@ sub _worker_main {
 
    _do_send_init($self);
 
-   open $_COM_LOCK, '+>> :stdio', "$_sess_dir/_com.lock";
-   open $_DAT_LOCK, '+>> :stdio', "$_sess_dir/_dat.lock";
-   open $_SYN_LOCK, '+>> :stdio', "$_sess_dir/_syn.lock";
+   open $_SYN_LOCK, '+>> :stdio', "$_sess_dir/_syn.lock"
+      or die "(W) open error $_sess_dir/_syn.lock: $!\n";
+   open $_DAT_LOCK, '+>> :stdio', "$_sess_dir/_dat.lock"
+      or die "(W) open error $_sess_dir/_dat.lock: $!\n";
+   open $_COM_LOCK, '+>> :stdio', "$_sess_dir/_com.lock"
+      or die "(W) open error $_sess_dir/_com.lock: $!\n";
 
    ## Define status ID.
    my $_use_threads = (defined $_task->{use_threads})
@@ -3017,8 +3044,7 @@ sub _worker_main {
    }
 
    ## Undef vars not required after being spawned.
-   $self->{_com_r_sock} = $self->{_dat_r_sock} = $self->{_out_r_sock} =
-      $self->{flush_file} = $self->{flush_stderr} = $self->{flush_stdout} =
+   $self->{flush_file} = $self->{flush_stderr} = $self->{flush_stdout} =
       $self->{on_post_exit} = $self->{on_post_run} = $self->{stderr_file} =
       $self->{stdout_file} = $self->{user_error} = $self->{user_output} =
       $self->{user_data} =
@@ -3043,25 +3069,22 @@ sub _worker_main {
       print $_COM_W_SOCK $LF;
    }
 
-   ## Wait until MCE completes spawning or worker completes running.
-   flock $_COM_LOCK, LOCK_SH;
+   ## Wait until MCE completes spawning or running.
+   flock $_COM_LOCK, LOCK_SH or die "(M) cannot obtain shared lock: $!\n";
    flock $_COM_LOCK, LOCK_UN;
 
    ## Enter worker loop.
    my $_status = $self->_worker_loop();
+
    delete $_mce_spawned{ $self->{_mce_sid} };
 
    ## Wait until MCE completes exit notification.
    $SIG{__DIE__} = $SIG{__WARN__} = sub { };
 
    eval {
-      flock $_DAT_LOCK, LOCK_SH;
-      flock $_DAT_LOCK, LOCK_UN;
+      flock $_SYN_LOCK, LOCK_SH;
+      flock $_SYN_LOCK, LOCK_UN;
    };
-
-   close $_DAT_LOCK; undef $_DAT_LOCK;
-   close $_COM_LOCK; undef $_COM_LOCK;
-   close $_SYN_LOCK; undef $_SYN_LOCK;
 
    return;
 }
