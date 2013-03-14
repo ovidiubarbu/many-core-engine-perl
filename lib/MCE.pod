@@ -913,17 +913,17 @@ Release 1.100 added the ability to pass multiple arguments.
 
 =head2 sync ( void )
 
-Barrier synchronization (sync) was added to MCE release 1.406.
-
-A sync operation in the provided code means any worker must stop at this point
+A sync operation in the example code means any worker must stop at this point
 until all workers reach this barrier. Barrier syncing is useful for many
 computer algorithms.
 
+Barrier synchronization (sync) was added to MCE release 1.406.
+
    use MCE 1.406;
 
-   ## Barrier synchronization is supported for task 0 at this time.
-   ## Note: Workers are assigned task_id 0 when ommitting user_tasks.
-   ## All workers must call sync when barrier syncing.
+   ## Barrier synchronization is supported for task 0 only.
+   ## Workers are assigned task_id 0 when ommitting user_tasks.
+   ## All workers must call sync whenever barrier syncing.
 
    sub user_func {
 

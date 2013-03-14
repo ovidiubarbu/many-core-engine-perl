@@ -58,6 +58,7 @@ rm -rf $RPM_BUILD_ROOT
 %changelog
 * Tue Mar 12 2013 Mario Roy 1.406-1
 - Added support for barrier synchronization (via new sync method).
+  Added barrier_sync.pl example.
 - Addressed rounding errors with the sequence generator.
   The sequence option now follows a bank-teller queuing model when
   generating numbers. This applies to task 0 only. Other tasks can

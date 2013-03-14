@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Barrier synchronization example. Requires MCE 1.406 to work.
+## Barrier synchronization example. Requires MCE 1.406 to run.
 ##
 ## http://en.wikipedia.org/wiki/Barrier_(computer_science)
 ##
