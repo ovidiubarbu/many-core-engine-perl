@@ -2,6 +2,7 @@ Revision history for MCE
 
 1.406 Tue Mar 12 19:00:00 EST 2013
     * Added support for barrier synchronization (via new sync method).
+      Added barrier_sync.pl example.
     * Addressed rounding errors with the sequence generator.
       The sequence option now follows a bank-teller queuing model when
       generating numbers. This applies to task 0 only. Other tasks can
