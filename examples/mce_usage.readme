@@ -1087,11 +1087,11 @@
              MCE utilizes a pool of workers.
 
              Parallel::Loops:     600  Forking each @input is expensive
-             MCE foreach....:  18,000  Sends result after each @input
-             MCE forseq.....:  60,000  Loops through sequence of numbers
+             MCE foreach....:  19,000  Sends result after each @input
+             MCE forseq.....:  54,000  Loops through sequence of numbers
              MCE forchunk...: 385,000  Chunking reduces overhead
 
-   matmult/matmult_pdl_b.pl, matmult_pdl_m.pl, strassen_pdl_m.pl
+   matmult/matmult_base.pl, matmult_mce.pl, strassen_mce.pl
              Various matrix multiplication demonstrations benchmarking
              PDL, PDL + MCE, as well as parallelizing Strassen's
              divide-and-conquer algorithm. Also included are 2 plain

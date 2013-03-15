@@ -911,7 +911,7 @@ Release 1.100 added the ability to pass multiple arguments.
 
    $self->sendto('stdout', "hello\n", \@array, \$scalar, "\n");
 
-=head2 barrier_sync ( void )
+=head2 sync ( void )
 
 A barrier sync operation in the example code means any worker must stop at
 this point until all workers reach this barrier. Barrier syncing is useful
@@ -1005,11 +1005,11 @@ patterns and word count aggregation.
              MCE utilizes a pool of workers.
 
              Parallel::Loops:     600  Forking each @input is expensive
-             MCE foreach....:  18,000  Sends result after each @input
-             MCE forseq.....:  60,000  Loops through sequence of numbers
+             MCE foreach....:  19,000  Sends result after each @input
+             MCE forseq.....:  54,000  Loops through sequence of numbers
              MCE forchunk...: 385,000  Chunking reduces overhead
 
-   matmult/matmult_pdl_b.pl, matmult_pdl_m.pl, strassen_pdl_m.pl
+   matmult/matmult_base.pl, matmult_mce.pl, strassen_mce.pl
              Various matrix multiplication demonstrations benchmarking
              PDL, PDL + MCE, as well as parallelizing Strassen's
              divide-and-conquer algorithm. Also included are 2 plain
