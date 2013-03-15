@@ -5,7 +5,7 @@ MCE - Many-Core Engine for Perl. Provides parallel processing capabilities.
 
 =head1 VERSION
 
-This document describes MCE version 1.406
+This document describes MCE version 1.407
 
 =head1 DESCRIPTION
 
@@ -911,13 +911,13 @@ Release 1.100 added the ability to pass multiple arguments.
 
    $self->sendto('stdout', "hello\n", \@array, \$scalar, "\n");
 
-=head2 sync ( void )
+=head2 barrier_sync ( void )
 
-A sync operation in the example code means any worker must stop at this point
-until all workers reach this barrier. Barrier syncing is useful for many
-computer algorithms.
+A barrier sync operation in the example code means any worker must stop at
+this point until all workers reach this barrier. Barrier syncing is useful
+for many computer algorithms.
 
-Barrier synchronization (sync) was added to MCE release 1.406.
+Barrier synchronization (sync) was added to MCE 1.406.
 
    use MCE 1.406;
 
