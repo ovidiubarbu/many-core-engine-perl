@@ -1,5 +1,5 @@
 Name:           perl-MCE
-Version:        1.406
+Version:        1.407
 Release:        1%{?dist}
 Summary:        Many-Core Engine for Perl. Provides parallel processing capabilities.
 License:        CHECK(Distributable)
@@ -56,6 +56,20 @@ rm -rf $RPM_BUILD_ROOT
 %{_mandir}/man3/*
 
 %changelog
+* Thu Mar 14 2013 Mario Roy 1.407-1
+- This marks a tremendous effort in achieving parity across the board
+  from Cygwin to Windows and obviously UNIX. MCE now works beautifully
+  under the Cygwin environment including Perl for Windows.
+- Up'ed the maximum workers allowed for both Cygwin and Windows to
+  56 (forking) and 80 (threading).
+- Barrier synchronization requires an extra semaphore file, therefore
+  the maximum workers allowed under the UNIX environment for threading
+  decreased. It shouldn't be a problem as there are many threads already.
+- Addressed an issue with barrier synchronization under Cygwin.
+- Addressed an issue with the die handler for the main worker method
+  when threading.
+- Thank you for hanging in there. It took quite some time to get there.
+  This is the most stable release thus far for MCE across the board.
 * Tue Mar 12 2013 Mario Roy 1.406-1
 - Added support for barrier synchronization (via new sync method).
   Added barrier_sync.pl example.
