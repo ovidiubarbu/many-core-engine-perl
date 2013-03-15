@@ -7,7 +7,7 @@
 
 <> VERSION
 
-   This document describes MCE version 1.406
+   This document describes MCE version 1.407
 
 <> DESCRIPTION
 
@@ -991,11 +991,11 @@
    sync ( void )
    -------------------------------------------------------------------------
 
-   A sync operation in the example code means any worker must stop at this
-   point until all workers reach this barrier. Barrier syncing is useful for
-   many computer algorithms.
+   A barrier sync operation in the example code means any worker must stop
+   at this point until all workers reach this barrier. Barrier syncing is
+   useful for many computer algorithms.
 
-   Barrier synchronization (sync) was added to MCE release 1.406.
+   Barrier synchronization (sync) was added to MCE 1.406.
 
    use MCE 1.406;
 
