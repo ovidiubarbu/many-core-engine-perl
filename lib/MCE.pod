@@ -758,6 +758,19 @@ Methods listed below are callable by the main process only.
 
    $mce->spawn();
 
+=head2 status ( void )
+
+   ## The greatest exit status is saved among workers exiting during a
+   ## run. Call this after runnning or processing to check if a worker
+   ## exited with a non-zero value. For more granularity, look at the
+   ## on_post_exit or on_post_run options for callback support.
+
+   my $mce = MCE->new( ... );
+
+   $mce->run();
+
+   my $greatest_exit_status = $mce->status();
+
 =head1 METHODS for WORKERS only
 
 Methods listed below are callable by workers only.
@@ -976,6 +989,37 @@ Barrier synchronization (sync) was added to MCE 1.406.
    c: 4
    c: 2
    c: 3
+
+Consider the following example. The sync operation is done inside a for
+loop along with calling the do method. A stall can occur for workers
+calling sync the 2nd or 3rd time while other workers are sending results
+via the do or sendto methods. It requires yet another semaphore lock file
+in MCE to solve this which was not done in order to keep resources low.
+
+Therefore, please keep this in mind when mixing $self->sync with the
+$self->do or $self->sendto methods inside a loop.
+
+   sub user_func {
+
+      my ($self) = @_;
+      my @result;
+
+      for (1 .. 3) {
+         ... compute algorithm ...
+
+         $self->sync;
+
+         ... compute algorithm ...
+
+         $self->sync;
+
+
+         $self->do('aggregate_result', \@result);  ## or $self->sendto
+
+         $self->sync;    ## The sync operation is also needed here to
+                         ## prevent MCE from stalling.
+      }
+   }
 
 =head1 EXAMPLES
 
