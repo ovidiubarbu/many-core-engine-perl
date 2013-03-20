@@ -1,5 +1,12 @@
 Revision history for MCE
 
+1.408 Tue Mar 19 22:00:00 EST 2013
+    * Minor tweaks here and there to further increase reliability.
+    * Updated the barrier synchronization logic to not stall. Updated the
+      perl docs on mixing "sync" with "do" or "sendto" methods.
+    * Added new "status" method for the manager process.
+    * Added new arguments for MCE::Signal: -no_kill9, -no_sigmsg
+
 1.407 Thu Mar 14 21:00:00 EST 2013
     * This marks a tremendous effort in achieving parity across the board
       from Cygwin to Windows and obviously UNIX. MCE now works beautifully

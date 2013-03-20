@@ -1,5 +1,5 @@
 Name:           perl-MCE
-Version:        1.407
+Version:        1.408
 Release:        1%{?dist}
 Summary:        Many-Core Engine for Perl. Provides parallel processing capabilities.
 License:        CHECK(Distributable)
@@ -56,6 +56,12 @@ rm -rf $RPM_BUILD_ROOT
 %{_mandir}/man3/*
 
 %changelog
+* Tue Mar 19 2013 Mario Roy 1.408-1
+- Minor tweaks here and there to further increase reliability.
+- Updated the barrier synchronization logic to not stall. Updated the
+  perl docs on mixing "sync" with "do" or "sendto" methods.
+- Added new "status" method for the manager process.
+- Added new arguments for MCE::Signal: -no_kill9, -no_sigmsg
 * Thu Mar 14 2013 Mario Roy 1.407-1
 - This marks a tremendous effort in achieving parity across the board
   from Cygwin to Windows and obviously UNIX. MCE now works beautifully
