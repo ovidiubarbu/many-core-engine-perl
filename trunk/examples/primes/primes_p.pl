@@ -61,12 +61,12 @@ sub find_primes {
    my $to   = $from + $step_size; $to = $N if ($to > $N);
    my $size = int(($to - $from + 1) / 2);
 
-   my @is_prime;
+   my (@is_prime, $minJ, $index, $i, $j);
 
    ## Initialize
    $is_prime[$_] = 1 for (0 .. $size - 1);
 
-   for (my $i = 3; $i * $i <= $to; $i += 2) {
+   for ($i = 3; $i * $i <= $to; $i += 2) {
 
       next if ($i >=   9 && $i %  3 == 0);   ## Skip multiples of  3
       next if ($i >=  25 && $i %  5 == 0);   ## Skip multiples of  5
@@ -75,7 +75,7 @@ sub find_primes {
       next if ($i >= 169 && $i % 13 == 0);   ## Skip multiples of 13
 
       ## Skip numbers before current slice
-      my $minJ = int(($from + $i - 1) / $i) * $i;
+      $minJ = int(($from + $i - 1) / $i) * $i;
 
       $minJ = $i * $i if ($minJ < $i * $i);
 
@@ -83,8 +83,8 @@ sub find_primes {
       $minJ += $i if (($minJ & 1) == 0);
 
       ## Find all odd non-primes
-      for (my $j = $minJ; $j <= $to; $j += 2 * $i) {
-         my $index = int(($j - $from) / 2);
+      for ($j = $minJ; $j <= $to; $j += 2 * $i) {
+         $index = int(($j - $from) / 2);
          $is_prime[$index] = 0;
       }
    }
@@ -93,7 +93,7 @@ sub find_primes {
    if ($cnt_only) {
       my $found = 0; $found++ if ($from <= 2);
 
-      for (my $i = 0; $i < $size; $i++) {
+      for ($i = 0; $i < $size; $i++) {
          $found++ if ($is_prime[$i]);
       }
 
@@ -121,7 +121,7 @@ sub find_primes {
       push @ret, 2 if ($from <= 2);
 
       ## Append prime numbers from the imaginary list
-      for (my $i = 0; $i < $size; $i++) {
+      for ($i = 0; $i < $size; $i++) {
          push @ret, ($offset + $i) * 2 + 1 if ($is_prime[$i]);
       }
    }
