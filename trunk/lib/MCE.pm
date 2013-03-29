@@ -2432,6 +2432,9 @@ sub _worker_read_handle {
 
    die "Private method called" unless (caller)[0]->isa( ref($self) );
 
+   _croak("MCE::_worker_read_handle: 'user_func' is not specified")
+      unless (defined $self->{user_func});
+
    my $_QUE_R_SOCK  = $self->{_que_r_sock};
    my $_QUE_W_SOCK  = $self->{_que_w_sock};
    my $_chunk_size  = $self->{chunk_size};
@@ -2569,6 +2572,9 @@ sub _worker_request_chunk {
 
    die "Private method called" unless (caller)[0]->isa( ref($self) );
 
+   _croak("MCE::_worker_request_chunk: 'user_func' is not specified")
+      unless (defined $self->{user_func});
+
    my $_OUT_W_SOCK  = $self->{_out_w_sock};
    my $_DAT_W_SOCK  = $self->{_dat_w_sock};
    my $_single_dim  = $self->{_single_dim};
@@ -2653,17 +2659,20 @@ sub _worker_request_chunk {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Worker process -- Sequence (distribution via bank-teller queuing model).
+## Worker process -- Sequence Queue (distribution via bank queuing model).
 ##
 ###############################################################################
 
-sub _worker_sequence {
+sub _worker_sequence_queue {
 
    my MCE $self = $_[0];
 
    @_ = ();
 
    die "Private method called" unless (caller)[0]->isa( ref($self) );
+
+   _croak("MCE::_worker_sequence_queue: 'user_func' is not specified")
+      unless (defined $self->{user_func});
 
    my $_QUE_R_SOCK = $self->{_que_r_sock};
    my $_QUE_W_SOCK = $self->{_que_w_sock};
@@ -2760,6 +2769,9 @@ sub _worker_sequence_generator {
    @_ = ();
 
    die "Private method called" unless (caller)[0]->isa( ref($self) );
+
+   _croak("MCE::_worker_sequence_generator: 'user_func' is not specified")
+      unless (defined $self->{user_func});
 
    my $_max_workers = $self->{max_workers};
    my $_chunk_size  = $self->{chunk_size};
@@ -2894,7 +2906,7 @@ sub _worker_do {
 
    ## Call worker function.
    if ($_run_mode eq 'sequence') {
-      $self->_worker_sequence();
+      $self->_worker_sequence_queue();
    }
    elsif (defined $self->{sequence}) {
       $self->_worker_sequence_generator();
