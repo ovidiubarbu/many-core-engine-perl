@@ -13,10 +13,10 @@
 ## This implementation utilizes 100% Perl code for the algorithm.
 ##
 ## Usage:
-##   perl primes_p.pl <N> <max_workers> <cnt_only>
+##   perl primes2_p.pl <N> <max_workers> <cnt_only>
 ##
-##   perl primes_p.pl 10000 8 0   ## Display prime numbers and total count
-##   perl primes_p.pl 10000 8 1   ## Count prime numbers only
+##   perl primes2_p.pl 10000 8 0   ## Display prime numbers and total count
+##   perl primes2_p.pl 10000 8 1   ## Count prime numbers only
 ##
 
 use strict;
@@ -33,8 +33,8 @@ my $N           = @ARGV ? shift : 1000;          ## Default is 1000
 my $max_workers = @ARGV ? shift :    8;          ## Default is    8
 my $cnt_only    = @ARGV ? shift :    1;          ## Default is    1
 
-if ($N !~ /^\d+$/ || $N < 2) {
-   die "error: $N must be an integer greater than 1.\n";
+if ($N !~ /^\d+$/ || $N < 2 || $N % 2) {
+   die "error: $N must be an even integer greater than 1.\n";
 }
 if ($max_workers !~ /^\d+$/ || $max_workers < 1) {
    die "error: $max_workers must be an integer greater than 0.\n";
@@ -45,84 +45,93 @@ if ($max_workers !~ /^\d+$/ || $max_workers < 1) {
 ###############################################################################
 
 ##
-## Parallel Sieve of Eratosthenes based on C code from Stephan Brumme at
-## http://create.stephan-brumme.com/eratosthenes/.
+## Parallel sieve based on serial code from Xuedong Luo (Algorithm3).
 ##
+##    A practical sieve algorithm for finding prime numbers
+##    ACM Volume 32 Issue 3, March 1989, Pages 344-346
+##    http://dl.acm.org/citation.cfm?doid=62065.62072
+##
+## Added logic to skip numbers before current chunk.
 ## Added logic to extract primes from an imaginary list.
 ##
 
-sub find_primes {
+sub practical_sieve {
 
    my ($N, $seq_n, $step_size, $chunk_id, $cnt_only) = @_;
 
    my @ret;
 
    my $from = $seq_n;
-   my $to   = $from + $step_size; $to = $N if ($to > $N);
-   my $size = int(($to - $from + 1) / 2);
+   my $to   = $from + $step_size - 1; $to = $N if ($to > $N);
+   my $size = int(($to - $from) / 3);
 
-   my (@is_prime, $minJ, $index, $i, $j);
+   my ($c, $k, $t, $q, $M) = (0, 1, 2, int(sqrt($to)/3), int($to/3));
+   my (@is_prime, $j, $ij, $d);
+
+   my $n_offset = ($chunk_id - 1) * $step_size;
+   my $j_offset = int($n_offset/3);
 
    ## Initialize
-   $is_prime[$_] = 1 for (0 .. $size - 1);
+   $is_prime[0] = 0; $is_prime[$_] = 1 for (1 .. $size + 1);
 
-   for ($i = 3; $i * $i <= $to; $i += 2) {
+   ## Clear out value if exceeds N
+   $is_prime[$size + 1] = 0 if ($n_offset + (3 * ($size + 1) + 1) > $N);
+   $is_prime[$size + 0] = 0 if ($n_offset + (3 * $size + 2) > $N);
 
-      next if ($i >=   9 && $i %  3 == 0);   ## Skip multiples of  3
-      next if ($i >=  25 && $i %  5 == 0);   ## Skip multiples of  5
-      next if ($i >=  49 && $i %  7 == 0);   ## Skip multiples of  7
-      next if ($i >= 121 && $i % 11 == 0);   ## Skip multiples of 11
-      next if ($i >= 169 && $i % 13 == 0);   ## Skip multiples of 13
+   for my $i (1 .. $q) {
+      $k  = 3 - $k;  $c = 4 * $k * $i + $c;  $j = $c;
+      $ij = 2 * $i * (3 - $k) + 1;  $t = 4 * $k + $t;
 
-      ## Skip numbers before current slice
-      $minJ = int(($from + $i - 1) / $i) * $i;
+      ## Skip numbers before current chunk
+      if ($j < $j_offset) {
+         $d  = int(($j_offset - $j) / ($t - $ij + $ij));
+         $j += ($t - $ij + $ij) * $d if ($d > 0);
 
-      $minJ = $i * $i if ($minJ < $i * $i);
+         while ($j < $j_offset) {
+            $j  = $j + $ij;
+            $ij = $t - $ij;
+         }
+      }
 
-      ## Start value must be odd
-      $minJ += $i if (($minJ & 1) == 0);
-
-      ## Find all odd non-primes
-      for ($j = $minJ; $j <= $to; $j += 2 * $i) {
-         $index = int(($j - $from) / 2);
-         $is_prime[$index] = 0;
+      ## Clear out composites
+      while ($j <= $M) {
+         $is_prime[$j - $j_offset] = 0;
+         $j  = $j + $ij;
+         $ij = $t - $ij;
       }
    }
 
    ## Count primes only, otherwise send back a list of primes for this chunk
    if ($cnt_only) {
-      my $found = 0; $found++ if ($from <= 2);
+      my $found = 0;
 
-      for ($i = 0; $i < $size; $i++) {
-         $found++ if ($is_prime[$i]);
+      $found++ if ($from <= 2);
+      $found++ if ($from <= 3 && 3 <= $N);
+
+      foreach (@is_prime) {
+         $found++ if ($_);
       }
 
       push @ret, $found;
    }
    else {
       ##
-      ## Think of an imaginary list containing the number 2 and all odd numbers
-      ## beginning with 3. The chunk_id value is used to determine the starting
-      ## offset position. The first chunk_id has a value of 1 in MCE.
+      ## Think of an imaginary list containing sequence of numbers beginning
+      ## with 5. The n_offset value is used to determine the starting offset
+      ## position.
       ##
-      ## I imagined 2 for the 1st element as 1 is neither a prime or composite.
+      ## Avoid all composites that have 2 or 3 as one of thier prime factors.
       ##
-      ## ( 2, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, ... odd numbers ... )
-      ##   0, 1, 2, 3, 4,  5,  6,  7,  8,  9, 10, ... list indices ...
+      ## { 0, 5, 7, 11, 13, ... 3i + 2, 3(i + 1) + 1, ..., N } (where i is odd)
+      ##   0, 1, 2,  3,  4, ... list indices (0 is not used)
       ##
-      ## Although not necessary, one can create this list using PDL in Perl.
-      ##
-      ## $imaginary_list = sequence($N/2) * 2 + 1;
-      ## $imaginary_list(0) .= 2;
-      ##
-
-      my $offset = int(($chunk_id - 1) * $step_size / 2) + 1;
 
       push @ret, 2 if ($from <= 2);
+      push @ret, 3 if ($from <= 3 && 3 <= $N);
 
-      ## Append prime numbers from the imaginary list
-      for ($i = 0; $i < $size; $i++) {
-         push @ret, ($offset + $i) * 2 + 1 if ($is_prime[$i]);
+      for (my $i = 1; $i <= $size; $i += 2) {
+         push @ret, $n_offset + (3 * $i + 2)       if ($is_prime[ $i ]);
+         push @ret, $n_offset + (3 * ($i + 1) + 1) if ($is_prime[$i+1]);
       }
    }
 
@@ -136,9 +145,9 @@ sub find_primes {
 ## Callback functions. These are called in a serial fashion. The cache is
 ## used to ensure output order when displaying prime numbers while running.
 
-my $step_size = 128 * 1024;
-my $total = 0;
+my $step_size = 18 * 15000;      ## Power of 18 recommended: (18/3/3) = 2
 
+my $total = 0;
 my $order_id = 1;
 my %cache;
 
@@ -182,7 +191,7 @@ my $start = time();
 my $mce = MCE->new(
 
    max_workers => $max_workers,
-   sequence    => [2, $N, $step_size],
+   sequence    => [1, $N, $step_size],
 
    user_begin  => sub {
       my ($self) = @_;
@@ -197,7 +206,7 @@ my $mce = MCE->new(
    user_func   => sub {
       my ($self, $seq_n, $chunk_id) = @_;
 
-      my $p = find_primes($N, $seq_n, $step_size, $chunk_id, $cnt_only);
+      my $p = practical_sieve($N, $seq_n, $step_size, $chunk_id, $cnt_only);
 
       if ($cnt_only) {
          $self->{total} += $p->[0];
