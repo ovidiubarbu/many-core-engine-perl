@@ -85,8 +85,9 @@ sub practical_sieve {
       ## Skip numbers before current chunk
       if ($j < $j_offset) {
          $d  = int(($j_offset - $j) / ($t - $ij + $ij));
-         $j += ($t - $ij + $ij) * $d if ($d > 0);
+         $j += ($t - $ij + $ij) * $d;
 
+         ## This may loop 0, 1, or 2 times max
          while ($j < $j_offset) {
             $j  = $j + $ij;
             $ij = $t - $ij;
