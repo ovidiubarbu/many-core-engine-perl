@@ -13,10 +13,10 @@
 ## This implementation utilizes Inline C code for the algorithm.
 ##
 ## Usage:
-##   perl primes_c.pl <N> <max_workers> <cnt_only>
+##   perl primes2_c.pl <N> <max_workers> <cnt_only>
 ##
-##   perl primes_c.pl 10000 8 0   ## Display prime numbers and total count
-##   perl primes_c.pl 10000 8 1   ## Count prime numbers only
+##   perl primes2_c.pl 10000 8 0   ## Display prime numbers and total count
+##   perl primes2_c.pl 10000 8 1   ## Count prime numbers only
 ##
 
 use strict;
@@ -33,8 +33,8 @@ my $N           = @ARGV ? shift : 1000;          ## Default is 1000
 my $max_workers = @ARGV ? shift :    8;          ## Default is    8
 my $cnt_only    = @ARGV ? shift :    1;          ## Default is    1
 
-if ($N !~ /^\d+$/ || $N < 2) {
-   die "error: $N must be an integer greater than 1.\n";
+if ($N !~ /^\d+$/ || $N < 2 || $N % 2) {
+   die "error: $N must be an even integer greater than 1.\n";
 }
 if ($max_workers !~ /^\d+$/ || $max_workers < 1) {
    die "error: $max_workers must be an integer greater than 0.\n";
@@ -49,58 +49,80 @@ use Config;
 use Inline C => Config => CCFLAGS => $Config{ccflags} . ' -std=c99';
 use Inline C => <<'END_C';
 
+#include <math.h>
+
 //
-// Parallel Sieve of Eratosthenes based on C code from Stephan Brumme at
-// http://create.stephan-brumme.com/eratosthenes/.
+// Parallel sieve based on serial code from Xuedong Luo (Algorithm3).
 //
+//    A practical sieve algorithm for finding prime numbers
+//    ACM Volume 32 Issue 3, March 1989, Pages 344-346
+//    http://dl.acm.org/citation.cfm?doid=62065.62072
+//
+// Added logic to skip numbers before current chunk.
 // Added logic to extract primes from an imaginary list.
 //
 
-AV * find_primes(
+AV * practical_sieve(
       unsigned long N, unsigned long seq_n, unsigned int step_size,
-      unsigned int chunk_id, unsigned int cnt_only
+      unsigned long chunk_id, unsigned int cnt_only
 ) {
 
    AV * ret = newAV();
 
    unsigned long from = seq_n;
-   unsigned long to   = from + step_size; if (to > N) to = N;
-   unsigned int  size = (to - from + 1) / 2;
+   unsigned long to   = from + step_size - 1; if (to > N) to = N;
+   unsigned int  size = (to - from) / 3;
 
-   unsigned int is_prime[size];
+   unsigned int  k = 1, t = 2, ij, d;
+   unsigned int  q = sqrt(to) / 3;
+   unsigned long M = to / 3, c = 0, j;
+   unsigned int  is_prime[size + 1];
+
+   unsigned long n_offset = (chunk_id - 1) * step_size;
+   unsigned long j_offset = n_offset / 3;
 
    // Initialize
-   for (unsigned int i = 0; i < size; i++)
+   is_prime[0] = 0;
+
+   for (unsigned int i = 1; i <= size + 1; i++)
       is_prime[i] = 1;
 
-   for (unsigned long i = 3; i * i <= to; i += 2) {
+   // Clear out value if exceeds N
+   if (n_offset + (3 * (size + 1) + 1) > N) is_prime[size + 1] = 0;
+   if (n_offset + (3 *  size + 2     ) > N) is_prime[size + 0] = 0;
 
-      if (i >=   9 && i %  3 == 0) continue;   // Skip multiples of  3
-      if (i >=  25 && i %  5 == 0) continue;   // Skip multiples of  5
-      if (i >=  49 && i %  7 == 0) continue;   // Skip multiples of  7
-      if (i >= 121 && i % 11 == 0) continue;   // Skip multiples of 11
-      if (i >= 169 && i % 13 == 0) continue;   // Skip multiples of 13
+   for (unsigned int i = 1; i <= q; i++) {
+      k  = 3 - k;  c = 4 * k * i + c;  j = c;
+      ij = 2 * i * (3 - k) + 1;  t = 4 * k + t;
 
-      // Skip numbers before current slice
-      unsigned long minJ = (from + i - 1) / i * i;
+      // Skip numbers before current chunk
+      if (j < j_offset) {
+         d = (j_offset - j) / (t - ij + ij);
+         if (d > 0) j += (t - ij + ij) * d;
 
-      if (minJ < i * i) minJ = i * i;
+         while (j < j_offset) {
+            j  = j + ij;
+            ij = t - ij;
+         }
+      }
 
-      // Start value must be odd
-      if ((minJ & 1) == 0) minJ += i;
-
-      // Find all odd non-primes
-      for (unsigned long j = minJ; j <= to; j += 2 * i) {
-         unsigned int index = (unsigned int) (j - from) / 2;
+      // Clear out composites
+      while (j <= M) {
+         unsigned int index = (unsigned int) j - j_offset;
          is_prime[index] = 0;
+         j  = j + ij;
+         ij = t - ij;
       }
    }
 
    // Count primes only, otherwise send back a list of primes for this chunk
    if (cnt_only) {
-      unsigned int found = 0; if (from <= 2) found++;
+      unsigned long found = 0;
 
-      for (unsigned int i = 0; i < size; i++) {
+      if (from <= 2) found++;
+      if (from <= 3 && 3 <= N) found++;
+
+      for (unsigned int i = 1; i <= size + 1; i++) {
          if (is_prime[i]) found++;
       }
 
@@ -108,30 +130,22 @@ AV * find_primes(
    }
    else {
       //
-      // Think of an imaginary list containing the number 2 and all odd numbers
-      // beginning with 3. The chunk_id value is used to determine the starting
-      // offset position. The first chunk_id has a value of 1 in MCE.
+      // Think of an imaginary list containing sequence of numbers beginning
+      // with 5. The n_offset value is used to determine the starting offset
+      // position.
       //
-      // I imagined 2 for the 1st element as 1 is neither a prime or composite.
+      // Avoid all composites that have 2 or 3 as one of thier prime factors.
       //
-      // ( 2, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, ... odd numbers ... )
-      //   0, 1, 2, 3, 4,  5,  6,  7,  8,  9, 10, ... list indices ...
+      // { 0, 5, 7, 11, 13, ... 3i + 2, 3(i + 1) + 1, ..., N } (where i is odd)
+      //   0, 1, 2,  3,  4, ... list indices (0 is not used)
       //
-      // Although not necessary, one can create this list using PDL in Perl.
-      //
-      // $imaginary_list = sequence($N/2) * 2 + 1;
-      // $imaginary_list(0) .= 2;
-      //
-
-      unsigned long offset = (chunk_id - 1) * step_size / 2 + 1;
 
       if (from <= 2) av_push(ret, newSVuv(2));
+      if (from <= 3 && 3 <= N) av_push(ret, newSVuv(3));
 
-      // Append prime numbers from the imaginary list
-      for (unsigned int i = 0; i < size; i++) {
-         if (is_prime[i]) {
-            av_push(ret, newSVuv((offset + i) * 2 + 1));
-         }
+      for (unsigned int i = 1; i <= size; i += 2) {
+         if (is_prime[ i ]) av_push(ret, newSVuv(n_offset + (3 * i + 2)));
+         if (is_prime[i+1]) av_push(ret, newSVuv(n_offset + (3 * (i + 1) + 1)));
       }
    }
 
@@ -147,9 +161,9 @@ END_C
 ## Callback functions. These are called in a serial fashion. The cache is
 ## used to ensure output order when displaying prime numbers while running.
 
-my $step_size = 128 * 1024;
-my $total = 0;
+my $step_size = 18 * 15000;      ## Power of 18 recommended: (18/3/3) = 2
 
+my $total = 0;
 my $order_id = 1;
 my %cache;
 
@@ -193,7 +207,7 @@ my $start = time();
 my $mce = MCE->new(
 
    max_workers => $max_workers,
-   sequence    => [2, $N, $step_size],
+   sequence    => [1, $N, $step_size],
 
    user_begin  => sub {
       my ($self) = @_;
@@ -208,7 +222,7 @@ my $mce = MCE->new(
    user_func   => sub {
       my ($self, $seq_n, $chunk_id) = @_;
 
-      my $p = find_primes($N, $seq_n, $step_size, $chunk_id, $cnt_only);
+      my $p = practical_sieve($N, $seq_n, $step_size, $chunk_id, $cnt_only);
 
       if ($cnt_only) {
          $self->{total} += $p->[0];
