@@ -73,9 +73,9 @@ AV * practical_sieve(
    unsigned long to   = from + step_size - 1; if (to > N) to = N;
    unsigned int  size = (to - from) / 3;
 
-   unsigned int  k = 1, t = 2, ij, d;
+   unsigned int  k = 1, t = 2, ij;
    unsigned int  q = sqrt(to) / 3;
-   unsigned long M = to / 3, c = 0, j;
+   unsigned long M = to / 3, c = 0, j, d;
    unsigned int  is_prime[size + 1];
 
    unsigned long n_offset = (chunk_id - 1) * step_size;
