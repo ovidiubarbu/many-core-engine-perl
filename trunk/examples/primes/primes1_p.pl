@@ -36,14 +36,17 @@ use MCE;
 ## Parse command-line arguments
 
 my ($FROM, $FROM_ADJ, $N, $N_ADJ, $max_workers, $cnt_only);
+my $check_flag = 0;
 
 if (@ARGV && ($ARGV[0] eq '-check' || $ARGV[0] eq 'check')) {
-   shift;
+   shift;  $check_flag = 1;
+
    $N    = @ARGV ? shift : 2;                    ## Default 2
    $FROM = $N;
 }
 elsif (@ARGV && ($ARGV[0] eq '-between' || $ARGV[0] eq 'between')) {
    shift;
+
    $FROM = @ARGV ? shift : 2;                    ## Default 2
    $N    = @ARGV ? shift : $FROM + 1000;         ## Default $FROM + 1000
 
@@ -55,7 +58,7 @@ elsif (@ARGV && ($ARGV[0] eq '-between' || $ARGV[0] eq 'between')) {
 }
 else {
    $FROM = 2;
-   $N    = @ARGV ? shift : 1000;
+   $N    = @ARGV ? shift : 1000;                 ## Default 1000
 }
 
 $max_workers = @ARGV ? shift : 8;                ## Default 8
@@ -264,7 +267,7 @@ my $mce = MCE->new(
  # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * #
 ###############################################################################
 
-if ($FROM != $N) {
+if ($check_flag == 0) {
    my $start = time();
 
    $mce->run;
@@ -275,12 +278,14 @@ if ($FROM != $N) {
 else {
    my $is_composite = 0;
 
-   $is_composite = 1 if ($N >  2 && $N %  2 == 0);
-   $is_composite = 1 if ($N >  3 && $N %  3 == 0);
-   $is_composite = 1 if ($N >  5 && $N %  5 == 0);
-   $is_composite = 1 if ($N >  7 && $N %  7 == 0);
-   $is_composite = 1 if ($N > 11 && $N % 11 == 0);
-   $is_composite = 1 if ($N > 13 && $N % 13 == 0);
+   for my $prime ( qw(
+      2 3 5 7 11 13 17 19 23 29 31 37 41 43 47 53 59 61 67 71 73 79 83 89 97
+   ) ) {
+      if ($N > $prime && $N % $prime == 0) {
+         $is_composite = 1;
+         last;
+      }
+   }
 
    $mce->run if ($is_composite == 0);
 
