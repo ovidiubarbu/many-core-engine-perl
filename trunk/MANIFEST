@@ -29,6 +29,7 @@ examples/matmult/strassen_49_f.pl
 examples/matmult/strassen_49_t.pl
 examples/matmult/strassen_perl.pl
 examples/mce_usage.readme
+examples/primes/README
 examples/primes/primes1_c.pl
 examples/primes/primes1_p.pl
 examples/primes/primes2_c.pl
