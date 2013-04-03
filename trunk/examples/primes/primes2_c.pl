@@ -160,7 +160,7 @@ AV * practical_sieve(
       k  = 3 - k;  c = 4 * k * i + c;  j = c;
       ij = 2 * i * (3 - k) + 1;  t = 4 * k + t;
 
-      // Skip numbers before the current chunk
+      // Skip numbers before current slice
 
       if (j < j_offset) {
          d  = (j_offset - j) / (t - ij + ij);
@@ -264,7 +264,7 @@ sub display_primes {
  # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * #
 ###############################################################################
 
-## Step size must be a power of 18: (18/3/3) = 2. Do not increase beyond this.
+## Step size must be a power of 18. Do not increase beyond the maximum below.
 
 my $step_size = 18 * 15000;
 
