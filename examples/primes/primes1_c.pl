@@ -237,7 +237,15 @@ sub display_primes {
  # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * #
 ###############################################################################
 
+## Step size must be a power of 2. Do not increase beyond the maximum below.
+
 my $step_size = 128 * 1024;
+
+$step_size += $step_size if ($FROM >= 1_000_000_000_000);        ## step  2x
+$step_size += $step_size if ($FROM >= 10_000_000_000_000);       ## step  4x
+$step_size += $step_size if ($FROM >= 100_000_000_000_000);      ## step  8x
+$step_size += $step_size if ($FROM >= 1_000_000_000_000_000);    ## step 16x
+$step_size += $step_size if ($FROM >= 10_000_000_000_000_000);   ## step 32x
 
 ## MCE follows a bank-teller queuing model when distributing the sequence of
 ## numbers at step_size to workers. The user_func is called once per each step.
