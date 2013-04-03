@@ -22,7 +22,7 @@
 ##   perl primes2_p.pl check 23
 ##   perl primes2_p.pl between 900 950 [ <max_workers> ] [ <cnt_only> ]
 ##
-##   Exit with a status of 0 if prime number(s) were found, otherwise 2.
+##   Exits with a status of 0 if a prime number was found, otherwise 2.
 
 use strict;
 use warnings;
@@ -35,7 +35,7 @@ use MCE;
 
 ## Parse command-line arguments
 
-my ($FROM, $ADJ_FROM, $N, $ADJ_N, $max_workers, $cnt_only);
+my ($FROM, $FROM_ADJ, $N, $N_ADJ, $max_workers, $cnt_only);
 
 if (@ARGV && ($ARGV[0] eq '-check' || $ARGV[0] eq 'check')) {
    shift;
@@ -45,7 +45,7 @@ if (@ARGV && ($ARGV[0] eq '-check' || $ARGV[0] eq 'check')) {
 elsif (@ARGV && ($ARGV[0] eq '-between' || $ARGV[0] eq 'between')) {
    shift;
    $FROM = @ARGV ? shift : 2;                    ## Default 2
-   $N    = @ARGV ? shift : 1000;                 ## Default 1000
+   $N    = @ARGV ? shift : $FROM + 1000;         ## Default $FROM + 1000
 
    die "FROM: $FROM must be a number greater than 1.\n"
       if ($FROM !~ /^\d+$/ || $FROM < 2);
@@ -78,13 +78,13 @@ die "cnt_only: $cnt_only must be either 0 or 1.\n"
 
 ## Ensure (power of 18) for the algorithm (the starting value is critical)
 
-$ADJ_FROM  = $FROM - 18;
-$ADJ_FROM  = $ADJ_FROM - ($ADJ_FROM % 18) if ($ADJ_FROM % 18);
-$ADJ_FROM  = 1 if ($ADJ_FROM < 1);
+$FROM_ADJ  = $FROM - 18;
+$FROM_ADJ  = $FROM_ADJ - ($FROM_ADJ % 18) if ($FROM_ADJ % 18);
+$FROM_ADJ  = 1 if ($FROM_ADJ < 1);
 
-$ADJ_FROM += 1 if ($ADJ_FROM % 2 == 0);
+$FROM_ADJ += 1 if ($FROM_ADJ % 2 == 0);
 
-$ADJ_N     = ($N % 2) ? $N + 1 : $N;
+$N_ADJ     = ($N % 2) ? $N + 1 : $N;
 
 ###############################################################################
  # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * #
@@ -102,18 +102,18 @@ $ADJ_N     = ($N % 2) ? $N + 1 : $N;
 sub practical_sieve {
 
    my (
-      $FROM, $ADJ_FROM, $ADJ_N, $seq_n, $step_size, $chunk_id, $cnt_only
+      $FROM, $FROM_ADJ, $N_ADJ, $seq_n, $step_size, $chunk_id, $cnt_only
    ) = @_;
 
    my @ret;
 
-   my $to   = $seq_n + $step_size - 1; $to = $ADJ_N if ($to > $ADJ_N);
+   my $to   = $seq_n + $step_size - 1; $to = $N_ADJ if ($to > $N_ADJ);
    my $size = int(($to - $seq_n) / 3);
 
    my ($c, $k, $t, $q, $M) = (0, 1, 2, int(sqrt($to)/3), int($to/3));
    my (@is_prime, $j, $ij, $d);
 
-   my $n_offset = ($chunk_id - 1) * $step_size + ($ADJ_FROM - 1);
+   my $n_offset = ($chunk_id - 1) * $step_size + ($FROM_ADJ - 1);
    my $j_offset = int($n_offset/3);
 
    ## Initialize
@@ -131,11 +131,11 @@ sub practical_sieve {
       }
    }
 
-   ## Clear out values > ADJ_N
+   ## Clear out values > N_ADJ
 
-   if ($to == $ADJ_N) {
-      $is_prime[$size + 1] = 0 if ($n_offset + (3 * ($size + 1) + 1) > $ADJ_N);
-      $is_prime[$size + 0] = 0 if ($n_offset + (3 * $size + 2) > $ADJ_N);
+   if ($to == $N_ADJ) {
+      $is_prime[$size + 1] = 0 if ($n_offset + (3 * ($size + 1) + 1) > $N_ADJ);
+      $is_prime[$size + 0] = 0 if ($n_offset + (3 * $size + 2) > $N_ADJ);
    }
 
    ## Process chunk
@@ -262,7 +262,7 @@ $step_size += $step_size if ($FROM >= 10_000_000_000_000_000);   ## step 32x
 
 my $mce = MCE->new(
    max_workers => (($FROM != $N) ? $max_workers : 1),
-   sequence    => [ $ADJ_FROM, $ADJ_N, $step_size ],
+   sequence    => [ $FROM_ADJ, $N_ADJ, $step_size ],
 
    user_begin  => sub {
       my ($self) = @_;
@@ -278,7 +278,7 @@ my $mce = MCE->new(
       my ($self, $seq_n, $chunk_id) = @_;
 
       my $p = practical_sieve(
-         $FROM, $ADJ_FROM, $ADJ_N, $seq_n, $step_size, $chunk_id, $cnt_only
+         $FROM, $FROM_ADJ, $N_ADJ, $seq_n, $step_size, $chunk_id, $cnt_only
       );
 
       if ($cnt_only) {
@@ -321,7 +321,7 @@ else {
    }
 }
 
-## Exit with a status of 0 if prime number(s) were found, otherwise 2
+## Exits with a status of 0 if a prime number was found, otherwise 2
 
 exit ( ($total > 0) ? 0 : 2 );
 

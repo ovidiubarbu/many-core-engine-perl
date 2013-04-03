@@ -54,13 +54,14 @@
     perl primes.pl 10000 8 1   ## Count prime numbers only
     perl primes.pl 10000       ## Count primes (default 8 workers, 1 cnt_only)
 
-    In addition, the primes2 examples allows one to check a number for
-    primality as well as specify a range.
+    In addition, one can check a number for primality as well as specify a
+    range. The dash can be omitted before -check and -between below.
 
-    perl primes2_c.pl check 23
-    perl primes2_c.pl between 900 950 [ <max_workers> ] [ <cnt_only> ]
+    perl primes.pl -check 23
+    perl primes.pl -between 900 950 [ <max_workers> ] [ <cnt_only> ]
 
-    Exits with a status of 0 if prime number(s) were found, otherwise 2.
+    The script exits with a status of 0 if a prime number was found,
+    otherwise 2.
 
 
 ###############################################################################
@@ -83,6 +84,7 @@
 
        perl primes1_c.pl 1000000000000 48   completes in 30 minutes
        perl primes2_c.pl 1000000000000 48   completes in 13 minutes
+
 
  :: Thanks to Stephan Brumme for the initial inspiration. I wanted faster
     and continued looking and came across Algorithm3, although serial code,
