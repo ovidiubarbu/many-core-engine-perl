@@ -1,0 +1,111 @@
+
+###############################################################################
+ # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * #
+###############################################################################
+
+ :: These examples make use of an imaginary list which is mentioned in the
+    script. Therefore, very little memory is needed to count or display all
+    prime numbers between 2 and N. However, it does require 11 gigabytes of
+    storage space to save all prime numbers between 2 and 1 billion to a
+    file. In all practical purposes, these examples demonstrate MCE's
+    chunking ability. 
+
+       primes2_c.pl 1000000000 8 0 > primes.out
+
+    Workers have practically no communications requirement other than sending
+    results after processing each chunk and the total count at the end of the
+    run. The examples are tuned for counting and/or displaying of primes to
+    STDOUT. Prime numbers are displayed orderly as they are found when passing
+    0 as the 3rd argument. One doesn't have to wait until the script completes
+    processing to see the results.
+
+ :: The *_c.pl examples require the following 2 packages under CentOS 6.3+
+    to run. The 1st time will have Inline::C compile the C code -- this takes
+    some time. The 2nd run and there after runs immediately with no overhead
+    to compile the inlined C code.
+
+       yum install perl-Inline perl-Parse-RecDescent
+
+
+###############################################################################
+ # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * #
+###############################################################################
+
+ :: Parallel Sieve of Eratosthenes based on C code from Stephan Brumme
+    http://create.stephan-brumme.com/eratosthenes/
+
+       primes1_p.pl (100% Perl Code)
+       primes1_c.pl (using Inline C)
+
+ :: Practical Sieve based on serial code from Xuedong Luo (Algorithm3)
+
+    A practical sieve algorithm for finding prime numbers
+    ACM Volume 32 Issue 3, March 1989, Pages 344-346
+    http://dl.acm.org/citation.cfm?doid=62065.62072
+
+       primes2_p.pl (100% Perl Code)
+       primes2_c.pl (using Inline C)
+
+ :: Usage
+
+    perl primes.pl <N> [ <max_workers> ] [ <cnt_only> ]
+
+    perl primes.pl 10000 8 0   ## Display prime numbers and total count
+    perl primes.pl 10000 8 1   ## Count prime numbers only
+    perl primes.pl 10000       ## Count primes (default 8 workers, 1 cnt_only)
+
+    In addition, the primes2 examples allows one to check a number for
+    primality as well as specify a range.
+
+    perl primes2_c.pl check 23
+    perl primes2_c.pl between 900 950 [ <max_workers> ] [ <cnt_only> ]
+
+    Exits with a status of 0 if prime number(s) were found, otherwise 2.
+
+
+###############################################################################
+ # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * #
+###############################################################################
+
+ :: Which one is faster? Primes2 is faster than primes1. The difference in
+    time becomes greater the bigger N is. One can use 32 workers below. I was
+    just running with 48 workers at the time of testing.
+
+    The 32-way box is comprised of 2 Intel Xeon E5-2660 processors with
+    memory at running at 1600 MHz.
+
+    N size needed to complete in 10 second (billions)
+
+       perl primes1_c.pl 25000000000 48     completes in 10.3 seconds
+       perl primes2_c.pl 37000000000 48     completes in 10.2 seconds
+    
+    N = 1 trillion
+
+       perl primes1_c.pl 1000000000000 48   completes in 30 minutes
+       perl primes2_c.pl 1000000000000 48   completes in 13 minutes
+
+ :: Thanks to Stephan Brumme for the initial inspiration. I wanted faster
+    and continued looking and came across Algorithm3, although serial code,
+    thought it could run faster if parallelized.
+
+    The practical sieve algorithm (Algorithm3) from Xuedone Luo is fast.
+    It took me several attempts to parallelize his work for near linear
+    scalability across all available cores. I even tried using a PDL file
+    among other things, but that fell through. In the end, chunking was
+    all that was needed and the ability to skip the previous chunk.
+
+    What I've learned from this experience is that chunking is beneficial.
+    There's no need to have massive amount of memory to compute primes.
+    Each worker utilizes only 8 ~ 10 MB no matter the size of N.
+
+    Prime numbers are polled from an imaginary list by calculating the
+    offset position and computing the value stored at that location.
+    The computation is only applied for actual prime numbers and not
+    composites. This, in my opinion, is faster than populating memory
+    initially with primes and composites (both requiring the value to
+    be computed).
+
+    
+    -- Mario
+
+
