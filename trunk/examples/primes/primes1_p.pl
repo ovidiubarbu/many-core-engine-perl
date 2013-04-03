@@ -18,6 +18,11 @@
 ##
 ##   perl primes1_p.pl 10000 8 0   ## Display prime numbers and total count
 ##   perl primes1_p.pl 10000 8 1   ## Count prime numbers only
+##
+##   perl primes1_p.pl check 23
+##   perl primes1_p.pl between 900 950 [ <max_workers> ] [ <cnt_only> ]
+##
+##   Exits with a status of 0 if a prime number was found, otherwise 2.
 
 use strict;
 use warnings;
@@ -30,15 +35,37 @@ use MCE;
 
 ## Parse command-line arguments
 
-my $N           = @ARGV ? shift : 1000;          ## Default 1000
-my $max_workers = @ARGV ? shift : 8;             ## Default 8
-my $cnt_only    = @ARGV ? shift : 1;             ## Default 1
+my ($FROM, $FROM_ADJ, $N, $N_ADJ, $max_workers, $cnt_only);
+
+if (@ARGV && ($ARGV[0] eq '-check' || $ARGV[0] eq 'check')) {
+   shift;
+   $N    = @ARGV ? shift : 2;                    ## Default 2
+   $FROM = $N;
+}
+elsif (@ARGV && ($ARGV[0] eq '-between' || $ARGV[0] eq 'between')) {
+   shift;
+   $FROM = @ARGV ? shift : 2;                    ## Default 2
+   $N    = @ARGV ? shift : $FROM + 1000;         ## Default $FROM + 1000
+
+   die "FROM: $FROM must be a number greater than 1.\n"
+      if ($FROM !~ /^\d+$/ || $FROM < 2);
+
+   die "FROM: 9223372036854775807 is the maximum allowed.\n"
+      if ($FROM > 9223372036854775807);
+}
+else {
+   $FROM = 2;
+   $N    = @ARGV ? shift : 1000;
+}
+
+$max_workers = @ARGV ? shift : 8;                ## Default 8
+$cnt_only    = @ARGV ? shift : 1;                ## Default 1
 
 ## Inline C (64-bit) if failing when declaring (unsigned long long) for the
 ## function variable types. Therefore, the maximum allowed is signed long long.
 
-die "N: $N must be a number greater than 1.\n"
-   if ($N !~ /^\d+$/ || $N < 2);
+die "N: $N must be a number equal_to or greater than $FROM.\n"
+   if ($N !~ /^\d+$/ || $N < $FROM);
 
 die "N: 9223372036854775807 is the maximum allowed.\n"
    if ($N > 9223372036854775807);
@@ -48,6 +75,13 @@ die "max_workers: $max_workers must be a number greater than 0.\n"
 
 die "cnt_only: $cnt_only must be either 0 or 1.\n"
    if ($cnt_only !~ /^[01]$/);
+
+## Ensure (power of 2) for the algorithm (the starting value is critical)
+
+$FROM_ADJ  = $FROM;
+$FROM_ADJ -= 1 if ($FROM_ADJ % 2);
+
+$N_ADJ     = ($N % 2) ? $N + 1 : $N;
 
 ###############################################################################
  # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * #
@@ -60,12 +94,14 @@ die "cnt_only: $cnt_only must be either 0 or 1.\n"
 
 sub find_primes {
 
-   my ($N, $seq_n, $step_size, $chunk_id, $cnt_only) = @_;
+   my (
+      $FROM, $FROM_ADJ, $N_ADJ, $seq_n, $step_size, $chunk_id, $cnt_only
+   ) = @_;
 
    my @ret;
 
    my $from = $seq_n;
-   my $to   = $from + $step_size; $to = $N if ($to > $N);
+   my $to   = $from + $step_size; $to = $N_ADJ if ($to > $N_ADJ);
    my $size = int(($to - $from + 1) / 2);
 
    my (@is_prime, $minJ, $index, $i, $j);
@@ -104,7 +140,9 @@ sub find_primes {
    ## Count primes only, otherwise send list of primes for this chunk
 
    if ($cnt_only) {
-      my $found = 0; $found++ if ($from <= 2);
+      my $found = 0;
+
+      $found++ if (2 >= $seq_n && 2 <= $to && 2 >= $FROM);
 
       foreach (@is_prime) {
          $found++ if ($_);
@@ -129,8 +167,9 @@ sub find_primes {
       ## $imaginary_list(0) .= 2;
 
       my $offset = int(($chunk_id - 1) * $step_size / 2) + 1;
+      $offset += int($FROM_ADJ / 2) - 1;
 
-      push @ret, 2 if ($from <= 2);
+      push @ret, 2 if (2 >= $seq_n && 2 <= $to && 2 >= $FROM);
 
       ## Append prime numbers from the imaginary list
 
@@ -192,8 +231,8 @@ my $step_size = 128 * 1024;
 ## the run: <user_begin> <user_func> <user_func> ... <user_func> <user_end>
 
 my $mce = MCE->new(
-   max_workers => $max_workers,
-   sequence    => [ 2, $N, $step_size ],
+   max_workers => (($FROM != $N) ? $max_workers : 1),
+   sequence    => [ $FROM_ADJ, $N_ADJ, $step_size ],
 
    user_begin  => sub {
       my ($self) = @_;
@@ -208,7 +247,9 @@ my $mce = MCE->new(
    user_func   => sub {
       my ($self, $seq_n, $chunk_id) = @_;
 
-      my $p = find_primes($N, $seq_n, $step_size, $chunk_id, $cnt_only);
+      my $p = find_primes(
+         $FROM, $FROM_ADJ, $N_ADJ, $seq_n, $step_size, $chunk_id, $cnt_only
+      );
 
       if ($cnt_only) {
          $self->{total} += $p->[0];
@@ -219,13 +260,38 @@ my $mce = MCE->new(
    }
 );
 
-my $start = time();
-$mce->run;
+###############################################################################
+ # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * #
+###############################################################################
 
-print  STDERR "\n## There are $total prime numbers between 2 and $N.\n";
-printf STDERR "## Compute time: %0.03f secs\n\n", time() - $start;
+if ($FROM != $N) {
+   my $start = time();
 
-## Exit with a status of 0 if prime number(s) were found, otherwise 2
+   $mce->run;
+
+   print  STDERR "\n## There are $total prime numbers between $FROM and $N.\n";
+   printf STDERR "## Compute time: %0.03f secs\n\n", time() - $start;
+}
+else {
+   my $is_composite = 0;
+
+   $is_composite = 1 if ($N >  2 && $N %  2 == 0);
+   $is_composite = 1 if ($N >  3 && $N %  3 == 0);
+   $is_composite = 1 if ($N >  5 && $N %  5 == 0);
+   $is_composite = 1 if ($N >  7 && $N %  7 == 0);
+   $is_composite = 1 if ($N > 11 && $N % 11 == 0);
+   $is_composite = 1 if ($N > 13 && $N % 13 == 0);
+
+   $mce->run if ($is_composite == 0);
+
+   if ($total > 0) {
+      print "$N is a prime number\n";
+   } else {
+      print "$N is NOT a prime number\n";
+   }
+}
+
+## Exits with a status of 0 if a prime number was found, otherwise 2
 
 exit ( ($total > 0) ? 0 : 2 );
 
