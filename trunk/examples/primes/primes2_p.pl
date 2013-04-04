@@ -114,7 +114,7 @@ sub practical_sieve {
    my $size = int(($to - $seq_n) / 3);
 
    my ($c, $k, $t, $q, $M) = (0, 1, 2, int(sqrt($to)/3), int($to/3));
-   my (@is_prime, $j, $ij, $d);
+   my (@is_prime, $j, $ij);
 
    my $n_offset = ($chunk_id - 1) * $step_size + ($FROM_ADJ - 1);
    my $j_offset = int($n_offset/3);
@@ -150,14 +150,11 @@ sub practical_sieve {
       ## Skip numbers before current slice
 
       if ($j < $j_offset) {
-         $d  = int(($j_offset - $j) / ($t - $ij + $ij));
-         $j += ($t - $ij + $ij) * $d;
+         $j += int(($j_offset - $j) / $t) * $t + $ij;
+         $ij = $t - $ij;
 
-         ## This may loop 0, 1, or 2 times max
-
-         while ($j < $j_offset) {
-            $j  = $j + $ij;
-            $ij = $t - $ij;
+         if ($j < $j_offset) {
+            $j += $ij;  $ij = $t - $ij;
          }
       }
 
@@ -165,8 +162,7 @@ sub practical_sieve {
 
       while ($j <= $M) {
          $is_prime[$j - $j_offset] = 0;
-         $j  = $j + $ij;
-         $ij = $t - $ij;
+         $j += $ij;  $ij = $t - $ij;
       }
    }
 
