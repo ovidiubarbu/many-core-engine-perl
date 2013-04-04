@@ -54,7 +54,8 @@
 
     Workers have practically no communications requirement other than sending
     results after processing each chunk and the total count at the end of the
-    run. Prime numbers are displayed to STDOUT orderly when found.
+    run. Prime numbers are displayed to STDOUT in an orderly fashion when
+    found.
 
  :: The two *_c.pl examples require the following 2 packages under CentOS 6.3+
     to run. The 1st time will have Inline::C compile the C code -- this takes
@@ -68,37 +69,81 @@
  # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * #
 ###############################################################################
 
- :: Which one is faster? Primes2 is faster than primes1. The difference in
-    time becomes greater the bigger N is. One can use 32 workers below. I was
-    just running with 48 workers at the time of testing.
+ :: Primes2 is faster than primes1. The difference in time increases the
+    greater N is. I ran with 32 and 48 workers at the time of testing.
 
     The 32-way box is comprised of 2 Intel Xeon E5-2660 processors with
-    memory at running at 1600 MHz.
+    memory running at 1600 MHz.
 
-    N size needed to complete in 10 second (billions)
+    N size needed to complete in 10 second (up to billions)
 
-       perl primes1_c.pl 25000000000 48     completes in 10.3 seconds
-       perl primes2_c.pl 37000000000 48     completes in 10.2 seconds
+       perl primes1_c.pl 23000000000   32   completes in 10.298 secs
+       perl primes1_c.pl 25000000000   48   completes in 10.336 secs
+
+       perl primes2_c.pl 35000000000   32   completes in 10.312 secs
+       perl primes2_c.pl 38000000000   48   completes in 10.243 secs
     
     N = 1 trillion
 
-       perl primes1_c.pl 1000000000000 48   completes in 30 minutes
-       perl primes2_c.pl 1000000000000 48   completes in 13 minutes
+       perl primes1_c.pl 1000000000000 32   completes in 31.9 mins
+       perl primes1_c.pl 1000000000000 48   completes in 30.0 mins
 
+       perl primes2_c.pl 1000000000000 32   completes in 13.4 mins
+       perl primes2_c.pl 1000000000000 48   completes in 12.4 mins
+
+ :: I ran without the bank-teller queuing model to see the impact. There is
+    a greater time gap from when the first worker completes processing and
+    the last worker completing when using 48 workers on a 32-way system.
+    Notice the impact to the total running time.
+
+       perl primes2_c.pl 1000000000000 32   completes in 13.3 minutes  -6 secs
+       perl primes2_c.pl 1000000000000 48   completes in 12.7 minutes +18 secs
+
+    The following disables the bank-queuing model for sequence. One creates a
+    null structure for task_id 0 like shown. Sequence of numbers are divided
+    equally among workers when task_id is greater than 0. The queuing model
+    is only applicable to workers assigned task_id 0 or omitting user_tasks.
+
+       user_tasks => [ { }, {
+
+          sequence   => [ 2, $N, $step_size ],
+
+          user_begin => { ... }
+          user_func  => { ... }
+          user_end   => { ... }
+
+       } ]
+
+ :: Equally important is the overhead of the queuing model (32 workers on a
+    32-way box). The time difference is very minimal for nearly 2 million
+    steps for a sequence of numbers between 2 and N = 1_trillion and stepping
+    at a step_size of 18 * 15000 * 2 in the code. It's mind boggling to me.
+
+    Workers perform bank-queuing independently among themselves without any
+    involvement of the main manager process. MCE is written entirely in Perl
+    and is hard to believe. 300,000 sequence steps were distributed above per
+    second. Pack/unpack are handled in parallel behind the scene as workers
+    write_to and read_from the queuing socket.
+
+
+###############################################################################
+ # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * #
+###############################################################################
 
  :: Thanks to Stephan Brumme for the initial inspiration. I wanted faster
     and continued looking and came across the practical sieve algorithm
-    by Xuedone Luo (Algorithm3). Although being serial code, thought it
-    could run faster if parallelized.
+    by Xuedone Luo (Algorithm3). Although serial code, thought it could be
+    made faster if parallelized and indeed it is.
 
-    It took me several attempts to parallelize his work for near linear
-    scalability across all available cores. I even tried using a PDL file
-    among other things, but that fell through. In the end, chunking was
-    all that was needed and the ability to skip the previous chunk.
-
-    There's no need to have massive amount of memory to compute primes.
     Each worker utilizes only 8 ~ 10 MB no matter the size of N. Chunking
-    makes this possible.
+    in MCE makes this possible. Having an imaginary memory, that was the
+    thought process, helped me rearrange the logic around. Why compute both
+    primes and composites in the array when composites will eventually be
+    crossed out. Therefore, computing composites is not necessary IMHO.
+
+    Imaginary memory is of unlimited size. Computing the offset position
+    into this memory space out weighs the cost of having a system with
+    massive amount of memory for sieving prime numbers.
 
     
     -- Mario
