@@ -5,22 +5,22 @@
 
 ## Prime generating script utilizing MCE for parallel processing.
 ##
-## Due to the chunking nature of the application, this script requires very
-## little memory no matter how big N is. This is made possible by polling
-## primes from an imaginary list, described below. However, displaying primes
-## between 2 and 25 billion and directed to a file requires 11 gigabytes
-## on disk.
+## This script requires very little memory no matter how big N is. This is
+## made possible by polling primes from an imaginary list, described below.
+## However, listing primes between 2 and 25 billion and directed to a file
+## requires 11 gigabytes on disk.
 ##
 ## This implementation utilizes 100% Perl code for the algorithm.
 ##
 ## Usage:
-##   perl primes1_p.pl <N> [ <max_workers> ] [ <cnt_only> ]
+##   perl primes1_p.pl <N> [ <run_mode> ] [ <max_workers> ]
 ##
-##   perl primes1_p.pl 10000 8 0   ## Display prime numbers and total count
-##   perl primes1_p.pl 10000 8 1   ## Count prime numbers only
+##   perl primes1_p.pl 10000 1 8   ## Count primes only, 8 workers
+##   perl primes1_p.pl 10000 2 8   ## Display primes and count, 8 workers
+##   perl primes1_p.pl 10000 3 8   ## Find the sum of all the primes, 8 workers
 ##
 ##   perl primes1_p.pl check 23
-##   perl primes1_p.pl between 900 950 [ <max_workers> ] [ <cnt_only> ]
+##   perl primes1_p.pl between 900 950 [ <run_mode> ] [ <max_workers> ]
 ##
 ##   Exits with a status of 0 if a prime number was found, otherwise 2.
 
@@ -35,7 +35,7 @@ use MCE;
 
 ## Parse command-line arguments
 
-my ($FROM, $FROM_ADJ, $N, $N_ADJ, $max_workers, $cnt_only);
+my ($FROM, $FROM_ADJ, $N, $N_ADJ, $max_workers, $run_mode);
 my $check_flag = 0;
 
 if (@ARGV && ($ARGV[0] eq '-check' || $ARGV[0] eq 'check')) {
@@ -61,8 +61,8 @@ else {
    $N    = @ARGV ? shift : 1000;                 ## Default 1000
 }
 
+$run_mode    = @ARGV ? shift : 1;                ## Default 1
 $max_workers = @ARGV ? shift : 8;                ## Default 8
-$cnt_only    = @ARGV ? shift : 1;                ## Default 1
 
 ## Inline C (64-bit) is failing when declaring (unsigned long long) for type
 ## declaration. The maximum allowed is (signed long long) for now.
@@ -73,11 +73,11 @@ die "N: $N must be a number equal_to or greater than $FROM.\n"
 die "N: 9223372036854775807 is the maximum allowed.\n"
    if ($N > 9223372036854775807);
 
+die "run_mode: $run_mode must be either 1 = count, 2 = list, 3 = sum.\n"
+   if ($run_mode !~ /^[123]$/);
+
 die "max_workers: $max_workers must be a number greater than 0.\n"
    if ($max_workers !~ /^\d+$/ || $max_workers < 1);
-
-die "cnt_only: $cnt_only must be either 0 or 1.\n"
-   if ($cnt_only !~ /^[01]$/);
 
 ## Ensure (power of 2) for the algorithm (the starting value is critical)
 
@@ -98,7 +98,7 @@ $N_ADJ     = ($N % 2) ? $N + 1 : $N;
 sub find_primes {
 
    my (
-      $FROM, $FROM_ADJ, $N_ADJ, $seq_n, $step_size, $chunk_id, $cnt_only
+      $FROM, $FROM_ADJ, $N_ADJ, $seq_n, $step_size, $chunk_id, $run_mode
    ) = @_;
 
    my @ret;
@@ -140,9 +140,9 @@ sub find_primes {
       }
    }
 
-   ## Count primes only, otherwise send list of primes for this chunk
+   ## Count primes, sum primes, otherwise send list of primes for this slice
 
-   if ($cnt_only) {
+   if ($run_mode == 1) {
       my $found = 0;
 
       $found++ if (2 >= $seq_n && 2 <= $to && 2 >= $FROM);
@@ -152,6 +152,20 @@ sub find_primes {
       }
 
       push @ret, $found;
+   }
+   elsif ($run_mode == 3) {
+      my $sum = 0;
+
+      my $offset = int(($chunk_id - 1) * $step_size / 2) + 1;
+      $offset += int($FROM_ADJ / 2) - 1;
+
+      $sum += 2 if (2 >= $seq_n && 2 <= $to && 2 >= $FROM);
+
+      for ($i = 0; $i < $size; $i++) {
+         $sum += ($offset + $i) * 2 + 1 if ($is_prime[$i]);
+      }
+
+      push @ret, $sum;
    }
    else {
 
@@ -197,9 +211,9 @@ my %cache;
 
 sub aggregate_total {
 
-   my $found = $_[0];
+   my $number = $_[0];
 
-   $total += $found;
+   $total += $number;
 
    return;
 }
@@ -259,10 +273,10 @@ my $mce = MCE->new(
       my ($self, $seq_n, $chunk_id) = @_;
 
       my $p = find_primes(
-         $FROM, $FROM_ADJ, $N_ADJ, $seq_n, $step_size, $chunk_id, $cnt_only
+         $FROM, $FROM_ADJ, $N_ADJ, $seq_n, $step_size, $chunk_id, $run_mode
       );
 
-      if ($cnt_only) {
+      if ($run_mode == 1 || $run_mode == 3) {
          $self->{total} += $p->[0];
       } else {
          $self->{total} += scalar(@$p);
@@ -280,8 +294,16 @@ if ($check_flag == 0) {
 
    $mce->run;
 
-   print  STDERR "\n## There are $total prime numbers between $FROM and $N.\n";
-   printf STDERR "## Compute time: %0.03f secs\n\n", time() - $start;
+   if ($run_mode == 3) {
+      print STDERR
+         "\n## The sum of all the primes between $FROM and $N is $total.\n";
+   } else {
+      print STDERR
+         "\n## There are $total primes between $FROM and $N.\n";
+   }
+
+   printf STDERR
+      "## Compute time: %0.03f secs\n\n", time() - $start;
 }
 else {
    my $is_composite = 0;

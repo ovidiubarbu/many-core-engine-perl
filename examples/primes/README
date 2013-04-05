@@ -20,17 +20,17 @@
 
  :: Usage (please run on a 64-bit OS when N is greater than 32-bit)
 
-    perl primes.pl <N> [ <max_workers> ] [ <cnt_only> ]
-
-    perl primes.pl 10000 8 0   ## Display prime numbers and total count
-    perl primes.pl 10000 8 1   ## Count prime numbers only
-    perl primes.pl 10000       ## Count primes (default 8 workers, 1 cnt_only)
+    perl primes.pl <N> [ <run_mode> ] [ <max_workers> ]
+ 
+    perl primes.pl 10000 1 8   ## Count primes only, 8 workers
+    perl primes.pl 10000 2 8   ## Display primes and count, 8 workers
+    perl primes.pl 10000 3 8   ## Find the sum of all the primes, 8 workers
 
     In addition, one can check a number for primality as well as specify a
     range. The dash can be omitted before -check and -between below.
 
     perl primes.pl -check 23
-    perl primes.pl -between 900 950 [ <max_workers> ] [ <cnt_only> ]
+    perl primes.pl -between 900 950 [ <run_mode> ] [ <max_workers> ]
 
     The script exits with a status of 0 if a prime number was found,
     otherwise 2.
