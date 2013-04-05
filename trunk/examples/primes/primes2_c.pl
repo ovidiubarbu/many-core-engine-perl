@@ -64,8 +64,8 @@ else {
 $max_workers = @ARGV ? shift : 8;                ## Default 8
 $cnt_only    = @ARGV ? shift : 1;                ## Default 1
 
-## Inline C (64-bit) if failing when declaring (unsigned long long) for the
-## function variable types. Therefore, the maximum allowed is signed long long.
+## Inline C (64-bit) is failing when declaring (unsigned long long) for type
+## declaration. The maximum allowed is (signed long long) for now.
 
 die "N: $N must be a number equal_to or greater than $FROM.\n"
    if ($N !~ /^\d+$/ || $N < $FROM);
@@ -136,22 +136,30 @@ AV * practical_sieve(
    for (unsigned int i = 1; i <= size + 1; i++)
       is_prime[i] = 1;
 
-   // Clear out values < FROM
+   // Clear out values less than FROM
 
    if (chunk_id == 1) {
       for (unsigned int i = 1; i <= size; i += 2) {
-         if (n_offset + (3 * i + 2) >= FROM) break;
+         if (n_offset + (3 * i + 2) >= FROM)
+            break;
+
          is_prime[ i ] = 0;
-         if (n_offset + (3 * (i + 1) + 1) >= FROM) break;
+
+         if (n_offset + (3 * (i + 1) + 1) >= FROM)
+            break;
+
          is_prime[i+1] = 0;
       }
    }
 
-   // Clear out values > N_ADJ
+   // Clear out values greater than N_ADJ
 
    if (to == N_ADJ) {
-      if (n_offset + (3 * (size + 1) + 1) > N_ADJ) is_prime[size + 1] = 0;
-      if (n_offset + (3 *  size + 2     ) > N_ADJ) is_prime[size + 0] = 0;
+      if (n_offset + (3 * (size + 1) + 1) > N_ADJ)
+         is_prime[size + 1] = 0;
+
+      if (n_offset + (3 *  size + 2) > N_ADJ)
+         is_prime[size + 0] = 0;
    }
 
    // Process chunk
@@ -264,11 +272,11 @@ sub display_primes {
 
 my $step_size = 18 * 15000;
 
-$step_size += $step_size if ($FROM >= 1_000_000_000_000);        ## step  2x
-$step_size += $step_size if ($FROM >= 10_000_000_000_000);       ## step  4x
-$step_size += $step_size if ($FROM >= 100_000_000_000_000);      ## step  8x
-$step_size += $step_size if ($FROM >= 1_000_000_000_000_000);    ## step 16x
-$step_size += $step_size if ($FROM >= 10_000_000_000_000_000);   ## step 32x
+$step_size += $step_size if ($N >= 1_000_000_000_000);        ## step  2x
+$step_size += $step_size if ($N >= 10_000_000_000_000);       ## step  4x
+$step_size += $step_size if ($N >= 100_000_000_000_000);      ## step  8x
+$step_size += $step_size if ($N >= 1_000_000_000_000_000);    ## step 16x
+$step_size += $step_size if ($N >= 10_000_000_000_000_000);   ## step 32x
 
 ## MCE follows a bank-teller queuing model when distributing the sequence of
 ## numbers at step_size to workers. The user_func is called once per each step.
@@ -276,7 +284,7 @@ $step_size += $step_size if ($FROM >= 10_000_000_000_000_000);   ## step 32x
 ## the run: <user_begin> <user_func> <user_func> ... <user_func> <user_end>
 
 my $mce = MCE->new(
-   max_workers => (($FROM != $N) ? $max_workers : 1),
+   max_workers => (($FROM == $N) ? 1 : $max_workers),
    sequence    => [ $FROM_ADJ, $N_ADJ, $step_size ],
 
    user_begin  => sub {
@@ -329,7 +337,7 @@ else {
       }
    }
 
-   $mce->run if ($is_composite == 0);
+   $mce->run unless $is_composite;
 
    if ($total > 0) {
       print "$N is a prime number\n";
