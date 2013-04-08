@@ -84,8 +84,8 @@
        perl primes1_c.pl 33000000000 1 32  completes in 10.2 secs
        perl primes1_c.pl 36000000000 1 48  completes in 10.3 secs
 
-       perl primes2_c.pl 35000000000 1 32  completes in 10.1 secs
-       perl primes2_c.pl 38000000000 1 48  completes in 10.2 secs
+       perl primes2_c.pl 37000000000 1 32  completes in 10.3 secs
+       perl primes2_c.pl 39000000000 1 48  completes in 10.1 secs
     
        perl primes3_c.pl 44000000000 1 32  completes in 10.2 secs
        perl primes3_c.pl 43000000000 1 48  completes in 10.3 secs
@@ -110,8 +110,8 @@
 
        1.8 million chunks, step_size = 18 * 15000 * 2
 
-          perl primes2_c.pl 1000000000000 1 32  completes in  8.2 mins
-          perl primes2_c.pl 1000000000000 1 48  completes in  7.6 mins
+          perl primes2_c.pl 1000000000000 1 32  completes in  7.9 mins
+          perl primes2_c.pl 1000000000000 1 48  completes in  7.4 mins
 
        There are 37607912018 prime numbers between 2 and 1000000000000.
 
@@ -124,6 +124,10 @@
           perl primes3_c.pl 1000000000000 1 48  completes in  6.2 mins
 
        There are 37607912018 prime numbers between 2 and 1000000000000.
+
+       The delta time between primes3_c.pl and primes2_c.pl is quite small
+       actually. The reason is due to primes2_c.pl communicating 1.8 million
+       offsets via the bank-teller queuing model in just 2 minutes.
 
  :: The following disables the bank-queuing model for sequence. One creates a
     null structure for task_id 0 like shown. Sequence of numbers are divided
@@ -141,10 +145,10 @@
 
        } ]
 
-    I ran again just for comparison.
+    The total running time increases when the bank-queuing model is not used.
 
-    perl primes2_c.pl 1000000000000 1 32  completes in  8.0 mins (- 12 secs)
-    perl primes2_c.pl 1000000000000 1 48  completes in  7.8 mins (+ 12 secs)
+    perl primes2_c.pl 1000000000000 1 32  completes in  8.2 mins (+ 18 secs)
+    perl primes2_c.pl 1000000000000 1 48  completes in  7.7 mins (+ 18 secs)
 
     perl primes3_c.pl 1000000000000 1 32  completes in  6.3 mins (+ 24 secs)
     perl primes3_c.pl 1000000000000 1 48  completes in  6.4 mins (+ 12 secs)
@@ -162,7 +166,7 @@
 
     perl primes2_c.pl between 1000000000000000000 1000000001000000000 1 32
 
-    -- Compute time: 28.6 secs
+    -- Compute time: 10.8 secs
 
     perl primes3_c.pl between 1000000000000000000 1000000001000000000 1 32
 
@@ -181,11 +185,10 @@
     Xuedone Luo (Algorithm3). Although serial code, thought it could run
     faster than primes1 if parallelized and indeed it does.
 
-    Each worker utilizes only 8 ~ 10 MB no matter the size of N. Chunking
-    in MCE makes this possible. Having an imaginary memory, that was the
-    thought process, helped me rearrange the logic around. Why compute both
-    primes and composites in the array when composites will eventually be
-    crossed out. Therefore, computing composites is not necessary IMHO.
+    Seeing the imaginary memory helped me rearrange the logic around. Why
+    compute both primes and composites in the array when composites will
+    eventually be crossed out. Therefore, computing composites is not
+    necessary IMHO.
 
     Imaginary memory is of unlimited size. Computing the offset position
     into this memory space out weighs the cost of having a system with
