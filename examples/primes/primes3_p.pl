@@ -13,14 +13,14 @@
 ## This implementation utilizes 100% Perl code for the algorithm.
 ##
 ## Usage:
-##   perl primes2_p.pl <N> [ <run_mode> ] [ <max_workers> ]
+##   perl primes3_p.pl <N> [ <run_mode> ] [ <max_workers> ]
 ##
-##   perl primes2_p.pl 10000 1 8   ## Count primes only, 8 workers
-##   perl primes2_p.pl 10000 2 8   ## Display primes and count, 8 workers
-##   perl primes2_p.pl 10000 3 8   ## Find the sum of all the primes, 8 workers
+##   perl primes3_p.pl 10000 1 8   ## Count primes only, 8 workers
+##   perl primes3_p.pl 10000 2 8   ## Display primes and count, 8 workers
+##   perl primes3_p.pl 10000 3 8   ## Find the sum of all the primes, 8 workers
 ##
-##   perl primes2_p.pl check 23
-##   perl primes2_p.pl between 900 950 [ <run_mode> ] [ <max_workers> ]
+##   perl primes3_p.pl check 23
+##   perl primes3_p.pl between 900 950 [ <run_mode> ] [ <max_workers> ]
 ##
 ##   Exits with a status of 0 if a prime number was found, otherwise 2.
 
@@ -105,126 +105,144 @@ $N_ADJ     = ($N % 2) ? $N + 1 : $N;
 sub practical_sieve {
 
    my (
-      $FROM, $FROM_ADJ, $N_ADJ, $seq_n, $chunk_id, $run_mode, $step_size
+      $FROM, $FROM_ADJ, $N_ADJ, $seq_n, $chunk_id, $run_mode,
+      $step_size, $big_step
    ) = @_;
 
    my @ret;
 
-   my $to   = $seq_n + $step_size - 1; $to = $N_ADJ if ($to > $N_ADJ);
-   my $size = int(($to - $seq_n) / 3);
+   my $seq_limit  = $seq_n + $big_step;
+   my $s_offset   = 0;
+   my $break_flag = 0;
 
-   my ($c, $k, $t, $q, $M) = (0, 1, 2, int(sqrt($to)/3), int($to/3));
-   my (@is_prime, $j, $ij);
+   while ($seq_n + $step_size <= $seq_limit) {
+      my $to = $seq_n + $step_size - 1;
 
-   my $n_offset = ($chunk_id - 1) * $step_size + ($FROM_ADJ - 1);
-   my $j_offset = int($n_offset/3);
-
-   ## Initialize
-
-   $is_prime[0] = 0; $is_prime[$_] = 1 for (1 .. $size + 1);
-
-   ## Clear out values less than FROM
-
-   if ($chunk_id == 1) {
-      for (my $i = 1; $i <= $size; $i += 2) {
-         last
-            if ($n_offset + (3 * $i + 2) >= $FROM);
-         $is_prime[$i] = 0;
-         last
-            if ($n_offset + (3 * ($i + 1) + 1) >= $FROM);
-         $is_prime[$i + 1] = 0;
+      if ($to > $N_ADJ) {
+         $break_flag = 1;
+         $to = $N_ADJ;
       }
-   }
 
-   ## Clear out values greater than N_ADJ
+      my ($c, $k, $t, $q, $M) = (0, 1, 2, int(sqrt($to)/3), int($to/3));
+      my (@is_prime, $j, $ij);
 
-   if ($to == $N_ADJ) {
-      $is_prime[$size + 1] = 0
-         if ($n_offset + (3 * ($size + 1) + 1) > $N_ADJ);
-      $is_prime[$size] = 0
-         if ($n_offset + (3 * $size + 2) > $N_ADJ);
-   }
+      my $size     = int(($to - $seq_n) / 3);
+      my $n_offset = ($chunk_id - 1) * $big_step + $s_offset + ($FROM_ADJ - 1);
+      my $j_offset = int($n_offset/3);
 
-   ## Process chunk
+      ## Initialize
 
-   for my $i (1 .. $q) {
-      $k  = 3 - $k;  $c = 4 * $k * $i + $c;  $j = $c;
-      $ij = 2 * $i * (3 - $k) + 1;  $t = 4 * $k + $t;
+      $is_prime[0] = 0; $is_prime[$_] = 1 for (1 .. $size + 1);
 
-      ## Skip numbers before current chunk
+      ## Clear out values less than FROM
 
-      if ($j < $j_offset) {
-         $j += int(($j_offset - $j) / $t) * $t + $ij;
-         $ij = $t - $ij;
+      if ($chunk_id == 1) {
+         for (my $i = 1; $i <= $size; $i += 2) {
+            last
+               if ($n_offset + (3 * $i + 2) >= $FROM);
+            $is_prime[$i] = 0;
+            last
+               if ($n_offset + (3 * ($i + 1) + 1) >= $FROM);
+            $is_prime[$i + 1] = 0;
+         }
+      }
+
+      ## Clear out values greater than N_ADJ
+
+      if ($to == $N_ADJ) {
+         $is_prime[$size + 1] = 0
+            if ($n_offset + (3 * ($size + 1) + 1) > $N_ADJ);
+         $is_prime[$size] = 0
+            if ($n_offset + (3 * $size + 2) > $N_ADJ);
+      }
+
+      ## Process chunk
+
+      for my $i (1 .. $q) {
+         $k  = 3 - $k;  $c = 4 * $k * $i + $c;  $j = $c;
+         $ij = 2 * $i * (3 - $k) + 1;  $t = 4 * $k + $t;
+
+         ## Skip numbers before current chunk
+
          if ($j < $j_offset) {
+            $j += int(($j_offset - $j) / $t) * $t + $ij;
+            $ij = $t - $ij;
+            if ($j < $j_offset) {
+               $j += $ij;  $ij = $t - $ij;
+            }
+         }
+
+         ## Clear out composites
+
+         while ($j <= $M) {
+            $is_prime[$j - $j_offset] = 0;
             $j += $ij;  $ij = $t - $ij;
          }
       }
 
-      ## Clear out composites
+      ## Count primes, sum primes, otherwise send list of primes for this chunk
 
-      while ($j <= $M) {
-         $is_prime[$j - $j_offset] = 0;
-         $j += $ij;  $ij = $t - $ij;
-      }
-   }
+      if ($run_mode == 1) {
+         my $found = 0;
 
-   ## Count primes, sum primes, otherwise send list of primes for this chunk
-
-   if ($run_mode == 1) {
-      my $found = 0;
-
-      $found++
-         if (2 >= $seq_n && 2 <= $to && 2 >= $FROM);
-      $found++
-         if (3 >= $seq_n && 3 <= $to && 3 >= $FROM);
-
-      foreach (@is_prime) {
          $found++
-            if ($_);
+            if (2 >= $seq_n && 2 <= $to && 2 >= $FROM);
+         $found++
+            if (3 >= $seq_n && 3 <= $to && 3 >= $FROM);
+
+         foreach (@is_prime) {
+            $found++
+               if ($_);
+         }
+
+         push @ret, $found;
+      }
+      elsif ($run_mode == 3) {
+         my $sum = 0;
+
+         $sum += 2
+            if (2 >= $seq_n && 2 <= $to && 2 >= $FROM);
+         $sum += 3
+            if (3 >= $seq_n && 3 <= $to && 3 >= $FROM);
+
+         for (my $i = 1; $i <= $size; $i += 2) {
+            $sum += $n_offset + (3 * $i + 2)
+               if ($is_prime[$i]);
+            $sum += $n_offset + (3 * ($i + 1) + 1)
+               if ($is_prime[$i + 1]);
+         }
+
+         push @ret, $sum;
+      }
+      else {
+
+         ## Think of an imaginary list containing sequence of numbers. The
+         ## n_offset value is used to determine the starting offset position.
+         ##
+         ## Avoid all composites that have 2 or 3 as one of their prime factors
+         ## (where i is odd).
+         ##
+         ## { 0, 5, 7, 11, 13, ... 3i + 2, 3(i + 1) + 1, ..., N }
+         ##   0, 1, 2,  3,  4, ... list indices (0 is not used)
+
+         push @ret, 2
+            if (2 >= $seq_n && 2 <= $to && 2 >= $FROM);
+         push @ret, 3
+            if (3 >= $seq_n && 3 <= $to && 3 >= $FROM);
+
+         for (my $i = 1; $i <= $size; $i += 2) {
+            push @ret, $n_offset + (3 * $i + 2)
+               if ($is_prime[$i]);
+            push @ret, $n_offset + (3 * ($i + 1) + 1)
+               if ($is_prime[$i + 1]);
+         }
       }
 
-      push @ret, $found;
-   }
-   elsif ($run_mode == 3) {
-      my $sum = 0;
+      last
+         if ($break_flag);
 
-      $sum += 2
-         if (2 >= $seq_n && 2 <= $to && 2 >= $FROM);
-      $sum += 3
-         if (3 >= $seq_n && 3 <= $to && 3 >= $FROM);
-
-      for (my $i = 1; $i <= $size; $i += 2) {
-         $sum += $n_offset + (3 * $i + 2)
-            if ($is_prime[$i]);
-         $sum += $n_offset + (3 * ($i + 1) + 1)
-            if ($is_prime[$i + 1]);
-      }
-
-      push @ret, $sum;
-   }
-   else {
-
-      ## Think of an imaginary list containing sequence of numbers. The
-      ## n_offset value is used to determine the starting offset position.
-      ##
-      ## Avoid all composites that have 2 or 3 as one of their prime factors
-      ## (where i is odd).
-      ##
-      ## { 0, 5, 7, 11, 13, ... 3i + 2, 3(i + 1) + 1, ..., N }
-      ##   0, 1, 2,  3,  4, ... list indices (0 is not used)
-
-      push @ret, 2
-         if (2 >= $seq_n && 2 <= $to && 2 >= $FROM);
-      push @ret, 3
-         if (3 >= $seq_n && 3 <= $to && 3 >= $FROM);
-
-      for (my $i = 1; $i <= $size; $i += 2) {
-         push @ret, $n_offset + (3 * $i + 2)
-            if ($is_prime[$i]);
-         push @ret, $n_offset + (3 * ($i + 1) + 1)
-            if ($is_prime[$i + 1]);
-      }
+      $seq_n    += $step_size;
+      $s_offset += $step_size;
    }
 
    return \@ret;
@@ -274,23 +292,29 @@ sub display_primes {
 
 ## Step size must be divisible by 3. Do not increase beyond the maximum below.
 
-my $step_size = 18 * 15000;
+my $step_size = 27 * 15000;
 
-$step_size += $step_size if ($N >= 1_000_000_000_000);        ## step  2x
-$step_size += $step_size if ($N >= 10_000_000_000_000);       ## step  4x
-$step_size += $step_size if ($N >= 100_000_000_000_000);      ## step  8x
-$step_size += $step_size if ($N >= 1_000_000_000_000_000);    ## step 16x
-$step_size += $step_size if ($N >= 10_000_000_000_000_000);   ## step 32x
+$step_size += $step_size if ($N >= 1_000_000_000_000);           ## step   2x
+$step_size += $step_size if ($N >= 10_000_000_000_000);          ## step   4x
+$step_size += $step_size if ($N >= 100_000_000_000_000);         ## step   8x
+$step_size += $step_size if ($N >= 1_000_000_000_000_000);       ## step  16x
+$step_size += $step_size if ($N >= 10_000_000_000_000_000);      ## step  32x
+$step_size += $step_size if ($N >= 100_000_000_000_000_000);     ## step  64x
+$step_size += $step_size if ($N >= 1_000_000_000_000_000_000);   ## step 128x
+
+my $big_step = $step_size * int(
+   ($N_ADJ - $FROM_ADJ) / $step_size / $max_workers / 128 + 1
+);
 
 ## MCE follows a bank-teller queuing model when distributing the sequence of
-## numbers at step_size to workers. User_func is called once per each step.
-## Both user_begin and user_end are called once per worker.
+## numbers at big_step size to workers. User_func is called once per each
+## step. Both user_begin and user_end are called once per worker.
 ##
 ##    <user_begin> <user_func> <user_func> ... <user_func> <user_end>
 
 my $mce = MCE->new(
    max_workers => (($FROM == $N) ? 1 : $max_workers),
-   sequence    => [ $FROM_ADJ, $N_ADJ, $step_size ],
+   sequence    => [ $FROM_ADJ, $N_ADJ, $big_step ],
 
    user_begin  => sub {
       my ($self) = @_;
@@ -306,11 +330,14 @@ my $mce = MCE->new(
       my ($self, $seq_n, $chunk_id) = @_;
 
       my $p = practical_sieve(
-         $FROM, $FROM_ADJ, $N_ADJ, $seq_n, $chunk_id, $run_mode, $step_size
+         $FROM, $FROM_ADJ, $N_ADJ, $seq_n, $chunk_id, $run_mode,
+         $step_size, $big_step
       );
 
       if ($run_mode == 1 || $run_mode == 3) {
-         $self->{total} += $p->[0];
+         foreach (@$p) {
+            $self->{total} += $_;
+         }
       }
       else {
          $self->{total} += scalar(@$p);

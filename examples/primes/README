@@ -18,6 +18,9 @@
        primes2_p.pl (100% Perl Code)
        primes2_c.pl (using Inline C)
 
+       primes3_p.pl (100% Perl Code, dual-level chunking)
+       primes3_c.pl (using Inline C, dual-level chunking)
+
  :: Usage (please run on a 64-bit OS when N is greater than 32-bit)
 
     perl primes.pl <N> [ <run_mode> ] [ <max_workers> ]
@@ -50,15 +53,15 @@
     between 2 and N. However, it does require 11 gigabytes of storage space
     to save all prime numbers between 2 and 1 billion to a file.
 
-       primes2_c.pl 1000000000 8 0 > primes.out
+       primes3_c.pl 1000000000 8 0 > primes.out
 
     Workers have practically no communications requirement other than sending
     results after processing each chunk and the total count at the end of the
-    run. Prime numbers are displayed to STDOUT in an orderly fashion when
-    found.
+    run. Prime numbers are displayed to STDOUT in an orderly fashion as they
+    are found.
 
- :: The two *_c.pl examples require the following 2 packages under CentOS 6.3+
-    to run. The 1st time will have Inline::C compile the C code -- this takes
+ :: The *_c.pl examples require the following 2 packages under CentOS 6.3+
+    to run. The 1st run will have Inline::C compile the C code -- this takes
     some time. The 2nd run and there after runs immediately with no overhead
     to compile the inlined C code.
 
@@ -69,39 +72,60 @@
  # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * #
 ###############################################################################
 
- :: Primes2 is faster than primes1. The difference in time increases the
-    greater N is. I ran with 32 and 48 workers at the time of testing.
+ :: Primes2 and primes3 are faster than primes1. The difference in time
+    increases the greater N is. I ran with 32 and 48 workers at the
+    time of testing.
 
-    The 32-way box runs with 2x Intel Xeon E5-2660 processors with memory
-    running at 1600 MHz.
+    The 32-way box is configured with 2x Intel Xeon E5-2660 processors and
+    memory running at 1600 MHz.
 
     N size needed to complete in 10 second (up to billions)
 
-       perl primes1_c.pl 24000000000   32   completes in 10.3 secs
-       perl primes1_c.pl 26000000000   48   completes in 10.2 secs
+       perl primes1_c.pl 33000000000 1 32  completes in 10.2 secs
+       perl primes1_c.pl 36000000000 1 48  completes in 10.3 secs
 
-       perl primes2_c.pl 35000000000   32   completes in 10.3 secs
-       perl primes2_c.pl 38000000000   48   completes in 10.2 secs
+       perl primes2_c.pl 35000000000 1 32  completes in 10.1 secs
+       perl primes2_c.pl 38000000000 1 48  completes in 10.2 secs
     
-    N = 1 Trillion (that's 12 zeroes)
+       perl primes3_c.pl 44000000000 1 32  completes in 10.2 secs
+       perl primes3_c.pl 43000000000 1 48  completes in 10.3 secs
+    
+    N = 1 Trillion (12 zeroes)
 
-       perl primes1_c.pl 1000000000000 32   completes in 16.0 mins
-       perl primes1_c.pl 1000000000000 48   completes in 14.9 mins
+       The winner below is primes3_c.pl with 32 workers. There is some overhead
+       associated with the bank-teller queuing model in MCE. However, the delta
+       is quite good for having 1.8 million chunks, standing in line, all sent
+       to the next available teller in roughly 2 minutes time.
 
-       perl primes2_c.pl 1000000000000 32   completes in  8.2 mins
-       perl primes2_c.pl 1000000000000 48   completes in  7.6 mins
+    <> primes1_c.pl
+
+       1.5 million chunks, step_size = 128 * 2560 * 2
+
+          perl primes1_c.pl 1000000000000 1 32  completes in 10.0 mins
+          perl primes1_c.pl 1000000000000 1 48  completes in  8.7 mins
 
        There are 37607912018 prime numbers between 2 and 1000000000000.
 
- :: I ran without the bank-teller queuing model to see the impact. The time
-    gap between the first worker and last worker completing is greater when
-    dividing the work equally among workers for 48 workers on a 32-way
-    system. Notice the impact to the total running time.
+    <> primes2_c.pl
 
-       perl primes2_c.pl 1000000000000 32   completes in  8.0 mins (- 12 secs)
-       perl primes2_c.pl 1000000000000 48   completes in  7.8 mins (+ 12 secs)
+       1.8 million chunks, step_size = 18 * 15000 * 2
 
-    The following disables the bank-queuing model for sequence. One creates a
+          perl primes2_c.pl 1000000000000 1 32  completes in  8.2 mins
+          perl primes2_c.pl 1000000000000 1 48  completes in  7.6 mins
+
+       There are 37607912018 prime numbers between 2 and 1000000000000.
+
+    <> primes3_c.pl
+
+       4,088 big chunks (worker loops through each 302 times)
+       big step_size = 244620000, loop step_size = 810000
+
+          perl primes3_c.pl 1000000000000 1 32  completes in  5.9 mins
+          perl primes3_c.pl 1000000000000 1 48  completes in  6.2 mins
+
+       There are 37607912018 prime numbers between 2 and 1000000000000.
+
+ :: The following disables the bank-queuing model for sequence. One creates a
     null structure for task_id 0 like shown. Sequence of numbers are divided
     equally among workers when task_id is greater than 0. The queuing model
     is only applicable to workers assigned task_id 0 or when omitting the
@@ -117,16 +141,13 @@
 
        } ]
 
- :: Equally important is the overhead of the queuing model (32 workers on a
-    32-way box). The time difference is very minimal for 1.85 million steps
-    for a sequence of numbers between 2 and N = 1_trillion and stepping at
-    a step_size of 18 * 15000 * 2 in the code. It's mind boggling to me.
+    I ran again just for comparison.
 
-    Workers perform bank-queuing independently among themselves without any
-    involvement of the main manager process. MCE is written entirely in Perl
-    and is hard to believe. 154,000 sequence steps were distributed above
-    per second. Pack/unpack are handled in parallel behind the scene as
-    workers write_to and read_from the queuing socket.
+    perl primes2_c.pl 1000000000000 1 32  completes in  8.0 mins (- 12 secs)
+    perl primes2_c.pl 1000000000000 1 48  completes in  7.8 mins (+ 12 secs)
+
+    perl primes3_c.pl 1000000000000 1 32  completes in  6.3 mins (+ 24 secs)
+    perl primes3_c.pl 1000000000000 1 48  completes in  6.4 mins (+ 12 secs)
 
 
 ###############################################################################

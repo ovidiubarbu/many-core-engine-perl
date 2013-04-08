@@ -79,10 +79,10 @@ die "run_mode: $run_mode must be either 1 = count, 2 = list, 3 = sum.\n"
 die "max_workers: $max_workers must be a number greater than 0.\n"
    if ($max_workers !~ /^\d+$/ || $max_workers < 1);
 
-## Ensure (power of 18) for the algorithm (the starting value is critical)
+## Ensure divisible by 3 for the algorithm (starting value is critical)
 
-$FROM_ADJ  = $FROM - 18;
-$FROM_ADJ  = $FROM_ADJ - ($FROM_ADJ % 18) if ($FROM_ADJ % 18);
+$FROM_ADJ  = $FROM - 3;
+$FROM_ADJ  = $FROM_ADJ - ($FROM_ADJ % 3) if ($FROM_ADJ % 3);
 $FROM_ADJ  = 1 if ($FROM_ADJ < 1);
 
 $FROM_ADJ += 1 if ($FROM_ADJ % 2 == 0);
@@ -110,10 +110,9 @@ use Inline C => <<'END_C';
 #include <math.h>
 
 AV * practical_sieve(
-
       unsigned long FROM, unsigned long FROM_ADJ, unsigned long N_ADJ,
-      unsigned long seq_n, unsigned long step_size, unsigned long chunk_id,
-      unsigned int run_mode
+      unsigned long seq_n, unsigned long chunk_id, unsigned int run_mode,
+      unsigned long step_size
 ) {
 
    AV * ret = newAV();
@@ -123,11 +122,11 @@ AV * practical_sieve(
 
    unsigned int  k = 1, t = 2, ij;
    unsigned int  q = sqrt(to) / 3;
-   unsigned long M = to / 3, c = 0, j;
+   unsigned long n_offset, j_offset, M = to / 3, c = 0, j;
    unsigned int  is_prime[size + 1];
 
-   unsigned long n_offset = (chunk_id - 1) * step_size + (FROM_ADJ - 1);
-   unsigned long j_offset = n_offset / 3;
+   n_offset = (chunk_id - 1) * step_size + (FROM_ADJ - 1);
+   j_offset = n_offset / 3;
 
    // Initialize
 
@@ -142,13 +141,10 @@ AV * practical_sieve(
       for (unsigned int i = 1; i <= size; i += 2) {
          if (n_offset + (3 * i + 2) >= FROM)
             break;
-
-         is_prime[ i ] = 0;
-
+         is_prime[i] = 0;
          if (n_offset + (3 * (i + 1) + 1) >= FROM)
             break;
-
-         is_prime[i+1] = 0;
+         is_prime[i + 1] = 0;
       }
    }
 
@@ -157,9 +153,8 @@ AV * practical_sieve(
    if (to == N_ADJ) {
       if (n_offset + (3 * (size + 1) + 1) > N_ADJ)
          is_prime[size + 1] = 0;
-
       if (n_offset + (3 *  size + 2) > N_ADJ)
-         is_prime[size + 0] = 0;
+         is_prime[size] = 0;
    }
 
    // Process chunk
@@ -168,12 +163,11 @@ AV * practical_sieve(
       k  = 3 - k;  c = 4 * k * i + c;  j = c;
       ij = 2 * i * (3 - k) + 1;  t = 4 * k + t;
 
-      // Skip numbers before current slice
+      // Skip numbers before current chunk
 
       if (j < j_offset) {
          j += (j_offset - j) / t * t + ij;
          ij = t - ij;
-
          if (j < j_offset) {
             j += ij;  ij = t - ij;
          }
@@ -188,16 +182,19 @@ AV * practical_sieve(
       }
    }
 
-   // Count primes, sum primes, otherwise send list of primes for this slice
+   // Count primes, sum primes, otherwise send list of primes for this chunk
 
    if (run_mode == 1) {
       unsigned long found = 0;
 
-      if (2 >= seq_n && 2 <= to && 2 >= FROM) found++;
-      if (3 >= seq_n && 3 <= to && 3 >= FROM) found++;
+      if (2 >= seq_n && 2 <= to && 2 >= FROM)
+         found++;
+      if (3 >= seq_n && 3 <= to && 3 >= FROM)
+         found++;
 
       for (unsigned int i = 1; i <= size + 1; i++) {
-         if (is_prime[i]) found++;
+         if (is_prime[i])
+            found++;
       }
 
       av_push(ret, newSVuv(found));
@@ -205,12 +202,16 @@ AV * practical_sieve(
    else if (run_mode == 3) {
       unsigned long sum = 0;
 
-      if (2 >= seq_n && 2 <= to && 2 >= FROM) sum += 2;
-      if (3 >= seq_n && 3 <= to && 3 >= FROM) sum += 3;
+      if (2 >= seq_n && 2 <= to && 2 >= FROM)
+         sum += 2;
+      if (3 >= seq_n && 3 <= to && 3 >= FROM)
+         sum += 3;
 
       for (unsigned int i = 1; i <= size; i += 2) {
-         if (is_prime[ i ]) sum += n_offset + (3 * i + 2);
-         if (is_prime[i+1]) sum += n_offset + (3 * (i + 1) + 1);
+         if (is_prime[i])
+            sum += n_offset + (3 * i + 2);
+         if (is_prime[i + 1])
+            sum += n_offset + (3 * (i + 1) + 1);
       }
 
       av_push(ret, newSVuv(sum));
@@ -220,17 +221,22 @@ AV * practical_sieve(
       // Think of an imaginary list containing sequence of numbers. The
       // n_offset value is used to determine the starting offset position.
       //
-      // Avoid all composites that have 2 or 3 as one of their prime factors.
+      // Avoid all composites that have 2 or 3 as one of their prime factors
+      // (where i is odd).
       //
-      // { 0, 5, 7, 11, 13, ... 3i + 2, 3(i + 1) + 1, ..., N } (where i is odd)
+      // { 0, 5, 7, 11, 13, ... 3i + 2, 3(i + 1) + 1, ..., N }
       //   0, 1, 2,  3,  4, ... list indices (0 is not used)
 
-      if (2 >= seq_n && 2 <= to && 2 >= FROM) av_push(ret, newSVuv(2));
-      if (3 >= seq_n && 3 <= to && 3 >= FROM) av_push(ret, newSVuv(3));
+      if (2 >= seq_n && 2 <= to && 2 >= FROM)
+         av_push(ret, newSVuv(2));
+      if (3 >= seq_n && 3 <= to && 3 >= FROM)
+         av_push(ret, newSVuv(3));
 
       for (unsigned int i = 1; i <= size; i += 2) {
-         if (is_prime[ i ]) av_push(ret, newSVuv(n_offset + (3 * i + 2)));
-         if (is_prime[i+1]) av_push(ret, newSVuv(n_offset + (3 * (i + 1) + 1)));
+         if (is_prime[i])
+            av_push(ret, newSVuv(n_offset + (3 * i + 2)));
+         if (is_prime[i + 1])
+            av_push(ret, newSVuv(n_offset + (3 * (i + 1) + 1)));
       }
    }
 
@@ -281,7 +287,7 @@ sub display_primes {
  # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * #
 ###############################################################################
 
-## Step size must be a power of 18. Do not increase beyond the maximum below.
+## Step size must be divisible by 3. Do not increase beyond the maximum below.
 
 my $step_size = 18 * 15000;
 
@@ -292,9 +298,10 @@ $step_size += $step_size if ($N >= 1_000_000_000_000_000);    ## step 16x
 $step_size += $step_size if ($N >= 10_000_000_000_000_000);   ## step 32x
 
 ## MCE follows a bank-teller queuing model when distributing the sequence of
-## numbers at step_size to workers. The user_func is called once per each step.
-## Both user_begin and user_end are called once per worker for the duration of
-## the run: <user_begin> <user_func> <user_func> ... <user_func> <user_end>
+## numbers at step_size to workers. User_func is called once per each step.
+## Both user_begin and user_end are called once per worker.
+##
+##    <user_begin> <user_func> <user_func> ... <user_func> <user_end>
 
 my $mce = MCE->new(
    max_workers => (($FROM == $N) ? 1 : $max_workers),
@@ -314,12 +321,13 @@ my $mce = MCE->new(
       my ($self, $seq_n, $chunk_id) = @_;
 
       my $p = practical_sieve(
-         $FROM, $FROM_ADJ, $N_ADJ, $seq_n, $step_size, $chunk_id, $run_mode
+         $FROM, $FROM_ADJ, $N_ADJ, $seq_n, $chunk_id, $run_mode, $step_size
       );
 
       if ($run_mode == 1 || $run_mode == 3) {
          $self->{total} += $p->[0];
-      } else {
+      }
+      else {
          $self->{total} += scalar(@$p);
          $self->do("display_primes", join("\n", @$p)."\n", $chunk_id);
       }
@@ -338,7 +346,8 @@ if ($check_flag == 0) {
    if ($run_mode == 3) {
       print STDERR
          "\n## The sum of all the primes between $FROM and $N is $total.\n";
-   } else {
+   }
+   else {
       print STDERR
          "\n## There are $total primes between $FROM and $N.\n";
    }
@@ -362,7 +371,8 @@ else {
 
    if ($total > 0) {
       print "$N is a prime number\n";
-   } else {
+   }
+   else {
       print "$N is NOT a prime number\n";
    }
 }

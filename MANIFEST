@@ -34,6 +34,8 @@ examples/primes/primes1_c.pl
 examples/primes/primes1_p.pl
 examples/primes/primes2_c.pl
 examples/primes/primes2_p.pl
+examples/primes/primes3_c.pl
+examples/primes/primes3_p.pl
 examples/scaling_pings.pl
 examples/seq_demo.pl
 examples/tbray/README

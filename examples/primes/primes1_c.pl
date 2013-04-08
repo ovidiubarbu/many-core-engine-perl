@@ -79,7 +79,7 @@ die "run_mode: $run_mode must be either 1 = count, 2 = list, 3 = sum.\n"
 die "max_workers: $max_workers must be a number greater than 0.\n"
    if ($max_workers !~ /^\d+$/ || $max_workers < 1);
 
-## Ensure (power of 2) for the algorithm (the starting value is critical)
+## Ensure divisible by 2 for the algorithm (starting value is critical)
 
 $FROM_ADJ  = $FROM;
 $FROM_ADJ -= 1 if ($FROM_ADJ % 2);
@@ -101,10 +101,9 @@ use Inline C => Config => CCFLAGS => $Config{ccflags} . ' -std=c99';
 use Inline C => <<'END_C';
 
 AV * find_primes(
-
       unsigned long FROM, unsigned long FROM_ADJ, unsigned long N_ADJ,
-      unsigned long seq_n, unsigned long step_size, unsigned long chunk_id,
-      unsigned int run_mode
+      unsigned long seq_n, unsigned long chunk_id, unsigned int run_mode,
+      unsigned long step_size
 ) {
 
    AV * ret = newAV();
@@ -130,7 +129,7 @@ AV * find_primes(
       if (i % 11 == 0 && i >= 121) continue;   // Skip multiples of 11
       if (i % 13 == 0 && i >= 169) continue;   // Skip multiples of 13
 
-      // Skip numbers before current slice
+      // Skip numbers before current chunk
 
       unsigned long minJ = (from + i - 1) / i * i;
       if (minJ < i * i) minJ = i * i;
@@ -147,7 +146,7 @@ AV * find_primes(
       }
    }
 
-   // Count primes, sum primes, otherwise send list of primes for this slice
+   // Count primes, sum primes, otherwise send list of primes for this chunk
 
    if (run_mode == 1) {
       unsigned long found = 0;
@@ -253,20 +252,20 @@ sub display_primes {
  # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * #
 ###############################################################################
 
-## Step size must be a power of 2. Do not increase beyond the maximum below.
+## Step size must be divisible by 2. Do not increase beyond the maximum below.
 
-my $step_size = 128 * 1024;
+my $step_size = 128 * 2560;
 
 $step_size += $step_size if ($N >= 1_000_000_000_000);        ## step  2x
 $step_size += $step_size if ($N >= 10_000_000_000_000);       ## step  4x
 $step_size += $step_size if ($N >= 100_000_000_000_000);      ## step  8x
 $step_size += $step_size if ($N >= 1_000_000_000_000_000);    ## step 16x
-$step_size += $step_size if ($N >= 10_000_000_000_000_000);   ## step 32x
 
 ## MCE follows a bank-teller queuing model when distributing the sequence of
-## numbers at step_size to workers. The user_func is called once per each step.
-## Both user_begin and user_end are called once per worker for the duration of
-## the run: <user_begin> <user_func> <user_func> ... <user_func> <user_end>
+## numbers at step_size to workers. User_func is called once per each step.
+## Both user_begin and user_end are called once per worker.
+##
+##    <user_begin> <user_func> <user_func> ... <user_func> <user_end>
 
 my $mce = MCE->new(
    max_workers => (($FROM == $N) ? 1 : $max_workers),
@@ -286,12 +285,13 @@ my $mce = MCE->new(
       my ($self, $seq_n, $chunk_id) = @_;
 
       my $p = find_primes(
-         $FROM, $FROM_ADJ, $N_ADJ, $seq_n, $step_size, $chunk_id, $run_mode
+         $FROM, $FROM_ADJ, $N_ADJ, $seq_n, $chunk_id, $run_mode, $step_size
       );
 
       if ($run_mode == 1 || $run_mode == 3) {
          $self->{total} += $p->[0];
-      } else {
+      }
+      else {
          $self->{total} += scalar(@$p);
          $self->do("display_primes", join("\n", @$p)."\n", $chunk_id);
       }
@@ -310,7 +310,8 @@ if ($check_flag == 0) {
    if ($run_mode == 3) {
       print STDERR
          "\n## The sum of all the primes between $FROM and $N is $total.\n";
-   } else {
+   }
+   else {
       print STDERR
          "\n## There are $total primes between $FROM and $N.\n";
    }
@@ -334,7 +335,8 @@ else {
 
    if ($total > 0) {
       print "$N is a prime number\n";
-   } else {
+   }
+   else {
       print "$N is NOT a prime number\n";
    }
 }
