@@ -108,6 +108,7 @@ use Inline C => Config => CCFLAGS => $Config{ccflags} . ' -std=c99';
 use Inline C => <<'END_C';
 
 #include <math.h>
+#include <stdlib.h>
 
 AV * practical_sieve(
       unsigned long FROM, unsigned long FROM_ADJ, unsigned long N_ADJ,
@@ -123,17 +124,19 @@ AV * practical_sieve(
    unsigned int  k = 1, t = 2, ij;
    unsigned int  q = sqrt(to) / 3;
    unsigned long n_offset, j_offset, M = to / 3, c = 0, j;
-   unsigned int  is_prime[size + 1];
+   unsigned int  *is_prime, *p, i;
 
    n_offset = (chunk_id - 1) * step_size + (FROM_ADJ - 1);
    j_offset = n_offset / 3;
 
    // Initialize
 
-   is_prime[0] = 0;
+   is_prime = (unsigned int *) malloc(sizeof(is_prime) * (size + 1));
+   *(is_prime) = 0;
 
-   for (unsigned int i = 1; i <= size + 1; i++)
-      is_prime[i] = 1;
+   p = is_prime + 1; i = 0;
+   while (i++ <= size) *p++ = 1;
+   p = is_prime;
 
    // Clear out values less than FROM
 
@@ -141,10 +144,10 @@ AV * practical_sieve(
       for (unsigned int i = 1; i <= size; i += 2) {
          if (n_offset + (3 * i + 2) >= FROM)
             break;
-         is_prime[i] = 0;
+         *(p + i) = 0;
          if (n_offset + (3 * (i + 1) + 1) >= FROM)
             break;
-         is_prime[i + 1] = 0;
+         *(p + i + 1) = 0;
       }
    }
 
@@ -152,9 +155,9 @@ AV * practical_sieve(
 
    if (to == N_ADJ) {
       if (n_offset + (3 * (size + 1) + 1) > N_ADJ)
-         is_prime[size + 1] = 0;
+         *(p + size + 1) = 0;
       if (n_offset + (3 *  size + 2) > N_ADJ)
-         is_prime[size] = 0;
+         *(p + size) = 0;
    }
 
    // Process chunk
@@ -177,7 +180,7 @@ AV * practical_sieve(
 
       while (j <= M) {
          unsigned int index = (unsigned int) j - j_offset;
-         is_prime[index] = 0;
+         *(p + index) = 0;
          j += ij;  ij = t - ij;
       }
    }
@@ -192,8 +195,10 @@ AV * practical_sieve(
       if (3 >= seq_n && 3 <= to && 3 >= FROM)
          found++;
 
-      for (unsigned int i = 1; i <= size + 1; i++) {
-         if (is_prime[i])
+      p = is_prime + 1; i = 0;
+
+      while (i++ <= size) {
+         if (*p++)
             found++;
       }
 
@@ -208,9 +213,9 @@ AV * practical_sieve(
          sum += 3;
 
       for (unsigned int i = 1; i <= size; i += 2) {
-         if (is_prime[i])
+         if (*(p + i))
             sum += n_offset + (3 * i + 2);
-         if (is_prime[i + 1])
+         if (*(p + i + 1))
             sum += n_offset + (3 * (i + 1) + 1);
       }
 
@@ -233,12 +238,15 @@ AV * practical_sieve(
          av_push(ret, newSVuv(3));
 
       for (unsigned int i = 1; i <= size; i += 2) {
-         if (is_prime[i])
+         if (*(p + i))
             av_push(ret, newSVuv(n_offset + (3 * i + 2)));
-         if (is_prime[i + 1])
+         if (*(p + i + 1))
             av_push(ret, newSVuv(n_offset + (3 * (i + 1) + 1)));
       }
    }
+
+   free (is_prime);
+   is_prime = NULL;
 
    return sv_2mortal(ret);
 }
@@ -291,11 +299,13 @@ sub display_primes {
 
 my $step_size = 18 * 15000;
 
-$step_size += $step_size if ($N >= 1_000_000_000_000);        ## step  2x
-$step_size += $step_size if ($N >= 10_000_000_000_000);       ## step  4x
-$step_size += $step_size if ($N >= 100_000_000_000_000);      ## step  8x
-$step_size += $step_size if ($N >= 1_000_000_000_000_000);    ## step 16x
-$step_size += $step_size if ($N >= 10_000_000_000_000_000);   ## step 32x
+$step_size += $step_size if ($N >= 1_000_000_000_000);           ## step   2x
+$step_size += $step_size if ($N >= 10_000_000_000_000);          ## step   4x
+$step_size += $step_size if ($N >= 100_000_000_000_000);         ## step   8x
+$step_size += $step_size if ($N >= 1_000_000_000_000_000);       ## step  16x
+$step_size += $step_size if ($N >= 10_000_000_000_000_000);      ## step  32x
+$step_size += $step_size if ($N >= 100_000_000_000_000_000);     ## step  64x
+$step_size += $step_size if ($N >= 1_000_000_000_000_000_000);   ## step 128x
 
 ## MCE follows a bank-teller queuing model when distributing the sequence of
 ## numbers at step_size to workers. User_func is called once per each step.
