@@ -154,6 +154,28 @@
  # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * #
 ###############################################################################
 
+ :: Additional benchmark results (between). Tested under Linux (x86_64).
+
+    perl primes1_c.pl between 1000000000000000000 1000000001000000000 1 32
+
+    -- Compute time: 58.4 secs
+
+    perl primes2_c.pl between 1000000000000000000 1000000001000000000 1 32
+
+    -- Compute time: 28.6 secs
+
+    perl primes3_c.pl between 1000000000000000000 1000000001000000000 1 32
+
+    -- Compute time: 10.5 secs
+
+    There are 24127085 primes
+       between 1000000000000000000 and 1000000001000000000.
+
+
+###############################################################################
+ # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * #
+###############################################################################
+
  :: Thanks to Stephan Brumme for the initial inspiration. I wanted faster,
     continued looking and came across the practical sieve algorithm by
     Xuedone Luo (Algorithm3). Although serial code, thought it could run
