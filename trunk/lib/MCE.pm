@@ -1869,8 +1869,16 @@ sub _validate_args_s {
 
          $self->{_total_running} -= 1;
 
+         if ($_has_user_tasks && $_task_id >= 0) {
+            $self->{_task}->[$_task_id]->{_total_running} -= 1;
+         }
+
          if (defined $_syn_flag && defined $_sync_cnt && $_sync_cnt != 0) {
-            if ($_sync_cnt == $self->{_total_running}) {
+            my $_total_running = ($_has_user_tasks)
+               ? $self->{_task}->[0]->{_total_running}
+               : $self->{_total_running};
+
+            if ($_sync_cnt == $_total_running) {
                select(undef, undef, undef, 0.100) if ($_is_cygwin);
                flock $_SYN_LOCK, LOCK_UN;
                undef $_syn_flag;
@@ -1879,8 +1887,6 @@ sub _validate_args_s {
 
          ## Call on task_end if the last worker for the task.
          if ($_has_user_tasks && $_task_id >= 0) {
-            $self->{_task}->[$_task_id]->{_total_running} -= 1;
-
             unless ($self->{_task}->[$_task_id]->{_total_running}) {
                if (defined $self->{user_tasks}->[$_task_id]->{task_end}) {
                   $self->{user_tasks}->[$_task_id]->{task_end}();
@@ -1906,7 +1912,11 @@ sub _validate_args_s {
          }
 
          if (defined $_syn_flag && defined $_sync_cnt && $_sync_cnt != 0) {
-            if ($_sync_cnt == $self->{_total_running}) {
+            my $_total_running = ($_has_user_tasks)
+               ? $self->{_task}->[0]->{_total_running}
+               : $self->{_total_running};
+
+            if ($_sync_cnt == $_total_running) {
                select(undef, undef, undef, 0.100) if ($_is_cygwin);
                flock $_DAT_LOCK, LOCK_EX;
                flock $_SYN_LOCK, LOCK_UN;
