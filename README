@@ -1,5 +1,9 @@
-MCE version 1.408
-=================
+
+###############################################################################
+ # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * #
+###############################################################################
+
+This document describes MCE version 1.409
 
 Many-core Engine (MCE) for Perl helps enable a new level of performance by
 maximizing all available cores. MCE spawns a pool of workers and therefore
@@ -7,6 +11,9 @@ does not fork a new process per each element of data. Instead, MCE follows
 a bank queuing model. Imagine the line being the data and bank-tellers the
 parallel workers. MCE enhances that model by adding the ability to chunk
 the next n elements from the input stream to the next available worker.
+
+Both chunking and input are optional in MCE. One can simply use MCE to have
+many workers run in parallel.
 
 INSTALLATION
 
@@ -40,8 +47,6 @@ This module requires these other modules and libraries:
    File::Path
    Test::More 0.45 or later (for testing)
 
-For usage, read examples/mce_usage.readme or perldoc MCE.
-
 COPYRIGHT AND LICENCE
 
 Copyright (C) 2012 by Mario E. Roy <marioeroy AT gmail DOT com>
@@ -49,4 +54,19 @@ Copyright (C) 2012 by Mario E. Roy <marioeroy AT gmail DOT com>
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.8.0 or,
 at your option, any later version of Perl 5 you may have available.
+
+USAGE
+
+The source is hosted at http://code.google.com/p/many-core-engine-perl/
+
+https://metacpan.org/module/MCE::Signal
+https://metacpan.org/module/MCE
+
+###############################################################################
+ # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * #
+###############################################################################
+
+Enjoy MCE !!!
+
+- Mario
 

@@ -1,5 +1,5 @@
 Name:           perl-MCE
-Version:        1.408
+Version:        1.409
 Release:        1%{?dist}
 Summary:        Many-Core Engine for Perl. Provides parallel processing capabilities.
 License:        CHECK(Distributable)
@@ -17,6 +17,9 @@ does not fork a new process per each element of data. Instead, MCE follows
 a bank queuing model. Imagine the line being the data and bank-tellers the
 parallel workers. MCE enhances that model by adding the ability to chunk
 the next n elements from the input stream to the next available worker.
+
+Both chunking and input are optional in MCE. One can simply use MCE to
+have many workers run in parallel.
 
 %prep
 %setup -q -n MCE-%{version}
@@ -56,6 +59,11 @@ rm -rf $RPM_BUILD_ROOT
 %{_mandir}/man3/*
 
 %changelog
+* Sun May 12 2013 Mario Roy 1.409-1
+- Croak if user_func is not defined and input_data/sequence is specified.
+- Fix barrier synchronization when running multiple tasks via user_tasks.
+- Updated Perl Documentation for easier reading through cpan/metapan.
+- Renamed private method _worker_sequence to _worker_sequence_queue.
 * Tue Mar 19 2013 Mario Roy 1.408-1
 - Minor tweaks here and there to further increase reliability.
 - Updated the barrier synchronization logic to not stall. Updated the

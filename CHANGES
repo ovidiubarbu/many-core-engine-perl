@@ -1,5 +1,11 @@
 Revision history for MCE
 
+1.409 Sun May 12 22:45:00 EST 2013
+    * Croak if user_func is not defined and input_data/sequence is specified.
+    * Fix barrier synchronization when running multiple tasks via user_tasks.
+    * Updated Perl Documentation for easier reading through cpan/metapan.
+    * Renamed private method _worker_sequence to _worker_sequence_queue.
+
 1.408 Tue Mar 19 22:00:00 EST 2013
     * Minor tweaks here and there to further increase reliability.
     * Updated the barrier synchronization logic to not stall. Updated the
