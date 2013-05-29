@@ -3,6 +3,10 @@
 use strict;
 use warnings;
 
+BEGIN {
+   eval 'use threads; use threads::shared;' if $^O eq 'MSWin32';
+}
+
 use Test::More tests => 4;
 
 use MCE;
@@ -23,9 +27,11 @@ sub callback2 {
 }
 
 my $mce = MCE->new(
-   use_threads => 0,
+   use_threads => ($^O eq 'MSWin32') ? 1 : 0,
+   spawn_delay => 0.2,
    max_workers => 1,
-   user_func   => sub {
+
+   user_func => sub {
       my ($self) = @_;
       my @a = ('one', 'two');
       my %h = ('one' => 'ONE', 'two' => 'TWO');

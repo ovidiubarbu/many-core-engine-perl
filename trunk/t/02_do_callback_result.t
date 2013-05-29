@@ -3,6 +3,10 @@
 use strict;
 use warnings;
 
+BEGIN {
+   eval 'use threads; use threads::shared;' if $^O eq 'MSWin32';
+}
+
 use Test::More tests => 5;
 
 use MCE;
@@ -17,9 +21,11 @@ sub callback {
 }
 
 $mce = MCE->new(
-   use_threads => 0,
+   use_threads => ($^O eq 'MSWin32') ? 1 : 0,
+   spawn_delay => 0.2,
    max_workers => 4,
-   user_func   => sub {
+
+   user_func => sub {
       my ($self) = @_;
       $self->do('callback', $self->wid());
    }
@@ -43,9 +49,11 @@ sub callback3 {
 }
 
 $mce = MCE->new(
-   use_threads => 0,
+   use_threads => ($^O eq 'MSWin32') ? 1 : 0,
+   spawn_delay => 0.2,
    max_workers => 4,
-   user_func   => sub {
+
+   user_func => sub {
       my ($self) = @_;
       my $reply  = $self->do('callback2', $self->wid());
       $self->do('callback3', $reply);
@@ -91,9 +99,11 @@ sub callback6 {
 }
 
 $mce = MCE->new(
-   use_threads => 0,
+   use_threads => ($^O eq 'MSWin32') ? 1 : 0,
+   spawn_delay => 0.2,
    max_workers => 1,
-   user_func   => sub {
+
+   user_func => sub {
       my ($self) = @_;
       my @reply  = $self->do('callback4');
       my %reply  = $self->do('callback5', \@reply);
