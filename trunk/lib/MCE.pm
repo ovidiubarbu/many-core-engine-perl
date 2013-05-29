@@ -9,7 +9,7 @@ package MCE;
 use strict;
 use warnings;
 
-use Fcntl qw( :flock O_CREAT O_TRUNC O_RDWR O_RDONLY );
+use Fcntl qw( :flock );
 use Storable 2.04 qw( store retrieve freeze thaw );
 use Socket qw( :DEFAULT :crlf );
 
@@ -2458,13 +2458,8 @@ sub _worker_read_handle {
    $_data_size = ($_proc_type == READ_MEMORY)
       ? length($$_input_data) : -s $_input_data;
 
-   if ($_chunk_size <= MAX_RECS_SIZE || $_proc_type == READ_MEMORY) {
-      open    $_IN_FILE, '<', $_input_data or die "$_input_data: $!\n";
-      binmode $_IN_FILE;
-   }
-   else {
-      sysopen $_IN_FILE, $_input_data, O_RDONLY or die "$_input_data: $!\n";
-   }
+   open    $_IN_FILE, '<', $_input_data or die "$_input_data: $!\n";
+   binmode $_IN_FILE;
 
    ## -------------------------------------------------------------------------
 
@@ -2520,21 +2515,9 @@ sub _worker_read_handle {
       }
       else {                                      ## Large chunk.
          local $/ = $_RS;
-         if ($_proc_type == READ_MEMORY) {
-            seek $_IN_FILE, $_offset_pos, 0;
-            if (read($_IN_FILE, $_buffer, $_chunk_size) == $_chunk_size) {
-               $_buffer .= <$_IN_FILE>;
-            }
-         }
-         else {
-            sysseek $_IN_FILE, $_offset_pos, 0;
-            if (sysread($_IN_FILE, $_buffer, $_chunk_size) == $_chunk_size) {
-               seek $_IN_FILE, sysseek($_IN_FILE, 0, 1), 0;
-               $_buffer .= <$_IN_FILE>;
-            }
-            else {
-               seek $_IN_FILE, sysseek($_IN_FILE, 0, 1), 0;
-            }
+         seek $_IN_FILE, $_offset_pos, 0;
+         if (read($_IN_FILE, $_buffer, $_chunk_size) == $_chunk_size) {
+            $_buffer .= <$_IN_FILE>;
          }
       }
 
