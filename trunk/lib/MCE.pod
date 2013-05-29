@@ -5,7 +5,7 @@ MCE - Many-Core Engine for Perl. Provides parallel processing capabilities.
 
 =head1 VERSION
 
-This document describes MCE version 1.409
+This document describes MCE version 1.410
 
 =head1 DESCRIPTION
 
@@ -237,19 +237,20 @@ input_data. Input_data is applicable to the first task only.
 See a demo at the end of this documentation applying sequences with
 the user_tasks option including chunking.
 
-Note: As mentioned above, sequence can be specified using an array
-reference instead: sequence => [ 10, 19, 0.7, "4.1f" ]
+Sequence can be specified using an array or a hash reference.
 
    use MCE;
 
    my $mce = MCE->new(
       max_workers => 3,
 
-      sequence    => {
+    # sequence => [ 10, 19, 0.7, "4.1f" ],
+
+      sequence => {
          begin => 10, end => 19, step => 0.7, format => "4.1f"
       },
 
-      user_func   => sub {
+      user_func => sub {
          my ($self, $n, $chunk_id) = @_;
          print $n, " from ", $self->wid(), " id ", $chunk_id, "\n";
       }

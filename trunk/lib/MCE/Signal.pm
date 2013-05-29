@@ -24,7 +24,7 @@ BEGIN {
    $prog_name    =~ s{^.*[\\/]}{}g;
 }
 
-our $VERSION = '1.409';
+our $VERSION = '1.410';
 $VERSION = eval $VERSION;
 
 our $tmp_dir = undef;
@@ -441,7 +441,7 @@ MCE::Signal - Provides tmp_dir creation & signal handling for Many-Core Engine.
 
 =head1 VERSION
 
-This document describes MCE::Signal version 1.409
+This document describes MCE::Signal version 1.410
 
 =head1 SYNOPSIS
 
@@ -537,7 +537,7 @@ Mario E. Roy, S<E<lt>marioeroy AT gmail DOT comE<gt>>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2012 by Mario E. Roy
+Copyright (C) 2012-2013 by Mario E. Roy
 
 MCE::Signal is free software; you can redistribute it and/or modify it under
 the same terms as Perl itself L<http://dev.perl.org/licenses/>.

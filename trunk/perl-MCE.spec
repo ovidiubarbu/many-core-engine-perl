@@ -1,5 +1,5 @@
 Name:           perl-MCE
-Version:        1.409
+Version:        1.410
 Release:        1%{?dist}
 Summary:        Many-Core Engine for Perl. Provides parallel processing capabilities.
 License:        CHECK(Distributable)
@@ -59,6 +59,11 @@ rm -rf $RPM_BUILD_ROOT
 %{_mandir}/man3/*
 
 %changelog
+* Tue May 28 2013 Mario Roy 1.410-1
+- Use threads under MSWin32 for 02* and 03* test scripts.
+- Removed sysopen/sysseek/sysread to simplify logic due to negligible
+  performance gains over open/seek/read.
+- Minor updates to documentation.
 * Sun May 12 2013 Mario Roy 1.409-1
 - Croak if user_func is not defined and input_data/sequence is specified.
 - Fix barrier synchronization when running multiple tasks via user_tasks.
@@ -99,7 +104,7 @@ rm -rf $RPM_BUILD_ROOT
 * Mon Mar 04 2013 Mario Roy 1.405-1
 - Added strassen_pdl_t.pl in the event folks cannot make use of /dev/shm
   used by the strassen_pdl_s.pl example.
-- Optimized the send method -- workers process immediately after receving
+- Optimized the send method -- workers process immediately after receiving
   data. Updated run times in README for the strassen examples.
 - MCE no longer calls setpgrp by default as of MCE 1.405. There is only
   one reason to call setpgrp, but many reasons not to. The sole reason
