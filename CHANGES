@@ -1,9 +1,16 @@
+
 Revision history for MCE
+
+1.410 Tue May 28 23:30:00 EST 2013
+    * Use threads under MSWin32 for 02* and 03* test scripts.
+    * Removed sysopen/sysseek/sysread to simplify logic due to negligible
+      performance gains over open/seek/read.
+    * Minor updates to documentation.
 
 1.409 Sun May 12 22:45:00 EST 2013
     * Croak if user_func is not defined and input_data/sequence is specified.
     * Fix barrier synchronization when running multiple tasks via user_tasks.
-    * Updated Perl Documentation for easier reading through cpan/metapan.
+    * Updated Perl documentation for easier reading through cpan/metapan.
     * Renamed private method _worker_sequence to _worker_sequence_queue.
 
 1.408 Tue Mar 19 22:00:00 EST 2013
@@ -44,7 +51,7 @@ Revision history for MCE
 1.405 Mon Mar 04 19:00:00 EST 2013
     * Added strassen_pdl_t.pl in the event folks cannot make use of /dev/shm
       used by the strassen_pdl_s.pl example.
-    * Optimized the send method -- workers process immediately after receving
+    * Optimized the send method -- workers process immediately after receiving
       data. Updated run times in README for the strassen examples.
     * MCE no longer calls setpgrp by default as of MCE 1.405. There is only
       one reason to call setpgrp, but many reasons not to. The sole reason
