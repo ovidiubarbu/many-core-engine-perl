@@ -10,8 +10,8 @@ use strict;
 use warnings;
 
 use Fcntl qw( :flock );
-use Storable 2.04 qw( store retrieve freeze thaw );
 use Socket qw( :DEFAULT :crlf );
+use Storable 2.04;
 
 use MCE::Signal;
 
@@ -140,7 +140,7 @@ undef $_max_files; undef $_max_procs;
 undef $_que_template; undef $_que_read_size;
 
 my %_valid_fields = map { $_ => 1 } qw(
-   max_workers tmp_dir use_threads user_tasks task_end
+   freeze max_workers thaw tmp_dir use_threads user_tasks task_end
 
    chunk_size input_data job_delay spawn_delay submit_delay use_slurpio RS
    flush_file flush_stderr flush_stdout stderr_file stdout_file on_post_exit
@@ -194,6 +194,8 @@ sub new {
    my $self = {}; bless($self, ref($class) || $class);
 
    ## Public options.
+   $self->{freeze}       = $argv{freeze}       || \&Storable::freeze;
+   $self->{thaw}         = $argv{thaw}         || \&Storable::thaw;
    $self->{tmp_dir}      = $argv{tmp_dir}      || $_mce_tmp_dir;
    $self->{input_data}   = $argv{input_data}   || undef;
    $self->{chunk_size}   = $argv{chunk_size}   || 1;
@@ -888,8 +890,9 @@ sub run {
       my $_submit_delay   = $self->{submit_delay};
       my $_has_user_tasks = (defined $self->{user_tasks});
 
-      my $_frozen_params  = freeze(\%_params);
-      my $_frozen_nodata  = freeze(\%_params_nodata) if ($_has_user_tasks);
+      my $_frozen_params  = $self->{freeze}(\%_params);
+      my $_frozen_nodata  = $self->{freeze}(\%_params_nodata)
+         if ($_has_user_tasks);
 
       if ($_has_user_tasks) { for (1 .. @{ $self->{_state} } - 1) {
          $_task0_wids{$_} = 1 unless ($self->{_state}->[$_]->{_task_id});
@@ -1044,7 +1047,7 @@ sub send {
       my $_sess_dir     = $self->{_sess_dir};
       my $_submit_delay = $self->{submit_delay};
 
-      my $_frozen_data  = freeze($_data_ref);
+      my $_frozen_data  = $self->{freeze}($_data_ref);
 
       ## Submit data to worker.
       print $_COM_R_SOCK "_data${LF}";
@@ -1543,6 +1546,11 @@ sub _validate_args {
    _croak("$_tag: 'submit_delay' is not valid")
       if ($_s->{submit_delay} && $_s->{submit_delay} !~ /\A[\d\.]+\z/);
 
+   _croak("$_tag: 'freeze' is not a CODE reference")
+      if ($_s->{freeze} && ref $_s->{freeze} ne 'CODE');
+   _croak("$_tag: 'thaw' is not a CODE reference")
+      if ($_s->{thaw} && ref $_s->{thaw} ne 'CODE');
+
    _croak("$_tag: 'on_post_exit' is not a CODE reference")
       if ($_s->{on_post_exit} && ref $_s->{on_post_exit} ne 'CODE');
    _croak("$_tag: 'on_post_run' is not a CODE reference")
@@ -1729,7 +1737,7 @@ sub _validate_args_s {
 
       if (@$_data_ref > 0) {                      ## Multiple Args >> Callback
          if (@$_data_ref > 1 || ref $_data_ref->[0]) {
-            $_buffer = freeze($_data_ref); $_len = length($_buffer);
+            $_buffer = $self->{freeze}($_data_ref); $_len = length($_buffer);
 
             flock $_DAT_LOCK, LOCK_EX;
             print $_OUT_W_SOCK OUTPUT_A_CBK, $LF;
@@ -1768,7 +1776,7 @@ sub _validate_args_s {
          read $_DAT_W_SOCK, $_buffer, $_len;
          flock $_DAT_LOCK, LOCK_UN;
 
-         return @{ thaw($_buffer) };
+         return @{ $self->{thaw}($_buffer) };
       }
       else {
          local $/ = $LF;
@@ -1779,7 +1787,7 @@ sub _validate_args_s {
          flock $_DAT_LOCK, LOCK_UN;
 
          return $_buffer if ($_want_id == WANTS_SCALAR);
-         return thaw($_buffer);
+         return $self->{thaw}($_buffer);
       }
    }
 
@@ -2003,12 +2011,12 @@ sub _validate_args_s {
          }
          else {
             if ($_offset_pos + $_chunk_size - 1 < $_input_size) {
-               $_buffer = freeze( [ @$_input_data[
+               $_buffer = $self->{freeze}( [ @$_input_data[
                   $_offset_pos .. $_offset_pos + $_chunk_size - 1
                ] ] );
             }
             else {
-               $_buffer = freeze( [ @$_input_data[
+               $_buffer = $self->{freeze}( [ @$_input_data[
                   $_offset_pos .. $_input_size - 1
                ] ] );
             }
@@ -2077,7 +2085,7 @@ sub _validate_args_s {
          chomp($_len      = <$_DAT_R_SOCK>);
 
          read $_DAT_R_SOCK, $_buffer, $_len;
-         my $_data_ref = thaw($_buffer);
+         my $_data_ref = $self->{thaw}($_buffer);
 
          undef $_buffer;
 
@@ -2089,7 +2097,7 @@ sub _validate_args_s {
          }
          elsif ($_want_id == WANTS_ARRAY) {
             my @_ret_a = $_callback->(@{ $_data_ref });
-            $_buffer = freeze(\@_ret_a);
+            $_buffer = $self->{freeze}(\@_ret_a);
             local $\ = undef; $_len = length($_buffer);
             print $_DAT_R_SOCK "$_len${LF}", $_buffer;
          }
@@ -2100,7 +2108,7 @@ sub _validate_args_s {
                print $_DAT_R_SOCK WANTS_SCALAR, "${LF}$_len${LF}", $_ret_s;
             }
             else {
-               $_buffer = freeze($_ret_s);
+               $_buffer = $self->{freeze}($_ret_s);
                local $\ = undef; $_len = length($_buffer);
                print $_DAT_R_SOCK WANTS_REF, "${LF}$_len${LF}", $_buffer;
             }
@@ -2125,7 +2133,7 @@ sub _validate_args_s {
          }
          elsif ($_want_id == WANTS_ARRAY) {
             my @_ret_a = $_callback->();
-            $_buffer = freeze(\@_ret_a);
+            $_buffer = $self->{freeze}(\@_ret_a);
             local $\ = undef; $_len = length($_buffer);
             print $_DAT_R_SOCK "$_len${LF}", $_buffer;
          }
@@ -2136,7 +2144,7 @@ sub _validate_args_s {
                print $_DAT_R_SOCK WANTS_SCALAR, "${LF}$_len${LF}", $_ret_s;
             }
             else {
-               $_buffer = freeze($_ret_s);
+               $_buffer = $self->{freeze}($_ret_s);
                local $\ = undef; $_len = length($_buffer);
                print $_DAT_R_SOCK WANTS_REF, "${LF}$_len${LF}", $_buffer;
             }
@@ -2164,7 +2172,7 @@ sub _validate_args_s {
          }
          elsif ($_want_id == WANTS_ARRAY) {
             my @_ret_a = $_callback->($_buffer);
-            $_buffer = freeze(\@_ret_a);
+            $_buffer = $self->{freeze}(\@_ret_a);
             local $\ = undef; $_len = length($_buffer);
             print $_DAT_R_SOCK "$_len${LF}", $_buffer;
          }
@@ -2175,7 +2183,7 @@ sub _validate_args_s {
                print $_DAT_R_SOCK WANTS_SCALAR, "${LF}$_len${LF}", $_ret_s;
             }
             else {
-               $_buffer = freeze($_ret_s);
+               $_buffer = $self->{freeze}($_ret_s);
                local $\ = undef; $_len = length($_buffer);
                print $_DAT_R_SOCK WANTS_REF, "${LF}$_len${LF}", $_buffer;
             }
@@ -2625,7 +2633,7 @@ sub _worker_request_chunk {
             $_user_func->($self, [ $_buffer ], $_chunk_id);
          }
          else {
-            $_chunk_ref = thaw($_buffer);
+            $_chunk_ref = $self->{thaw}($_buffer);
             $_user_func->($self, $_chunk_ref, $_chunk_id);
          }
       }
@@ -2979,7 +2987,7 @@ sub _worker_loop {
             print $_COM_W_SOCK $_wid, $LF;
             flock $_COM_LOCK, LOCK_UN;
 
-            $self->{user_data} = thaw($_buffer);
+            $self->{user_data} = $self->{thaw}($_buffer);
             undef $_buffer;
 
             select(undef, undef, undef, $_job_delay * $_wid)
@@ -3001,7 +3009,7 @@ sub _worker_loop {
             print $_COM_W_SOCK $_wid, $LF;
             flock $_COM_LOCK, LOCK_UN;
 
-            $_params_ref = thaw($_buffer);
+            $_params_ref = $self->{thaw}($_buffer);
             undef $_buffer;
          }
       }

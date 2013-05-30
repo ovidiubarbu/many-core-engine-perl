@@ -48,18 +48,25 @@ Below, a new instance is configured with all available options.
 
    my $mce = MCE->new(
 
+      max_workers  => 8,                 ## Default 1
+
+          ## Number of workers to spawn.
+
+      freeze       => \&encode_sereal,   ## Default \&Storable::freeze
+      thaw         => \&decode_sereal,   ## Default \&Storable::thaw
+
+          ## Release 1.411+ allows these to be overridden. Include the
+          ## serialization module. Wants reference to code routine.
+          ## e.g. use Sereal qw(encode_sereal decode_sereal);
+
       tmp_dir      => $tmp_dir,
 
           ## Default is $MCE::Signal::tmp_dir which points to
           ## $ENV{TEMP} if defined. Otherwise, tmp_dir points
           ## to a location under /tmp.
 
-      max_workers  => 8,                 ## Default is 1
-
-          ## Number of workers to spawn.
-
-      input_data   => $input_file,       ## Default is undef
-      RS           => "\n::\n",          ## Default is undef
+      input_data   => $input_file,       ## Default undef
+      RS           => "\n::\n",          ## Default undef
 
           ## input_data => '/path/to/file' for input file
           ## input_data => \@array for input array
@@ -73,7 +80,7 @@ Below, a new instance is configured with all available options.
           ## record separator (RS) applicable to input files,
           ## file handles, and scalar references.
 
-      chunk_size   => 2000,              ## Default is 1
+      chunk_size   => 2000,              ## Default 1
 
           ## Less than or equal to 8192 is number of records.
           ## Greater than 8192 is number of bytes. MCE reads
@@ -87,8 +94,8 @@ Below, a new instance is configured with all available options.
           ## Chunk_size is set to 1 for $self->foreach and
           ## the $self->forseq methods.
 
-      use_slurpio  => 1,                 ## Default is 0
-      use_threads  => 1,                 ## Default is 0 or 1
+      use_slurpio  => 1,                 ## Default 0
+      use_threads  => 1,                 ## Default 0 or 1
 
           ## Whether or not to enable slurpio when reading files
           ## (passes raw chunk to user function).
@@ -104,9 +111,9 @@ Below, a new instance is configured with all available options.
           ##
           ##    use MCE                       use MCE;
 
-      spawn_delay  => 0.035,             ## Default is undef
-      submit_delay => 0.002,             ## Default is undef
-      job_delay    => 0.150,             ## Default is undef
+      spawn_delay  => 0.035,             ## Default undef
+      submit_delay => 0.002,             ## Default undef
+      job_delay    => 0.150,             ## Default undef
 
           ## Time to wait, in fractional seconds, before spawning
           ## each worker, parameters submission to each worker,
@@ -114,8 +121,8 @@ Below, a new instance is configured with all available options.
           ## For example, use job_delay when wanting to stagger
           ## many workers connecting to a database.
 
-      on_post_exit => \&on_post_exit,    ## Default is undef
-      on_post_run  => \&on_post_run,     ## Default is undef
+      on_post_exit => \&on_post_exit,    ## Default undef
+      on_post_run  => \&on_post_run,     ## Default undef
 
           ## Execute code block immediately after a worker exits
           ## (exit, $self->exit, or die). Execute code block after
@@ -124,16 +131,16 @@ Below, a new instance is configured with all available options.
           ## One can take action immediately after a worker exits
           ## or wait until after the job has completed.
 
-      user_args    => { env => 'test' }, ## Default is undef
+      user_args    => { env => 'test' }, ## Default undef
 
           ## MCE release 1.4 adds a new parameter to allow one to
           ## specify arbitrary arguments such as a string, an ARRAY
           ## or a HASH reference. Workers can access this directly:
           ##    my $args = $self->{user_args};
 
-      user_begin   => \&user_begin,      ## Default is undef
-      user_func    => \&user_func,       ## Default is undef
-      user_end     => \&user_end,        ## Default is undef
+      user_begin   => \&user_begin,      ## Default undef
+      user_func    => \&user_func,       ## Default undef
+      user_end     => \&user_end,        ## Default undef
 
           ## Think of user_begin, user_func, user_end like the awk
           ## scripting language:
@@ -143,26 +150,26 @@ Below, a new instance is configured with all available options.
           ## calls user_func repeatedly until no chunks remain.
           ## Afterwards, user_end is called.
 
-      user_error   => \&user_error,      ## Default is undef
-      user_output  => \&user_output,     ## Default is undef
+      user_error   => \&user_error,      ## Default undef
+      user_output  => \&user_output,     ## Default undef
 
           ## When workers call the following functions, MCE will
           ## pass the data to user_error/user_output if defined.
           ## $self->sendto('stderr', 'Sending to STDERR');
           ## $self->sendto('stdout', 'Sending to STDOUT');
 
-      stderr_file  => 'err_file',        ## Default is STDERR
-      stdout_file  => 'out_file',        ## Default is STDOUT
+      stderr_file  => 'err_file',        ## Default STDERR
+      stdout_file  => 'out_file',        ## Default STDOUT
 
           ## Or to file. User_error/user_output take precedence.
 
-      flush_file   => 1,                 ## Default is 0
-      flush_stderr => 1,                 ## Default is 0
-      flush_stdout => 1,                 ## Default is 0
+      flush_file   => 1,                 ## Default 0
+      flush_stderr => 1,                 ## Default 0
+      flush_stdout => 1,                 ## Default 0
 
           ## Flush sendto file, standard error, or standard output.
 
-      sequence     => {                  ## Default is undef
+      sequence     => {                  ## Default undef
           begin => -1, end => 1 [, step => 0.1 [, format => "4.1f" ] ]
       },
 
@@ -180,7 +187,7 @@ Below, a new instance is configured with all available options.
           ##
           ##    sequence => [ -1, 1, 0.1, "4.1f" ]
 
-      user_tasks   => [                  ## Default is undef
+      user_tasks   => [                  ## Default undef
          { ... },                        ## Options for task 0
          { ... },                        ## Options for task 1
          { ... },                        ## Options for task 2
