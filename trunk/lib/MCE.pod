@@ -55,9 +55,10 @@ Below, a new instance is configured with all available options.
       freeze       => \&encode_sereal,   ## Default \&Storable::freeze
       thaw         => \&decode_sereal,   ## Default \&Storable::thaw
 
-          ## Release 1.411+ allows these to be overridden. Include the
-          ## serialization module. Wants reference to code routine.
+          ## Release 1.411 adds 2 new options to allow freeze/thaw to be
+          ## overridden. Include a serialization module in your script.
           ## e.g. use Sereal qw(encode_sereal decode_sereal);
+          ##      use JSON::XS qw(encode_json decode_json);
 
       tmp_dir      => $tmp_dir,
 
