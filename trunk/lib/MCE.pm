@@ -48,6 +48,13 @@ BEGIN {
          $_max_files = $_max_procs = 256;
       }
    }
+
+   ## Configure get functions.
+   no strict qw( refs );
+
+   foreach my $id ( qw( chunk_size max_workers tmp_dir ) ) {
+      *{ $id } = sub () { return shift->{$id} };
+   }
 }
 
 ###############################################################################
@@ -255,6 +262,8 @@ sub new {
    if (defined $self->{user_tasks}) {
       _croak("MCE::new: 'user_tasks' is not an ARRAY reference")
          unless (ref $self->{user_tasks} eq 'ARRAY');
+
+      $self->_set_max_workers_if_auto();
 
       for my $_task (@{ $self->{user_tasks} }) {
          $_task->{max_workers} = $self->{max_workers}
@@ -1380,17 +1389,12 @@ sub status {
    return (defined $self->{_wrk_status}) ? $self->{_wrk_status} : 0;
 }
 
-## Return the (Session Dir), (Task ID), (Task Worker ID), or (MCE Worker ID).
+## Return (Session Dir), (Task ID), (Task Worker ID), or (MCE Worker ID).
 
-sub sess_dir   { my MCE $self = $_[0]; @_ = (); return $self->{_sess_dir};  }
-sub task_id    { my MCE $self = $_[0]; @_ = (); return $self->{_task_id};   }
-sub task_wid   { my MCE $self = $_[0]; @_ = (); return $self->{_task_wid};  }
-sub wid        { my MCE $self = $_[0]; @_ = (); return $self->{_wid};       }
-
-## Return the (Chunk Size) or (Temporary Directory) MCE is using.
-
-sub chunk_size { my MCE $self = $_[0]; @_ = (); return $self->{chunk_size}; }
-sub tmp_dir    { my MCE $self = $_[0]; @_ = (); return $self->{tmp_dir};    }
+sub sess_dir { my MCE $self = $_[0]; @_ = (); return $self->{_sess_dir}; }
+sub task_id  { my MCE $self = $_[0]; @_ = (); return $self->{_task_id};  }
+sub task_wid { my MCE $self = $_[0]; @_ = (); return $self->{_task_wid}; }
+sub wid      { my MCE $self = $_[0]; @_ = (); return $self->{_wid};      }
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -1472,6 +1476,22 @@ sub do {
 ## Private methods.
 ##
 ###############################################################################
+
+sub _set_max_workers_if_auto {
+
+   my MCE $self = $_[0];
+
+   @_ = ();
+
+   if ($self && $self->{max_workers} =~ /^auto(?:$|\s*([\-\+])\s*(\d+)$)/) {
+      require MCE::Util unless $MCE::Util::VERSION;
+      $self->{max_workers} = MCE::Util::get_ncpu();
+      if ($1) {
+         $self->{max_workers} += (($1 eq '-') ? -1 * $2 : $2);
+         $self->{max_workers}  = 1 if $self->{max_workers} < 1;
+      }
+   }
+}
 
 sub _croak {
 
@@ -1592,13 +1612,15 @@ sub _validate_args_s {
 
    my $_tag = 'MCE::_validate_args_s';
 
-   _croak("$_tag: 'chunk_size' is not valid")
-      if (defined $_s->{chunk_size} && (
-         $_s->{chunk_size} !~ /\A\d+\z/ or $_s->{chunk_size} == 0
-      ));
+   _set_max_workers_if_auto($_s);
+
    _croak("$_tag: 'max_workers' is not valid")
       if (defined $_s->{max_workers} && (
          $_s->{max_workers} !~ /\A\d+\z/ or $_s->{max_workers} == 0
+      ));
+   _croak("$_tag: 'chunk_size' is not valid")
+      if (defined $_s->{chunk_size} && (
+         $_s->{chunk_size} !~ /\A\d+\z/ or $_s->{chunk_size} == 0
       ));
 
    _croak("$_tag: 'RS' is not valid")

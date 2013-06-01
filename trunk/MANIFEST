@@ -9,6 +9,7 @@ TODO
 lib/MCE.pm
 lib/MCE.pod
 lib/MCE/Signal.pm
+lib/MCE/Util.pm
 examples/barrier_sync.pl
 examples/cat.pl
 examples/egrep.pl

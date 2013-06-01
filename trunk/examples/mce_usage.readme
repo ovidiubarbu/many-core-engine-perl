@@ -60,7 +60,12 @@
 
       max_workers  => 8,                 ## Default 1
 
-          ## Number of workers to spawn.
+          ## Number of workers to spawn. Can be set automatically as well
+          ## with MCE 1.411 and later releases.
+
+          max_workers => 'auto-1',       ## MCE::Util::get_ncpu() - 1
+          max_workers => 'auto+3',       ## MCE::Util::get_ncpu() + 3
+          max_workers => 'auto',         ## MCE::Util::get_ncpu()
 
       freeze       => \&encode_sereal,   ## Default \&Storable::freeze
       thaw         => \&decode_sereal,   ## Default \&Storable::thaw
@@ -553,6 +558,14 @@
    Returns the chunk_size used by MCE.
 
    my $chunk_size = $self->chunk_size();
+
+   -------------------------------------------------------------------------
+   max_workers ( void )
+   -------------------------------------------------------------------------
+
+   Returns the value for max_workers used by MCE.
+
+   my $max_workers = $self->max_workers();
 
    -------------------------------------------------------------------------
    sess_dir ( void )
@@ -1587,7 +1600,7 @@
 
 -- SEE ALSO
 
-   MCE::Signal
+   MCE::Signal, MCE::Util
 
 -- SOURCE
 
@@ -1601,6 +1614,9 @@
 
    Copyright (C) 2012-2013 by Mario E. Roy
 
-   MCE is free software; you can redistribute it and/or modify it under the
-   same terms as Perl itself http://dev.perl.org/licenses/.
+   This program is free software; you can redistribute it and/or modify it
+   under the terms of either: the GNU General Public License as published
+   by the Free Software Foundation; or the Artistic License.
+
+   See L<http://dev.perl.org/licenses/> for more information.
 
