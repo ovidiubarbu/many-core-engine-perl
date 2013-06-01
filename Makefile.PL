@@ -61,6 +61,10 @@ WriteMakefile(
             'MCE::Signal' => {
                'file'    => 'lib/MCE/Signal.pm',
                'version' => '1.410'
+            },
+            'MCE::Util' => {
+               'file'    => 'lib/MCE/Util.pm',
+               'version' => '1.000'
             }
          }
       }) : ()),

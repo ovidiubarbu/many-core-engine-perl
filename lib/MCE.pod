@@ -50,7 +50,12 @@ Below, a new instance is configured with all available options.
 
       max_workers  => 8,                 ## Default 1
 
-          ## Number of workers to spawn.
+          ## Number of workers to spawn. Can be set automatically as well
+          ## with MCE 1.411 and later releases.
+
+          max_workers => 'auto-1',       ## MCE::Util::get_ncpu() - 1
+          max_workers => 'auto+3',       ## MCE::Util::get_ncpu() + 3
+          max_workers => 'auto',         ## MCE::Util::get_ncpu()
 
       freeze       => \&encode_sereal,   ## Default \&Storable::freeze
       thaw         => \&decode_sereal,   ## Default \&Storable::thaw
@@ -517,6 +522,12 @@ the end of input_data has been reached and leave the chunking loop.
 Returns the chunk_size used by MCE.
 
    my $chunk_size = $self->chunk_size();
+
+=head2 max_workers ( void )
+
+Returns the value for max_workers used by MCE.
+
+   my $max_workers = $self->max_workers();
 
 =head2 sess_dir ( void )
 
@@ -1475,7 +1486,7 @@ parallelizing PDL with MCE.
 
 =head1 SEE ALSO
 
-L<MCE::Signal>
+L<MCE::Signal|MCE::Signal>, L<MCE::Util|MCE::Util>
 
 =head1 SOURCE
 
@@ -1489,7 +1500,10 @@ Mario E. Roy, S<E<lt>marioeroy AT gmail DOT comE<gt>>
 
 Copyright (C) 2012-2013 by Mario E. Roy
 
-MCE is free software; you can redistribute it and/or modify it under the
-same terms as Perl itself L<http://dev.perl.org/licenses/>.
+This program is free software; you can redistribute it and/or modify it
+under the terms of either: the GNU General Public License as published
+by the Free Software Foundation; or the Artistic License.
+
+See L<http://dev.perl.org/licenses/> for more information.
 
 =cut

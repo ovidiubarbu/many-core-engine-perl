@@ -539,7 +539,10 @@ Mario E. Roy, S<E<lt>marioeroy AT gmail DOT comE<gt>>
 
 Copyright (C) 2012-2013 by Mario E. Roy
 
-MCE::Signal is free software; you can redistribute it and/or modify it under
-the same terms as Perl itself L<http://dev.perl.org/licenses/>.
+This program is free software; you can redistribute it and/or modify it
+under the terms of either: the GNU General Public License as published
+by the Free Software Foundation; or the Artistic License.
+
+See L<http://dev.perl.org/licenses/> for more information.
 
 =cut
