@@ -336,8 +336,8 @@ sub new {
          $self->{max_workers} = int(MAX_OPEN_FILES / 3) - 8
             if ($self->{max_workers} > int(MAX_OPEN_FILES / 3) - 8);
       } else {
-         $self->{max_workers} = MAX_USER_PROCS - 32
-            if ($self->{max_workers} > MAX_USER_PROCS - 32);
+         $self->{max_workers} = MAX_USER_PROCS - 64
+            if ($self->{max_workers} > MAX_USER_PROCS - 64);
       }
    }
 
@@ -1188,7 +1188,8 @@ sub shutdown {
    $self->{_com_r_sock} = $self->{_com_w_sock} = undef;
    $self->{_dat_r_sock} = $self->{_dat_w_sock} = undef;
 
-   select(undef, undef, undef, 0.082) if ($self->{_mce_tid} ne '0');
+   select(undef, undef, undef, 0.082)
+      if ($self->{_mce_tid} ne '' && $self->{_mce_tid} ne '0');
 
    $self->{_mce_sid}    = $self->{_mce_tid}    = undef;
    $self->{_task_id}    = $self->{_task_wid}   = 0;
