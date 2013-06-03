@@ -15,8 +15,7 @@ use Storable 2.04;
 
 use MCE::Signal;
 
-my ($_que_template, $_que_read_size);
-my ($_has_threads, $_max_files, $_max_procs);
+my ($_max_files, $_max_procs, $_que_read_size, $_que_template);
 
 BEGIN {
    ## Configure template to use for pack/unpack for writing to and reading from
@@ -49,35 +48,10 @@ BEGIN {
       }
    }
 
-   ## Configure get functions.
-   no strict qw( refs );
-
-   foreach my $id ( qw( chunk_size max_workers tmp_dir ) ) {
-      *{ $id } = sub () { return shift->{$id} };
-   }
-}
-
-###############################################################################
-## ----------------------------------------------------------------------------
-## This module does not load the threads module. Please include your threading
-## library of choice prir to including MCE library. This is only a requirement
-## if you're wanting to use threads versus forking.
-##
-###############################################################################
-
-my ($_COM_LOCK, $_DAT_LOCK, $_SYN_LOCK);
-our $_MCE_LOCK : shared = 1;
-
-sub import {
-   unless (defined $_has_threads) {
-      if (defined $threads::VERSION) {
-         unless (defined $threads::shared::VERSION) {
-            local $@; local $SIG{__DIE__} = \&_NOOP;
-            eval 'use threads::shared; threads::shared::share($_MCE_LOCK)';
-         }
-         $_has_threads = 1;
-      }
-      $_has_threads = $_has_threads || 0;
+   ## Create accessor functions.
+   no strict 'refs';
+   foreach my $_id ( qw( chunk_size max_workers tmp_dir ) ) {
+      *{ $_id } = sub () { return shift->{$_id} };
    }
 }
 
@@ -92,6 +66,67 @@ $VERSION = eval $VERSION;
 {
    no warnings 'redefine';
    sub PDL::CLONE_SKIP { 1 }
+}
+
+###############################################################################
+## ----------------------------------------------------------------------------
+## Define initial constants and defaults used by the import routine.
+##
+###############################################################################
+
+use constant { SELF => 0, CHUNK_DATA => 1, CHUNK_ID => 2 };
+
+my ($_has_threads, $_loaded);
+our $_MCE_LOCK : shared = 1;
+
+our $MAX_WORKERS = 1;
+our $CHUNK_SIZE  = 1;
+our $TMP_DIR     = $MCE::Signal::tmp_dir;
+our $FREEZE      = \&Storable::freeze;
+our $THAW        = \&Storable::thaw;
+
+sub import {
+
+   my $class = shift;
+   return if ($_loaded++);
+
+   ## Process module arguments.
+   while (my $_arg = shift) {
+
+      $MCE::MAX_WORKERS = shift and next if ($_arg eq 'MAX_WORKERS');
+      $MCE::CHUNK_SIZE  = shift and next if ($_arg eq 'CHUNK_SIZE');
+      $MCE::TMP_DIR     = shift and next if ($_arg eq 'TMP_DIR');
+      $MCE::FREEZE      = shift and next if ($_arg eq 'FREEZE');
+      $MCE::THAW        = shift and next if ($_arg eq 'THAW');
+
+      if ($_arg eq 'EXPORT_CONST') {
+         if (shift eq '1') {
+            my $_package = caller();
+            no strict 'refs'; no warnings 'redefine';
+            *{ $_package . '::SELF'       } = \&SELF;
+            *{ $_package . '::CHUNK_DATA' } = \&CHUNK_DATA;
+            *{ $_package . '::CHUNK_ID'   } = \&CHUNK_ID;
+         }
+         next;
+      }
+
+      _croak("MCE::import: '$_arg' is not a valid module argument");
+   }
+
+   ## This module does not load the threads module. Please include your
+   ## threading library of choice prir to including MCE library. This is
+   ## only a requirement if you're wanting to use threads versus forking.
+
+   unless (defined $_has_threads) {
+      if (defined $threads::VERSION) {
+         unless (defined $threads::shared::VERSION) {
+            local $@; local $SIG{__DIE__} = \&_NOOP;
+            eval 'use threads::shared; threads::shared::share($_MCE_LOCK)';
+         }
+         $_has_threads = 1;
+      }
+      $_has_threads = $_has_threads || 0;
+   }
 }
 
 ###############################################################################
@@ -144,7 +179,7 @@ use constant {
 };
 
 undef $_max_files; undef $_max_procs;
-undef $_que_template; undef $_que_read_size;
+undef $_que_read_size; undef $_que_template;
 
 my %_valid_fields = map { $_ => 1 } qw(
    freeze max_workers thaw tmp_dir use_threads user_tasks task_end
@@ -169,9 +204,10 @@ my %_params_allowed_args = map { $_ => 1 } qw(
    user_args
 );
 
+my ($_COM_LOCK, $_DAT_LOCK, $_SYN_LOCK);
+
 my $_is_cygwin    = ($^O eq 'cygwin');
 my $_is_MSWin32   = ($^O eq 'MSWin32');
-my $_mce_tmp_dir  = $MCE::Signal::tmp_dir;
 my %_mce_sess_dir = ();
 my %_mce_spawned  = ();
 my $_mce_count    = 0;
@@ -201,12 +237,12 @@ sub new {
    my $self = {}; bless($self, ref($class) || $class);
 
    ## Public options.
-   $self->{freeze}       = $argv{freeze}       || \&Storable::freeze;
-   $self->{thaw}         = $argv{thaw}         || \&Storable::thaw;
-   $self->{tmp_dir}      = $argv{tmp_dir}      || $_mce_tmp_dir;
+   $self->{max_workers}  = $argv{max_workers}  || $MCE::MAX_WORKERS;
+   $self->{chunk_size}   = $argv{chunk_size}   || $MCE::CHUNK_SIZE;
+   $self->{tmp_dir}      = $argv{tmp_dir}      || $MCE::TMP_DIR;
+   $self->{freeze}       = $argv{freeze}       || $MCE::FREEZE;
+   $self->{thaw}         = $argv{thaw}         || $MCE::THAW;
    $self->{input_data}   = $argv{input_data}   || undef;
-   $self->{chunk_size}   = $argv{chunk_size}   || 1;
-   $self->{max_workers}  = $argv{max_workers}  || 1;
    $self->{use_slurpio}  = $argv{use_slurpio}  || 0;
 
    if (exists $argv{use_threads}) {
@@ -2560,16 +2596,19 @@ sub _worker_read_handle {
 
       ## Call user function.
       if ($_use_slurpio) {
+         local $_ = \$_buffer;
          $_user_func->($self, \$_buffer, $_chunk_id);
       }
       else {
          if ($_chunk_size == 1) {
+            local $_ = $_buffer;
             $_user_func->($self, [ $_buffer ], $_chunk_id);
          }
          else {
             if ($_chunk_size > MAX_RECS_SIZE) {
                _sync_buffer_to_array(\$_buffer, \@_records, $_RS);
             }
+            local $_ = \@_records;
             $_user_func->($self, \@_records, $_chunk_id);
          }
       }
@@ -2653,23 +2692,28 @@ sub _worker_request_chunk {
       ## Call user function.
       if ($_proc_type == REQUEST_ARRAY) {
          if ($_single_dim && $_chunk_size == 1) {
+            local $_ = $_buffer;
             $_user_func->($self, [ $_buffer ], $_chunk_id);
          }
          else {
             $_chunk_ref = $self->{thaw}($_buffer);
+            local $_ = ($_chunk_size == 1) ? $_chunk_ref->[0] : $_chunk_ref;
             $_user_func->($self, $_chunk_ref, $_chunk_id);
          }
       }
       else {
          if ($_use_slurpio) {
+            local $_ = \$_buffer;
             $_user_func->($self, \$_buffer, $_chunk_id);
          }
          else {
             if ($_chunk_size == 1) {
+               local $_ = $_buffer;
                $_user_func->($self, [ $_buffer ], $_chunk_id);
             }
             else {
                _sync_buffer_to_array(\$_buffer, \@_records, $_RS);
+               local $_ = \@_records;
                $_user_func->($self, \@_records, $_chunk_id);
             }
          }
@@ -2746,6 +2790,7 @@ sub _worker_sequence_queue {
       if ($_chunk_size == 1) {
          $_seq_n = $_offset * $_step + $_begin;
          $_seq_n = sprintf("%$_fmt", $_seq_n) if (defined $_fmt);
+         local $_ = $_seq_n;
          $_user_func->($self, $_seq_n, $_chunk_id);
       }
       else {
@@ -2769,6 +2814,7 @@ sub _worker_sequence_queue {
             }
          }
 
+         local $_ = \@_n;
          $_user_func->($self, \@_n, $_chunk_id);
       }
 
@@ -2826,12 +2872,12 @@ sub _worker_sequence_generator {
       if ($_wid == 1) {
          $self->{_next_jmp} = sub { goto _WORKER_SEQ_GEN__LAST; };
 
-         my $_seq_n = (defined $_fmt) ? sprintf("%$_fmt", $_next) : $_next;
+         local $_ = (defined $_fmt) ? sprintf("%$_fmt", $_next) : $_next;
 
          if ($_chunk_size > 1) {
-            $_user_func->($self, [ $_seq_n ], $_chunk_id);
+            $_user_func->($self, [ $_ ], $_chunk_id);
          } else {
-            $_user_func->($self, $_seq_n, $_chunk_id);
+            $_user_func->($self, $_, $_chunk_id);
          }
       }
    }
@@ -2845,9 +2891,9 @@ sub _worker_sequence_generator {
          return if ( $_flag && $_next > $_end);
          return if (!$_flag && $_next < $_end);
 
-         my $_seq_n = (defined $_fmt) ? sprintf("%$_fmt", $_next) : $_next;
+         local $_ = (defined $_fmt) ? sprintf("%$_fmt", $_next) : $_next;
+         $_user_func->($self, $_, $_chunk_id);
 
-         $_user_func->($self, $_seq_n, $_chunk_id);
          _WORKER_SEQ_GEN__NEXT_A:
 
          $_chunk_id += $_max_workers;
@@ -2879,7 +2925,9 @@ sub _worker_sequence_generator {
 
          return unless (@_n > 0);
 
+         local $_ = \@_n;
          $_user_func->($self, \@_n, $_chunk_id);
+
          _WORKER_SEQ_GEN__NEXT_B:
 
          $_chunk_id += $_max_workers;
@@ -2926,7 +2974,10 @@ sub _worker_do {
    my $_task_id    = $self->{_task_id};
 
    ## Call user_begin if defined.
-   $self->{user_begin}->($self) if (defined $self->{user_begin});
+   if (defined $self->{user_begin}) {
+      local $_ = undef;
+      $self->{user_begin}->($self);
+   }
 
    ## Call worker function.
    if ($_run_mode eq 'sequence') {
@@ -2947,8 +2998,9 @@ sub _worker_do {
    elsif ($_run_mode eq 'memory') {
       $self->_worker_read_handle(READ_MEMORY, $self->{input_data});
    }
-   else {
-      $self->{user_func}->($self) if (defined $self->{user_func});
+   elsif (defined $self->{user_func}) {
+      local $_ = undef;
+      $self->{user_func}->($self);
    }
 
    undef $self->{_next_jmp} if (defined $self->{_next_jmp});
@@ -2956,7 +3008,10 @@ sub _worker_do {
    undef $self->{user_data} if (defined $self->{user_data});
 
    ## Call user_end if defined.
-   $self->{user_end}->($self) if (defined $self->{user_end});
+   if (defined $self->{user_end}) {
+      local $_ = undef;
+      $self->{user_end}->($self);
+   }
 
    ## Notify the main process a worker has completed.
    local $\ = undef;
