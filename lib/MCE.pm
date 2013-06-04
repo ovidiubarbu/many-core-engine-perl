@@ -190,10 +190,9 @@ my %_valid_fields = map { $_ => 1 } qw(
    user_args
 
    _abort_msg _mce_sid _mce_tid _pids _run_mode _single_dim _thrs _tids _wid
-   _com_r_sock _com_w_sock _dat_r_sock _dat_w_sock _out_r_sock _out_w_sock
-   _que_r_sock _que_w_sock _sess_dir _spawned _state _status _task _task_id
+   _com_r_sock _com_w_sock _dat_r_sock _dat_w_sock _que_r_sock _que_w_sock
    _exiting _exit_pid _total_exited _total_running _total_workers _task_wid
-   _send_cnt _wrk_status
+   _send_cnt _sess_dir _spawned _state _status _task _task_id _wrk_status
 
 );
 
@@ -340,8 +339,6 @@ sub new {
    $self->{_com_w_sock} = undef; ## Communication channel for workers
    $self->{_dat_r_sock} = undef; ## Data channel for MCE
    $self->{_dat_w_sock} = undef; ## Data channel for workers
-   $self->{_out_r_sock} = undef; ## For serialized reads by main thread/process
-   $self->{_out_w_sock} = undef; ## Workers write to this for serialized writes
    $self->{_que_r_sock} = undef; ## Queue channel for MCE
    $self->{_que_w_sock} = undef; ## Queue channel for workers
    $self->{_state}      = undef; ## State info: task/task_id/task_wid/params
@@ -456,16 +453,6 @@ sub spawn {
    binmode  $self->{_dat_r_sock};                 ## Set binary mode
    binmode  $self->{_dat_w_sock};
 
-   ## Create socket pair for serializing send requests and STDOUT output.
-   socketpair( $self->{_out_r_sock}, $self->{_out_w_sock},
-      AF_UNIX, SOCK_STREAM, PF_UNSPEC ) or die "socketpair: $!\n";
-
-   binmode  $self->{_out_r_sock};                 ## Set binary mode
-   binmode  $self->{_out_w_sock};
-
-   CORE::shutdown $self->{_out_r_sock}, 1;        ## No more writing
-   CORE::shutdown $self->{_out_w_sock}, 0;        ## No more reading
-
    ## Create socket pairs for queue channels between MCE and workers.
    socketpair( $self->{_que_r_sock}, $self->{_que_w_sock},
       AF_UNIX, SOCK_STREAM, PF_UNSPEC ) or die "socketpair: $!\n";
@@ -482,8 +469,6 @@ sub spawn {
                    select $self->{_com_w_sock}; $| = 1;
                    select $self->{_dat_r_sock}; $| = 1;
                    select $self->{_dat_w_sock}; $| = 1;
-                   select $self->{_out_r_sock}; $| = 1;
-                   select $self->{_out_w_sock}; $| = 1;
                    select $self->{_que_r_sock}; $| = 1;
                    select $self->{_que_w_sock}; $| = 1;
 
@@ -951,20 +936,19 @@ sub run {
 
       ## Insert the first message into the queue if defined.
       if (defined $_first_msg) {
-         local $\ = undef;
          my $_QUE_W_SOCK = $self->{_que_w_sock};
          print $_QUE_W_SOCK pack(QUE_TEMPLATE, 0, $_first_msg);
       }
 
       ## Submit params data to workers.
       for (1 .. $_total_workers) {
-         print $_COM_R_SOCK $_, $LF; chomp($_wid = <$_COM_R_SOCK>);
+         print $_COM_R_SOCK $_ . $LF; chomp($_wid = <$_COM_R_SOCK>);
 
          if (!$_has_user_tasks || exists $_task0_wids{$_wid}) {
-            print $_COM_R_SOCK length($_frozen_params), $LF, $_frozen_params;
+            print $_COM_R_SOCK length($_frozen_params) . $LF . $_frozen_params;
             $self->{_state}->[$_wid]->{_params} = \%_params;
          } else {
-            print $_COM_R_SOCK length($_frozen_nodata), $LF, $_frozen_nodata;
+            print $_COM_R_SOCK length($_frozen_nodata) . $LF . $_frozen_nodata;
             $self->{_state}->[$_wid]->{_params} = \%_params_nodata;
          }
 
@@ -1022,7 +1006,6 @@ sub run {
       unless ($_run_mode eq 'nodata') {
          unlink "$_sess_dir/_store.db" if ($_run_mode eq 'array');
          if (defined $self->{_que_r_sock}) {
-            local $/ = $LF;
             my $_next; my $_QUE_R_SOCK = $self->{_que_r_sock};
             read $_QUE_R_SOCK, $_next, QUE_READ_SIZE;
          }
@@ -1095,10 +1078,10 @@ sub send {
       my $_frozen_data  = $self->{freeze}($_data_ref);
 
       ## Submit data to worker.
-      print $_COM_R_SOCK "_data${LF}";
+      print $_COM_R_SOCK '_data' . $LF;
       <$_COM_R_SOCK>;
 
-      print $_COM_R_SOCK length($_frozen_data), $LF, $_frozen_data;
+      print $_COM_R_SOCK length($_frozen_data) . $LF . $_frozen_data;
       <$_COM_R_SOCK>;
 
       select(undef, undef, undef, $_submit_delay)
@@ -1159,26 +1142,20 @@ sub shutdown {
    flock $_DAT_LOCK, LOCK_EX;
 
    for (1 .. $_total_workers) {
-      print $_COM_R_SOCK "_exit${LF}";
+      print $_COM_R_SOCK '_exit' . $LF;
       <$_COM_R_SOCK>;
    }
 
    ## Close sockets.
    CORE::shutdown $self->{_que_r_sock}, 0;        ## Queue channels
    CORE::shutdown $self->{_que_w_sock}, 1;
-   CORE::shutdown $self->{_out_r_sock}, 0;        ## Output channels
-   CORE::shutdown $self->{_out_w_sock}, 1;
-
    CORE::shutdown $self->{_dat_r_sock}, 2;        ## Data channels
    CORE::shutdown $self->{_dat_w_sock}, 2;
-   CORE::shutdown $self->{_com_r_sock}, 2;        ## Comm channels
+   CORE::shutdown $self->{_com_r_sock}, 2;        ## Communication channels
    CORE::shutdown $self->{_com_w_sock}, 2;
 
    close $self->{_que_r_sock}; undef $self->{_que_r_sock};
    close $self->{_que_w_sock}; undef $self->{_que_w_sock};
-   close $self->{_out_r_sock}; undef $self->{_out_r_sock};
-   close $self->{_out_w_sock}; undef $self->{_out_w_sock};
-
    close $self->{_dat_r_sock}; undef $self->{_dat_r_sock};
    close $self->{_dat_w_sock}; undef $self->{_dat_w_sock};
    close $self->{_com_r_sock}; undef $self->{_com_r_sock};
@@ -1219,10 +1196,9 @@ sub shutdown {
    $self->{_total_running} = $self->{_total_workers} = 0;
    $self->{_total_exited}  = 0;
 
-   $self->{_out_r_sock} = $self->{_out_w_sock} = undef;
    $self->{_que_r_sock} = $self->{_que_w_sock} = undef;
-   $self->{_com_r_sock} = $self->{_com_w_sock} = undef;
    $self->{_dat_r_sock} = $self->{_dat_w_sock} = undef;
+   $self->{_com_r_sock} = $self->{_com_w_sock} = undef;
 
    select(undef, undef, undef, 0.082)
       if ($self->{_mce_tid} ne '' && $self->{_mce_tid} ne '0');
@@ -1257,7 +1233,6 @@ sub sync {
    return if ($self->{_task_id} > 0);
 
    my $_DAT_W_SOCK = $self->{_dat_w_sock};
-   my $_OUT_W_SOCK = $self->{_out_w_sock};
    my $_sess_dir   = $self->{_sess_dir};
 
    unless (defined $_SYN_LOCK) {
@@ -1269,7 +1244,7 @@ sub sync {
 
    ## Notify the manager process (begin).
    flock $_DAT_LOCK, LOCK_EX;
-   print $_OUT_W_SOCK OUTPUT_B_SYN, $LF;
+   print $_DAT_W_SOCK OUTPUT_B_SYN . $LF;
    <$_DAT_W_SOCK>;
    flock $_DAT_LOCK, LOCK_UN;
 
@@ -1282,7 +1257,7 @@ sub sync {
    flock $_SYN_LOCK, LOCK_UN;
 
    ## Notify the manager process (end).
-   print $_OUT_W_SOCK OUTPUT_E_SYN, $LF;
+   print $_DAT_W_SOCK OUTPUT_E_SYN . $LF;
 
    return;
 }
@@ -1304,15 +1279,20 @@ sub abort {
 
    my $_QUE_R_SOCK = $self->{_que_r_sock};
    my $_QUE_W_SOCK = $self->{_que_w_sock};
-   my $_OUT_W_SOCK = $self->{_out_w_sock};
+   my $_DAT_W_SOCK = $self->{_dat_w_sock};
    my $_abort_msg  = $self->{_abort_msg};
 
    if (defined $_abort_msg) {
-      local $\ = undef; local $/ = $LF;
+      local $\ = undef;
 
       my $_next; read $_QUE_R_SOCK, $_next, QUE_READ_SIZE;
       print $_QUE_W_SOCK pack(QUE_TEMPLATE, 0, $_abort_msg);
-      print $_OUT_W_SOCK OUTPUT_W_ABT, $LF if ($self->wid > 0);
+
+      if ($self->wid > 0) {
+         flock $_DAT_LOCK, LOCK_EX;
+         print $_DAT_W_SOCK OUTPUT_W_ABT . $LF;
+         flock $_DAT_LOCK, LOCK_UN;
+      }
    }
 
    return;
@@ -1338,7 +1318,6 @@ sub exit {
       $self->{_exiting} = 1;
 
       my $_DAT_W_SOCK = $self->{_dat_w_sock};
-      my $_OUT_W_SOCK = $self->{_out_w_sock};
       my $_task_id    = $self->{_task_id};
 
       if (defined $_DAT_LOCK) {
@@ -1350,11 +1329,10 @@ sub exit {
          flock $_DAT_LOCK, LOCK_EX;
          select(undef, undef, undef, 0.02) if ($_is_cygwin);
 
-         print $_OUT_W_SOCK OUTPUT_W_EXT,  $LF, $_task_id,          $LF;
-
-         print $_DAT_W_SOCK $self->{_wid}, $LF, $self->{_exit_pid}, $LF,
-                            $_exit_status, $LF, $_exit_id,          $LF,
-                            $_len,         $LF, $_exit_msg;
+         print $_DAT_W_SOCK OUTPUT_W_EXT  . $LF . $_task_id          . $LF .
+                            $self->{_wid} . $LF . $self->{_exit_pid} . $LF .
+                            $_exit_status . $LF . $_exit_id          . $LF .
+                            $_len         . $LF . $_exit_msg;
 
          flock $_DAT_LOCK, LOCK_UN;
       }
@@ -1726,7 +1704,7 @@ sub _validate_args_s {
 
 {
    my ($_data_ref, $_dest, $_value, $_len, $_send_init_called);
-   my ($_sess_dir, $_DAT_W_SOCK, $_OUT_W_SOCK, $_want_id);
+   my ($_sess_dir, $_DAT_W_SOCK, $_want_id);
 
    ## Create array structure containing various send functions.
    my @_dest_function = ();
@@ -1739,8 +1717,9 @@ sub _validate_args_s {
       $_len = length(${ $_[0] });
 
       flock $_DAT_LOCK, LOCK_EX;
-      print $_OUT_W_SOCK OUTPUT_S_FLE, $LF;
-      print $_DAT_W_SOCK "$_value${LF}$_len${LF}", ${ $_[0] };
+      print $_DAT_W_SOCK OUTPUT_S_FLE . $LF .
+                         $_value . $LF . $_len . $LF . ${ $_[0] };
+
       flock $_DAT_LOCK, LOCK_UN;
 
       return;
@@ -1752,8 +1731,7 @@ sub _validate_args_s {
       $_len = length(${ $_[0] });
 
       flock $_DAT_LOCK, LOCK_EX;
-      print $_OUT_W_SOCK OUTPUT_S_OUT, $LF;
-      print $_DAT_W_SOCK "$_len${LF}", ${ $_[0] };
+      print $_DAT_W_SOCK OUTPUT_S_OUT . $LF . $_len . $LF . ${ $_[0] };
       flock $_DAT_LOCK, LOCK_UN;
 
       return;
@@ -1765,8 +1743,7 @@ sub _validate_args_s {
       $_len = length(${ $_[0] });
 
       flock $_DAT_LOCK, LOCK_EX;
-      print $_OUT_W_SOCK OUTPUT_S_ERR, $LF;
-      print $_DAT_W_SOCK "$_len${LF}", ${ $_[0] };
+      print $_DAT_W_SOCK OUTPUT_S_ERR . $LF . $_len . $LF . ${ $_[0] };
       flock $_DAT_LOCK, LOCK_UN;
 
       return;
@@ -1799,9 +1776,9 @@ sub _validate_args_s {
             $_buffer = $self->{freeze}($_data_ref); $_len = length($_buffer);
 
             flock $_DAT_LOCK, LOCK_EX;
-            print $_OUT_W_SOCK OUTPUT_A_CBK, $LF;
-            print $_DAT_W_SOCK "$_want_id${LF}$_value${LF}";
-            print $_DAT_W_SOCK "$_len${LF}", $_buffer;
+            print $_DAT_W_SOCK OUTPUT_A_CBK . $LF .
+                               $_want_id . $LF . $_value . $LF . $_len . $LF .
+                               $_buffer;
 
             undef $_buffer;
          }
@@ -1809,15 +1786,15 @@ sub _validate_args_s {
             $_len = length($_data_ref->[0]);
 
             flock $_DAT_LOCK, LOCK_EX;
-            print $_OUT_W_SOCK OUTPUT_S_CBK, $LF;
-            print $_DAT_W_SOCK "$_want_id${LF}$_value${LF}";
-            print $_DAT_W_SOCK "$_len${LF}", $_data_ref->[0];
+            print $_DAT_W_SOCK OUTPUT_S_CBK . $LF .
+                               $_want_id . $LF . $_value . $LF . $_len . $LF .
+                               $_data_ref->[0];
          }
       }
       else {                                      ## No Args >> Callback
          flock $_DAT_LOCK, LOCK_EX;
-         print $_OUT_W_SOCK OUTPUT_N_CBK, $LF;
-         print $_DAT_W_SOCK "$_want_id${LF}$_value${LF}";
+         print $_DAT_W_SOCK OUTPUT_N_CBK . $LF .
+                            $_want_id . $LF . $_value . $LF;
       }
 
       $_data_ref = '';
@@ -1861,7 +1838,6 @@ sub _validate_args_s {
       die "Private method called" unless (caller)[0]->isa( ref($self) );
 
       $_sess_dir   = $self->{_sess_dir};
-      $_OUT_W_SOCK = $self->{_out_w_sock};
       $_DAT_W_SOCK = $self->{_dat_w_sock};
 
       $_send_init_called = 1;
@@ -1913,7 +1889,7 @@ sub _validate_args_s {
    my ($_user_error, $_user_output, $_flush_file, $self);
    my ($_callback, $_file, %_sendto_fhs, $_len, $_chunk_id);
 
-   my ($_DAT_R_SOCK, $_OUT_R_SOCK, $_MCE_STDERR, $_MCE_STDOUT);
+   my ($_DAT_R_SOCK, $_MCE_STDERR, $_MCE_STDOUT);
    my ($_RS, $_I_SEP, $_O_SEP, $_input_glob, $_chunk_size);
    my ($_input_size, $_offset_pos, $_single_dim, $_use_slurpio);
 
@@ -1932,7 +1908,7 @@ sub _validate_args_s {
       },
 
       OUTPUT_W_DNE.$LF => sub {                   ## Worker has completed
-         chomp($_task_id = <$_OUT_R_SOCK>);
+         chomp($_task_id = <$_DAT_R_SOCK>);
 
          $self->{_total_running} -= 1;
 
@@ -1967,7 +1943,7 @@ sub _validate_args_s {
       ## ----------------------------------------------------------------------
 
       OUTPUT_W_EXT.$LF => sub {                   ## Worker has exited
-         chomp($_task_id = <$_OUT_R_SOCK>);
+         chomp($_task_id = <$_DAT_R_SOCK>);
 
          $self->{_total_exited}  += 1;
          $self->{_total_running} -= 1;
@@ -2061,7 +2037,7 @@ sub _validate_args_s {
 
          if ($_offset_pos >= $_input_size || $_aborted) {
             local $\ = undef;
-            print $_DAT_R_SOCK "0${LF}";
+            print $_DAT_R_SOCK '0' . $LF;
             return;
          }
 
@@ -2082,7 +2058,8 @@ sub _validate_args_s {
          }
 
          local $\ = undef; $_len = length($_buffer);
-         print $_DAT_R_SOCK $_len, $LF, (++$_chunk_id), $LF, $_buffer;
+         print $_DAT_R_SOCK $_len . $LF . (++$_chunk_id) . $LF . $_buffer;
+
          $_offset_pos += $_chunk_size;
 
          return;
@@ -2098,7 +2075,7 @@ sub _validate_args_s {
          ## far as what was previously read into the buffer.
 
          if ($_eof_flag || $_aborted) {
-            local $\ = undef; print $_DAT_R_SOCK "0${LF}";
+            local $\ = undef; print $_DAT_R_SOCK '0' . $LF;
             return;
          }
 
@@ -2158,18 +2135,18 @@ sub _validate_args_s {
             my @_ret_a = $_callback->(@{ $_data_ref });
             $_buffer = $self->{freeze}(\@_ret_a);
             local $\ = undef; $_len = length($_buffer);
-            print $_DAT_R_SOCK "$_len${LF}", $_buffer;
+            print $_DAT_R_SOCK $_len . $LF . $_buffer;
          }
          else {
             my $_ret_s = $_callback->(@{ $_data_ref });
             unless (ref $_ret_s) {
                local $\ = undef; $_len = length($_ret_s);
-               print $_DAT_R_SOCK WANTS_SCALAR, "${LF}$_len${LF}", $_ret_s;
+               print $_DAT_R_SOCK WANTS_SCALAR . $LF . $_len . $LF . $_ret_s;
             }
             else {
                $_buffer = $self->{freeze}($_ret_s);
                local $\ = undef; $_len = length($_buffer);
-               print $_DAT_R_SOCK WANTS_REF, "${LF}$_len${LF}", $_buffer;
+               print $_DAT_R_SOCK WANTS_REF . $LF . $_len . $LF . $_buffer;
             }
          }
 
@@ -2194,18 +2171,18 @@ sub _validate_args_s {
             my @_ret_a = $_callback->();
             $_buffer = $self->{freeze}(\@_ret_a);
             local $\ = undef; $_len = length($_buffer);
-            print $_DAT_R_SOCK "$_len${LF}", $_buffer;
+            print $_DAT_R_SOCK $_len . $LF . $_buffer;
          }
          else {
             my $_ret_s = $_callback->();
             unless (ref $_ret_s) {
                local $\ = undef; $_len = length($_ret_s);
-               print $_DAT_R_SOCK WANTS_SCALAR, "${LF}$_len${LF}", $_ret_s;
+               print $_DAT_R_SOCK WANTS_SCALAR . $LF . $_len . $LF . $_ret_s;
             }
             else {
                $_buffer = $self->{freeze}($_ret_s);
                local $\ = undef; $_len = length($_buffer);
-               print $_DAT_R_SOCK WANTS_REF, "${LF}$_len${LF}", $_buffer;
+               print $_DAT_R_SOCK WANTS_REF . $LF . $_len . $LF . $_buffer;
             }
          }
 
@@ -2233,18 +2210,18 @@ sub _validate_args_s {
             my @_ret_a = $_callback->($_buffer);
             $_buffer = $self->{freeze}(\@_ret_a);
             local $\ = undef; $_len = length($_buffer);
-            print $_DAT_R_SOCK "$_len${LF}", $_buffer;
+            print $_DAT_R_SOCK $_len . $LF . $_buffer;
          }
          else {
             my $_ret_s = $_callback->($_buffer);
             unless (ref $_ret_s) {
                local $\ = undef; $_len = length($_ret_s);
-               print $_DAT_R_SOCK WANTS_SCALAR, "${LF}$_len${LF}", $_ret_s;
+               print $_DAT_R_SOCK WANTS_SCALAR . $LF . $_len . $LF . $_ret_s;
             }
             else {
                $_buffer = $self->{freeze}($_ret_s);
                local $\ = undef; $_len = length($_buffer);
-               print $_DAT_R_SOCK WANTS_REF, "${LF}$_len${LF}", $_buffer;
+               print $_DAT_R_SOCK WANTS_REF . $LF . $_len . $LF . $_buffer;
             }
          }
 
@@ -2423,8 +2400,7 @@ sub _validate_args_s {
       ## ----------------------------------------------------------------------
 
       ## Output event loop.
-      $_OUT_R_SOCK = $self->{_out_r_sock};        ## For serialized reads
-      $_DAT_R_SOCK = $self->{_dat_r_sock};
+      $_DAT_R_SOCK = $self->{_dat_r_sock};        ## For serialized reads
 
       $_RS    = $self->{RS} || $/;
       $_O_SEP = $\; local $\ = undef;
@@ -2435,7 +2411,7 @@ sub _validate_args_s {
       my $_func;
 
       while (1) {
-         $_func = <$_OUT_R_SOCK>;
+         $_func = <$_DAT_R_SOCK>;
          next unless (defined $_func);
 
          if (exists $_output_function{$_func}) {
@@ -2544,7 +2520,7 @@ sub _worker_read_handle {
 
       ## Obtain the next chunk_id and offset position.
       {
-         local $\ = undef; local $/ = $LF;
+         local $\ = undef;
 
          read $_QUE_R_SOCK, $_next, QUE_READ_SIZE;
          ($_chunk_id, $_offset_pos) = unpack(QUE_TEMPLATE, $_next);
@@ -2638,7 +2614,6 @@ sub _worker_request_chunk {
    _croak("MCE::_worker_request_chunk: 'user_func' is not specified")
       unless (defined $self->{user_func});
 
-   my $_OUT_W_SOCK  = $self->{_out_w_sock};
    my $_DAT_W_SOCK  = $self->{_dat_w_sock};
    my $_single_dim  = $self->{_single_dim};
    my $_chunk_size  = $self->{chunk_size};
@@ -2676,7 +2651,7 @@ sub _worker_request_chunk {
          local $\ = undef; local $/ = $LF;
 
          flock $_DAT_LOCK, LOCK_EX;
-         print $_OUT_W_SOCK $_output_tag, $LF;
+         print $_DAT_W_SOCK $_output_tag . $LF;
          chomp($_len = <$_DAT_W_SOCK>);
 
          if ($_len == 0) {
@@ -2772,7 +2747,7 @@ sub _worker_sequence_queue {
 
       ## Obtain the next chunk_id and sequence number.
       {
-         local $\ = undef; local $/ = $LF;
+         local $\ = undef;
 
          read $_QUE_R_SOCK, $_next, QUE_READ_SIZE;
          ($_chunk_id, $_offset) = unpack(QUE_TEMPLATE, $_next);
@@ -2969,7 +2944,7 @@ sub _worker_do {
    }
 
    ## Init local vars.
-   my $_OUT_W_SOCK = $self->{_out_w_sock};
+   my $_DAT_W_SOCK = $self->{_dat_w_sock};
    my $_run_mode   = $self->{_run_mode};
    my $_task_id    = $self->{_task_id};
 
@@ -3016,7 +2991,9 @@ sub _worker_do {
    ## Notify the main process a worker has completed.
    local $\ = undef;
 
-   print $_OUT_W_SOCK OUTPUT_W_DNE, $LF, $_task_id, $LF;
+   flock $_DAT_LOCK, LOCK_EX;
+   print $_DAT_W_SOCK OUTPUT_W_DNE . $LF . $_task_id . $LF;
+   flock $_DAT_LOCK, LOCK_UN;
 
    return;
 }
@@ -3049,7 +3026,7 @@ sub _worker_loop {
 
          ## Wait until next job request.
          $_response = <$_COM_W_SOCK>;
-         print $_COM_W_SOCK $_wid, $LF;
+         print $_COM_W_SOCK $_wid . $LF;
 
          last unless (defined $_response);
          chomp $_response;
@@ -3062,7 +3039,7 @@ sub _worker_loop {
             chomp($_len = <$_COM_W_SOCK>);
             read $_COM_W_SOCK, $_buffer, $_len;
 
-            print $_COM_W_SOCK $_wid, $LF;
+            print $_COM_W_SOCK $_wid . $LF;
             flock $_COM_LOCK, LOCK_UN;
 
             $self->{user_data} = $self->{thaw}($_buffer);
@@ -3084,7 +3061,7 @@ sub _worker_loop {
             chomp($_len = <$_COM_W_SOCK>);
             read $_COM_W_SOCK, $_buffer, $_len;
 
-            print $_COM_W_SOCK $_wid, $LF;
+            print $_COM_W_SOCK $_wid . $LF;
             flock $_COM_LOCK, LOCK_UN;
 
             $_params_ref = $self->{thaw}($_buffer);
