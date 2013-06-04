@@ -1249,15 +1249,11 @@ sub sync {
    flock $_DAT_LOCK, LOCK_UN;
 
    ## Wait here until all workers (task_id 0) have synced.
-   select(undef, undef, undef, 0.008) if ($_is_cygwin);
-
    flock $_SYN_LOCK, LOCK_SH;
-   flock $_SYN_LOCK, LOCK_SH if ($_is_cygwin);
-
-   flock $_SYN_LOCK, LOCK_UN;
 
    ## Notify the manager process (end).
    print $_DAT_W_SOCK OUTPUT_E_SYN . $LF;
+   flock $_SYN_LOCK, LOCK_UN;
 
    return;
 }
