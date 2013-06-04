@@ -10,9 +10,9 @@
 ## Parallel::Loops is based on Parallel::ForkManager.
 ##
 ## Parallel::Loops..:       600  Forking each @input is expensive
-## MCE foreach......:    19,000  Sends result after each @input
-## MCE forseq.......:    54,000  Loops through sequence of numbers
-## MCE forchunk.....:   385,000  Chunking reduces overhead
+## MCE foreach......:    20,500  Sends result after each @input
+## MCE forseq.......:    55,000  Loops through sequence of numbers
+## MCE forchunk.....:   395,000  Chunking reduces overhead
 ##
 ## usage: foreach.pl [ size ]
 ##
