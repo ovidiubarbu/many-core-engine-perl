@@ -1918,7 +1918,6 @@ sub _validate_args_s {
                : $self->{_total_running};
 
             if ($_sync_cnt == $_total_running) {
-               select(undef, undef, undef, 0.100) if ($_is_cygwin);
                flock $_SYN_LOCK, LOCK_UN;
                undef $_syn_flag;
             }
@@ -1956,7 +1955,6 @@ sub _validate_args_s {
                : $self->{_total_running};
 
             if ($_sync_cnt == $_total_running) {
-               select(undef, undef, undef, 0.100) if ($_is_cygwin);
                flock $_DAT_LOCK, LOCK_EX;
                flock $_SYN_LOCK, LOCK_UN;
                undef $_syn_flag;
