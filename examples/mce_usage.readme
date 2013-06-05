@@ -61,9 +61,9 @@ lieu of 0,1,2 makes it more legibel when accessing the argument array.
 The user_func receives either 1 or 3 arguments. Three arguments are sent
 whenever processing input data (specifying input_data or sequence).
 
-   SELF CHUNK_DATA CHUNK_ID
+   SELF CHUNK CID
 
-   ## The following exports SELF => 0, CHUNK_DATA => 1, CHUNK_ID => 2
+   ## The following exports SELF => 0, CHUNK => 1, CID => 2
 
    use MCE EXPORT_CONST => 1;
 
@@ -351,7 +351,7 @@ MCE 1.5. The $_ scalar below contains the input sequence number.
    my $mce = MCE->new(
       ...
       user_func => sub {
-         print $_, " from ", $_[SELF]->wid(), " id ", $_[CHUNK_ID], "\n";
+         print $_, " from ", $_[SELF]->wid(), " id ", $_[CID], "\n";
       }
    );
 
@@ -715,8 +715,8 @@ and the $_ input scalar.
    ## using the input $_ scalar coming from forchunk.
 
    $mce->forchunk(\@input_data, sub {
-      foreach ( @{ $_[CHUNK_DATA] } ) {
-         $_[SELF]->sendto("stdout", "$_[CHUNK_ID]: $_\n");
+      foreach ( @{ $_[CHUNK] } ) {
+         $_[SELF]->sendto("stdout", "$_[CID]: $_\n");
       }
    });
 
@@ -749,7 +749,7 @@ use_slurpio is enabled for other use case.
    my $mce = MCE->new;
 
    $mce->foreach(\@input_data, sub {
-      $_[SELF]->sendto("stdout", "$_[CHUNK_ID]: $_\n");
+      $_[SELF]->sendto("stdout", "$_[CID]: $_\n");
    });
 
 Below, passing an anonymous array as input data. For example, wanting to

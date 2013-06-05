@@ -74,7 +74,7 @@ $VERSION = eval $VERSION;
 ##
 ###############################################################################
 
-use constant { SELF => 0, CHUNK_DATA => 1, CHUNK_ID => 2 };
+use constant { SELF => 0, CHUNK => 1, CID => 2 };
 
 my ($_has_threads, $_loaded);
 our $_MCE_LOCK : shared = 1;
@@ -103,9 +103,9 @@ sub import {
          if (shift eq '1') {
             my $_package = caller();
             no strict 'refs'; no warnings 'redefine';
-            *{ $_package . '::SELF'       } = \&SELF;
-            *{ $_package . '::CHUNK_DATA' } = \&CHUNK_DATA;
-            *{ $_package . '::CHUNK_ID'   } = \&CHUNK_ID;
+            *{ $_package . '::SELF'  } = \&SELF;
+            *{ $_package . '::CHUNK' } = \&CHUNK;
+            *{ $_package . '::CID'   } = \&CID;
          }
          next;
       }
