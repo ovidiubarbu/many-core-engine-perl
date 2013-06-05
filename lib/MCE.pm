@@ -434,7 +434,7 @@ sub spawn {
    ## -------------------------------------------------------------------------
 
    ## Obtain lock.
-   open my $_COM_LOCK, '+>> :stdio', "$_sess_dir/_com.lock"
+   open my $_COM_LOCK, '+>>:raw:stdio', "$_sess_dir/_com.lock"
       or die "(S) open error $_sess_dir/_com.lock: $!\n";
 
    flock $_COM_LOCK, LOCK_EX;
@@ -929,7 +929,7 @@ sub run {
       }}
 
       ## Obtain lock 1 of 2.
-      open my $_DAT_LOCK, '+>> :stdio', "$_sess_dir/_dat.lock"
+      open my $_DAT_LOCK, '+>>:raw:stdio', "$_sess_dir/_dat.lock"
          or die "(R) open error $_sess_dir/_dat.lock: $!\n";
 
       flock $_DAT_LOCK, LOCK_EX;
@@ -961,7 +961,7 @@ sub run {
       select(undef, undef, undef, 0.005) if ($_is_cygwin || $_is_MSWin32);
 
       ## Obtain lock 2 of 2.
-      open $_COM_LOCK, '+>> :stdio', "$_sess_dir/_com.lock"
+      open $_COM_LOCK, '+>>:raw:stdio', "$_sess_dir/_com.lock"
          or die "(R) open error $_sess_dir/_com.lock: $!\n";
 
       flock $_COM_LOCK, LOCK_EX;
@@ -1136,7 +1136,7 @@ sub shutdown {
    ## Notify workers to exit loop.
    local $\ = undef; local $/ = $LF;
 
-   open my $_DAT_LOCK, '+>> :stdio', "$_sess_dir/_dat.lock"
+   open my $_DAT_LOCK, '+>>:raw:stdio', "$_sess_dir/_dat.lock"
       or die "(S) open error $_sess_dir/_dat.lock: $!\n";
 
    flock $_DAT_LOCK, LOCK_EX;
@@ -1236,7 +1236,7 @@ sub sync {
    my $_sess_dir   = $self->{_sess_dir};
 
    unless (defined $_SYN_LOCK) {
-      open $_SYN_LOCK, '+>> :stdio', "$_sess_dir/_syn.lock"
+      open $_SYN_LOCK, '+>>:raw:stdio', "$_sess_dir/_syn.lock"
          or die "(W) open error $_sess_dir/_syn.lock: $!\n";
    }
 
@@ -2265,8 +2265,8 @@ sub _validate_args_s {
          read $_DAT_R_SOCK, $_buffer, $_len;
 
          unless (exists $_sendto_fhs{$_file}) {
-            open    $_sendto_fhs{$_file}, '>>', $_file or die "$_file: $!\n";
-            binmode $_sendto_fhs{$_file};
+            open $_sendto_fhs{$_file}, '>>:raw:stdio', $_file
+               or die "$_file: $!\n";
 
             ## Select new FH, turn on autoflush, restore the old FH.
             ## IO::Handle is too large just to call autoflush(1).
@@ -2288,11 +2288,11 @@ sub _validate_args_s {
 
          if (!defined $_sync_cnt || $_sync_cnt == 0) {
             unless (defined $_SYN_LOCK) {
-               open $_SYN_LOCK, '+>> :stdio', "$_sess_dir/_syn.lock"
+               open $_SYN_LOCK, '+>>:raw:stdio', "$_sess_dir/_syn.lock"
                   or die "(O) open error $_sess_dir/_syn.lock: $!\n";
             }
             unless (defined $_DAT_LOCK) {
-               open $_DAT_LOCK, '+>> :stdio', "$_sess_dir/_dat.lock"
+               open $_DAT_LOCK, '+>>:raw:stdio', "$_sess_dir/_dat.lock"
                   or die "(O) open error $_sess_dir/_dat.lock: $!\n";
             }
 
@@ -2362,9 +2362,8 @@ sub _validate_args_s {
 
       ## Set STDOUT/STDERR to user parameters.
       if (defined $self->{stdout_file}) {
-         open $_MCE_STDOUT, '>>', $self->{stdout_file}
+         open $_MCE_STDOUT, '>>:raw:stdio', $self->{stdout_file}
             or die $self->{stdout_file} . ": $!\n";
-         binmode $_MCE_STDOUT;
       }
       else {
          open $_MCE_STDOUT, ">&=STDOUT";
@@ -2372,9 +2371,8 @@ sub _validate_args_s {
       }
 
       if (defined $self->{stderr_file}) {
-         open $_MCE_STDERR, '>>', $self->{stderr_file}
+         open $_MCE_STDERR, '>>:raw:stdio', $self->{stderr_file}
             or die $self->{stderr_file} . ": $!\n";
-         binmode $_MCE_STDERR;
       }
       else {
          open $_MCE_STDERR, ">&=STDERR";
@@ -2489,14 +2487,17 @@ sub _worker_read_handle {
    my $_user_func   = $self->{user_func};
    my $_RS          = $self->{RS} || $/;
 
-   my ($_data_size, $_next, $_chunk_id, $_offset_pos, $_IN_FILE);
+   my ($_data_size, $_io_layer, $_next, $_chunk_id, $_offset_pos, $_IN_FILE);
    my @_records = (); $_chunk_id = $_offset_pos = 0;
 
    $_data_size = ($_proc_type == READ_MEMORY)
       ? length($$_input_data) : -s $_input_data;
 
-   open    $_IN_FILE, '<', $_input_data or die "$_input_data: $!\n";
-   binmode $_IN_FILE;
+   $_io_layer = ($_chunk_size <= MAX_RECS_SIZE)
+      ? ':raw:perlio' : ':raw:stdio';
+
+   open $_IN_FILE, "<$_io_layer", $_input_data
+      or die "$_input_data: $!\n";
 
    ## -------------------------------------------------------------------------
 
@@ -3155,9 +3156,9 @@ sub _worker_main {
 
    _do_send_init($self);
 
-   open $_DAT_LOCK, '+>> :stdio', "$_sess_dir/_dat.lock"
+   open $_DAT_LOCK, '+>>:raw:stdio', "$_sess_dir/_dat.lock"
       or die "(W) open error $_sess_dir/_dat.lock: $!\n";
-   open $_COM_LOCK, '+>> :stdio', "$_sess_dir/_com.lock"
+   open $_COM_LOCK, '+>>:raw:stdio', "$_sess_dir/_com.lock"
       or die "(W) open error $_sess_dir/_com.lock: $!\n";
 
    ## Undef vars not required after being spawned.
