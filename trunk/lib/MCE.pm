@@ -180,10 +180,10 @@ undef $_que_read_size; undef $_que_template;
 my %_valid_fields = map { $_ => 1 } qw(
    freeze max_workers thaw tmp_dir use_threads user_tasks task_end
 
-   chunk_size input_data job_delay spawn_delay submit_delay use_slurpio RS
-   flush_file flush_stderr flush_stdout stderr_file stdout_file on_post_exit
-   sequence user_begin user_end user_func user_error user_output on_post_run
-   user_args
+   chunk_size input_data sequence job_delay spawn_delay submit_delay RS
+   flush_file flush_stderr flush_stdout stderr_file stdout_file use_slurpio
+   user_args user_begin user_end user_func user_error user_output
+   on_post_exit on_post_run
 
    _abort_msg _mce_sid _mce_tid _pids _run_mode _single_dim _thrs _tids _wid
    _com_r_sock _com_w_sock _dat_r_sock _dat_w_sock _que_r_sock _que_w_sock
@@ -192,10 +192,10 @@ my %_valid_fields = map { $_ => 1 } qw(
 );
 
 my %_params_allowed_args = map { $_ => 1 } qw(
-   chunk_size input_data job_delay spawn_delay submit_delay use_slurpio RS
-   flush_file flush_stderr flush_stdout stderr_file stdout_file on_post_exit
-   sequence user_begin user_end user_func user_error user_output on_post_run
-   user_args
+   chunk_size input_data sequence job_delay spawn_delay submit_delay RS
+   flush_file flush_stderr flush_stdout stderr_file stdout_file use_slurpio
+   user_args user_begin user_end user_func user_error user_output
+   on_post_exit on_post_run
 );
 
 my ($_COM_LOCK, $_DAT_LOCK, $_SYN_LOCK);
