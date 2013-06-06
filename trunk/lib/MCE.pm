@@ -1483,6 +1483,8 @@ sub _set_max_workers_if_auto {
          $self->{max_workers}  = 1 if $self->{max_workers} < 1;
       }
    }
+
+   return;
 }
 
 sub _croak {
