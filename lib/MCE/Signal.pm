@@ -24,8 +24,7 @@ BEGIN {
    $prog_name    =~ s{^.*[\\/]}{}g;
 }
 
-our $VERSION = '1.410';
-$VERSION = eval $VERSION;
+our $VERSION = '1.410'; $VERSION = eval $VERSION;
 
 our $tmp_dir = undef;
 
