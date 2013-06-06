@@ -55,18 +55,14 @@ BEGIN {
    }
 }
 
-our $VERSION = '1.410';
-$VERSION = eval $VERSION;
+our $VERSION = '1.410'; $VERSION = eval $VERSION;
 
 ## PDL + MCE (spawning as threads) is not stable. Thanks goes to David Mertens
 ## for reporting on how he fixed it for his PDL::Parallel::threads module. The
 ## same fix is also needed here in order for PDL + MCE threads to not crash
 ## during exiting.
 
-{
-   no warnings 'redefine';
-   sub PDL::CLONE_SKIP { 1 }
-}
+{ no warnings 'redefine'; sub PDL::CLONE_SKIP { 1 } }
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -193,7 +189,6 @@ my %_valid_fields = map { $_ => 1 } qw(
    _com_r_sock _com_w_sock _dat_r_sock _dat_w_sock _que_r_sock _que_w_sock
    _exiting _exit_pid _total_exited _total_running _total_workers _task_wid
    _send_cnt _sess_dir _spawned _state _status _task _task_id _wrk_status
-
 );
 
 my %_params_allowed_args = map { $_ => 1 } qw(
@@ -443,22 +438,22 @@ sub spawn {
    socketpair( $self->{_com_r_sock}, $self->{_com_w_sock},
       AF_UNIX, SOCK_STREAM, PF_UNSPEC ) or die "socketpair: $!\n";
 
-   binmode  $self->{_com_r_sock};                 ## Set binary mode
-   binmode  $self->{_com_w_sock};
+   binmode $self->{_com_r_sock};                  ## Set binary mode
+   binmode $self->{_com_w_sock};
 
    ## Create socket pair for data channels between MCE and workers.
    socketpair( $self->{_dat_r_sock}, $self->{_dat_w_sock},
       AF_UNIX, SOCK_STREAM, PF_UNSPEC ) or die "socketpair: $!\n";
 
-   binmode  $self->{_dat_r_sock};                 ## Set binary mode
-   binmode  $self->{_dat_w_sock};
+   binmode $self->{_dat_r_sock};                  ## Set binary mode
+   binmode $self->{_dat_w_sock};
 
    ## Create socket pairs for queue channels between MCE and workers.
    socketpair( $self->{_que_r_sock}, $self->{_que_w_sock},
       AF_UNIX, SOCK_STREAM, PF_UNSPEC ) or die "socketpair: $!\n";
 
-   binmode  $self->{_que_r_sock};                 ## Set binary mode
-   binmode  $self->{_que_w_sock};
+   binmode $self->{_que_r_sock};                  ## Set binary mode
+   binmode $self->{_que_w_sock};
 
    CORE::shutdown $self->{_que_r_sock}, 1;        ## No more writing
    CORE::shutdown $self->{_que_w_sock}, 0;        ## No more reading
@@ -781,8 +776,7 @@ sub run {
    if (ref $_[1] eq 'HASH') {
       $_auto_shutdown = (defined $_[2]) ? $_[2] : 1;
       $_params_ref    = $_[1];
-   }
-   else {
+   } else {
       $_auto_shutdown = (defined $_[1]) ? $_[1] : 1;
       $_params_ref    = $_[2];
    }
@@ -1074,7 +1068,6 @@ sub send {
       my $_COM_R_SOCK   = $self->{_com_r_sock};
       my $_sess_dir     = $self->{_sess_dir};
       my $_submit_delay = $self->{submit_delay};
-
       my $_frozen_data  = $self->{freeze}($_data_ref);
 
       ## Submit data to worker.
@@ -1203,11 +1196,11 @@ sub shutdown {
    select(undef, undef, undef, 0.082)
       if ($self->{_mce_tid} ne '' && $self->{_mce_tid} ne '0');
 
-   $self->{_mce_sid}    = $self->{_mce_tid}    = undef;
-   $self->{_task_id}    = $self->{_task_wid}   = 0;
-   $self->{_spawned}    = $self->{_wid}        = 0;
-   $self->{_sess_dir}   = undef;
-   $self->{_send_cnt}   = 0;
+   $self->{_mce_sid}  = $self->{_mce_tid}  = undef;
+   $self->{_task_id}  = $self->{_task_wid} = 0;
+   $self->{_spawned}  = $self->{_wid}      = 0;
+   $self->{_sess_dir} = undef;
+   $self->{_send_cnt} = 0;
 
    return;
 }
@@ -1220,9 +1213,7 @@ sub shutdown {
 
 sub sync {
 
-   my MCE $self = $_[0];
-
-   @_ = ();
+   my MCE $self = shift;
 
    _croak("MCE::sync: method cannot be called by the manager process")
       unless ($self->{_wid});
@@ -1269,9 +1260,7 @@ sub sync {
 
 sub abort {
 
-   my MCE $self = $_[0];
-
-   @_ = ();
+   my MCE $self = shift;
 
    my $_QUE_R_SOCK = $self->{_que_r_sock};
    my $_QUE_W_SOCK = $self->{_que_w_sock};
@@ -1357,9 +1346,7 @@ sub exit {
 
 sub last {
 
-   my MCE $self = $_[0];
-
-   @_ = ();
+   my MCE $self = shift;
 
    _croak("MCE::last: method cannot be called by the manager process")
       unless ($self->{_wid});
@@ -1373,9 +1360,7 @@ sub last {
 
 sub next {
 
-   my MCE $self = $_[0];
-
-   @_ = ();
+   my MCE $self = shift;
 
    _croak("MCE::next: method cannot be called by the manager process")
       unless ($self->{_wid});
@@ -1390,9 +1375,7 @@ sub next {
 
 sub status {
 
-   my MCE $self = $_[0];
-
-   @_ = ();
+   my MCE $self = shift;
 
    _croak("MCE::status: method cannot be called by the worker process")
       if ($self->{_wid});
@@ -1490,9 +1473,7 @@ sub do {
 
 sub _set_max_workers_if_auto {
 
-   my MCE $self = $_[0];
-
-   @_ = ();
+   my MCE $self = shift;
 
    if ($self && $self->{max_workers} =~ /^auto(?:$|\s*([\-\+])\s*(\d+)$)/) {
       require MCE::Util unless $MCE::Util::VERSION;
@@ -1555,9 +1536,7 @@ sub _sync_params {
 
 sub _validate_args {
 
-   my MCE $_s = $_[0];
-
-   @_ = ();
+   my MCE $_s = shift;
 
    die "Private method called" unless (caller)[0]->isa( ref($_s) );
 
@@ -1775,7 +1754,6 @@ sub _validate_args_s {
             print $_DAT_W_SOCK OUTPUT_A_CBK . $LF .
                                $_want_id . $LF . $_value . $LF . $_len . $LF .
                                $_buffer;
-
             undef $_buffer;
          }
          else {                                   ## Scalar >> Callback
@@ -1897,15 +1875,12 @@ sub _validate_args_s {
    my %_output_function = (
 
       OUTPUT_W_ABT.$LF => sub {                   ## Worker has aborted
-
          $_aborted = 1;
-
          return;
       },
 
       OUTPUT_W_DNE.$LF => sub {                   ## Worker has completed
          chomp($_task_id = <$_DAT_R_SOCK>);
-
          $self->{_total_running} -= 1;
 
          if ($_has_user_tasks && $_task_id >= 0) {
@@ -2088,8 +2063,7 @@ sub _validate_args_s {
                if (read($_input_glob, $_buffer, $_chunk_size) == $_chunk_size) {
                   if (defined($_ = <$_input_glob>)) {
                      $_buffer .= $_;
-                  }
-                  else {
+                  } else {
                      $_eof_flag = 1;
                   }
                }
@@ -2232,8 +2206,7 @@ sub _validate_args_s {
 
          if (defined $_user_output) {
             $_user_output->($_buffer);
-         }
-         else {
+         } else {
             print $_MCE_STDOUT $_buffer;
          }
 
@@ -2248,8 +2221,7 @@ sub _validate_args_s {
 
          if (defined $_user_error) {
             $_user_error->($_buffer);
-         }
-         else {
+         } else {
             print $_MCE_STDERR $_buffer;
          }
 
@@ -2283,7 +2255,6 @@ sub _validate_args_s {
       ## ----------------------------------------------------------------------
 
       OUTPUT_B_SYN.$LF => sub {                   ## Worker barrier sync - beg
-
          local $\ = undef;
 
          if (!defined $_sync_cnt || $_sync_cnt == 0) {
@@ -2353,8 +2324,7 @@ sub _validate_args_s {
       if (defined $_input_data && ref $_input_data eq 'ARRAY') {
          $_input_size = @$_input_data;
          $_offset_pos = 0;
-      }
-      else {
+      } else {
          $_input_size = $_offset_pos = 0;
       }
 
@@ -2364,8 +2334,7 @@ sub _validate_args_s {
       if (defined $self->{stdout_file}) {
          open $_MCE_STDOUT, '>>:raw:stdio', $self->{stdout_file}
             or die $self->{stdout_file} . ": $!\n";
-      }
-      else {
+      } else {
          open $_MCE_STDOUT, ">&=STDOUT";
          binmode $_MCE_STDOUT;
       }
@@ -2373,8 +2342,7 @@ sub _validate_args_s {
       if (defined $self->{stderr_file}) {
          open $_MCE_STDERR, '>>:raw:stdio', $self->{stderr_file}
             or die $self->{stderr_file} . ": $!\n";
-      }
-      else {
+      } else {
          open $_MCE_STDERR, ">&=STDERR";
          binmode $_MCE_STDERR;
       }
@@ -2621,8 +2589,7 @@ sub _worker_request_chunk {
 
    if ($_proc_type == REQUEST_ARRAY) {
       $_output_tag = OUTPUT_A_ARY;
-   }
-   else {
+   } else {
       $_output_tag = OUTPUT_S_GLB;
       @_records    = ();
    }
@@ -3237,9 +3204,7 @@ sub _dispatch_child {
 
    unless ($_pid) {
       _worker_main($self, $_wid, $_task, $_task_id, $_task_wid, $_params);
-
       kill 9, $$ unless ($_is_cygwin || $_is_MSWin32);
-
       CORE::exit();
    }
 

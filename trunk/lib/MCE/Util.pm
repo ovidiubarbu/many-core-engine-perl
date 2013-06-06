@@ -12,8 +12,7 @@ use warnings;
 
 use base qw( Exporter );
 
-our $VERSION = '1.000';
-$VERSION = eval $VERSION;
+our $VERSION = '1.000'; $VERSION = eval $VERSION;
 
 our @EXPORT_OK = qw( get_ncpu );
 our %EXPORT_TAGS = ( all => \@EXPORT_OK );
