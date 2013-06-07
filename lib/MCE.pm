@@ -153,8 +153,8 @@ use constant {
    OUTPUT_A_CBK   => ':A~CBK',           ## Callback (/w arguments)
    OUTPUT_N_CBK   => ':N~CBK',           ## Callback (no arguments)
    OUTPUT_S_CBK   => ':S~CBK',           ## Callback (1 scalar arg)
-   OUTPUT_S_OUT   => ':S~OUT',           ## Scalar >> STDOUT
-   OUTPUT_S_ERR   => ':S~ERR',           ## Scalar >> STDERR
+   OUTPUT_O_STD   => ':O~STD',           ## Scalar >> STDOUT
+   OUTPUT_E_STD   => ':E~STD',           ## Scalar >> STDERR
    OUTPUT_S_FLE   => ':S~FLE',           ## Scalar >> File
 
    READ_FILE      => 0,                  ## Worker reads file handle
@@ -1708,7 +1708,7 @@ sub _validate_args_s {
       $_len = length(${ $_[0] });
 
       flock $_DAT_LOCK, LOCK_EX;
-      print $_DAT_W_SOCK OUTPUT_S_OUT . $LF . $_len . $LF . ${ $_[0] };
+      print $_DAT_W_SOCK OUTPUT_O_STD . $LF . $_len . $LF . ${ $_[0] };
       flock $_DAT_LOCK, LOCK_UN;
 
       return;
@@ -1720,7 +1720,7 @@ sub _validate_args_s {
       $_len = length(${ $_[0] });
 
       flock $_DAT_LOCK, LOCK_EX;
-      print $_DAT_W_SOCK OUTPUT_S_ERR . $LF . $_len . $LF . ${ $_[0] };
+      print $_DAT_W_SOCK OUTPUT_E_STD . $LF . $_len . $LF . ${ $_[0] };
       flock $_DAT_LOCK, LOCK_UN;
 
       return;
@@ -1873,6 +1873,7 @@ sub _validate_args_s {
    my ($_DAT_LOCK, $_SYN_LOCK);
 
    ## Create hash structure containing various output functions.
+
    my %_output_function = (
 
       OUTPUT_W_ABT.$LF => sub {                   ## Worker has aborted
@@ -2199,7 +2200,7 @@ sub _validate_args_s {
 
       ## ----------------------------------------------------------------------
 
-      OUTPUT_S_OUT.$LF => sub {                   ## Scalar >> STDOUT
+      OUTPUT_O_STD.$LF => sub {                   ## Scalar >> STDOUT
          my $_buffer;
 
          chomp($_len = <$_DAT_R_SOCK>);
@@ -2214,7 +2215,7 @@ sub _validate_args_s {
          return;
       },
 
-      OUTPUT_S_ERR.$LF => sub {                   ## Scalar >> STDERR
+      OUTPUT_E_STD.$LF => sub {                   ## Scalar >> STDERR
          my $_buffer;
 
          chomp($_len = <$_DAT_R_SOCK>);
@@ -2330,8 +2331,8 @@ sub _validate_args_s {
       }
 
       ## ----------------------------------------------------------------------
-
       ## Set STDOUT/STDERR to user parameters.
+
       if (defined $self->{stdout_file}) {
          open $_MCE_STDOUT, '>>:raw:stdio', $self->{stdout_file}
             or die $self->{stdout_file} . ": $!\n";
@@ -2359,8 +2360,8 @@ sub _validate_args_s {
       }
 
       ## ----------------------------------------------------------------------
-
       ## Output event loop.
+
       $_DAT_R_SOCK = $self->{_dat_r_sock};        ## For serialized reads
 
       $_RS    = $self->{RS} || $/;
@@ -3129,16 +3130,12 @@ sub _worker_main {
    open $_COM_LOCK, '+>>:raw:stdio', "$_sess_dir/_com.lock"
       or die "(W) open error $_sess_dir/_com.lock: $!\n";
 
-   ## Undef vars not required after being spawned.
-   $self->{flush_file} = $self->{flush_stderr} = $self->{flush_stdout} =
-      $self->{on_post_exit} = $self->{on_post_run} = $self->{stderr_file} =
-      $self->{stdout_file} = $self->{user_error} = $self->{user_output} =
-      $self->{user_data} =
-   undef;
-
-   $self->{_pids} = $self->{_thrs} = $self->{_tids} = $self->{_status} =
-      $self->{_state} =
-   ();
+   ## Delete options no longer required after being spawned.
+   delete @{ $self }{ qw(
+      flush_file flush_stderr flush_stdout stderr_file stdout_file
+      on_post_exit on_post_run user_data user_error user_output
+      _pids _state _status _thrs _tids
+   )};
 
    foreach (keys %_mce_spawned) {
       delete $_mce_spawned{$_} unless ($_ eq $_mce_sid);
