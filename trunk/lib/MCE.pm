@@ -1750,7 +1750,8 @@ sub _validate_args_s {
 
       if (@$_data_ref > 0) {                      ## Multiple Args >> Callback
          if (@$_data_ref > 1 || ref $_data_ref->[0]) {
-            $_buffer = $self->{freeze}($_data_ref); $_len = length($_buffer);
+            $_buffer = $self->{freeze}($_data_ref);
+            $_len = length($_buffer);
 
             flock $_DAT_LOCK, LOCK_EX;
             print $_DAT_W_SOCK OUTPUT_A_CBK . $LF .
@@ -1861,17 +1862,15 @@ sub _validate_args_s {
 ###############################################################################
 
 {
-   my ($_value, $_want_id, $_input_data, $_eof_flag, $_aborted);
-   my ($_user_error, $_user_output, $_flush_file, $self);
-   my ($_callback, $_file, %_sendto_fhs, $_len, $_chunk_id);
+   my ($_aborted, $_eof_flag, $_input_data, $_syn_flag, $_value, $_want_id);
+   my ($_callback, $_chunk_id, $_chunk_size, $_file, $_len, %_sendto_fhs);
+   my ($_flush_file, $_has_user_tasks, $self, $_user_error, $_user_output);
+   my ($_input_glob, $_input_size, $_offset_pos, $_single_dim, $_use_slurpio);
+   my ($_exit_id, $_exit_pid, $_exit_status, $_exit_wid, $_sync_cnt);
+   my ($_on_post_exit, $_on_post_run, $_sess_dir, $_task_id);
 
-   my ($_DAT_R_SOCK, $_MCE_STDERR, $_MCE_STDOUT);
-   my ($_RS, $_I_SEP, $_O_SEP, $_input_glob, $_chunk_size);
-   my ($_input_size, $_offset_pos, $_single_dim, $_use_slurpio);
-
-   my ($_has_user_tasks, $_on_post_exit, $_on_post_run, $_task_id);
-   my ($_exit_wid, $_exit_pid, $_exit_status, $_exit_id, $_sync_cnt);
-   my ($_DAT_LOCK, $_SYN_LOCK, $_sess_dir, $_syn_flag);
+   my ($_DAT_R_SOCK, $_I_SEP, $_O_SEP, $_MCE_STDERR, $_MCE_STDOUT, $_RS);
+   my ($_DAT_LOCK, $_SYN_LOCK);
 
    ## Create hash structure containing various output functions.
    my %_output_function = (
