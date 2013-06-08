@@ -2007,8 +2007,7 @@ sub _validate_args_s {
          my $_buffer;
 
          if ($_offset_pos >= $_input_size || $_aborted) {
-            local $\ = undef;
-            print $_DAT_R_SOCK '0' . $LF;
+            local $\ = undef; print $_DAT_R_SOCK '0' . $LF;
             return;
          }
 
@@ -2893,6 +2892,11 @@ sub _worker_do {
 
    die "Private method called" unless (caller)[0]->isa( ref($self) );
 
+   ## Init local vars.
+   my $_DAT_W_SOCK = $self->{_dat_w_sock};
+   my $_run_mode   = $self->{_run_mode};
+   my $_task_id    = $self->{_task_id};
+
    ## Set options.
    $self->{_abort_msg}  = $_params_ref->{_abort_msg};
    $self->{_run_mode}   = $_params_ref->{_run_mode};
@@ -2906,11 +2910,6 @@ sub _worker_do {
             unless (defined $self->{_task}->{$_});
       }
    }
-
-   ## Init local vars.
-   my $_DAT_W_SOCK = $self->{_dat_w_sock};
-   my $_run_mode   = $self->{_run_mode};
-   my $_task_id    = $self->{_task_id};
 
    ## Call user_begin if defined.
    if (defined $self->{user_begin}) {
@@ -3130,7 +3129,7 @@ sub _worker_main {
    open $_COM_LOCK, '+>>:raw:stdio', "$_sess_dir/_com.lock"
       or die "(W) open error $_sess_dir/_com.lock: $!\n";
 
-   ## Delete options no longer required after being spawned.
+   ## Delete attributes no longer required after being spawned.
    delete @{ $self }{ qw(
       flush_file flush_stderr flush_stdout stderr_file stdout_file
       on_post_exit on_post_run user_data user_error user_output
