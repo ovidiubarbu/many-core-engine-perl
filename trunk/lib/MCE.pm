@@ -132,6 +132,7 @@ sub import {
 ###############################################################################
 
 use constant {
+
    MAX_CHUNK_SIZE => 24 * 1024 * 1024,   ## Set max constraints
    MAX_OPEN_FILES => $_max_files || 256,
    MAX_USER_PROCS => $_max_procs || 256,
@@ -142,20 +143,23 @@ use constant {
    QUE_TEMPLATE   => $_que_template,     ## Pack template for queue socket
    QUE_READ_SIZE  => $_que_read_size,    ## Read size
 
-   OUTPUT_B_SYN   => ':B~SYN',           ## Worker barrier sync - begin
-   OUTPUT_E_SYN   => ':E~SYN',           ## Worker barrier sync - end
    OUTPUT_W_ABT   => ':W~ABT',           ## Worker has aborted
    OUTPUT_W_DNE   => ':W~DNE',           ## Worker has completed
    OUTPUT_W_EXT   => ':W~EXT',           ## Worker has exited
 
    OUTPUT_A_ARY   => ':A~ARY',           ## Array  << Array
    OUTPUT_S_GLB   => ':S~GLB',           ## Scalar << Glob FH
-   OUTPUT_A_CBK   => ':A~CBK',           ## Callback (/w arguments)
-   OUTPUT_N_CBK   => ':N~CBK',           ## Callback (no arguments)
-   OUTPUT_S_CBK   => ':S~CBK',           ## Callback (1 scalar arg)
-   OUTPUT_O_STD   => ':O~STD',           ## Scalar >> STDOUT
-   OUTPUT_E_STD   => ':E~STD',           ## Scalar >> STDERR
-   OUTPUT_S_FLE   => ':S~FLE',           ## Scalar >> File
+
+   OUTPUT_A_CBK   => ':A~CBK',           ## Callback w/ multiple args
+   OUTPUT_S_CBK   => ':S~CBK',           ## Callback w/ 1 scalar arg
+   OUTPUT_N_CBK   => ':N~CBK',           ## Callback w/ no args
+
+   OUTPUT_O_SND   => ':O~SND',           ## Send >> STDOUT
+   OUTPUT_E_SND   => ':E~SND',           ## Send >> STDERR
+   OUTPUT_F_SND   => ':F~SND',           ## Send >> File
+
+   OUTPUT_B_SYN   => ':B~SYN',           ## Worker barrier sync - begin
+   OUTPUT_E_SYN   => ':E~SYN',           ## Worker barrier sync - end
 
    READ_FILE      => 0,                  ## Worker reads file handle
    READ_MEMORY    => 1,                  ## Worker reads memory handle
@@ -1694,7 +1698,7 @@ sub _validate_args_s {
       $_len = length(${ $_[0] });
 
       flock $_DAT_LOCK, LOCK_EX;
-      print $_DAT_W_SOCK OUTPUT_S_FLE . $LF .
+      print $_DAT_W_SOCK OUTPUT_F_SND . $LF .
                          $_value . $LF . $_len . $LF . ${ $_[0] };
 
       flock $_DAT_LOCK, LOCK_UN;
@@ -1708,7 +1712,7 @@ sub _validate_args_s {
       $_len = length(${ $_[0] });
 
       flock $_DAT_LOCK, LOCK_EX;
-      print $_DAT_W_SOCK OUTPUT_O_STD . $LF . $_len . $LF . ${ $_[0] };
+      print $_DAT_W_SOCK OUTPUT_O_SND . $LF . $_len . $LF . ${ $_[0] };
       flock $_DAT_LOCK, LOCK_UN;
 
       return;
@@ -1720,7 +1724,7 @@ sub _validate_args_s {
       $_len = length(${ $_[0] });
 
       flock $_DAT_LOCK, LOCK_EX;
-      print $_DAT_W_SOCK OUTPUT_E_STD . $LF . $_len . $LF . ${ $_[0] };
+      print $_DAT_W_SOCK OUTPUT_E_SND . $LF . $_len . $LF . ${ $_[0] };
       flock $_DAT_LOCK, LOCK_UN;
 
       return;
@@ -2082,7 +2086,7 @@ sub _validate_args_s {
 
       ## ----------------------------------------------------------------------
 
-      OUTPUT_A_CBK.$LF => sub {                   ## Callback (/w arguments)
+      OUTPUT_A_CBK.$LF => sub {                   ## Callback w/ multiple args
          my $_buffer;
 
          chomp($_want_id  = <$_DAT_R_SOCK>);
@@ -2124,43 +2128,7 @@ sub _validate_args_s {
 
       ## ----------------------------------------------------------------------
 
-      OUTPUT_N_CBK.$LF => sub {                   ## Callback (no arguments)
-         my $_buffer;
-
-         chomp($_want_id  = <$_DAT_R_SOCK>);
-         chomp($_callback = <$_DAT_R_SOCK>);
-
-         local $\ = $_O_SEP; local $/ = $_I_SEP;
-         no strict 'refs';
-
-         if ($_want_id == WANTS_UNDEF) {
-            $_callback->();
-         }
-         elsif ($_want_id == WANTS_ARRAY) {
-            my @_ret_a = $_callback->();
-            $_buffer = $self->{freeze}(\@_ret_a);
-            local $\ = undef; $_len = length($_buffer);
-            print $_DAT_R_SOCK $_len . $LF . $_buffer;
-         }
-         else {
-            my $_ret_s = $_callback->();
-            unless (ref $_ret_s) {
-               local $\ = undef; $_len = length($_ret_s);
-               print $_DAT_R_SOCK WANTS_SCALAR . $LF . $_len . $LF . $_ret_s;
-            }
-            else {
-               $_buffer = $self->{freeze}($_ret_s);
-               local $\ = undef; $_len = length($_buffer);
-               print $_DAT_R_SOCK WANTS_REF . $LF . $_len . $LF . $_buffer;
-            }
-         }
-
-         return;
-      },
-
-      ## ----------------------------------------------------------------------
-
-      OUTPUT_S_CBK.$LF => sub {                   ## Callback (1 scalar arg)
+      OUTPUT_S_CBK.$LF => sub {                   ## Callback w/ 1 scalar arg
          my $_buffer;
 
          chomp($_want_id  = <$_DAT_R_SOCK>);
@@ -2199,7 +2167,43 @@ sub _validate_args_s {
 
       ## ----------------------------------------------------------------------
 
-      OUTPUT_O_STD.$LF => sub {                   ## Scalar >> STDOUT
+      OUTPUT_N_CBK.$LF => sub {                   ## Callback w/ no args
+         my $_buffer;
+
+         chomp($_want_id  = <$_DAT_R_SOCK>);
+         chomp($_callback = <$_DAT_R_SOCK>);
+
+         local $\ = $_O_SEP; local $/ = $_I_SEP;
+         no strict 'refs';
+
+         if ($_want_id == WANTS_UNDEF) {
+            $_callback->();
+         }
+         elsif ($_want_id == WANTS_ARRAY) {
+            my @_ret_a = $_callback->();
+            $_buffer = $self->{freeze}(\@_ret_a);
+            local $\ = undef; $_len = length($_buffer);
+            print $_DAT_R_SOCK $_len . $LF . $_buffer;
+         }
+         else {
+            my $_ret_s = $_callback->();
+            unless (ref $_ret_s) {
+               local $\ = undef; $_len = length($_ret_s);
+               print $_DAT_R_SOCK WANTS_SCALAR . $LF . $_len . $LF . $_ret_s;
+            }
+            else {
+               $_buffer = $self->{freeze}($_ret_s);
+               local $\ = undef; $_len = length($_buffer);
+               print $_DAT_R_SOCK WANTS_REF . $LF . $_len . $LF . $_buffer;
+            }
+         }
+
+         return;
+      },
+
+      ## ----------------------------------------------------------------------
+
+      OUTPUT_O_SND.$LF => sub {                   ## Send >> STDOUT
          my $_buffer;
 
          chomp($_len = <$_DAT_R_SOCK>);
@@ -2214,7 +2218,7 @@ sub _validate_args_s {
          return;
       },
 
-      OUTPUT_E_STD.$LF => sub {                   ## Scalar >> STDERR
+      OUTPUT_E_SND.$LF => sub {                   ## Send >> STDERR
          my $_buffer;
 
          chomp($_len = <$_DAT_R_SOCK>);
@@ -2229,7 +2233,7 @@ sub _validate_args_s {
          return;
       },
 
-      OUTPUT_S_FLE.$LF => sub {                   ## Scalar >> File
+      OUTPUT_F_SND.$LF => sub {                   ## Send >> File
          my ($_buffer, $_OUT_FILE);
 
          chomp($_file = <$_DAT_R_SOCK>);
@@ -2892,16 +2896,16 @@ sub _worker_do {
 
    die "Private method called" unless (caller)[0]->isa( ref($self) );
 
-   ## Init local vars.
-   my $_DAT_W_SOCK = $self->{_dat_w_sock};
-   my $_run_mode   = $self->{_run_mode};
-   my $_task_id    = $self->{_task_id};
-
    ## Set options.
    $self->{_abort_msg}  = $_params_ref->{_abort_msg};
    $self->{_run_mode}   = $_params_ref->{_run_mode};
    $self->{_single_dim} = $_params_ref->{_single_dim};
    $self->{use_slurpio} = $_params_ref->{_use_slurpio};
+
+   ## Init local vars.
+   my $_DAT_W_SOCK = $self->{_dat_w_sock};
+   my $_run_mode   = $self->{_run_mode};
+   my $_task_id    = $self->{_task_id};
 
    ## Do not override params if defined in user_tasks during instantiation.
    for (qw(chunk_size sequence user_args)) {
