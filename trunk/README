@@ -3,7 +3,7 @@
  # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * #
 ###############################################################################
 
-This document describes MCE version 1.411
+This document describes MCE version 1.412
 
  Many-core Engine (MCE) for Perl helps enable a new level of performance by
  maximizing all available cores. MCE spawns a pool of workers and therefore
@@ -17,24 +17,24 @@ This document describes MCE version 1.411
 
  MCE uses domain sockets for IPC versus pipes. In fact, only 4 socket pairs
  are created for IPC no matter the number of workers. The upcoming 1.5 release
- will do IPC using just 3 socket pairs. One day, the norm will be that a
- physical box has 400 or more cores. MCE can spawn 960 workers (with forking)
- for ulimit reporting 1024 for files. Other parallel implementations using
- pipes cannot do this (about half of ulimit).
+ will do IPC using just 3 socket pairs. One day, a physical box will have 400
+ or more cores. MCE can spawn 960 workers (forking) for ulimit reporting 1024
+ allowed for max user processes. Other parallel implementations using pipes
+ cannot do this (only about half of ulimit -u).
 
 Use Cases for MCE.
 
  1. Both forking and threading are supported. Workers are children by default
     (spawned via fork). Including threads in your script will have workers
-    spawned as threads automatically.
+    spawned as threads automatically unless use_threads => 0 is specified.
 
- 2. MCE can be used to process a single "large" file in parallel or process
-    many "small" files in parallel. Performance against a single file is as
-    fast as MMAP IO when specifying use_slurpio => 1.
+ 2. MCE can be used to process a single "large" file or process many "small"
+    files in parallel. Performance against a single file is as fast as MMAP
+    IO when specifying use_slurpio => 1.
 
- 3. MCE iterates over the following input data. Workers can be spawned prior
-    to data. MCE is a chunking engine. It does not divide the input equally
-    by the number of workers. Instead, it chunks away at the data from start
+ 3. MCE iterates over input data in chunks. Workers can be spawned prior to
+    creating or obtaining data. MCE is a chunking engine. It does not divide
+    the input equally by the number of workers. Instead, it chunks from start
     till end.
 
        input_data => '/path/to/file',    ## Scalar is treated as a file
@@ -43,31 +43,25 @@ Use Cases for MCE.
        input_data => \*FileHandle,       ## Process a FH in parallel
 
     Think of input data as the highway. Now think of the automobile as being
-    MCE. Data can be larger than the physical memory on the box. In other
-    words, think of the line at the bank as being the data. Bank tellers are
-    the workers. The line can run circles around the building. This is the
-    model used to process data. Chunking allows tellers to receive 1 or N
-    size from the line.
+    MCE. Data can be larger than physical memory on the box. The chunking
+    nature makes this possible.
 
  4. If all you need is a numeric iterator, MCE can iterate over a sequence
     of numbers mathematically. This too can be chunked by specifying chunk
-    size. Workers receive 1 or the next chunk size of sequences.
+    size.
 
        sequence => { begin => 1, end => 100, step => 2 },
        chunk_size => 20,      ## Worker receives the next 20 sequences
 
- 5. MCE can chunk 1 element at a time or 500 or 2000. Think of chunking
-    as being able to reduce the communication overhead. Look at examples
-    included with MCE: foreach.pl, forchunk.pl and forseq.pl
+    Look at the examples included with MCE. The foreach.pl example is very
+    communication intensive whereas forchunk.pl requires much less overhead.
 
-    The foreach.pl example is very communication intensive whereas
-    forchunk.pl requires much less overhead.
+       foreach.pl, forchunk.pl, and forseq.pl
 
- 6. Chunking is beneficial. For example, a worker receives up to 600 host
-    names or IPs per chunk. That worker uses SNMP and an AnyEvent library
-    to communicate to them. Imagine having millions of hosts to process.
-    One cannot simply create millions of connections all at once. Chunking
-    makes this trivial to do.
+ 5. For another example, a worker receives up to 600 host names or IPs per
+    chunk. The worker uses SNMP and an AnyEvent library. Imagine having
+    millions of hosts to process. One simply cannot create millions of
+    connections all at once. Chunking makes this trivial to do.
 
 Take MCE for a spin.
 
