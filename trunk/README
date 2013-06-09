@@ -18,9 +18,9 @@ This document describes MCE version 1.411
  MCE uses domain sockets for IPC versus pipes. In fact, only 4 socket pairs
  are created for IPC no matter the number of workers. The upcoming 1.5 release
  will do IPC using just 3 socket pairs. One day, the norm will be that a
- physical box has 400 or more cores. MCE can spawn 960 workers (forking) for
- ulimit reporting 1024 for max user processes. Other parallel implementations
- using pipes cannot do this (about half of ulimit -u).
+ physical box has 400 or more cores. MCE can spawn 960 workers (with forking)
+ for ulimit reporting 1024 for files. Other parallel implementations using
+ pipes cannot do this (about half of ulimit).
 
 Use Cases for MCE.
 
