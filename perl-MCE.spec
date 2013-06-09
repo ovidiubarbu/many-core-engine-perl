@@ -1,5 +1,5 @@
 Name:           perl-MCE
-Version:        1.410
+Version:        1.411
 Release:        1%{?dist}
 Summary:        Many-Core Engine for Perl. Provides parallel processing capabilities.
 License:        CHECK(Distributable)
@@ -59,93 +59,5 @@ rm -rf $RPM_BUILD_ROOT
 %{_mandir}/man3/*
 
 %changelog
-* Tue May 28 2013 Mario Roy 1.410-1
-- Use threads under MSWin32 for 02* and 03* test scripts.
-- Removed sysopen/sysseek/sysread to simplify logic due to negligible
-  performance gains over open/seek/read.
-- Minor updates to documentation.
-* Sun May 12 2013 Mario Roy 1.409-1
-- Croak if user_func is not defined and input_data/sequence is specified.
-- Fix barrier synchronization when running multiple tasks via user_tasks.
-- Updated Perl Documentation for easier reading through cpan/metapan.
-- Renamed private method _worker_sequence to _worker_sequence_queue.
-* Tue Mar 19 2013 Mario Roy 1.408-1
-- Minor tweaks here and there to further increase reliability.
-- Updated the barrier synchronization logic to not stall. Updated the
-  perl docs on mixing "sync" with "do" or "sendto" methods.
-- Added new "status" method for the manager process.
-- Added new arguments for MCE::Signal: -no_kill9, -no_sigmsg
-* Thu Mar 14 2013 Mario Roy 1.407-1
-- This marks a tremendous effort in achieving parity across the board
-  from Cygwin to Windows and obviously UNIX. MCE now works beautifully
-  under the Cygwin environment including Perl for Windows.
-- Up'ed the maximum workers allowed for both Cygwin and Windows to
-  56 (forking) and 80 (threading).
-- Barrier synchronization requires an extra semaphore file, therefore
-  the maximum workers allowed under the UNIX environment for threading
-  decreased. It shouldn't be a problem as there are many threads already.
-- Addressed an issue with barrier synchronization under Cygwin.
-- Addressed an issue with the die handler for the main worker method
-  when threading.
-- Thank you for hanging in there. It took quite some time to get there.
-  This is the most stable release thus far for MCE across the board.
-* Tue Mar 12 2013 Mario Roy 1.406-1
-- Added support for barrier synchronization (via new sync method).
-  Added barrier_sync.pl example.
-- Addressed rounding errors with the sequence generator.
-  The sequence option now follows a bank-teller queuing model when
-  generating numbers. This applies to task 0 only. Other tasks can
-  still specify sequence where numbers will be distributed equally
-  among workers like before.
-- Optimized the _worker_request_chunk private method.
-- A take 2 on the matrix multiplication examples. This is better
-  organized with updated README file to include the script running
-  time in the results.
-* Mon Mar 04 2013 Mario Roy 1.405-1
-- Added strassen_pdl_t.pl in the event folks cannot make use of /dev/shm
-  used by the strassen_pdl_s.pl example.
-- Optimized the send method -- workers process immediately after receiving
-  data. Updated run times in README for the strassen examples.
-- MCE no longer calls setpgrp by default as of MCE 1.405. There is only
-  one reason to call setpgrp, but many reasons not to. The sole reason
-  was for MCE to run correctly with Daemon::Control. If needed, one can
-  pass the option to MCE::Signal qw(-setpgrp).
-- Return void in the shutdown method (previously was returning $self).
-- Tidy code inside sequence generator.
-* Sun Feb 24 2013 Mario Roy 1.404-1
-- Added sess_dir method 
-- Completed work with matmult/* examples
-  Added matmult_pdl_q.pl, removed strassen_pdl_h.pl
-  Added strassen_pdl_o/p/q/r/s.pl 
-  Added benchmark results from a 32-way box at the end of the readme
-- Removed lines setting max limit for files/procs
-* Sun Feb 17 2013 Mario Roy 1.403-1
-- Wrap sub PDL::CLONE_SKIP into a no warnings 'redefine' block
-  MCE now works with PDL::Parallel::threads without any warnings
-- Added missing examples/matmult/matmult_pdl_n.pl to MANIFEST
-- Refactored strassen examples, memory consumption reduced by > than 50%
-- Added matmult_pdl_o.pl -- uses PDL::Parallel::threads to share matrices
-- Added matmult_pdl_p.pl -- matrix b is read from shared memory, not mmap
-- Added strassen_pdl_n.pl -- additional improvements to memory reduction
-- Added strassen_pdl_h.pl -- shown running with 4 workers (half and half)
-- Re-ran matrix multiplication examples and updated results in README file
-- Added -no_setpgrp option to MCE::Signal.pm 
-  Ctrl-C does not respond when running /usr/bin/time mce_script.pl
-- Added undef $buffer in a couple of places within MCE.pm
-- Added David Mertens and Adam Sjøgren to CREDITS 
-- The send method now checks if sending > total workers after spawning
-  not before
-* Thu Feb 14 2013 Mario Roy 1.402-1
-- Updated matrix multiplication examples including README
-- Added examples/matmult/matmult_pdl_n.pl
-* Mon Feb 12 2013 Mario Roy 1.401-1
-- Added sub PDL::CLONE_SKIP { 1 } to MCE.pm. Running PDL + MCE threads no
-  longer crashes during exiting.
-- Updated matrix multiplication examples. All examples now work under the
-  windows environment no matter if threading or forking. Unix is stable as
-  well if wanting to use PDL + MCE and use_threads => 1 or 0.
-- Added benchmark results for 2048x2048, 4096x4096, and 8192x8192 to the
-  README file under examples/matmult/
-- Updated documentation
-* Mon Feb 11 2013 Mario Roy 1.400-1
-- 1.400 release.
+* Sun Jun 09 2013 Mario Roy 1.411-1
+- 1.411 Release.

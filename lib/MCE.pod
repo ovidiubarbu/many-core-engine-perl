@@ -63,7 +63,7 @@ of 0,1,2 makes it more legible when accessing the array elements.
 In addition to EXPORT_CONST, five additional arguments can be passed to MCE.
 This allows one to override the default configured in MCE.pm.
 
-   use Sereal qw(encode_sereal decode_sereal)
+   use Sereal qw(encode_sereal decode_sereal);
 
    use MCE MAX_WORKERS => 4,                    ## Default 1
            CHUNK_SIZE  => 100,                  ## Default 1
