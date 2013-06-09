@@ -9,7 +9,7 @@ MCE - Many-Core Engine for Perl. Provides parallel processing capabilities.
 
 <> VERSION
 
-This document describes MCE version 1.410
+This document describes MCE version 1.411
 
 <> DESCRIPTION
 
@@ -55,11 +55,8 @@ EXPORT_CONST
 -------------------------------------------------------------------------------
 
 The anonymous user_func above can be written using one less line. There are
-3 constants defined in MCE which are exportable. Using the constant names in
-lieu of 0,1,2 makes it more legibel when accessing the argument array.
-
-The user_func receives either 1 or 3 arguments. Three arguments are sent
-whenever processing input data (specifying input_data or sequence).
+3 constants defined in MCE which are exportable. Using the constants in lieu
+of 0,1,2 makes it more legible when accessing the array elements.
 
    SELF CHUNK CID
 
@@ -100,12 +97,12 @@ Below, a new instance is configured with all available options.
 
       max_workers  => 8,                 ## Default $MCE::MAX_WORKERS
 
-          ## Number of workers to spawn. Can be set automatically as well
-          ## with MCE 1.5 and later releases.
+          ## Number of workers to spawn. This can be set automatically
+          ## with MCE 1.411 and later releases.
 
-          max_workers => 'auto-1',       ## MCE::Util::get_ncpu() - 1
-          max_workers => 'auto+3',       ## MCE::Util::get_ncpu() + 3
-          max_workers => 'auto',         ## MCE::Util::get_ncpu()
+          ## max_workers => 'auto-1',    ## MCE::Util::get_ncpu() - 1
+          ## max_workers => 'auto+3',    ## MCE::Util::get_ncpu() + 3
+          ## max_workers => 'auto',      ## MCE::Util::get_ncpu()
 
       chunk_size   => 2000,              ## Default $MCE::CHUNK_SIZE
 
@@ -130,11 +127,12 @@ Below, a new instance is configured with all available options.
       freeze       => \&encode_sereal,   ## Default $MCE::FREEZE
       thaw         => \&decode_sereal,   ## Default $MCE::THAW
 
-          ## Release 1.5 adds 2 new options to allow freeze/thaw to be
-          ## overridden. Include a serialization module prior to loading
-          ## MCE.
-          ## e.g. use Sereal qw(encode_sereal decode_sereal);
-          ##      use JSON::XS qw(encode_json decode_json);
+          ## Release 1.411 allows freeze and thaw to be overridden.
+          ## Just include a serialization module prior to loading MCE.
+
+          ## use Sereal qw(encode_sereal decode_sereal);
+          ## use JSON::XS qw(encode_json decode_json);
+          ## use MCE;
 
       input_data   => $input_file,       ## Default undef
       RS           => "\n::\n",          ## Default undef
@@ -342,18 +340,6 @@ Sequence can be specified using an array or a hash reference.
    17.0 from 2 id 11
    17.7 from 3 id 12
    18.4 from 1 id 13
-
-The user_func block above can be written using one less line beginning with
-MCE 1.5. The $_ scalar below contains the input sequence number.
-
-   use MCE EXPORT_CONST => 1;
-
-   my $mce = MCE->new(
-      ...
-      user_func => sub {
-         print $_, " from ", $_[SELF]->wid(), " id ", $_[CID], "\n";
-      }
-   );
 
 -------------------------------------------------------------------------------
 USER_TASKS
@@ -704,22 +690,6 @@ process method.
       ...
    });
 
-Release 1.5 and later supports the use of constants for @_ index position
-and the $_ input scalar.
-
-   use MCE EXPORT_CONST => 1, MAX_WORKERS => 'auto', CHUNK_SIZE => 30;
-
-   my $mce = MCE->new;
-
-   ## foreach below can be written as foreach ( @{ $_ } ) as well
-   ## using the input $_ scalar coming from forchunk.
-
-   $mce->forchunk(\@input_data, sub {
-      foreach ( @{ $_[CHUNK] } ) {
-         $_[SELF]->sendto("stdout", "$_[CID]: $_\n");
-      }
-   });
-
 -------------------------------------------------------------------------------
 foreach ( $input_data [, { options } ], sub { ... } )
 -------------------------------------------------------------------------------
@@ -739,19 +709,6 @@ Arguments within the block are the same whether calling foreach or forchunk.
       $self->sendto("stdout", "$chunk_id: $row\n");
    });
 
-One can write the above using less code beginning with MCE 1.5. $_ below
-contains the actual input value. MCE is a chunking engine. Keep in mind that
-$_ will point to a reference whenever chunk_size is greater than 1 or
-use_slurpio is enabled for other use case.
-
-   use MCE EXPORT_CONST => 1, MAX_WORKERS => $max_workers;
-
-   my $mce = MCE->new;
-
-   $mce->foreach(\@input_data, sub {
-      $_[SELF]->sendto("stdout", "$_[CID]: $_\n");
-   });
-
 Below, passing an anonymous array as input data. For example, wanting to
 parallelize a serial loop with MCE.
 
@@ -769,7 +726,7 @@ parallelize a serial loop with MCE.
 
    $mce->foreach([ (0 .. $max - 1) ], sub {
       my ($self, $chunk_ref, $chunk_id) = @_;
-      my $i = $chunk_ref->[0];  (OR)  my $i = $chunk_id - 1;
+      my $i = $chunk_ref->[0];
       ...  ## Runs in parallel
    });
 
@@ -792,13 +749,6 @@ specified using a hash or an array reference.
    $mce->forseq([ 20, 40 ], sub {
       my ($self, $n, $chunk_id) = @_;
       my $result = `ping 192.168.1.${n}`;
-      ...
-   });
-
-Using the $_ scalar below is possible beginning with MCE 1.5.
-
-   $mce->forseq([ 20, 40 ], sub {
-      my $result = `ping 192.168.1.${$_}`;
       ...
    });
 
@@ -1315,7 +1265,7 @@ INCLUDED with DISTRIBUTION
              MCE utilizes a pool of workers.
 
              Parallel::Loops:     600  Forking each @input is expensive
-             MCE foreach....:  20,500  Sends result after each @input
+             MCE foreach....:  20,000  Sends result after each @input
              MCE forseq.....:  55,000  Loops through sequence of numbers
              MCE forchunk...: 395,000  Chunking reduces overhead
 
