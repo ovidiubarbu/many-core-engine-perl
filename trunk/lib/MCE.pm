@@ -55,7 +55,7 @@ BEGIN {
    }
 }
 
-our $VERSION = '1.499'; $VERSION = eval $VERSION;
+our $VERSION = '1.411'; $VERSION = eval $VERSION;
 
 ## PDL + MCE (spawning as threads) is not stable. Thanks goes to David Mertens
 ## for reporting on how he fixed it for his PDL::Parallel::threads module. The
@@ -193,6 +193,7 @@ my %_valid_fields = map { $_ => 1 } qw(
    _com_r_sock _com_w_sock _dat_r_sock _dat_w_sock _que_r_sock _que_w_sock
    _exiting _exit_pid _total_exited _total_running _total_workers _task_wid
    _send_cnt _sess_dir _spawned _state _status _task _task_id _wrk_status
+   _out_r_sock _out_w_sock
 );
 
 my %_params_allowed_args = map { $_ => 1 } qw(
@@ -338,6 +339,8 @@ sub new {
    $self->{_com_w_sock} = undef; ## Communication channel for workers
    $self->{_dat_r_sock} = undef; ## Data channel for MCE
    $self->{_dat_w_sock} = undef; ## Data channel for workers
+   $self->{_out_r_sock} = undef; ## For serialized reads by main thread/process
+   $self->{_out_w_sock} = undef; ## Workers write to this for serialized writes
    $self->{_que_r_sock} = undef; ## Queue channel for MCE
    $self->{_que_w_sock} = undef; ## Queue channel for workers
    $self->{_state}      = undef; ## State info: task/task_id/task_wid/params
@@ -452,6 +455,16 @@ sub spawn {
    binmode $self->{_dat_r_sock};                  ## Set binary mode
    binmode $self->{_dat_w_sock};
 
+   ## Create socket pair for serializing send requests and STDOUT output.
+   socketpair( $self->{_out_r_sock}, $self->{_out_w_sock},
+      AF_UNIX, SOCK_STREAM, PF_UNSPEC ) or die "socketpair: $!\n";
+
+   binmode $self->{_out_r_sock};                  ## Set binary mode
+   binmode $self->{_out_w_sock};
+
+   CORE::shutdown $self->{_out_r_sock}, 1;        ## No more writing
+   CORE::shutdown $self->{_out_w_sock}, 0;        ## No more reading
+
    ## Create socket pairs for queue channels between MCE and workers.
    socketpair( $self->{_que_r_sock}, $self->{_que_w_sock},
       AF_UNIX, SOCK_STREAM, PF_UNSPEC ) or die "socketpair: $!\n";
@@ -468,6 +481,8 @@ sub spawn {
                    select $self->{_com_w_sock}; $| = 1;
                    select $self->{_dat_r_sock}; $| = 1;
                    select $self->{_dat_w_sock}; $| = 1;
+                   select $self->{_out_r_sock}; $| = 1;
+                   select $self->{_out_w_sock}; $| = 1;
                    select $self->{_que_r_sock}; $| = 1;
                    select $self->{_que_w_sock}; $| = 1;
 
@@ -1146,6 +1161,8 @@ sub shutdown {
    ## Close sockets.
    CORE::shutdown $self->{_que_r_sock}, 0;        ## Queue channels
    CORE::shutdown $self->{_que_w_sock}, 1;
+   CORE::shutdown $self->{_out_r_sock}, 0;        ## Output channels
+   CORE::shutdown $self->{_out_w_sock}, 1;
    CORE::shutdown $self->{_dat_r_sock}, 2;        ## Data channels
    CORE::shutdown $self->{_dat_w_sock}, 2;
    CORE::shutdown $self->{_com_r_sock}, 2;        ## Communication channels
@@ -1153,6 +1170,8 @@ sub shutdown {
 
    close $self->{_que_r_sock}; undef $self->{_que_r_sock};
    close $self->{_que_w_sock}; undef $self->{_que_w_sock};
+   close $self->{_out_r_sock}; undef $self->{_out_r_sock};
+   close $self->{_out_w_sock}; undef $self->{_out_w_sock};
    close $self->{_dat_r_sock}; undef $self->{_dat_r_sock};
    close $self->{_dat_w_sock}; undef $self->{_dat_w_sock};
    close $self->{_com_r_sock}; undef $self->{_com_r_sock};
@@ -1194,6 +1213,7 @@ sub shutdown {
    $self->{_total_exited}  = 0;
 
    $self->{_que_r_sock} = $self->{_que_w_sock} = undef;
+   $self->{_out_r_sock} = $self->{_out_w_sock} = undef;
    $self->{_dat_r_sock} = $self->{_dat_w_sock} = undef;
    $self->{_com_r_sock} = $self->{_com_w_sock} = undef;
 
@@ -1228,6 +1248,7 @@ sub sync {
    return if ($self->{_task_id} > 0);
 
    my $_DAT_W_SOCK = $self->{_dat_w_sock};
+   my $_OUT_W_SOCK = $self->{_out_w_sock};
    my $_sess_dir   = $self->{_sess_dir};
 
    unless (defined $_SYN_LOCK) {
@@ -1239,7 +1260,7 @@ sub sync {
 
    ## Notify the manager process (begin).
    flock $_DAT_LOCK, LOCK_EX;
-   print $_DAT_W_SOCK OUTPUT_B_SYN . $LF;
+   print $_OUT_W_SOCK OUTPUT_B_SYN . $LF;
    <$_DAT_W_SOCK>;
    flock $_DAT_LOCK, LOCK_UN;
 
@@ -1247,7 +1268,7 @@ sub sync {
    flock $_SYN_LOCK, LOCK_SH;
 
    ## Notify the manager process (end).
-   print $_DAT_W_SOCK OUTPUT_E_SYN . $LF;
+   print $_OUT_W_SOCK OUTPUT_E_SYN . $LF;
    flock $_SYN_LOCK, LOCK_UN;
 
    return;
@@ -1268,7 +1289,7 @@ sub abort {
 
    my $_QUE_R_SOCK = $self->{_que_r_sock};
    my $_QUE_W_SOCK = $self->{_que_w_sock};
-   my $_DAT_W_SOCK = $self->{_dat_w_sock};
+   my $_OUT_W_SOCK = $self->{_out_w_sock};
    my $_abort_msg  = $self->{_abort_msg};
 
    if (defined $_abort_msg) {
@@ -1279,7 +1300,7 @@ sub abort {
 
       if ($self->wid > 0) {
          flock $_DAT_LOCK, LOCK_EX;
-         print $_DAT_W_SOCK OUTPUT_W_ABT . $LF;
+         print $_OUT_W_SOCK OUTPUT_W_ABT . $LF;
          flock $_DAT_LOCK, LOCK_UN;
       }
    }
@@ -1307,6 +1328,7 @@ sub exit {
       $self->{_exiting} = 1;
 
       my $_DAT_W_SOCK = $self->{_dat_w_sock};
+      my $_OUT_W_SOCK = $self->{_out_w_sock};
       my $_task_id    = $self->{_task_id};
 
       if (defined $_DAT_LOCK) {
@@ -1318,8 +1340,9 @@ sub exit {
          flock $_DAT_LOCK, LOCK_EX;
          select(undef, undef, undef, 0.02) if ($_is_cygwin);
 
-         print $_DAT_W_SOCK OUTPUT_W_EXT  . $LF . $_task_id          . $LF .
-                            $self->{_wid} . $LF . $self->{_exit_pid} . $LF .
+         print $_OUT_W_SOCK OUTPUT_W_EXT  . $LF . $_task_id . $LF;
+
+         print $_DAT_W_SOCK $self->{_wid} . $LF . $self->{_exit_pid} . $LF .
                             $_exit_status . $LF . $_exit_id          . $LF .
                             $_len         . $LF . $_exit_msg;
 
@@ -1685,7 +1708,7 @@ sub _validate_args_s {
 
 {
    my ($_data_ref, $_dest, $_value, $_len, $_send_init_called);
-   my ($_sess_dir, $_DAT_W_SOCK, $_want_id);
+   my ($_sess_dir, $_DAT_W_SOCK, $_OUT_W_SOCK, $_want_id);
 
    ## Create array structure containing various send functions.
    my @_dest_function = ();
@@ -1698,9 +1721,8 @@ sub _validate_args_s {
       $_len = length(${ $_[0] });
 
       flock $_DAT_LOCK, LOCK_EX;
-      print $_DAT_W_SOCK OUTPUT_F_SND . $LF .
-                         $_value . $LF . $_len . $LF . ${ $_[0] };
-
+      print $_OUT_W_SOCK OUTPUT_F_SND . $LF;
+      print $_DAT_W_SOCK $_value . $LF . $_len . $LF . ${ $_[0] };
       flock $_DAT_LOCK, LOCK_UN;
 
       return;
@@ -1712,7 +1734,8 @@ sub _validate_args_s {
       $_len = length(${ $_[0] });
 
       flock $_DAT_LOCK, LOCK_EX;
-      print $_DAT_W_SOCK OUTPUT_O_SND . $LF . $_len . $LF . ${ $_[0] };
+      print $_OUT_W_SOCK OUTPUT_O_SND . $LF;
+      print $_DAT_W_SOCK $_len . $LF . ${ $_[0] };
       flock $_DAT_LOCK, LOCK_UN;
 
       return;
@@ -1724,7 +1747,8 @@ sub _validate_args_s {
       $_len = length(${ $_[0] });
 
       flock $_DAT_LOCK, LOCK_EX;
-      print $_DAT_W_SOCK OUTPUT_E_SND . $LF . $_len . $LF . ${ $_[0] };
+      print $_OUT_W_SOCK OUTPUT_E_SND . $LF;
+      print $_DAT_W_SOCK $_len . $LF . ${ $_[0] };
       flock $_DAT_LOCK, LOCK_UN;
 
       return;
@@ -1758,8 +1782,9 @@ sub _validate_args_s {
             $_len = length($_buffer);
 
             flock $_DAT_LOCK, LOCK_EX;
-            print $_DAT_W_SOCK OUTPUT_A_CBK . $LF .
-                               $_want_id . $LF . $_value . $LF . $_len . $LF .
+            print $_OUT_W_SOCK OUTPUT_A_CBK . $LF;
+
+            print $_DAT_W_SOCK $_want_id . $LF . $_value . $LF . $_len . $LF .
                                $_buffer;
             undef $_buffer;
          }
@@ -1767,15 +1792,16 @@ sub _validate_args_s {
             $_len = length($_data_ref->[0]);
 
             flock $_DAT_LOCK, LOCK_EX;
-            print $_DAT_W_SOCK OUTPUT_S_CBK . $LF .
-                               $_want_id . $LF . $_value . $LF . $_len . $LF .
+            print $_OUT_W_SOCK OUTPUT_S_CBK . $LF;
+
+            print $_DAT_W_SOCK $_want_id . $LF . $_value . $LF . $_len . $LF .
                                $_data_ref->[0];
          }
       }
       else {                                      ## No Args >> Callback
          flock $_DAT_LOCK, LOCK_EX;
-         print $_DAT_W_SOCK OUTPUT_N_CBK . $LF .
-                            $_want_id . $LF . $_value . $LF;
+         print $_OUT_W_SOCK OUTPUT_N_CBK . $LF;
+         print $_DAT_W_SOCK $_want_id . $LF . $_value . $LF;
       }
 
       $_data_ref = '';
@@ -1820,6 +1846,7 @@ sub _validate_args_s {
 
       $_sess_dir   = $self->{_sess_dir};
       $_DAT_W_SOCK = $self->{_dat_w_sock};
+      $_OUT_W_SOCK = $self->{_out_w_sock};
 
       $_send_init_called = 1;
 
@@ -1874,7 +1901,7 @@ sub _validate_args_s {
    my ($_on_post_exit, $_on_post_run, $_sess_dir, $_task_id);
 
    my ($_DAT_R_SOCK, $_I_SEP, $_O_SEP, $_MCE_STDERR, $_MCE_STDOUT, $_RS);
-   my ($_DAT_LOCK, $_SYN_LOCK);
+   my ($_OUT_R_SOCK, $_DAT_LOCK, $_SYN_LOCK);
 
    ## Create hash structure containing various output functions.
 
@@ -1886,7 +1913,7 @@ sub _validate_args_s {
       },
 
       OUTPUT_W_DNE.$LF => sub {                   ## Worker has completed
-         chomp($_task_id = <$_DAT_R_SOCK>);
+         chomp($_task_id = <$_OUT_R_SOCK>);
          $self->{_total_running} -= 1;
 
          if ($_has_user_tasks && $_task_id >= 0) {
@@ -1919,7 +1946,7 @@ sub _validate_args_s {
       ## ----------------------------------------------------------------------
 
       OUTPUT_W_EXT.$LF => sub {                   ## Worker has exited
-         chomp($_task_id = <$_DAT_R_SOCK>);
+         chomp($_task_id = <$_OUT_R_SOCK>);
 
          $self->{_total_exited}  += 1;
          $self->{_total_running} -= 1;
@@ -2370,6 +2397,7 @@ sub _validate_args_s {
       ## Output event loop.
 
       $_DAT_R_SOCK = $self->{_dat_r_sock};        ## For serialized reads
+      $_OUT_R_SOCK = $self->{_out_r_sock};
 
       $_RS    = $self->{RS} || $/;
       $_O_SEP = $\; local $\ = undef;
@@ -2380,7 +2408,7 @@ sub _validate_args_s {
       my $_func;
 
       while (1) {
-         $_func = <$_DAT_R_SOCK>;
+         $_func = <$_OUT_R_SOCK>;
          next unless (defined $_func);
 
          if (exists $_output_function{$_func}) {
@@ -2596,6 +2624,7 @@ sub _worker_request_chunk {
    _croak("MCE::_worker_request_chunk: 'user_func' is not specified")
       unless (defined $self->{user_func});
 
+   my $_OUT_W_SOCK  = $self->{_out_w_sock};
    my $_DAT_W_SOCK  = $self->{_dat_w_sock};
    my $_single_dim  = $self->{_single_dim};
    my $_chunk_size  = $self->{chunk_size};
@@ -2632,7 +2661,7 @@ sub _worker_request_chunk {
          local $\ = undef; local $/ = $LF;
 
          flock $_DAT_LOCK, LOCK_EX;
-         print $_DAT_W_SOCK $_output_tag . $LF;
+         print $_OUT_W_SOCK $_output_tag . $LF;
          chomp($_len = <$_DAT_W_SOCK>);
 
          if ($_len == 0) {
@@ -2909,7 +2938,7 @@ sub _worker_do {
    $self->{use_slurpio} = $_params_ref->{_use_slurpio};
 
    ## Init local vars.
-   my $_DAT_W_SOCK = $self->{_dat_w_sock};
+   my $_OUT_W_SOCK = $self->{_out_w_sock};
    my $_run_mode   = $self->{_run_mode};
    my $_task_id    = $self->{_task_id};
 
@@ -2958,7 +2987,7 @@ sub _worker_do {
    local $\ = undef;
 
    flock $_DAT_LOCK, LOCK_EX;
-   print $_DAT_W_SOCK OUTPUT_W_DNE . $LF . $_task_id . $LF;
+   print $_OUT_W_SOCK OUTPUT_W_DNE . $LF . $_task_id . $LF;
    flock $_DAT_LOCK, LOCK_UN;
 
    return;
