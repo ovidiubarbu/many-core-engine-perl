@@ -5,7 +5,7 @@ MCE - Many-Core Engine for Perl. Provides parallel processing capabilities.
 
 =head1 VERSION
 
-This document describes MCE version 1.411
+This document describes MCE version 1.412
 
 =head1 DESCRIPTION
 
@@ -84,11 +84,13 @@ Below, a new instance is configured with all available options.
       max_workers  => 8,                 ## Default $MCE::MAX_WORKERS
 
           ## Number of workers to spawn. This can be set automatically
-          ## with MCE 1.411 and later releases.
+          ## with MCE 1.412 and later releases.
 
-          ## max_workers => 'auto-1',    ## MCE::Util::get_ncpu() - 1
-          ## max_workers => 'auto+3',    ## MCE::Util::get_ncpu() + 3
-          ## max_workers => 'auto',      ## MCE::Util::get_ncpu()
+          ## max_workers => 'auto',      ## = MCE::Util::get_ncpu()
+          ## max_workers => 'Auto-1',    ## = MCE::Util::get_ncpu() - 1
+          ## max_workers => 'AUTO + 3',  ## = MCE::Util::get_ncpu() + 3
+          ## max_workers => 'AUTO * 1.5',
+          ## max_workers => 'auto / 1.333',
 
       chunk_size   => 2000,              ## Default $MCE::CHUNK_SIZE
 
@@ -113,7 +115,7 @@ Below, a new instance is configured with all available options.
       freeze       => \&encode_sereal,   ## Default $MCE::FREEZE
       thaw         => \&decode_sereal,   ## Default $MCE::THAW
 
-          ## Release 1.411 allows freeze and thaw to be overridden.
+          ## Release 1.412 allows freeze and thaw to be overridden.
           ## Just include a serialization module prior to loading MCE.
 
           ## use Sereal qw(encode_sereal decode_sereal);

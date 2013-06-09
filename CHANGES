@@ -1,55 +1,67 @@
 
 Revision history for MCE
 
+1.412 Sun Jun 09 14:00:00 EST 2013
+
+    * Updated the main README file and CHANGES under 1.411 below.
+
+    * Added support for multiplication and division as well as
+      case insentivity to the private _parse_max_workers method.
+
+         max_workers => 'auto',      ## = MCE::Util::get_ncpu()
+         max_workers => 'Auto-1',    ## = MCE::Util::get_ncpu() - 1
+         max_workers => 'AUTO + 3',  ## = MCE::Util::get_ncpu() + 3
+         max_workers => 'AUTO * 1.5',
+         max_workers => 'auto / 1.333',
+
 1.411 Sun Jun 09 02:00:00 EST 2013
-    * Reverted the change made in MCE-1.410. Slurp IO is back to MMAP IO
-      performance on very large files. MCE smokes MMAP during "cold cache"
-      testing. Otherwise, the same performance when file resides in cache.
+
+    * Reverted the change made in MCE-1.410. That degraded slurp IO on
+      large files. This restores slurp IO performance in MCE.
 
     * Corrected an if statement towards the end of the shutdown method.
-      The delay was occurring always when it was met to occur only if
-      MCE was launched from inside a non-main thread.
+      The delay was occurring always when it was met only if MCE was
+      launched from inside a non-main thread.
 
     * Addressed a race condition with barrier synchronization under the
-      cygwin environment. Was not able to reproduce this with other OS's.
-      This finally takes barrier synchronization work to 100%. Delay
-      statements for cygwin around barrier synchronization were removed.
+      Cygwin environment. Was not able to reproduce this with other OS's.
+      This takes barrier synchronization work to 100%. Delay statements
+      for Cygwin were removed around barrier synchronization.
 
-    * Optimization to writes on sockets. The print statement now does
-      string concatenation versus passing multiple arguments. Also removed
-      local $/ = $LF when reading from the queue socket. It's not required
-      there since using read and known size.
-         ./examples/foreach.pl 20000 runs in 1 second on a Macbook Pro
-
-      That has been my goal all along and finally reached it. Updated
-      benchmark results in foreach.pl, forchunk.pl and forseq.pl examples.
+    * Optimized writes to sockets. Arguments passed to print statements
+      are concatenated as one big string. Removed local $/ = $LF when
+      reading from the queue socket. It's not required there since using
+      read and known size. The foreach.pl example (very communication
+      intensive) can now do 20000 in 1 second on my Macbook Pro. Updated
+      benchmark results inside foreach.pl, forchunk.pl, and forseq.pl.
 
     * MAX_WORKERS, CHUNK_SIZE, TMP_DIR, FREEZE and THAW can be specified
       when loading the module. FREEZE and THAW allows one to choose an
       alternative serialization module if preferred for your project.
+
          use Sereal qw(encode_sereal decode_sereal);
          use MCE FREEZE => \&encode_sereal, THAW => \&decode_sereal;
 
     * Passing EXPORT_CONST => 1 will export 3 constants: SELF, CHUNK, CID
       The "my ($self, $chunk_ref, $chunk_id) = @_" line is not necessary.
-      This following is possible now to represent $_[0], $_[1], $_[2].
-         $_[SELF], $_[CHUNK], $_[CID]
+      $_[SELF], $_[CHUNK], $_[CID] refers to $_[0], $_[1], $_[2].
 
-    * A MCE::Util module was created containing the get_ncpu function.
+    * The MCE::Util module was created. It contains the get_ncpu function.
       This is largely borrowed from Test::Smoke::Util.pm. MCE supports
       'auto' when specifying max_workers. Read doc for other use case.
+
          max_workers => 'auto';  ## Same as MCE::Util::get_ncpu()
 
     * Re-factored code in preparation for the upcoming 1.5 release. The
       1.5 release will use just 3 socket pairs versus 4. I did not want
-      to include that change to this release. Therefore, I decided to
+      to include that change in this release. Therefore, I decided to
       take the upstream bug fixes and apply them to the 1.4 base.
 
       Re-factored documentation by making use of the full 78 character
       width per line. In addition tidbits on the new features mentioned
       above.
 
-    * Updated the README file.
+    * Updated the main README file under the top level dir.
 
 1.410 Tue May 28 23:30:00 EST 2013
     * Use threads under MSWin32 for 02* and 03* test scripts.

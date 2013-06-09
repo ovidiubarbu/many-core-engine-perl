@@ -55,7 +55,7 @@ BEGIN {
    }
 }
 
-our $VERSION = '1.411'; $VERSION = eval $VERSION;
+our $VERSION = '1.412'; $VERSION = eval $VERSION;
 
 ## PDL + MCE (spawning as threads) is not stable. Thanks goes to David Mertens
 ## for reporting on how he fixed it for his PDL::Parallel::threads module. The
@@ -1498,20 +1498,31 @@ sub do {
 ##
 ###############################################################################
 
-sub _parse_max_workers {
+{
+   my $_ncpu;
 
-   my MCE $self = shift;
+   sub _parse_max_workers {
 
-   if ($self && $self->{max_workers} =~ /^auto(?:$|\s*([\-\+])\s*(\d+)$)/) {
-      require MCE::Util unless $MCE::Util::VERSION;
-      $self->{max_workers} = MCE::Util::get_ncpu();
-      if ($1) {
-         $self->{max_workers} += (($1 eq '-') ? -1 * $2 : $2);
-         $self->{max_workers}  = 1 if $self->{max_workers} < 1;
+      my MCE $self = shift;
+      return unless $self;
+
+      if ($self->{max_workers} =~ /^auto(?:$|\s*([\-\+\/\*])\s*(.+)$)/i) {
+         require  MCE::Util unless $MCE::Util::VERSION;
+         $_ncpu = MCE::Util::get_ncpu() unless $_ncpu;
+
+         if ($1 && $2) {
+            local @_; $self->{max_workers} = eval "int($_ncpu $1 $2 + 0.5)";
+
+            $self->{max_workers} = 1
+               if (! $self->{max_workers} || $self->{max_workers} < 1);
+         }
+         else {
+            $self->{max_workers} = $_ncpu;
+         }
       }
-   }
 
-   return;
+      return;
+   }
 }
 
 sub _croak {
