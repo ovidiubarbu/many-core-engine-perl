@@ -23,9 +23,9 @@ BEGIN {
    ## Attempt 64-bit size, otherwize fall back to host machine's word length.
    {
       local $@; local $SIG{__DIE__} = \&_NOOP;
-      eval { $_que_read_size = length(pack('Q2', 0, 0)); };
+      eval { $_que_read_size = length pack('Q2', 0, 0); };
       $_que_template  = ($@) ? 'I2' : 'Q2';
-      $_que_read_size = length(pack($_que_template, 0, 0));
+      $_que_read_size = length pack($_que_template, 0, 0);
    }
 
    ## Determine the maximum number of files allowed.
@@ -1332,7 +1332,7 @@ sub exit {
       my $_task_id    = $self->{_task_id};
 
       if (defined $_DAT_LOCK) {
-         my $_len = length($_exit_msg);
+         my $_len = length $_exit_msg;
          local $\ = undef;
 
          $_exit_id =~ s/[\r\n][\r\n]*/ /mg;
@@ -1458,7 +1458,7 @@ sub do {
       _croak("MCE::sendto: method cannot be called by the manager process")
          unless ($self->{_wid});
 
-      return unless (defined $_[0]);
+      return unless defined $_[0];
 
       my ($_file, $_id);
       $_id = (exists $_sendto_lkup{$_to}) ? $_sendto_lkup{$_to} : undef;
@@ -1726,10 +1726,10 @@ sub _validate_args_s {
 
    $_dest_function[SENDTO_FILEV2] = sub {
 
-      return unless (defined $_value);
+      return unless defined $_value;
 
-      local $\ = undef;                           ## Content >> File
-      $_len = length(${ $_[0] });
+      local $\ = undef if defined $\;             ## Content >> File
+      $_len = length ${ $_[0] };
 
       flock $_DAT_LOCK, LOCK_EX;
       print $_OUT_W_SOCK OUTPUT_F_SND . $LF;
@@ -1741,8 +1741,8 @@ sub _validate_args_s {
 
    $_dest_function[SENDTO_STDOUT] = sub {
 
-      local $\ = undef;                           ## Content >> STDOUT
-      $_len = length(${ $_[0] });
+      local $\ = undef if defined $\;             ## Content >> STDOUT
+      $_len = length ${ $_[0] };
 
       flock $_DAT_LOCK, LOCK_EX;
       print $_OUT_W_SOCK OUTPUT_O_SND . $LF;
@@ -1754,8 +1754,8 @@ sub _validate_args_s {
 
    $_dest_function[SENDTO_STDERR] = sub {
 
-      local $\ = undef;                           ## Content >> STDERR
-      $_len = length(${ $_[0] });
+      local $\ = undef if defined $\;             ## Content >> STDERR
+      $_len = length ${ $_[0] };
 
       flock $_DAT_LOCK, LOCK_EX;
       print $_OUT_W_SOCK OUTPUT_E_SND . $LF;
@@ -1775,7 +1775,7 @@ sub _validate_args_s {
 
       die "Improper use of function call" unless ($_send_init_called);
 
-      local $\ = undef; my $_buffer;
+      local $\ = undef if defined $\; my $_buffer;
 
       unless (defined wantarray) {
          $_want_id = WANTS_UNDEF;
@@ -1790,7 +1790,7 @@ sub _validate_args_s {
       if (@$_data_ref > 0) {                      ## Multiple Args >> Callback
          if (@$_data_ref > 1 || ref $_data_ref->[0]) {
             $_buffer = $self->{freeze}($_data_ref);
-            $_len = length($_buffer);
+            $_len = length $_buffer;
 
             flock $_DAT_LOCK, LOCK_EX;
             print $_OUT_W_SOCK OUTPUT_A_CBK . $LF;
@@ -1800,7 +1800,7 @@ sub _validate_args_s {
             undef $_buffer;
          }
          else {                                   ## Scalar >> Callback
-            $_len = length($_data_ref->[0]);
+            $_len = length $_data_ref->[0];
 
             flock $_DAT_LOCK, LOCK_EX;
             print $_OUT_W_SOCK OUTPUT_S_CBK . $LF;
@@ -1824,7 +1824,7 @@ sub _validate_args_s {
          return;
       }
       elsif ($_want_id == WANTS_ARRAY) {
-         local $/ = $LF;
+         local $/ = $LF if (! $/ || $/ ne $LF);
 
          chomp($_len = <$_DAT_W_SOCK>);
          read $_DAT_W_SOCK, $_buffer, $_len;
@@ -1833,7 +1833,7 @@ sub _validate_args_s {
          return @{ $self->{thaw}($_buffer) };
       }
       else {
-         local $/ = $LF;
+         local $/ = $LF if (! $/ || $/ ne $LF);
 
          chomp($_want_id = <$_DAT_W_SOCK>);
          chomp($_len     = <$_DAT_W_SOCK>);
@@ -1912,7 +1912,7 @@ sub _validate_args_s {
    my ($_on_post_exit, $_on_post_run, $_sess_dir, $_task_id);
 
    my ($_DAT_R_SOCK, $_I_SEP, $_O_SEP, $_MCE_STDERR, $_MCE_STDOUT, $_RS);
-   my ($_OUT_R_SOCK, $_DAT_LOCK, $_SYN_LOCK);
+   my ($_OUT_R_SOCK, $_DAT_LOCK, $_SYN_LOCK, $_I_FLG, $_O_FLG, $_RS_FLG);
 
    ## Create hash structure containing various output functions.
 
@@ -2049,7 +2049,8 @@ sub _validate_args_s {
          my $_buffer;
 
          if ($_offset_pos >= $_input_size || $_aborted) {
-            local $\ = undef; print $_DAT_R_SOCK '0' . $LF;
+            local $\ = undef if defined $\;
+            print $_DAT_R_SOCK '0' . $LF;
             return;
          }
 
@@ -2069,7 +2070,7 @@ sub _validate_args_s {
             }
          }
 
-         local $\ = undef; $_len = length($_buffer);
+         local $\ = undef if defined $\; $_len = length $_buffer;
          print $_DAT_R_SOCK $_len . $LF . (++$_chunk_id) . $LF . $_buffer;
 
          $_offset_pos += $_chunk_size;
@@ -2087,12 +2088,13 @@ sub _validate_args_s {
          ## far as what was previously read into the buffer.
 
          if ($_eof_flag || $_aborted) {
-            local $\ = undef; print $_DAT_R_SOCK '0' . $LF;
+            local $\ = undef if defined $\;
+            print $_DAT_R_SOCK '0' . $LF;
             return;
          }
 
          {
-            local $/ = $_RS;
+            local $/ = $_RS if $_RS_FLG;
 
             if ($_chunk_size <= MAX_RECS_SIZE) {
                for (1 .. $_chunk_size) {
@@ -2113,7 +2115,7 @@ sub _validate_args_s {
             }
          }
 
-         local $\ = undef; $_len = length($_buffer);
+         local $\ = undef if defined $\; $_len = length $_buffer;
 
          print $_DAT_R_SOCK ($_len)
             ? $_len . $LF . (++$_chunk_id) . $LF . $_buffer
@@ -2136,7 +2138,7 @@ sub _validate_args_s {
 
          undef $_buffer;
 
-         local $\ = $_O_SEP; local $/ = $_I_SEP;
+         local $\ = $_O_SEP if $_O_FLG; local $/ = $_I_SEP if $_I_FLG;
          no strict 'refs';
 
          if ($_want_id == WANTS_UNDEF) {
@@ -2145,18 +2147,18 @@ sub _validate_args_s {
          elsif ($_want_id == WANTS_ARRAY) {
             my @_ret_a = $_callback->(@{ $_data_ref });
             $_buffer = $self->{freeze}(\@_ret_a);
-            local $\ = undef; $_len = length($_buffer);
+            local $\ = undef if defined $\; $_len = length $_buffer;
             print $_DAT_R_SOCK $_len . $LF . $_buffer;
          }
          else {
             my $_ret_s = $_callback->(@{ $_data_ref });
             unless (ref $_ret_s) {
-               local $\ = undef; $_len = length($_ret_s);
+               local $\ = undef if defined $\; $_len = length $_ret_s;
                print $_DAT_R_SOCK WANTS_SCALAR . $LF . $_len . $LF . $_ret_s;
             }
             else {
                $_buffer = $self->{freeze}($_ret_s);
-               local $\ = undef; $_len = length($_buffer);
+               local $\ = undef if defined $\; $_len = length $_buffer;
                print $_DAT_R_SOCK WANTS_REF . $LF . $_len . $LF . $_buffer;
             }
          }
@@ -2175,7 +2177,7 @@ sub _validate_args_s {
 
          read $_DAT_R_SOCK, $_buffer, $_len;
 
-         local $\ = $_O_SEP; local $/ = $_I_SEP;
+         local $\ = $_O_SEP if $_O_FLG; local $/ = $_I_SEP if $_I_FLG;
          no strict 'refs';
 
          if ($_want_id == WANTS_UNDEF) {
@@ -2184,18 +2186,18 @@ sub _validate_args_s {
          elsif ($_want_id == WANTS_ARRAY) {
             my @_ret_a = $_callback->($_buffer);
             $_buffer = $self->{freeze}(\@_ret_a);
-            local $\ = undef; $_len = length($_buffer);
+            local $\ = undef if defined $\; $_len = length $_buffer;
             print $_DAT_R_SOCK $_len . $LF . $_buffer;
          }
          else {
             my $_ret_s = $_callback->($_buffer);
             unless (ref $_ret_s) {
-               local $\ = undef; $_len = length($_ret_s);
+               local $\ = undef if defined $\; $_len = length $_ret_s;
                print $_DAT_R_SOCK WANTS_SCALAR . $LF . $_len . $LF . $_ret_s;
             }
             else {
                $_buffer = $self->{freeze}($_ret_s);
-               local $\ = undef; $_len = length($_buffer);
+               local $\ = undef if defined $\; $_len = length $_buffer;
                print $_DAT_R_SOCK WANTS_REF . $LF . $_len . $LF . $_buffer;
             }
          }
@@ -2211,7 +2213,7 @@ sub _validate_args_s {
          chomp($_want_id  = <$_DAT_R_SOCK>);
          chomp($_callback = <$_DAT_R_SOCK>);
 
-         local $\ = $_O_SEP; local $/ = $_I_SEP;
+         local $\ = $_O_SEP if $_O_FLG; local $/ = $_I_SEP if $_I_FLG;
          no strict 'refs';
 
          if ($_want_id == WANTS_UNDEF) {
@@ -2220,18 +2222,18 @@ sub _validate_args_s {
          elsif ($_want_id == WANTS_ARRAY) {
             my @_ret_a = $_callback->();
             $_buffer = $self->{freeze}(\@_ret_a);
-            local $\ = undef; $_len = length($_buffer);
+            local $\ = undef if defined $\; $_len = length $_buffer;
             print $_DAT_R_SOCK $_len . $LF . $_buffer;
          }
          else {
             my $_ret_s = $_callback->();
             unless (ref $_ret_s) {
-               local $\ = undef; $_len = length($_ret_s);
+               local $\ = undef if defined $\; $_len = length $_ret_s;
                print $_DAT_R_SOCK WANTS_SCALAR . $LF . $_len . $LF . $_ret_s;
             }
             else {
                $_buffer = $self->{freeze}($_ret_s);
-               local $\ = undef; $_len = length($_buffer);
+               local $\ = undef if defined $\; $_len = length $_buffer;
                print $_DAT_R_SOCK WANTS_REF . $LF . $_len . $LF . $_buffer;
             }
          }
@@ -2298,7 +2300,7 @@ sub _validate_args_s {
       ## ----------------------------------------------------------------------
 
       OUTPUT_B_SYN.$LF => sub {                   ## Worker barrier sync - beg
-         local $\ = undef;
+         local $\ = undef if defined $\;
 
          if (!defined $_sync_cnt || $_sync_cnt == 0) {
             unless (defined $_SYN_LOCK) {
@@ -2410,9 +2412,9 @@ sub _validate_args_s {
       $_DAT_R_SOCK = $self->{_dat_r_sock};        ## For serialized reads
       $_OUT_R_SOCK = $self->{_out_r_sock};
 
-      $_RS    = $self->{RS} || $/;
-      $_O_SEP = $\; local $\ = undef;
-      $_I_SEP = $/; local $/ = $LF;
+      $_RS    = $self->{RS} || $/;    $_RS_FLG = (! $_RS || $_RS ne $LF);
+      $_O_SEP = $\; local $\ = undef; $_O_FLG  = defined $_O_SEP;
+      $_I_SEP = $/; local $/ = $LF;   $_I_FLG  = (! $_I_SEP || $_I_SEP ne $LF);
 
       ## Call on hash function if value exists in hash structure.
       ## Exit loop when all workers have completed or ended.
@@ -2463,10 +2465,8 @@ sub _validate_args_s {
 
 sub _sync_buffer_to_array {
 
-   my $_buffer_ref = $_[0]; my $_array_ref = $_[1]; my $_RS = $_[2];
+   my $_buffer_ref = $_[0]; my $_array_ref = $_[1];
    my $_cnt = 0;
-
-   local $/ = $_RS;
 
    open my $_MEM_FILE, '<', $_buffer_ref;
    binmode $_MEM_FILE;
@@ -2502,12 +2502,13 @@ sub _worker_read_handle {
    my $_use_slurpio = $self->{use_slurpio};
    my $_user_func   = $self->{user_func};
    my $_RS          = $self->{RS} || $/;
+   my $_RS_FLG      = (! $_RS || $_RS ne $LF);
 
    my ($_data_size, $_next, $_chunk_id, $_offset_pos, $_IN_FILE);
    my @_records = (); $_chunk_id = $_offset_pos = 0;
 
    $_data_size = ($_proc_type == READ_MEMORY)
-      ? length($$_input_data) : -s $_input_data;
+      ? length $$_input_data : -s $_input_data;
 
    if ($_chunk_size <= MAX_RECS_SIZE || $_proc_type == READ_MEMORY) {
       open    $_IN_FILE, '<', $_input_data or die "$_input_data: $!\n";
@@ -2528,11 +2529,12 @@ sub _worker_read_handle {
       ## Don't declare $_buffer with other vars above, instead it's done here.
       ## Doing so will fail with Perl 5.8.0 under Solaris 5.10 on large files.
 
+      local $/ = $_RS if $_RS_FLG;
       my $_buffer;
 
       ## Obtain the next chunk_id and offset position.
       {
-         local $\ = undef;
+         local $\ = undef if defined $\;
 
          read $_QUE_R_SOCK, $_next, QUE_READ_SIZE;
          ($_chunk_id, $_offset_pos) = unpack(QUE_TEMPLATE, $_next);
@@ -2548,7 +2550,6 @@ sub _worker_read_handle {
 
       ## Read data.
       if ($_chunk_size <= MAX_RECS_SIZE) {        ## One or many records.
-         local $/ = $_RS;
          seek $_IN_FILE, $_offset_pos, 0;
          if ($_chunk_size == 1) {
             $_buffer = <$_IN_FILE>;
@@ -2569,7 +2570,6 @@ sub _worker_read_handle {
          }
       }
       else {                                      ## Large chunk.
-         local $/ = $_RS;
          if ($_proc_type == READ_MEMORY) {
             seek $_IN_FILE, $_offset_pos, 0;
             if (read($_IN_FILE, $_buffer, $_chunk_size) == $_chunk_size) {
@@ -2590,7 +2590,7 @@ sub _worker_read_handle {
 
       ## Append the next offset position into the queue.
       {
-         local $\ = undef;
+         local $\ = undef if defined $\;
          print $_QUE_W_SOCK pack(QUE_TEMPLATE, $_chunk_id, tell $_IN_FILE);
       }
 
@@ -2604,7 +2604,7 @@ sub _worker_read_handle {
          }
          else {
             if ($_chunk_size > MAX_RECS_SIZE) {
-               _sync_buffer_to_array(\$_buffer, \@_records, $_RS);
+               _sync_buffer_to_array(\$_buffer, \@_records);
             }
             $_user_func->($self, \@_records, $_chunk_id);
          }
@@ -2642,6 +2642,8 @@ sub _worker_request_chunk {
    my $_use_slurpio = $self->{use_slurpio};
    my $_user_func   = $self->{user_func};
    my $_RS          = $self->{RS} || $/;
+   my $_RS_FLG      = (! $_RS || $_RS ne $LF);
+   my $_I_FLG       = (! $/ || $/ ne $LF);
 
    my ($_next, $_chunk_id, $_len, $_chunk_ref);
    my ($_output_tag, @_records);
@@ -2669,7 +2671,7 @@ sub _worker_request_chunk {
 
       ## Obtain the next chunk of data.
       {
-         local $\ = undef; local $/ = $LF;
+         local $\ = undef if defined $\; local $/ = $LF if $_I_FLG;
 
          flock $_DAT_LOCK, LOCK_EX;
          print $_OUT_W_SOCK $_output_tag . $LF;
@@ -2688,14 +2690,17 @@ sub _worker_request_chunk {
       ## Call user function.
       if ($_proc_type == REQUEST_ARRAY) {
          if ($_single_dim && $_chunk_size == 1) {
+            local $/ = $_RS if $_RS_FLG;
             $_user_func->($self, [ $_buffer ], $_chunk_id);
          }
          else {
             $_chunk_ref = $self->{thaw}($_buffer);
+            local $/ = $_RS if $_RS_FLG;
             $_user_func->($self, $_chunk_ref, $_chunk_id);
          }
       }
       else {
+         local $/ = $_RS if $_RS_FLG;
          if ($_use_slurpio) {
             $_user_func->($self, \$_buffer, $_chunk_id);
          }
@@ -2704,7 +2709,7 @@ sub _worker_request_chunk {
                $_user_func->($self, [ $_buffer ], $_chunk_id);
             }
             else {
-               _sync_buffer_to_array(\$_buffer, \@_records, $_RS);
+               _sync_buffer_to_array(\$_buffer, \@_records);
                $_user_func->($self, \@_records, $_chunk_id);
             }
          }
@@ -2763,7 +2768,7 @@ sub _worker_sequence_queue {
 
       ## Obtain the next chunk_id and sequence number.
       {
-         local $\ = undef;
+         local $\ = undef if defined $\;
 
          read $_QUE_R_SOCK, $_next, QUE_READ_SIZE;
          ($_chunk_id, $_offset) = unpack(QUE_TEMPLATE, $_next);
@@ -2995,7 +3000,7 @@ sub _worker_do {
    $self->{user_end}->($self) if (defined $self->{user_end});
 
    ## Notify the main process a worker has completed.
-   local $\ = undef;
+   local $\ = undef if defined $\;
 
    flock $_DAT_LOCK, LOCK_EX;
    print $_OUT_W_SOCK OUTPUT_W_DNE . $LF . $_task_id . $LF;
@@ -3190,8 +3195,7 @@ sub _worker_main {
    }
    elsif ($self->{_wid} == $self->{_total_workers}) {
       my $_COM_W_SOCK = $self->{_com_w_sock};
-      local $\ = undef;
-      print $_COM_W_SOCK $LF;
+      local $\ = undef; print $_COM_W_SOCK $LF;
    }
 
    ## Wait until MCE completes spawning or running.
