@@ -1,6 +1,11 @@
 
 Revision history for MCE
 
+1.413 Mon Jun 10 02:00:00 EST 2013
+
+    * Fixed typo: Changed local @_ to local $@ inside _parse_max_workers
+      before evaling.
+
 1.412 Sun Jun 09 14:00:00 EST 2013
 
     * Updated the main README file and CHANGES under 1.411 below.
