@@ -692,9 +692,7 @@ sub forseq {
 
 sub process {
 
-   my MCE $self = $_[0]; my $_input_data = $_[1]; my $_params_ref = $_[2];
-
-   @_ = ();
+   my MCE $self = $_[0];
 
    _croak("MCE::process: method cannot be called by the worker process")
       if ($self->{_wid});
@@ -703,11 +701,24 @@ sub process {
    _croak("MCE::process: method cannot be called while running")
       if ($self->{_total_running});
 
+   ## Parse args.
+   my ($_input_data, $_params_ref);
+
+   if (ref $_[1] eq 'HASH') {
+      $_input_data = $_[2]; $_params_ref = $_[1];
+   } else {
+      $_input_data = $_[1]; $_params_ref = $_[2];
+   }
+
+   @_ = ();
+
    ## Set input data.
    if (defined $_input_data) {
       $_params_ref->{input_data} = $_input_data;
-   } else {
-      _croak("MCE::process: 'input_data' is not specified")
+   }
+   elsif ( !defined $_params_ref->{input_data} &&
+           !defined $_params_ref->{sequence} ) {
+      _croak("MCE::process: 'input_data or sequence' is not specified");
    }
 
    ## Pass 0 to "not" auto-shutdown after processing.
