@@ -55,7 +55,7 @@ BEGIN {
    }
 }
 
-our $VERSION = '1.412'; $VERSION = eval $VERSION;
+our $VERSION = '1.413'; $VERSION = eval $VERSION;
 
 ## PDL + MCE (spawning as threads) is not stable. Thanks goes to David Mertens
 ## for reporting on how he fixed it for his PDL::Parallel::threads module. The
