@@ -1,6 +1,48 @@
 
 Revision history for MCE
 
+1.499 Tue Jun 11 12:20:00 EST 2013
+
+    * Stay tuned... More to come for the upcoming 1.5 release...
+
+    * IPC optimization. Localize $\ and $/ only as needed. Small tweak to
+      logic when specifying RS (record separator) for input data. This
+      change helped speed things up (a bigger impact than the next change).
+
+    * Removed one socket pair (output). The core IPC is done using 3 socket
+      pairs from 4 before. Later on, a new socket pair will be introduced for
+      an upcoming 1.5 feature. This and the change above takes MCE to faster
+      levels. Updated benchmark results inside foreach.pl, forseq.pl, and
+      forchunk.pl.
+
+      Before and after results with IPC optimization and 3 socket pairs.
+      Foreach is very communication intensive. Forseq is less so. Chunking is
+      actually faster behind the scene from previous. It's just that these
+      examples preserve output order as if processing serially. I've reached
+      my goal for forseq by reaching 60,000. A while back, foreach could
+      barely reach 18,000.
+                             (Before)      (After)
+         Parallel::Loops          600          600
+         $mce->foreach         20,000       22,500
+         $mce->forseq          55,000       65,500
+         $mce->forchunk       395,000      390,000
+
+    * Updated the process method. Allows sequence to be specified as an
+      option. Also allow the hash to be specified as the 1st or 2ndargument.
+
+         $mce->process( \@input_array, { options } );
+         $mce->process( { options }, [ 1..1000 ] );
+         $mce->process( { sequence => [ 20, 40, 2 ] } );
+
+    * The forseq method will now honor chunk_size greater than 1. Updated
+      docs with use case.
+
+    * Localize the input scalar $_ prior to calling user_func. Folks can
+      use $_ for input_data and sequence of numbers. Added section to docs
+      explaining DEFAULT INPUT SCALAR.
+
+    * Added CONST short for EXPORT_CONST, e.g. use MCE CONST => 1;
+
 1.413 Mon Jun 10 02:00:00 EST 2013
 
     * Fixed typo: Changed local @_ to local $@ inside _parse_max_workers
