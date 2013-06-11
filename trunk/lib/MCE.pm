@@ -95,7 +95,7 @@ sub import {
       $MCE::FREEZE      = shift and next if ($_arg eq 'FREEZE');
       $MCE::THAW        = shift and next if ($_arg eq 'THAW');
 
-      if ($_arg eq 'EXPORT_CONST') {
+      if ($_arg eq 'EXPORT_CONST' or $_arg eq 'CONST') {
          if (shift eq '1') {
             my $_package = caller();
             no strict 'refs'; no warnings 'redefine';
@@ -675,7 +675,7 @@ sub forseq {
    _croak("MCE::forseq: 'code_block' is not specified")
       unless (defined $_user_func);
 
-   $_params_ref->{chunk_size} = 1;
+ # $_params_ref->{chunk_size} = 1;            ## chunk_size > 1 allowed in 1.5
    $_params_ref->{sequence}   = $_sequence;
    $_params_ref->{user_func}  = $_user_func;
 
@@ -2579,16 +2579,19 @@ sub _worker_read_handle {
 
       ## Call user function.
       if ($_use_slurpio) {
+         local $_ = \$_buffer;
          $_user_func->($self, \$_buffer, $_chunk_id);
       }
       else {
          if ($_chunk_size == 1) {
+            local $_ = $_buffer;
             $_user_func->($self, [ $_buffer ], $_chunk_id);
          }
          else {
             if ($_chunk_size > MAX_RECS_SIZE) {
                _sync_buffer_to_array(\$_buffer, \@_records);
             }
+            local $_ = \@_records;
             $_user_func->($self, \@_records, $_chunk_id);
          }
       }
@@ -2673,25 +2676,30 @@ sub _worker_request_chunk {
       if ($_proc_type == REQUEST_ARRAY) {
          if ($_single_dim && $_chunk_size == 1) {
             local $/ = $_RS if $_RS_FLG;
+            local $_ = $_buffer;
             $_user_func->($self, [ $_buffer ], $_chunk_id);
          }
          else {
             $_chunk_ref = $self->{thaw}($_buffer);
             local $/ = $_RS if $_RS_FLG;
+            local $_ = ($_chunk_size == 1) ? $_chunk_ref->[0] : $_chunk_ref;
             $_user_func->($self, $_chunk_ref, $_chunk_id);
          }
       }
       else {
          local $/ = $_RS if $_RS_FLG;
          if ($_use_slurpio) {
+            local $_ = \$_buffer;
             $_user_func->($self, \$_buffer, $_chunk_id);
          }
          else {
             if ($_chunk_size == 1) {
+               local $_ = $_buffer;
                $_user_func->($self, [ $_buffer ], $_chunk_id);
             }
             else {
                _sync_buffer_to_array(\$_buffer, \@_records);
+               local $_ = \@_records;
                $_user_func->($self, \@_records, $_chunk_id);
             }
          }
@@ -2768,6 +2776,7 @@ sub _worker_sequence_queue {
       if ($_chunk_size == 1) {
          $_seq_n = $_offset * $_step + $_begin;
          $_seq_n = sprintf("%$_fmt", $_seq_n) if (defined $_fmt);
+         local $_ = $_seq_n;
          $_user_func->($self, $_seq_n, $_chunk_id);
       }
       else {
@@ -2791,6 +2800,7 @@ sub _worker_sequence_queue {
             }
          }
 
+         local $_ = \@_n;
          $_user_func->($self, \@_n, $_chunk_id);
       }
 
@@ -2848,12 +2858,12 @@ sub _worker_sequence_generator {
       if ($_wid == 1) {
          $self->{_next_jmp} = sub { goto _WORKER_SEQ_GEN__LAST; };
 
-         my $_seq_n = (defined $_fmt) ? sprintf("%$_fmt", $_next) : $_next;
+         local $_ = (defined $_fmt) ? sprintf("%$_fmt", $_next) : $_next;
 
          if ($_chunk_size > 1) {
-            $_user_func->($self, [ $_seq_n ], $_chunk_id);
+            $_user_func->($self, [ $_ ], $_chunk_id);
          } else {
-            $_user_func->($self, $_seq_n, $_chunk_id);
+            $_user_func->($self, $_, $_chunk_id);
          }
       }
    }
@@ -2867,8 +2877,8 @@ sub _worker_sequence_generator {
          return if ( $_flag && $_next > $_end);
          return if (!$_flag && $_next < $_end);
 
-         my $_seq_n = (defined $_fmt) ? sprintf("%$_fmt", $_next) : $_next;
-         $_user_func->($self, $_seq_n, $_chunk_id);
+         local $_ = (defined $_fmt) ? sprintf("%$_fmt", $_next) : $_next;
+         $_user_func->($self, $_, $_chunk_id);
 
          _WORKER_SEQ_GEN__NEXT_A:
 
@@ -2901,6 +2911,7 @@ sub _worker_sequence_generator {
 
          return unless (@_n > 0);
 
+         local $_ = \@_n;
          $_user_func->($self, \@_n, $_chunk_id);
 
          _WORKER_SEQ_GEN__NEXT_B:

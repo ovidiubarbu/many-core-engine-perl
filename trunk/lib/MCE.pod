@@ -5,7 +5,7 @@ MCE - Many-Core Engine for Perl. Provides parallel processing capabilities.
 
 =head1 VERSION
 
-This document describes MCE version 1.413
+This document describes MCE version 1.499
 
 =head1 DESCRIPTION
 
@@ -42,7 +42,7 @@ This is a simplistic use case of MCE running with 4 workers.
    Hello from 2
    Hello from 4
 
-=head2 EXPORT_CONST
+=head2 EXPORT_CONST, CONST
 
 The anonymous user_func above can be written using one less line. There are
 3 constants defined in MCE which are exportable. Using the constants in lieu
@@ -53,12 +53,14 @@ of 0,1,2 makes it more legible when accessing the array elements.
    ## The following exports SELF => 0, CHUNK => 1, CID => 2
 
    use MCE EXPORT_CONST => 1;
+   use MCE CONST => 1;     ## Allowed in 1.5 and later
 
    user_func => sub {
+    # my ($self, $chunk_ref, $chunk_id) = @_;
       print "Hello from ", $_[SELF]->wid, "\n";
    }
 
-=head2 OVERRIDE
+=head2 OVERRIDING DEFAULTS
 
 In addition to EXPORT_CONST, five additional arguments can be passed to MCE.
 This allows one to override the default configured in MCE.pm.
@@ -674,8 +676,7 @@ parallelize a serial loop with MCE.
 
 =head2 forseq ( $sequence_spec [, { options } ], sub { ... } )
 
-Forseq also implies chunk_size => 1 and cannot be overwritten. Sequence can be
-specified using a hash or an array reference.
+Sequence can be specified using a hash or an array reference.
 
    my $mce = MCE->new(
       max_workers => 3
@@ -690,6 +691,18 @@ specified using a hash or an array reference.
       my ($self, $n, $chunk_id) = @_;
       my $result = `ping 192.168.1.${n}`;
       ...
+   });
+
+MCE 1.5 allows chunk_size > 1. $n_seq is a reference pointing to an array of
+sequences below. Chunking reduces IPC overhead behind the scene. Chunk size
+is 1 when not specified.
+
+   $mce->forseq([ 20, 80 ], { chunk_size => 10 }, sub {
+      my ($self, $n_seq, $chunk_id) = @_;
+      for my $n ( @{ $n_seq } ) {
+         my $result = `ping 192.168.1.${n}`;
+         ...
+      }
    });
 
 =head2 process ( $input_data [, { options } ] )
@@ -710,12 +723,48 @@ user_end, or user_func will cause already spawned workers to shutdown and
 re-spawn automatically. Therefore, define these during instantiation if
 possible.
 
-   my $mce = MCE->new( ... );
+The below will cause workers to re-spawn after each process. It doesn't really
+matter for small jobs. One can create a few MCE instances. Perhaps the code
+block is different altogether.
 
-   $mce->spawn();
+   $mce->new( max_workers => 'auto' );
+
+   $mce->process( {
+      user_begin => sub { ## connect to DB },
+      user_func  => sub { ## process each row },
+      user_end   => sub { ## close handle to DB },
+   }, \@input_data );
+
+   $mce->process( {
+      user_begin => sub { ## connect to DB },
+      user_func  => sub { ## process each file },
+      user_end   => sub { ## close handle to DB },
+   }, "/list/of/files" );
+
+To have persistent workers, it's better to do the following instead. Workers
+will stay alive until told to shutdown or exiting of the script. Below is
+shown with overriding the default for max_workers.
+
+   use MCE MAX_WORKERS => 'auto';
+
+   $mce->new(
+      user_begin => sub { ## connect to DB },
+      user_func  => sub { ## process each chunk or row or host },
+      user_end   => sub { ## close handle to DB },
+   );
+
+   $mce->spawn();   ## Not necessary, unless you want to spawn early
+
+   $mce->process("/one/very_big_file/_mce_/will_chunk_in_parallel");
+   $mce->process(\@array_of_files_to_grep);
+   $mce->process("/path/to/host/list");
 
    $mce->process($array_ref);
    $mce->process($array_ref, { stdout_file => $output_file });
+
+   ## This was not allowed before. Fixed in 1.5.
+   $mce->process({ sequence => { begin => 10, end => 90, step 2 } });
+   $mce->process({ sequence => [ 10, 90, 2 ] });
 
    $mce->shutdown();
 
@@ -1508,6 +1557,86 @@ serve basis. All 4 workers run in parallel for the demonstration below.
    Worker 3 is exiting
    Worker 1 says Hello there: 4
    Worker 1 is exiting
+
+=head1 DEFAULT INPUT SCALAR
+
+Beginning with MCE 1.5, the input scalar $_ is localized prior to calling
+user_func for input_data and sequence of numbers. The following applies.
+
+## use_slurpio => 1:
+
+      $_ is a reference to the buffer e.g. $_ = \$_buffer;
+      $_ is a ref irregardless of whether chunk_size is 1 or greater
+
+      user_func => sub {
+       # my ($self, $chunk_ref, $chunk_id) = @_;
+         print ${ $_ };    ## $_ is same as $chunk_ref
+      }
+
+## chunk_size is greater than 1, use_slurpio => 0:
+
+      $_ is a reference to an array. $_ = \@_records; $_ = \@_seq_n;
+      $_ is same as $chunk_ref or $_[CHUNK]
+
+      user_func => sub {
+       # my ($self, $chunk_ref, $chunk_id) = @_;
+         for my $row ( @{ $_ } ) {
+            print $row, "\n";
+         }
+      }
+
+      use MCE CONST => 1;
+
+      user_func => sub {
+       # my ($self, $chunk_ref, $chunk_id) = @_;
+         for my $row ( @{ $_[CHUNK] } ) {
+            print $row, "\n";
+         }
+      }
+
+## chunk_size equals 1, use_slurpio => 0:
+
+      $_ contains the actual value. $_ = $_buffer; $_ = $seq_n;
+
+      ## Note that $_ and $chunk_ref are not the same below.
+      ## $chunk_ref is a reference to an array.
+
+      user_func => sub {
+       # my ($self, $chunk_ref, $chunk_id) = @_;
+         print $_, "\n;    ## Same as $chunk_ref->[0];
+      }
+
+      $mce->foreach("/path/to/file", sub {
+       # my ($self, $chunk_ref, $chunk_id) = @_;
+         print $_;         ## Same as $chunk_ref->[0];
+      });
+
+      ## However, that's not the case for the forseq method.
+      ## Both $_ and $n_seq are the same when chunk_size => 1.
+
+      $mce->forseq([ 1, 9 ], sub {
+       # my ($self, $n_seq, $chunk_id) = @_;
+         print $_, "\n";   ## Same as $n_seq
+      });
+
+In case you missed it, forseq will now apply the chunk_size option. Note that
+sequence can also be specified using an array reference. The below is the same
+as the example afterwards.
+
+   $mce->forseq( { begin => 10, end => 40, step => 2 }, ... );
+
+The code block receives an array containing the next 5 sequences. Chunk 1
+(chunk_id = 1) contains 10,12,14,16,18. $n_seq is a reference to an array,
+same as $_, due to chunk_size being greater than 1.
+
+   $mce->forseq( [ 10, 40000, 2 ], { chunk_size => 5 }, sub {
+    # my ($self, $n_seq, $chunk_id) = @_;
+      my @result;
+      for my $n ( @{ $_ } ) {
+         ... do work, append to result for 5
+      }
+      ... do something with result afterwards
+   });
 
 =head1 REQUIREMENTS
 
