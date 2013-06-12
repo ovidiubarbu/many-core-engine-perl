@@ -1437,7 +1437,7 @@ sub do {
       'stderr' => SENDTO_STDERR, 'STDERR' => SENDTO_STDERR
    );
 
-   my $_filev2_regx = qr/^([^:]+:)(.+)/;
+   my $_v2_regx = qr/^([^:]+:)(.+)/;
 
    sub sendto {
 
@@ -1448,15 +1448,15 @@ sub do {
 
       return unless defined $_[0];
 
-      my ($_file, $_id);
-      $_id = (exists $_sendto_lkup{$_to}) ? $_sendto_lkup{$_to} : undef;
+      my ($_dest, $_value);
+      $_dest = (exists $_sendto_lkup{$_to}) ? $_sendto_lkup{$_to} : undef;
 
-      if (!defined $_id) {
-         if (defined $_to && $_to =~ /$_filev2_regx/o) {
-            $_id = (exists $_sendto_lkup{$1}) ? $_sendto_lkup{$1} : undef;
-            $_file = $2;
+      if (!defined $_dest) {
+         if (defined $_to && $_to =~ /$_v2_regx/o) {
+            $_dest  = (exists $_sendto_lkup{$1}) ? $_sendto_lkup{$1} : undef;
+            $_value = $2;
          }
-         if (!defined $_id || ($_id == SENDTO_FILEV2 && !defined $_file)) {
+         if (!defined $_dest || ($_dest == SENDTO_FILEV2 && !defined $_value)) {
             my $_msg  = "\n";
                $_msg .= "MCE::sendto: improper use of method\n";
                $_msg .= "\n";
@@ -1470,13 +1470,13 @@ sub do {
          }
       }
 
-      if ($_id == SENDTO_FILEV1) {                ## sendto 'file', $a, $path
+      if ($_dest == SENDTO_FILEV1) {              ## sendto 'file', $a, $path
          return if (!defined $_[1] || @_ > 2);    ## Please switch to using V2
-         $_file = $_[1]; delete $_[1];            ## sendto 'file:/path', $a
-         $_id   = SENDTO_FILEV2;
+         $_value = $_[1]; delete $_[1];           ## sendto 'file:/path', $a
+         $_dest  = SENDTO_FILEV2;
       }
 
-      return _do_send($self, $_id, $_file, @_);
+      return _do_send($self, $_dest, $_value, @_);
    }
 }
 
