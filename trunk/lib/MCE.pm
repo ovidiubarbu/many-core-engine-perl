@@ -187,7 +187,7 @@ my %_valid_fields_user_task = map { $_ => 1 } qw(
 );
 
 my %_valid_fields = map { $_ => 1 } qw(
-   max_workers tmp_dir use_threads user_tasks task_end freeze thaw
+   max_workers tmp_dir use_threads user_tasks task_end freeze thaw queues
 
    chunk_size input_data sequence job_delay spawn_delay submit_delay RS
    flush_file flush_stderr flush_stdout stderr_file stdout_file use_slurpio
@@ -271,6 +271,7 @@ sub new {
    $self->{submit_delay} = $argv{submit_delay} || undef;
    $self->{on_post_exit} = $argv{on_post_exit} || undef;
    $self->{on_post_run}  = $argv{on_post_run}  || undef;
+   $self->{queues}       = $argv{queues}       || undef;
    $self->{sequence}     = $argv{sequence}     || undef;
    $self->{user_args}    = $argv{user_args}    || undef;
    $self->{user_begin}   = $argv{user_begin}   || undef;
@@ -447,42 +448,15 @@ sub spawn {
 
    flock $_COM_LOCK, LOCK_EX;
 
-   ## Create socket pair for communication channels between MCE and workers.
-   socketpair( $self->{_com_r_sock}, $self->{_com_w_sock},
-      AF_UNIX, SOCK_STREAM, PF_UNSPEC ) or die "socketpair: $!\n";
+   ## Create socket pairs for IPC.
+   $self->_create_socket_pair('_com_r_sock', '_com_w_sock', 0);
+   $self->_create_socket_pair('_dat_r_sock', '_dat_w_sock', 0);
+   $self->_create_socket_pair('_que_r_sock', '_que_w_sock', 1);
 
-   binmode $self->{_com_r_sock};                  ## Set binary mode
-   binmode $self->{_com_w_sock};
-
-   ## Create socket pair for data channels between MCE and workers.
-   socketpair( $self->{_dat_r_sock}, $self->{_dat_w_sock},
-      AF_UNIX, SOCK_STREAM, PF_UNSPEC ) or die "socketpair: $!\n";
-
-   binmode $self->{_dat_r_sock};                  ## Set binary mode
-   binmode $self->{_dat_w_sock};
-
-   ## Create socket pairs for queue channels between MCE and workers.
-   socketpair( $self->{_que_r_sock}, $self->{_que_w_sock},
-      AF_UNIX, SOCK_STREAM, PF_UNSPEC ) or die "socketpair: $!\n";
-
-   binmode $self->{_que_r_sock};                  ## Set binary mode
-   binmode $self->{_que_w_sock};
-
-   CORE::shutdown $self->{_que_r_sock}, 1;        ## No more writing
-   CORE::shutdown $self->{_que_w_sock}, 0;        ## No more reading
-
-   ## Autoflush handles. This is done this way versus the inclusion of the
-   ## large IO::Handle module just to call autoflush(1).
-   my $_old_hndl = select $self->{_com_r_sock}; $| = 1;
-                   select $self->{_com_w_sock}; $| = 1;
-                   select $self->{_dat_r_sock}; $| = 1;
-                   select $self->{_dat_w_sock}; $| = 1;
-                   select $self->{_que_r_sock}; $| = 1;
-                   select $self->{_que_w_sock}; $| = 1;
-
-   select $_old_hndl;
-
-   ## -------------------------------------------------------------------------
+   if (defined $self->{queues}) {
+      $self->_create_socket_pair('_qr_sock', '_qw_sock', 1, $_)
+         for (@{ $self->{queues} });
+   }
 
    $self->{_pids}   = (); $self->{_thrs}  = (); $self->{_tids} = ();
    $self->{_status} = (); $self->{_state} = (); $self->{_task} = ();
@@ -1164,6 +1138,15 @@ sub shutdown {
    }
 
    ## Close sockets.
+   if (defined $self->{queues}) {
+      for (@{ $self->{queues} }) {
+         CORE::shutdown $_->{_qr_sock}, 0;
+         CORE::shutdown $_->{_qw_sock}, 1;
+         close $_->{_qr_sock}; undef $_->{_qr_sock};
+         close $_->{_qw_sock}; undef $_->{_qw_sock};
+      }
+   }
+
    CORE::shutdown $self->{_que_r_sock}, 0;        ## Queue channels
    CORE::shutdown $self->{_que_w_sock}, 1;
    CORE::shutdown $self->{_dat_r_sock}, 2;        ## Data channels
@@ -1583,6 +1566,9 @@ sub _validate_args {
       _croak("$_tag: '$_s->{input_data}' does not exist")
          unless (-e $_s->{input_data});
    }
+
+   _croak("$_tag: 'queues' is not an ARRAY reference")
+      if ($_s->{queues} && ref $_s->{queues} ne 'ARRAY');
 
    _croak("$_tag: 'use_slurpio' is not 0 or 1")
       if ($_s->{use_slurpio} && $_s->{use_slurpio} !~ /\A[01]\z/);
@@ -3224,6 +3210,44 @@ sub _worker_main {
    close $_COM_LOCK; undef $_COM_LOCK;
 
    close STDERR; close STDOUT;
+
+   return;
+}
+
+###############################################################################
+## ----------------------------------------------------------------------------
+## Create socket pair.
+##
+###############################################################################
+
+sub _create_socket_pair {
+
+   my MCE $self  = $_[0]; my $_r_sock = $_[1]; my $_w_sock = $_[2];
+   my $_shutdown = $_[3]; my $_queue  = $_[4];
+
+   @_ = ();
+
+   die "Private method called" unless (caller)[0]->isa( ref($self) );
+
+   my $_obj = (defined $_queue) ? $_queue : $self;
+
+   socketpair( $_obj->{$_r_sock}, $_obj->{$_w_sock},
+      AF_UNIX, SOCK_STREAM, PF_UNSPEC ) or die "socketpair: $!\n";
+
+   binmode $_obj->{$_r_sock};
+   binmode $_obj->{$_w_sock};
+
+   if ($_shutdown) {
+      CORE::shutdown $_obj->{$_r_sock}, 1;        ## No more writing
+      CORE::shutdown $_obj->{$_w_sock}, 0;        ## No more reading
+   }
+
+   ## Autoflush handles. This is done this way versus the inclusion of the
+   ## large IO::Handle module just to call autoflush(1).
+   my $_old_hndl = select $_obj->{$_r_sock}; $| = 1;
+                   select $_obj->{$_w_sock}; $| = 1;
+
+   select $_old_hndl;
 
    return;
 }
