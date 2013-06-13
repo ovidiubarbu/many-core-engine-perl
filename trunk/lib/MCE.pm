@@ -2982,7 +2982,7 @@ sub _worker_do {
    if ($_run_mode eq 'sequence') {
       $self->_worker_sequence_queue();
    }
-   elsif (defined $self->{sequence}) {
+   elsif (defined $self->{sequence} && defined $self->{_task}->{sequence}) {
       $self->_worker_sequence_generator();
    }
    elsif ($_run_mode eq 'array') {
