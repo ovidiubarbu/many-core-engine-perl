@@ -1946,7 +1946,7 @@ sub _validate_args_s {
          if ($_has_user_tasks && $_task_id >= 0) {
             unless ($self->{_task}->[$_task_id]->{_total_running}) {
                if (defined $self->{user_tasks}->[$_task_id]->{task_end}) {
-                  $self->{user_tasks}->[$_task_id]->{task_end}();
+                  $self->{user_tasks}->[$_task_id]->{task_end}($self);
                }
             }
          }
@@ -2035,7 +2035,7 @@ sub _validate_args_s {
          if ($_has_user_tasks && $_task_id >= 0) {
             unless ($self->{_task}->[$_task_id]->{_total_running}) {
                if (defined $self->{user_tasks}->[$_task_id]->{task_end}) {
-                  $self->{user_tasks}->[$_task_id]->{task_end}();
+                  $self->{user_tasks}->[$_task_id]->{task_end}($self);
                }
             }
          }
@@ -3192,6 +3192,10 @@ sub _worker_main {
       on_post_exit on_post_run user_data user_error user_output
       _pids _state _status _thrs _tids
    )};
+
+   if (defined $self->{queues}) {
+      delete $_->{_q_data} for (@{ $self->{queues} });
+   }
 
    foreach (keys %_mce_spawned) {
       delete $_mce_spawned{$_} unless ($_ eq $_mce_sid);
