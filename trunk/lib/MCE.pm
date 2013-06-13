@@ -181,6 +181,11 @@ use constant {
 undef $_max_files; undef $_max_procs;
 undef $_que_read_size; undef $_que_template;
 
+my %_valid_fields_user_task = map { $_ => 1 } qw(
+   max_workers use_threads user_args user_begin user_end user_func
+   chunk_size sequence task_end
+);
+
 my %_valid_fields = map { $_ => 1 } qw(
    max_workers tmp_dir use_threads user_tasks task_end freeze thaw
 
@@ -300,6 +305,10 @@ sub new {
       $self->_parse_max_workers();
 
       for my $_task (@{ $self->{user_tasks} }) {
+         for (keys %{ $_task }) {
+            _croak("MCE::new: '$_' is not a valid constructor argument")
+               unless (exists $_valid_fields_user_task{$_});
+         }
          $_task->{max_workers} = $self->{max_workers}
             unless (defined $_task->{max_workers});
          $_task->{use_threads} = $self->{use_threads}
