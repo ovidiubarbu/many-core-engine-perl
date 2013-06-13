@@ -350,15 +350,17 @@ USER_TASKS
 -------------------------------------------------------------------------------
 
 The 1.2 release introduced the user_tasks option to allow for multiple roles.
-This option takes an array of tasks. Each task allows for 7 sub options:
-max_workers, use_threads, user_begin, user_func, user_end, sequence, and
-chunk_size (the latter 2 coming from 1.3).
+This option takes an array of tasks. Each task allows for 9 sub options.
 
-In addition, task_end can be specified for the manager process to run when
-all workers for that role have completed processing.
+   max_workers, use_threads, user_begin, user_func, user_end, user_args,
+   chunk_size, sequence, task_end
 
-Forking and threading can be inter-mixed among tasks except under Cygwin.
-Input data (if defined) can be processed by the first task only. The run
+Sequence and chunk_size were added in 1.3. User_args was introduced in 1.4.
+One can specify the task_end option for the manager process to run when all
+workers for that role have completed processing.
+
+Forking and threading can be inter-mixed among tasks unless running Cygwin.
+Input data (if defined) can be processed by the first task only. The run 
 method will remain running until all workers have completed processing.
 
 Visit this URL for further reading on the new user_tasks option.
