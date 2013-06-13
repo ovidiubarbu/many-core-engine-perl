@@ -181,30 +181,33 @@ use constant {
 undef $_max_files; undef $_max_procs;
 undef $_que_read_size; undef $_que_template;
 
-my %_valid_fields_user_task = map { $_ => 1 } qw(
-   max_workers use_threads user_args user_begin user_end user_func
-   chunk_size sequence task_end
-);
-
-my %_valid_fields = map { $_ => 1 } qw(
-   max_workers tmp_dir use_threads user_tasks task_end freeze thaw queues
-
-   chunk_size input_data sequence job_delay spawn_delay submit_delay RS
-   flush_file flush_stderr flush_stdout stderr_file stdout_file use_slurpio
-   user_args user_begin user_end user_func user_error user_output
-   on_post_exit on_post_run
-
-   _abort_msg _mce_sid _mce_tid _pids _run_mode _single_dim _thrs _tids _wid
-   _com_r_sock _com_w_sock _dat_r_sock _dat_w_sock _que_r_sock _que_w_sock
-   _exiting _exit_pid _total_exited _total_running _total_workers _task_wid
-   _send_cnt _sess_dir _spawned _state _status _task _task_id _wrk_status
-);
+## ** Attributes used internally and listed here.
+## _abort_msg _mce_sid _mce_tid _pids _run_mode _single_dim _thrs _tids _wid
+## _com_r_sock _com_w_sock _dat_r_sock _dat_w_sock _que_r_sock _que_w_sock
+## _exiting _exit_pid _total_exited _total_running _total_workers _task_wid
+## _send_cnt _sess_dir _spawned _state _status _task _task_id _wrk_status
+## _data _qr_sock _qw_sock
 
 my %_params_allowed_args = map { $_ => 1 } qw(
    chunk_size input_data sequence job_delay spawn_delay submit_delay RS
    flush_file flush_stderr flush_stdout stderr_file stdout_file use_slurpio
    user_args user_begin user_end user_func user_error user_output
    on_post_exit on_post_run
+);
+
+my %_valid_fields_new = map { $_ => 1 } qw(
+   max_workers tmp_dir use_threads user_tasks task_end freeze thaw queues
+   chunk_size input_data sequence job_delay spawn_delay submit_delay RS
+   flush_file flush_stderr flush_stdout stderr_file stdout_file use_slurpio
+   user_args user_begin user_end user_func user_error user_output
+   on_post_exit on_post_run
+);
+
+my %_valid_fields_queue = map { $_ => 1 } qw( name );
+
+my %_valid_fields_user_task = map { $_ => 1 } qw(
+   max_workers use_threads user_args user_begin user_end user_func
+   chunk_size sequence task_end
 );
 
 my ($_COM_LOCK, $_DAT_LOCK, $_SYN_LOCK);
@@ -291,13 +294,22 @@ sub new {
    ## Validation.
    for (keys %argv) {
       _croak("MCE::new: '$_' is not a valid constructor argument")
-         unless (exists $_valid_fields{$_});
+         unless (exists $_valid_fields_new{$_});
    }
 
    _croak("MCE::new: '$self->{tmp_dir}' is not a directory or does not exist")
       unless (-d $self->{tmp_dir});
    _croak("MCE::new: '$self->{tmp_dir}' is not writeable")
       unless (-w $self->{tmp_dir});
+
+   if (defined $self->{queues}) {
+      for my $_queue (@{ $self->{queues} }) {
+         for (keys %{ $_queue }) {
+            _croak("MCE::new: '$_' is not a valid queue constructor argument")
+               unless (exists $_valid_fields_queue{$_});
+         }
+      }
+   }
 
    if (defined $self->{user_tasks}) {
       _croak("MCE::new: 'user_tasks' is not an ARRAY reference")
@@ -307,7 +319,7 @@ sub new {
 
       for my $_task (@{ $self->{user_tasks} }) {
          for (keys %{ $_task }) {
-            _croak("MCE::new: '$_' is not a valid constructor argument")
+            _croak("MCE::new: '$_' is not a valid task constructor argument")
                unless (exists $_valid_fields_user_task{$_});
          }
          $_task->{max_workers} = $self->{max_workers}
@@ -454,8 +466,10 @@ sub spawn {
    $self->_create_socket_pair('_que_r_sock', '_que_w_sock', 1);
 
    if (defined $self->{queues}) {
-      $self->_create_socket_pair('_qr_sock', '_qw_sock', 1, $_)
-         for (@{ $self->{queues} });
+      for (@{ $self->{queues} }) {
+         $self->_create_socket_pair('_qr_sock', '_qw_sock', 1, $_);
+         $_->{_data} = [ ];
+      }
    }
 
    $self->{_pids}   = (); $self->{_thrs}  = (); $self->{_tids} = ();
@@ -1144,6 +1158,7 @@ sub shutdown {
          CORE::shutdown $_->{_qw_sock}, 1;
          close $_->{_qr_sock}; undef $_->{_qr_sock};
          close $_->{_qw_sock}; undef $_->{_qw_sock};
+         $_->{_data} = undef;
       }
    }
 
