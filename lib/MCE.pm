@@ -186,7 +186,7 @@ undef $_que_read_size; undef $_que_template;
 ## _com_r_sock _com_w_sock _dat_r_sock _dat_w_sock _que_r_sock _que_w_sock
 ## _exiting _exit_pid _total_exited _total_running _total_workers _task_wid
 ## _send_cnt _sess_dir _spawned _state _status _task _task_id _wrk_status
-## _data _qr_sock _qw_sock
+## _q_data _q_lkup _qr_sock _qw_sock
 
 my %_params_allowed_args = map { $_ => 1 } qw(
    chunk_size input_data sequence job_delay spawn_delay submit_delay RS
@@ -303,11 +303,20 @@ sub new {
       unless (-w $self->{tmp_dir});
 
    if (defined $self->{queues}) {
+      my $_qid = -1;
+
       for my $_queue (@{ $self->{queues} }) {
          for (keys %{ $_queue }) {
             _croak("MCE::new: '$_' is not a valid queue constructor argument")
                unless (exists $_valid_fields_queue{$_});
          }
+         _croak("MCE::new: 'name' is not specified for queue constructor")
+            unless (exists $_queue->{name});
+         _croak("MCE::new: 'name' is not unique for queue constructor")
+            if (exists $self->{_q_lkup}->{ $_queue->{name} });
+
+         $self->{_q_lkup}->{ $_queue->{name} } = ++$_qid;
+         $_queue->{_q_data} = [ ];
       }
    }
 
@@ -466,10 +475,8 @@ sub spawn {
    $self->_create_socket_pair('_que_r_sock', '_que_w_sock', 1);
 
    if (defined $self->{queues}) {
-      for (@{ $self->{queues} }) {
-         $self->_create_socket_pair('_qr_sock', '_qw_sock', 1, $_);
-         $_->{_data} = [ ];
-      }
+      $self->_create_socket_pair('_qr_sock', '_qw_sock', 1, $_)
+         for (@{ $self->{queues} });
    }
 
    $self->{_pids}   = (); $self->{_thrs}  = (); $self->{_tids} = ();
@@ -1158,7 +1165,6 @@ sub shutdown {
          CORE::shutdown $_->{_qw_sock}, 1;
          close $_->{_qr_sock}; undef $_->{_qr_sock};
          close $_->{_qw_sock}; undef $_->{_qw_sock};
-         $_->{_data} = undef;
       }
    }
 
