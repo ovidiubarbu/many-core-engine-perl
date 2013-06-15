@@ -11,8 +11,8 @@
 ##
 ## Parallel::Loops..:       600  Forking each @input is expensive
 ## MCE foreach......:    22,500  Sends result after each @input
-## MCE forseq.......:    65,500  Loops through sequence of numbers
-## MCE forchunk.....:   390,000  Chunking reduces overhead
+## MCE forseq.......:    65,000  Loops through sequence of numbers
+## MCE forchunk.....:   450,000  Chunking reduces overhead
 ##
 ## usage: forchunk.pl [ size ]
 ##
@@ -46,7 +46,7 @@ my @input_data = (0 .. $size - 1);
 my (%result, $start, $end);
 
 my $max_workers = 3;
-my $chunk_size  = 500;
+my $chunk_size  = 2500;
 my $order_id    = 1;
 
 ## Callback function for displaying results. Output order is preserved.

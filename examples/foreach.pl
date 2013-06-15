@@ -11,8 +11,8 @@
 ##
 ## Parallel::Loops..:       600  Forking each @input is expensive
 ## MCE foreach......:    22,500  Sends result after each @input
-## MCE forseq.......:    65,500  Loops through sequence of numbers
-## MCE forchunk.....:   390,000  Chunking reduces overhead
+## MCE forseq.......:    65,000  Loops through sequence of numbers
+## MCE forchunk.....:   450,000  Chunking reduces overhead
 ##
 ## usage: foreach.pl [ size ]
 ##
