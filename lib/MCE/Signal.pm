@@ -45,8 +45,9 @@ sub _usage { _croak "MCE::Signal error: $_[0] is not a valid option"; }
 sub _flag  { 1; }
 
 my $_keep_tmp_dir = 0;
-my $_no_kill9     = 0;
 my $_no_sigmsg    = 0;
+my $_no_kill9     = 0;
+my $_kill9        = 0;
 my $_loaded;
 
 sub import {
@@ -62,14 +63,17 @@ sub import {
    while (my $_arg = shift) {
 
       $_keep_tmp_dir = _flag() and next if ($_arg eq '-keep_tmp_dir');
-      $_no_kill9     = _flag() and next if ($_arg eq '-no_kill9');
       $_no_sigmsg    = _flag() and next if ($_arg eq '-no_sigmsg');
+
+      $_no_kill9     = _flag() and next if ($_arg eq '-no_kill9');
+      $_kill9        = _flag() and next if ($_arg eq '-kill9');
+
       $_no_setpgrp   = _flag() and next if ($_arg eq '-no_setpgrp');
       $_setpgrp      = _flag() and next if ($_arg eq '-setpgrp');
+
       $_use_dev_shm  = _flag() and next if ($_arg eq '-use_dev_shm');
 
       _usage($_arg) if ($_arg =~ /^-/);
-
       push @_export_args, $_arg;
    }
 
@@ -291,7 +295,7 @@ sub sys_cmd {
                   if ($_sig_name ne 'PIPE' && $_no_sigmsg == 0);
 
                kill('KILL', -$$, $main_proc_id)
-                  if ($_sig_name eq 'PIPE' || $_no_kill9 == 0);
+                  if ($_sig_name eq 'PIPE' || $_kill9 == 1);
             }
          }
       }
@@ -330,7 +334,7 @@ sub sys_cmd {
       ## ----------------------------------------------------------------------
 
       ## Exit thread/process with status.
-      if ($_is_sig == 1 && $_no_kill9 == 0) {
+      if ($_is_sig == 1 && $_kill9 == 1) {
          select(undef, undef, undef, 0.066) for (1..6);
       }
 
@@ -446,6 +450,9 @@ This document describes MCE::Signal version 1.499
 
  use MCE::Signal qw( [-keep_tmp_dir] [-use_dev_shm] );
 
+ use MCE;   ## MCE loads MCE::Signal when not present. Remember to load
+            ## MCE::Signal first for passed options to take effect.
+
 =head1 DESCRIPTION
 
 This package configures $SIG{HUP,INT,PIPE,QUIT,TERM,XCPU,XFSZ} to point to
@@ -457,11 +464,15 @@ and terminates itself.
 The location of temp dir resides under $ENV{TEMP} if defined, otherwise
 /dev/shm if writeable and -use_dev_shm is specified, or /tmp.
 
-The temp dir resides under $ENV{TEMP}/mce/ when running Perl on Microsoft
+The temp dir resides under $ENV{TEMP}/mce/ for native Perl on Microsoft
 Windows.
 
-As of MCE 1.405, MCE::Signal no longer calls setpgrp by default. If needed,
-just pass the -setpgrp option to MCE::Signal.
+As of MCE 1.405, MCE::Signal no longer calls setpgrp by default. Pass the
+-setpgrp option to MCE::Signal if needed.
+
+As of MCE 1.500, MCE::Signal no longer sends kill 9 by default after receiving
+a signal to terminate. Pass the -kill9 option to MCE::Signal if children are
+still present.
 
  ## Running MCE through Daemon::Control requires setpgrp to be called.
 
@@ -474,12 +485,10 @@ The following are available arguments and their meanings.
                      A message is displayed with the location afterwards
 
  -use_dev_shm      - Create the temporary directory under /dev/shm
-
- -no_kill9         - Do not kill -9 after receiving a signal to terminate
  -no_sigmsg        - Do not display a message when receiving a signal
+ -kill9            - Signal kill -9 after receiving a signal to terminate
 
  -setpgrp          - Calls setpgrp to set the process group for the process
-
                      Specify this option to ensure all workers terminate
                      when reading STDIN like so:
                         cat big_input_file | ./mce_script.pl | head -10
