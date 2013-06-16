@@ -447,8 +447,8 @@ This document describes MCE::Signal version 1.499
 
  use MCE::Signal qw( [-keep_tmp_dir] [-use_dev_shm] );
 
- use MCE;   ## MCE loads MCE::Signal when not present. Remember to load
-            ## MCE::Signal first for passed options to take effect.
+ use MCE;   ## MCE loads MCE::Signal when not present.
+            ## Include MCE::Signal first for options to take effect.
 
 =head1 DESCRIPTION
 
@@ -465,7 +465,7 @@ The temp dir resides under $ENV{TEMP}/mce/ for native Perl on Microsoft
 Windows.
 
 As of MCE 1.405, MCE::Signal no longer calls setpgrp by default. Pass the
--setpgrp option to MCE::Signal if needed.
+-setpgrp option to MCE::Signal to call setpgrp.
 
  ## Running MCE through Daemon::Control requires setpgrp to be called.
 
@@ -483,13 +483,12 @@ The following are available arguments and their meanings.
  -no_kill9         - Do not kill -9 after receiving a signal to terminate
 
  -setpgrp          - Calls setpgrp to set the process group for the process
+
                      Specify this option to ensure all workers terminate
                      when reading STDIN like so:
-
                         cat big_input_file | ./mce_script.pl | head -10
 
                      This works fine without the -setpgrp option:
-
                         ./mce_script.pl < big_input_file | head -10
 
 Nothing is exported by default. Exportable are 1 variable and 2 subroutines.
