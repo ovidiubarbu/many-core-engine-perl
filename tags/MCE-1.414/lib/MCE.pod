@@ -5,7 +5,7 @@ MCE - Many-Core Engine for Perl. Provides parallel processing capabilities.
 
 =head1 VERSION
 
-This document describes MCE version 1.413
+This document describes MCE version 1.414
 
 =head1 DESCRIPTION
 

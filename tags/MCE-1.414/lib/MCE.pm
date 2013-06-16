@@ -55,7 +55,7 @@ BEGIN {
    }
 }
 
-our $VERSION = '1.413'; $VERSION = eval $VERSION;
+our $VERSION = '1.414'; $VERSION = eval $VERSION;
 
 ## PDL + MCE (spawning as threads) is not stable. Thanks goes to David Mertens
 ## for reporting on how he fixed it for his PDL::Parallel::threads module. The
@@ -836,8 +836,10 @@ sub run {
 
    my ($_input_data, $_input_file, $_input_glob, $_seq);
    my ($_abort_msg, $_first_msg, $_run_mode, $_single_dim);
+   my $_has_user_tasks = (defined $self->{user_tasks});
+   my $_chunk_size = $self->{chunk_size};
 
-   $_seq = (defined $self->{user_tasks} && $self->{user_tasks}->[0]->{sequence})
+   $_seq = ($_has_user_tasks && $self->{user_tasks}->[0]->{sequence})
       ? $self->{user_tasks}->[0]->{sequence}
       : $self->{sequence};
 
@@ -845,8 +847,10 @@ sub run {
    if (defined $_seq) {
       my ($_begin, $_end, $_step, $_fmt) = (ref $_seq eq 'ARRAY')
          ? @{ $_seq } : ($_seq->{begin}, $_seq->{end}, $_seq->{step});
+      $_chunk_size = $self->{user_tasks}->[0]->{chunk_size}
+         if ($_has_user_tasks && $self->{user_tasks}->[0]->{chunk_size});
       $_run_mode  = 'sequence';
-      $_abort_msg = int(($_end - $_begin) / $_step / $self->{chunk_size}) + 1;
+      $_abort_msg = int(($_end - $_begin) / $_step / $_chunk_size) + 1;
       $_first_msg = 0;
    }
    elsif (defined $self->{input_data}) {
@@ -898,7 +902,6 @@ sub run {
 
    ## -------------------------------------------------------------------------
 
-   my $_chunk_size    = $self->{chunk_size};
    my $_sequence      = $self->{sequence};
    my $_user_args     = $self->{user_args};
    my $_use_slurpio   = $self->{use_slurpio};
@@ -929,12 +932,10 @@ sub run {
 
       my ($_wid, %_task0_wids);
 
-      my $_COM_R_SOCK     = $self->{_com_r_sock};
-      my $_submit_delay   = $self->{submit_delay};
-      my $_has_user_tasks = (defined $self->{user_tasks});
-      my $_frozen_params  = $self->{freeze}(\%_params);
-
-      my $_frozen_nodata  = $self->{freeze}(\%_params_nodata)
+      my $_COM_R_SOCK    = $self->{_com_r_sock};
+      my $_submit_delay  = $self->{submit_delay};
+      my $_frozen_params = $self->{freeze}(\%_params);
+      my $_frozen_nodata = $self->{freeze}(\%_params_nodata)
          if ($_has_user_tasks);
 
       if ($_has_user_tasks) { for (1 .. @{ $self->{_state} } - 1) {
@@ -1298,7 +1299,7 @@ sub abort {
       my $_next; read $_QUE_R_SOCK, $_next, QUE_READ_SIZE;
       print $_QUE_W_SOCK pack(QUE_TEMPLATE, 0, $_abort_msg);
 
-      if ($self->wid > 0) {
+      if ($self->{_wid} > 0) {
          flock $_DAT_LOCK, LOCK_EX;
          print $_OUT_W_SOCK OUTPUT_W_ABT . $LF;
          flock $_DAT_LOCK, LOCK_UN;
@@ -2364,6 +2365,9 @@ sub _validate_args_s {
       $_has_user_tasks = (defined $self->{user_tasks});
       $_aborted = $_chunk_id = $_eof_flag = 0;
 
+      $_chunk_size = $self->{user_tasks}->[0]->{chunk_size}
+         if ($_has_user_tasks && $self->{user_tasks}->[0]->{chunk_size});
+
       if (defined $_input_data && ref $_input_data eq 'ARRAY') {
          $_input_size = @$_input_data;
          $_offset_pos = 0;
@@ -2968,7 +2972,7 @@ sub _worker_do {
    if ($_run_mode eq 'sequence') {
       $self->_worker_sequence_queue();
    }
-   elsif (defined $self->{sequence}) {
+   elsif (defined $self->{_task}->{sequence}) {
       $self->_worker_sequence_generator();
    }
    elsif ($_run_mode eq 'array') {

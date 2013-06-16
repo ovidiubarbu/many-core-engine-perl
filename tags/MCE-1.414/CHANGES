@@ -1,6 +1,12 @@
 
 Revision history for MCE
 
+1.414 Sun Jun 16 13:00:00 EST 2013
+
+    * Upstream bug fixes. Mainly chunk_size was not honored when specifying
+      user_tasks and sequence/chunk_size for the first task. Bug is with
+      not setting abort_msg correctly.
+
 1.413 Mon Jun 10 02:00:00 EST 2013
 
     * Fixed typo: Changed local @_ to local $@ inside _parse_max_workers
