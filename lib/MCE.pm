@@ -836,22 +836,19 @@ sub run {
 
    my ($_input_data, $_input_file, $_input_glob, $_seq);
    my ($_abort_msg, $_first_msg, $_run_mode, $_single_dim);
+   my $_has_user_tasks = (defined $self->{user_tasks});
+   my $_chunk_size = $self->{chunk_size};
 
-   $_seq = (defined $self->{user_tasks} && $self->{user_tasks}->[0]->{sequence})
+   $_seq = ($_has_user_tasks && $self->{user_tasks}->[0]->{sequence})
       ? $self->{user_tasks}->[0]->{sequence}
       : $self->{sequence};
 
    ## Determine run mode for workers.
    if (defined $_seq) {
-      my $_chunk_size = $self->{chunk_size};
-
       my ($_begin, $_end, $_step, $_fmt) = (ref $_seq eq 'ARRAY')
          ? @{ $_seq } : ($_seq->{begin}, $_seq->{end}, $_seq->{step});
-
-      if (defined $self->{user_tasks}) {
-         $_chunk_size = $self->{user_tasks}->[0]->{chunk_size}
-            if (defined $self->{user_tasks}->[0]->{chunk_size});
-      }
+      $_chunk_size = $self->{user_tasks}->[0]->{chunk_size}
+         if ($_has_user_tasks && $self->{user_tasks}->[0]->{chunk_size});
       $_run_mode  = 'sequence';
       $_abort_msg = int(($_end - $_begin) / $_step / $_chunk_size) + 1;
       $_first_msg = 0;
@@ -905,7 +902,6 @@ sub run {
 
    ## -------------------------------------------------------------------------
 
-   my $_chunk_size    = $self->{chunk_size};
    my $_sequence      = $self->{sequence};
    my $_user_args     = $self->{user_args};
    my $_use_slurpio   = $self->{use_slurpio};
@@ -936,12 +932,10 @@ sub run {
 
       my ($_wid, %_task0_wids);
 
-      my $_COM_R_SOCK     = $self->{_com_r_sock};
-      my $_submit_delay   = $self->{submit_delay};
-      my $_has_user_tasks = (defined $self->{user_tasks});
-      my $_frozen_params  = $self->{freeze}(\%_params);
-
-      my $_frozen_nodata  = $self->{freeze}(\%_params_nodata)
+      my $_COM_R_SOCK    = $self->{_com_r_sock};
+      my $_submit_delay  = $self->{submit_delay};
+      my $_frozen_params = $self->{freeze}(\%_params);
+      my $_frozen_nodata = $self->{freeze}(\%_params_nodata)
          if ($_has_user_tasks);
 
       if ($_has_user_tasks) { for (1 .. @{ $self->{_state} } - 1) {
@@ -2372,6 +2366,9 @@ sub _validate_args_s {
 
       $_has_user_tasks = (defined $self->{user_tasks});
       $_aborted = $_chunk_id = $_eof_flag = 0;
+
+      $_chunk_size = $self->{user_tasks}->[0]->{chunk_size}
+         if ($_has_user_tasks && $self->{user_tasks}->[0]->{chunk_size});
 
       if (defined $_input_data && ref $_input_data eq 'ARRAY') {
          $_input_size = @$_input_data;
