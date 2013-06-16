@@ -843,10 +843,17 @@ sub run {
 
    ## Determine run mode for workers.
    if (defined $_seq) {
+      my $_chunk_size = $self->{chunk_size};
+
       my ($_begin, $_end, $_step, $_fmt) = (ref $_seq eq 'ARRAY')
          ? @{ $_seq } : ($_seq->{begin}, $_seq->{end}, $_seq->{step});
+
+      if (defined $self->{user_tasks}) {
+         $_chunk_size = $self->{user_tasks}->[0]->{chunk_size}
+            if (defined $self->{user_tasks}->[0]->{chunk_size});
+      }
       $_run_mode  = 'sequence';
-      $_abort_msg = int(($_end - $_begin) / $_step / $self->{chunk_size}) + 1;
+      $_abort_msg = int(($_end - $_begin) / $_step / $_chunk_size) + 1;
       $_first_msg = 0;
    }
    elsif (defined $self->{input_data}) {
@@ -2983,7 +2990,7 @@ sub _worker_do {
    if ($_run_mode eq 'sequence') {
       _worker_sequence_queue($self);
    }
-   elsif (defined $self->{sequence} && defined $self->{_task}->{sequence}) {
+   elsif (defined $self->{_task}->{sequence}) {
       _worker_sequence_generator($self);
    }
    elsif ($_run_mode eq 'array') {
