@@ -47,7 +47,6 @@ sub _flag  { 1; }
 my $_keep_tmp_dir = 0;
 my $_no_sigmsg    = 0;
 my $_no_kill9     = 0;
-my $_kill9        = 0;
 my $_loaded;
 
 sub import {
@@ -64,9 +63,7 @@ sub import {
 
       $_keep_tmp_dir = _flag() and next if ($_arg eq '-keep_tmp_dir');
       $_no_sigmsg    = _flag() and next if ($_arg eq '-no_sigmsg');
-
       $_no_kill9     = _flag() and next if ($_arg eq '-no_kill9');
-      $_kill9        = _flag() and next if ($_arg eq '-kill9');
 
       $_no_setpgrp   = _flag() and next if ($_arg eq '-no_setpgrp');
       $_setpgrp      = _flag() and next if ($_arg eq '-setpgrp');
@@ -295,7 +292,7 @@ sub sys_cmd {
                   if ($_sig_name ne 'PIPE' && $_no_sigmsg == 0);
 
                kill('KILL', -$$, $main_proc_id)
-                  if ($_sig_name eq 'PIPE' || $_kill9 == 1);
+                  if ($_sig_name eq 'PIPE' || $_no_kill9 == 0);
             }
          }
       }
@@ -334,7 +331,7 @@ sub sys_cmd {
       ## ----------------------------------------------------------------------
 
       ## Exit thread/process with status.
-      if ($_is_sig == 1 && $_kill9 == 1) {
+      if ($_is_sig == 1 && $_no_kill9 == 0) {
          select(undef, undef, undef, 0.066) for (1..6);
       }
 
@@ -470,10 +467,6 @@ Windows.
 As of MCE 1.405, MCE::Signal no longer calls setpgrp by default. Pass the
 -setpgrp option to MCE::Signal if needed.
 
-As of MCE 1.500, MCE::Signal no longer sends kill 9 by default after receiving
-a signal to terminate. Pass the -kill9 option to MCE::Signal if children are
-still present.
-
  ## Running MCE through Daemon::Control requires setpgrp to be called.
 
  use MCE::Signal qw(-setpgrp);
@@ -485,15 +478,18 @@ The following are available arguments and their meanings.
                      A message is displayed with the location afterwards
 
  -use_dev_shm      - Create the temporary directory under /dev/shm
+
  -no_sigmsg        - Do not display a message when receiving a signal
- -kill9            - Signal kill -9 after receiving a signal to terminate
+ -no_kill9         - Do not kill -9 after receiving a signal to terminate
 
  -setpgrp          - Calls setpgrp to set the process group for the process
                      Specify this option to ensure all workers terminate
                      when reading STDIN like so:
+
                         cat big_input_file | ./mce_script.pl | head -10
 
                      This works fine without the -setpgrp option:
+
                         ./mce_script.pl < big_input_file | head -10
 
 Nothing is exported by default. Exportable are 1 variable and 2 subroutines.
