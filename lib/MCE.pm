@@ -208,11 +208,13 @@ my %_valid_fields_new = map { $_ => 1 } qw(
    on_post_exit on_post_run
 );
 
-my %_valid_fields_queue = map { $_ => 1 } qw( name );
+my %_valid_fields_queue = map { $_ => 1 } qw(
+   name
+);
 
 my %_valid_fields_task = map { $_ => 1 } qw(
    max_workers use_threads user_args user_begin user_end user_func
-   chunk_size sequence task_end
+   chunk_size input_data sequence task_end
 );
 
 my ($_COM_LOCK, $_DAT_LOCK, $_SYN_LOCK);
@@ -684,7 +686,7 @@ sub forseq {
    _croak("MCE::forseq: 'code_block' is not specified")
       unless (defined $_user_func);
 
- # $_params_ref->{chunk_size} = 1;            ## > 1 is allowed in 1.5+
+ # $_params_ref->{chunk_size} = 1;            ## > 1 is allowed in 1.415+
    $_params_ref->{sequence}   = $_sequence;
    $_params_ref->{user_func}  = $_user_func;
 
@@ -807,6 +809,7 @@ sub run {
 
    @_ = ();
 
+   my $_has_user_tasks = (defined $self->{user_tasks});
    my $_requires_shutdown = 0;
 
    ## Unset params if workers have been sent user_data via send.
@@ -825,6 +828,10 @@ sub run {
    ## Shutdown workers if determined by _sync_params or if processing a
    ## scalar reference. Workers need to be restarted in order to pick up
    ## on the new code blocks and/or scalar reference.
+
+   $self->{input_data} = $self->{user_tasks}->[0]->{input_data}
+      if ($_has_user_tasks && $self->{user_tasks}->[0]->{input_data});
+
    $self->shutdown()
       if ($_requires_shutdown || ref $self->{input_data} eq 'SCALAR');
 
@@ -841,7 +848,6 @@ sub run {
 
    my ($_input_data, $_input_file, $_input_glob, $_seq);
    my ($_abort_msg, $_first_msg, $_run_mode, $_single_dim);
-   my $_has_user_tasks = (defined $self->{user_tasks});
    my $_chunk_size = $self->{chunk_size};
 
    $_seq = ($_has_user_tasks && $self->{user_tasks}->[0]->{sequence})
@@ -1465,7 +1471,7 @@ sub do {
       _croak("MCE::sendto: method cannot be called by the manager process")
          unless ($self->{_wid});
 
-      return unless defined $_[0];
+      return unless (defined $_[0]);
 
       my ($_dest, $_value);
       $_dest = (exists $_sendto_lkup{$_to}) ? $_sendto_lkup{$_to} : undef;
@@ -1736,7 +1742,7 @@ sub _validate_args_s {
 
    $_dest_function[SENDTO_FILEV2] = sub {
 
-      return unless defined $_value;
+      return unless (defined $_value);
 
       local $\ = undef if defined $\;             ## Content >> File
       $_len = length ${ $_[0] };
@@ -1920,6 +1926,23 @@ sub _validate_args_s {
    my ($_DAT_R_SOCK, $_I_SEP, $_O_SEP, $_MCE_STDERR, $_MCE_STDOUT, $_RS);
    my ($_DAT_LOCK, $_SYN_LOCK, $_I_FLG, $_O_FLG, $_RS_FLG);
 
+   ## -------------------------------------------------------------------------
+   ## Call on task_end if the last worker for the task.
+
+   sub _task_end {
+
+      my $self = $_[0]; my $_task_id = $_[1];
+
+      unless ($self->{_task}->[$_task_id]->{_total_running}) {
+         if (defined $self->{user_tasks}->[$_task_id]->{task_end}) {
+            $self->{user_tasks}->[$_task_id]->{task_end}($self);
+         }
+      }
+
+      return;
+   }
+
+   ## -------------------------------------------------------------------------
    ## Create hash structure containing various output functions.
 
    my %_output_function = (
@@ -1948,14 +1971,8 @@ sub _validate_args_s {
             }
          }
 
-         ## Call on task_end if the last worker for the task.
-         if ($_has_user_tasks && $_task_id >= 0) {
-            unless ($self->{_task}->[$_task_id]->{_total_running}) {
-               if (defined $self->{user_tasks}->[$_task_id]->{task_end}) {
-                  $self->{user_tasks}->[$_task_id]->{task_end}($self);
-               }
-            }
-         }
+         _task_end($self, $_task_id)
+            if ($_has_user_tasks && $_task_id >= 0);
 
          return;
       },
@@ -2037,14 +2054,8 @@ sub _validate_args_s {
             };
          }
 
-         ## Call on task_end if the last worker for the task.
-         if ($_has_user_tasks && $_task_id >= 0) {
-            unless ($self->{_task}->[$_task_id]->{_total_running}) {
-               if (defined $self->{user_tasks}->[$_task_id]->{task_end}) {
-                  $self->{user_tasks}->[$_task_id]->{task_end}($self);
-               }
-            }
-         }
+         _task_end($self, $_task_id)
+            if ($_has_user_tasks && $_task_id >= 0);
 
          return;
       },
