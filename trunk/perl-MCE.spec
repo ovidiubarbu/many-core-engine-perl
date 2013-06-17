@@ -59,5 +59,5 @@ rm -rf $RPM_BUILD_ROOT
 %{_mandir}/man3/*
 
 %changelog
-* Sun Jun 11 2013 Mario Roy 1.499-1
+* Mon Jun 17 2013 Mario Roy 1.499-1
 - 1.499 Release.
