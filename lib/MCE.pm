@@ -17,7 +17,12 @@ use MCE::Signal;
 
 my ($_max_files, $_max_procs, $_que_read_size, $_que_template);
 
+my $_is_cygwin  = ($^O eq 'cygwin');
+my $_is_MSWin32 = ($^O eq 'MSWin32');
+my $_is_WinEnv  = ($_is_cygwin || $_is_MSWin32);
+
 BEGIN {
+
    ## Configure template to use for pack/unpack for writing to and reading from
    ## the queue. Each entry contains 2 positive numbers: chunk_id & msg_id.
    ## Attempt 64-bit size, otherwize fall back to host machine's word length.
@@ -29,7 +34,7 @@ BEGIN {
    }
 
    ## Determine the maximum number of files allowed.
-   unless ($^O eq 'MSWin32') {
+   unless ($_is_MSWin32) {
       my $_bash = (-x '/bin/bash') ? '/bin/bash' : undef;
          $_bash = '/usr/bin/bash' if (!$_bash && -x '/usr/bin/bash');
 
@@ -212,8 +217,6 @@ my %_valid_fields_task = map { $_ => 1 } qw(
 
 my ($_COM_LOCK, $_DAT_LOCK, $_SYN_LOCK);
 
-my $_is_cygwin    = ($^O eq 'cygwin');
-my $_is_MSWin32   = ($^O eq 'MSWin32');
 my %_mce_sess_dir = ();
 my %_mce_spawned  = ();
 my $_mce_count    = 0;
@@ -291,7 +294,9 @@ sub new {
    $self->{task_end}     = $argv{task_end}     || undef;
    $self->{RS}           = $argv{RS}           || undef;
 
+   ## -------------------------------------------------------------------------
    ## Validation.
+
    for (keys %argv) {
       _croak("MCE::new: '$_' is not a valid constructor argument")
          unless (exists $_valid_fields_new{$_});
@@ -301,24 +306,6 @@ sub new {
       unless (-d $self->{tmp_dir});
    _croak("MCE::new: '$self->{tmp_dir}' is not writeable")
       unless (-w $self->{tmp_dir});
-
-   if (defined $self->{queues}) {
-      my $_qid = -1;
-
-      for my $_queue (@{ $self->{queues} }) {
-         for (keys %{ $_queue }) {
-            _croak("MCE::new: '$_' is not a valid queue constructor argument")
-               unless (exists $_valid_fields_queue{$_});
-         }
-         _croak("MCE::new: 'name' is not specified for queue constructor")
-            unless (exists $_queue->{name});
-         _croak("MCE::new: 'name' is not unique for queue constructor")
-            if (exists $self->{_q_map}->{ $_queue->{name} });
-
-         $self->{_q_map}->{ $_queue->{name} } = ++$_qid;
-         $_queue->{_q_data} = [ ];
-      }
-   }
 
    if (defined $self->{user_tasks}) {
       _croak("MCE::new: 'user_tasks' is not an ARRAY reference")
@@ -353,8 +340,27 @@ sub new {
       }
    }
 
+   if (defined $self->{queues}) {
+      my $_qid = -1;
+
+      for my $_queue (@{ $self->{queues} }) {
+         for (keys %{ $_queue }) {
+            _croak("MCE::new: '$_' is not a valid queue constructor argument")
+               unless (exists $_valid_fields_queue{$_});
+         }
+         _croak("MCE::new: 'name' is not specified for queue constructor")
+            unless (exists $_queue->{name});
+         _croak("MCE::new: 'name' is not unique for queue constructor")
+            if (exists $self->{_q_map}->{ $_queue->{name} });
+
+         $self->{_q_map}->{ $_queue->{name} } = ++$_qid;
+         $_queue->{_q_data} = [ ];
+      }
+   }
+
    _validate_args($self); %argv = ();
 
+   ## -------------------------------------------------------------------------
    ## Private options.
 
    $self->{_pids}       = undef; ## Array for joining children when completed
@@ -382,13 +388,12 @@ sub new {
    $self->{_wrk_status} =     0; ## For saving exit status when worker exits
 
    ## -------------------------------------------------------------------------
-
    ## Limit chunk_size including max_workers -- allow for some headroom.
 
    $self->{chunk_size} = MAX_CHUNK_SIZE
       if ($self->{chunk_size} > MAX_CHUNK_SIZE);
 
-   if ($_is_cygwin || $_is_MSWin32) {
+   if ($_is_WinEnv) {
       $self->{max_workers} = 80
          if ($self->{use_threads} && $self->{max_workers} > 80);
       $self->{max_workers} = 56
@@ -972,7 +977,7 @@ sub run {
             if (defined $_submit_delay && $_submit_delay > 0.0);
       }
 
-      select(undef, undef, undef, 0.005) if ($_is_cygwin || $_is_MSWin32);
+      select(undef, undef, undef, 0.005) if ($_is_WinEnv);
 
       ## Obtain lock 2 of 2.
       open $_COM_LOCK, '+>>:raw:stdio', "$_sess_dir/_com.lock"
@@ -1366,7 +1371,7 @@ sub exit {
    threads->exit($_exit_status)
       if ($_has_threads && threads->can('exit'));
 
-   kill 9, $$ unless ($_is_cygwin || $_is_MSWin32);
+   kill 9, $$ unless ($_is_WinEnv);
 
    CORE::exit($_exit_status);
 }
@@ -3305,7 +3310,7 @@ sub _dispatch_child {
 
    unless ($_pid) {
       _worker_main($self, $_wid, $_task, $_task_id, $_task_wid, $_params);
-      kill 9, $$ unless ($_is_cygwin || $_is_MSWin32);
+      kill 9, $$ unless ($_is_WinEnv);
       CORE::exit();
    }
 
