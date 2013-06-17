@@ -9,7 +9,7 @@ MCE - Many-Core Engine for Perl. Provides parallel processing capabilities.
 
 <> VERSION
 
-This document describes MCE version 1.414
+This document describes MCE version 1.415
 
 <> DESCRIPTION
 
@@ -51,7 +51,7 @@ This is a simplistic use case of MCE running with 4 workers.
    Hello from 4
 
 -------------------------------------------------------------------------------
-EXPORT_CONST
+EXPORT_CONST, CONST
 -------------------------------------------------------------------------------
 
 The anonymous user_func above can be written using one less line. There are
@@ -63,13 +63,15 @@ of 0,1,2 makes it more legible when accessing the array elements.
    ## The following exports SELF => 0, CHUNK => 1, CID => 2
 
    use MCE EXPORT_CONST => 1;
+   use MCE CONST => 1;     ## Allowed in 1.415 and later
 
    user_func => sub {
+    # my ($self, $chunk_ref, $chunk_id) = @_;
       print "Hello from ", $_[SELF]->wid, "\n";
    }
 
 -------------------------------------------------------------------------------
-OVERRIDE
+OVERRIDING DEFAULTS
 -------------------------------------------------------------------------------
 
 In addition to EXPORT_CONST, five additional arguments can be passed to MCE.
@@ -104,7 +106,7 @@ Below, a new instance is configured with all available options.
           ## max_workers => 'Auto-1',    ## = MCE::Util::get_ncpu() - 1
           ## max_workers => 'AUTO + 3',  ## = MCE::Util::get_ncpu() + 3
           ## max_workers => 'AUTO * 1.5',
-          ## max_workers => 'auto / 1.333',
+          ## max_workers => 'auto / 1.333 + 2',
 
       chunk_size   => 2000,              ## Default $MCE::CHUNK_SIZE
 
@@ -348,14 +350,16 @@ USER_TASKS
 -------------------------------------------------------------------------------
 
 The 1.2 release introduced the user_tasks option to allow for multiple roles.
-This option takes an array of tasks. Each task allows for 7 sub options:
-max_workers, use_threads, user_begin, user_func, user_end, sequence, and
-chunk_size (the latter 2 coming from 1.3).
+This option takes an array of tasks. Each task allows for 9 sub options.
 
-In addition, task_end can be specified for the manager process to run when
-all workers for that role have completed processing.
+   max_workers, use_threads, user_begin, user_func, user_end, user_args,
+   chunk_size, sequence, task_end
 
-Forking and threading can be inter-mixed among tasks except under Cygwin.
+Sequence and chunk_size were added in 1.3. User_args was introduced in 1.4.
+One can specify the task_end option for the manager process to run when all
+workers for that role have completed processing.
+
+Forking and threading can be inter-mixed among tasks unless running Cygwin.
 Input data (if defined) can be processed by the first task only. The run
 method will remain running until all workers have completed processing.
 
@@ -736,8 +740,7 @@ parallelize a serial loop with MCE.
 forseq ( $sequence_spec [, { options } ], sub { ... } )
 -------------------------------------------------------------------------------
 
-Forseq also implies chunk_size => 1 and cannot be overwritten. Sequence can be
-specified using a hash or an array reference.
+Sequence can be specified using a hash or an array reference.
 
    my $mce = MCE->new(
       max_workers => 3
@@ -752,6 +755,18 @@ specified using a hash or an array reference.
       my ($self, $n, $chunk_id) = @_;
       my $result = `ping 192.168.1.${n}`;
       ...
+   });
+
+MCE 1.415 allows chunk_size > 1. $n_seq is a reference pointing to an array of
+sequences below. Chunking reduces IPC overhead behind the scene. Chunk size
+is 1 when not specified.
+
+   $mce->forseq([ 20, 80 ], { chunk_size => 10 }, sub {
+      my ($self, $n_seq, $chunk_id) = @_;
+      for my $n ( @{ $n_seq } ) {
+         my $result = `ping 192.168.1.${n}`;
+         ...
+      }
    });
 
 -------------------------------------------------------------------------------
@@ -774,12 +789,48 @@ user_end, or user_func will cause already spawned workers to shutdown and
 re-spawn automatically. Therefore, define these during instantiation if
 possible.
 
-   my $mce = MCE->new( ... );
+The below will cause workers to re-spawn after each process. It doesn't really
+matter for small jobs. One can create a few MCE instances. Perhaps the code
+block is different altogether.
 
-   $mce->spawn();
+   $mce->new( max_workers => 'auto' );
+
+   $mce->process( {
+      user_begin => sub { ## connect to DB },
+      user_func  => sub { ## process each row },
+      user_end   => sub { ## close handle to DB },
+   }, \@input_data );
+
+   $mce->process( {
+      user_begin => sub { ## connect to DB },
+      user_func  => sub { ## process each file },
+      user_end   => sub { ## close handle to DB },
+   }, "/list/of/files" );
+
+To have persistent workers, it's better to do the following instead. Workers
+will stay alive until told to shutdown or exiting of the script. Below is
+shown with overriding the default for max_workers.
+
+   use MCE MAX_WORKERS => 'auto';
+
+   $mce->new(
+      user_begin => sub { ## connect to DB },
+      user_func  => sub { ## process each chunk or row or host },
+      user_end   => sub { ## close handle to DB },
+   );
+
+   $mce->spawn();   ## Not necessary, unless you want to spawn early
+
+   $mce->process("/one/very_big_file/_mce_/will_chunk_in_parallel");
+   $mce->process(\@array_of_files_to_grep);
+   $mce->process("/path/to/host/list");
 
    $mce->process($array_ref);
    $mce->process($array_ref, { stdout_file => $output_file });
+
+   ## This was not allowed before. Fixed in 1.415.
+   $mce->process({ sequence => { begin => 10, end => 90, step 2 } });
+   $mce->process({ sequence => [ 10, 90, 2 ] });
 
    $mce->shutdown();
 
@@ -1267,9 +1318,9 @@ INCLUDED with DISTRIBUTION
              MCE utilizes a pool of workers.
 
              Parallel::Loops:     600  Forking each @input is expensive
-             MCE foreach....:  20,000  Sends result after each @input
-             MCE forseq.....:  55,000  Loops through sequence of numbers
-             MCE forchunk...: 395,000  Chunking reduces overhead
+             MCE foreach....:  21,500  Sends result after each @input
+             MCE forseq.....:  64,000  Loops through sequence of numbers
+             MCE forchunk...: 450,000  Chunking reduces overhead
 
    matmult/matmult_base.pl, matmult_mce.pl, strassen_mce.pl
              Various matrix multiplication demonstrations benchmarking

@@ -1,6 +1,40 @@
 
 Revision history for MCE
 
+1.415 Mon Jun 17 15:00:00 EST 2013
+
+    * Code-refactor in preparation for the upcoming 1.5 release.
+      This completes the 1.4x branch for a very solid and stable release.
+
+    * IPC optimization. Localize $\ and $/ only as needed. Small tweak to
+      logic when specifying RS (record separator) for input data.
+
+      Foreach is very communication intensive. Forseq is less so. Chunking
+      was made faster by increasing chunk size from 500 to 2500. I've reached
+      my goal for forseq by reaching 60,000+. A while back, foreach could
+      barely reach 18,000.
+
+         Before and after results with IPC optimization.
+
+                             (Before)      (After)
+         Parallel::Loops          600          600
+         $mce->foreach         20,000       21,500  (+  1,500)
+         $mce->forseq          55,000       64,000  (+  9,000)
+         $mce->forchunk       395,000      450,000  (+ 55,000)
+
+    * Updated the process method. Allows sequence to be specified as an
+      option. Also allow the hash to be specified as the 1st or 2nd
+      argument.
+
+         $mce->process( \@input_array, { options } );
+         $mce->process( { options }, [ 1..1000 ] );
+         $mce->process( { sequence => [ 20, 40, 2 ] } );
+
+    * The forseq method will now honor chunk_size greater than 1. Updated
+      docs with use case.
+
+    * Added CONST short for EXPORT_CONST, e.g. use MCE CONST => 1;
+
 1.414 Sun Jun 16 13:00:00 EST 2013
 
     * Upstream bug fixes. Mainly chunk_size was not honored when specifying
