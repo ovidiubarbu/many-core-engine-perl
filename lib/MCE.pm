@@ -139,6 +139,7 @@ sub import {
 use constant {
 
    MAX_CHUNK_SIZE => 24 * 1024 * 1024,   ## Set max constraints
+
    MAX_OPEN_FILES => $_max_files || 256,
    MAX_USER_PROCS => $_max_procs || 256,
 
@@ -148,23 +149,23 @@ use constant {
    QUE_TEMPLATE   => $_que_template,     ## Pack template for queue socket
    QUE_READ_SIZE  => $_que_read_size,    ## Read size
 
-   OUTPUT_W_ABT   => ':W~ABT',           ## Worker has aborted
-   OUTPUT_W_DNE   => ':W~DNE',           ## Worker has completed
-   OUTPUT_W_EXT   => ':W~EXT',           ## Worker has exited
+   OUTPUT_W_ABT   => 'W~ABT',            ## Worker has aborted
+   OUTPUT_W_DNE   => 'W~DNE',            ## Worker has completed
+   OUTPUT_W_EXT   => 'W~EXT',            ## Worker has exited
 
-   OUTPUT_A_ARY   => ':A~ARY',           ## Array  << Array
-   OUTPUT_S_GLB   => ':S~GLB',           ## Scalar << Glob FH
+   OUTPUT_A_ARY   => 'A~ARY',            ## Array  << Array
+   OUTPUT_S_GLB   => 'S~GLB',            ## Scalar << Glob FH
 
-   OUTPUT_A_CBK   => ':A~CBK',           ## Callback w/ multiple args
-   OUTPUT_S_CBK   => ':S~CBK',           ## Callback w/ 1 scalar arg
-   OUTPUT_N_CBK   => ':N~CBK',           ## Callback w/ no args
+   OUTPUT_A_CBK   => 'A~CBK',            ## Callback w/ multiple args
+   OUTPUT_S_CBK   => 'S~CBK',            ## Callback w/ 1 scalar arg
+   OUTPUT_N_CBK   => 'N~CBK',            ## Callback w/ no args
 
-   OUTPUT_O_SND   => ':O~SND',           ## Send >> STDOUT
-   OUTPUT_E_SND   => ':E~SND',           ## Send >> STDERR
-   OUTPUT_F_SND   => ':F~SND',           ## Send >> File
+   OUTPUT_O_SND   => 'O~SND',            ## Send >> STDOUT
+   OUTPUT_E_SND   => 'E~SND',            ## Send >> STDERR
+   OUTPUT_F_SND   => 'F~SND',            ## Send >> File
 
-   OUTPUT_B_SYN   => ':B~SYN',           ## Worker barrier sync - begin
-   OUTPUT_E_SYN   => ':E~SYN',           ## Worker barrier sync - end
+   OUTPUT_B_SYN   => 'B~SYN',            ## Worker barrier sync - begin
+   OUTPUT_E_SYN   => 'E~SYN',            ## Worker barrier sync - end
 
    READ_FILE      => 0,                  ## Worker reads file handle
    READ_MEMORY    => 1,                  ## Worker reads memory handle
