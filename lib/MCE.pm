@@ -482,6 +482,11 @@ sub spawn {
    _create_socket_pair($self, '_dat_r_sock', '_dat_w_sock', 0);
    _create_socket_pair($self, '_que_r_sock', '_que_w_sock', 1);
 
+   ## Place 1 char in one socket to ensure Perl loads the required modules
+   ## prior to spawning. The last worker spawned will perform the read.
+   $self->{_que_w_sock}->syswrite($LF);
+
+   ## Init queues.
    if (defined $self->{queues}) {
       _create_socket_pair($self, '_qr_sock', '_qw_sock', 1, $_)
          for (@{ $self->{queues} });
@@ -3230,8 +3235,9 @@ sub _worker_main {
       _worker_do($self, $_params); undef $_params;
    }
    elsif ($self->{_wid} == $self->{_total_workers}) {
-      my $_COM_W_SOCK = $self->{_com_w_sock};
+      my $_buffer; my $_COM_W_SOCK = $self->{_com_w_sock};
       local $\ = undef; print $_COM_W_SOCK $LF;
+      $self->{_que_r_sock}->sysread($_buffer, 1);
    }
 
    ## Wait until MCE completes spawning or running.

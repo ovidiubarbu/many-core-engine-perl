@@ -17,10 +17,11 @@ WriteMakefile(
    NAME           => 'MCE',
 
    PREREQ_PM => {
-      'Fcntl'      => 0,
-      'File::Path' => 0,
-      'Socket'     => 0,
-      'Storable'   => 2.04
+      'Fcntl'       => 0,
+      'File::Path'  => 0,
+      'Socket'      => 0,
+      'Storable'    => 2.04,
+      'Time::HiRes' => 0
    },
 
    VERSION        => '1.499',
