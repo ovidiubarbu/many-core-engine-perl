@@ -12,21 +12,21 @@ This document describes MCE version 1.499
  parallel workers. MCE enhances that model by adding the ability to chunk
  the next n elements from the input stream to the next available worker.
 
- Both chunking and input are optional in MCE. One can simply use MCE to have
- many workers run in parallel.
+ Both chunking and input data are optional in MCE. One can simply use MCE to
+ have many workers run in parallel.
 
  MCE uses domain sockets for IPC versus pipes. In fact, only 4 socket pairs
  are created for IPC no matter the number of workers. The upcoming 1.5 release
  will do IPC using just 3 socket pairs. One day, a physical box will have 400
- or more cores. MCE can spawn 960 workers (forking) for ulimit reporting 1024
+ or more cores. MCE can spawn 960 workers (via fork) for ulimit reporting 1024
  allowed for max user processes. Other parallel implementations using pipes
  cannot do this (only about half of ulimit -u).
 
 Use Cases for MCE.
 
  1. Both forking and threading are supported. Workers are children by default
-    (spawned via fork). Including threads in your script will have workers
-    spawned as threads automatically unless use_threads => 0 is specified.
+    (via fork). Including threads in your script will have workers spawn as
+    threads unless use_threads => 0 is specified.
 
  2. MCE can be used to process a single "large" file or process many "small"
     files in parallel. Performance against a single file is as fast as MMAP
