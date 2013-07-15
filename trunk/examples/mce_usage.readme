@@ -668,7 +668,7 @@ forchunk ( $input_data [, { options } ], sub { ... } )
 
 Forchunk, foreach, and forseq are sugar methods in MCE. Workers are
 automatically spawned, the code block is executed in parallel, and shutdown
-is called. Do not use these methods if workers need to persist afterwards.
+is called. Do not call these methods if workers must persist afterwards.
 
 Specifying options is optional. Valid options are the same as for the
 process method.
