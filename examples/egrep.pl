@@ -4,7 +4,7 @@
 ## Egrep script similar to the egrep binary.
 ##
 ## The logic below supports -c -e -h -i -m -n -q -v options. The main focus is
-## demonstrating Many-core Engine for Perl.
+## demonstrating Many-core Engine for Perl. Use this script for large file(s).
 ##
 ## This script was created to show how order can be preserved even though there
 ## are only 4 shared socket pairs in MCE no matter the number of workers.
@@ -54,7 +54,7 @@ DESCRIPTION
    The following options are available:
 
    --chunk_size CHUNK_SIZE
-          Specify chunk size for MCE          -- default: 220000
+          Specify chunk size for MCE          -- default: 300000
 
    --max_workers MAX_WORKERS
           Specify number of workers for MCE   -- default: 8
@@ -101,7 +101,7 @@ EXIT STATUS
 my $flag = sub { 1; };
 my $isOk = sub { (@ARGV == 0 or $ARGV[0] =~ /^-/) ? usage() : shift @ARGV; };
 
-my $chunk_size  = 220000;
+my $chunk_size  = 300000;
 my $max_workers = 8;
 my $skip_args   = 0;
 
@@ -166,24 +166,52 @@ $re = ($i_flag) ? qr/$re/i : qr/$re/;
 ##
 ###############################################################################
 
-## Defined user function to run in parallel.
+## Defined user functions to run in parallel.
+
+sub user_begin {
+
+   my ($self) = @_;
+
+   if ($c_flag) {
+      use vars qw($match_re $eol_re $count);
+      our $match_re = $re . '.*' . $/;
+      our $eol_re = $/;
+      our $count = 0;
+   }
+
+   return;
+}
 
 sub user_func {
 
    my ($self, $chunk_ref, $chunk_id) = @_;
    my ($found_match, @matches, $line_count, @lines);
 
-   ## Quickly determine if a match is found.
-  
-   for (0 .. @patterns - 1) {
+   ## Count and return immediately if -c was specified.
+
+   if ($c_flag) {
+      my $match_count = 0;
+      $match_count++ while ( $$chunk_ref =~ /$match_re/g );
+
       if ($v_flag) {
-         if ($$chunk_ref !~ /$patterns[$_]/) {
-            $found_match = 1; last;
-         }
+         $line_count = 0;
+         $line_count++ while ( $$chunk_ref =~ /$eol_re/g );
+         $count += $line_count - $match_count;
       }
       else {
+         $count += $match_count;
+      }
+
+      return;
+   }
+
+   ## Quickly determine if a match is found.
+
+   if (!$v_flag) {
+      for (0 .. @patterns - 1) {
          if ($$chunk_ref =~ /$patterns[$_]/) {
-            $found_match = 1; last;
+            $found_match = 1;
+            last;
          }
       }
    }
@@ -194,8 +222,10 @@ sub user_func {
    open my $_MEM_FH, '<', $chunk_ref;
    binmode $_MEM_FH;
 
-   unless ($found_match) {
-      1 while (<$_MEM_FH>);
+   if (!$v_flag && !$found_match) {
+      if ($n_flag) {
+         1 while (<$_MEM_FH>);
+      }
    }
    else {
       if ($v_flag) {
@@ -233,12 +263,25 @@ sub user_func {
    return;
 }
 
+sub user_end {
+
+   my ($self) = @_;
+
+   if ($c_flag) {
+      $self->do('aggregate_count', $count) if ($count);
+   }
+
+   return;
+}
+
 ## Instantiate Many-core Engine and spawn workers.
 
 my $mce = MCE->new(
    chunk_size  => $chunk_size,
    max_workers => $max_workers,
+   user_begin  => \&user_begin,
    user_func   => \&user_func,
+   user_end    => \&user_end,
    use_slurpio => 1
 );
 
@@ -258,6 +301,18 @@ my $total_lines   = 0;
 my $order_id      = 1;
 
 keys(%result) = 4000;
+
+## Callback function for aggregating count.
+
+sub aggregate_count {
+
+   my ($wk_count) = @_;
+
+   $total_matched += $wk_count;
+   $found_match = 1 if ($total_matched);
+
+   return;
+}
 
 ## Callback function for displaying results. Output order is preserved.
 
@@ -295,7 +350,7 @@ sub display_result {
          }
       }
 
-      $total_lines += $r->{line_count};
+      $total_lines += $r->{line_count} if ($n_flag);
 
       delete $result{$order_id};
       $order_id++;
@@ -306,7 +361,7 @@ sub display_result {
 
 sub display_total_matched {
 
-   if ($c_flag) {
+   if (!$q_flag && $c_flag) {
       printf "%s:", $file if ($multiple_files);
       print "$total_matched\n";
    }

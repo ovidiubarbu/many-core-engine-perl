@@ -4,7 +4,7 @@
 ## Word count script similar to the wc binary.
 ##
 ## The logic below does not support multi-byte characters. The main focus is
-## demonstrating Many-core Engine for Perl.
+## demonstrating Many-core Engine for Perl. Use this script for large file(s).
 ##
 ## The usage description was largely ripped off from the wc man page.
 ##
@@ -23,6 +23,7 @@ sub INIT {
    @ARGV = <@ARGV> if ($^O eq 'MSWin32');
 }
 
+use IPC::Open2;
 use MCE;
 
 ###############################################################################
@@ -50,10 +51,10 @@ DESCRIPTION
    The following options are available:
 
    --chunk_size CHUNK_SIZE
-          Specify chunk size for MCE          -- default: 220000
+          Specify chunk size for MCE          -- default: 500000
 
    --max_workers MAX_WORKERS
-          Specify number of workers for MCE   -- default: 4
+          Specify number of workers for MCE   -- default: 8
 
    -c     Display the number of bytes
    -l     Display the number of lines
@@ -96,8 +97,8 @@ EXAMPLES
 my $flag = sub { 1; };
 my $isOk = sub { (@ARGV == 0 or $ARGV[0] =~ /^-/) ? usage() : shift @ARGV; };
 
-my $chunk_size  = 220000;
-my $max_workers = 4;
+my $chunk_size  = 500000;
+my $max_workers = 8;
 my $skip_args   = 0;
 
 my $c_flag = 0;
@@ -136,13 +137,26 @@ if ($c_flag + $l_flag + $w_flag == 0) {
    $c_flag = $l_flag = $w_flag = 1;
 }
 
+my ($wc_cmd, $wc_args);
+
+if ($^O ne 'cygwin' && $^O ne 'MSWin32') {
+   $wc_cmd = (-x '/usr/bin/wc')
+           ? '/usr/bin/wc' : ((-x '/bin/wc') ? '/bin/wc' : undef);
+}
+
+if (defined $wc_cmd && ($l_flag || $w_flag)) {
+   $wc_args  = '-';
+   $wc_args .= 'l' if ($l_flag);
+   $wc_args .= 'w' if ($w_flag);
+}
+
 ###############################################################################
 ## ----------------------------------------------------------------------------
 ## Launch Many-core Engine.
 ##
 ###############################################################################
 
-## Called once per file -- before chunking.
+## Called once per file (prior to chunking) -- think of awk BEGIN { ... }
 
 sub user_begin {
 
@@ -152,16 +166,17 @@ sub user_begin {
    $self->{wk_words} = 0;
    $self->{wk_bytes} = 0;
 
-   $self->{wk_count_words} = sub {
-      my ($chunk_ref, $words) = ($_[0], 0);
-      $words++ while ($$chunk_ref =~ m!\S+!mg);
-      return $words;
-   };
+   use vars qw($wc_pid $wc_out $wc_in);
+   our ($wc_pid, $wc_out, $wc_in);
+
+   if (defined $wc_cmd && ($l_flag || $w_flag)) {
+      $wc_pid = open2($wc_out, $wc_in, "$wc_cmd $wc_args");
+   }
 
    return;
 }
 
-## This is called per each chunk of data -- think of forchuck { ... }
+## Called once per chunk of data -- think of forchuck { ... }
 
 sub user_func {
 
@@ -169,21 +184,27 @@ sub user_func {
    my $line_count;
 
    if ($l_flag || $w_flag) {
-      open my $_MEM_FH, '<', $chunk_ref;
-      binmode $_MEM_FH;
-      1 while <$_MEM_FH>;
-      $line_count = $.;
-      close $_MEM_FH;
-
-      $self->{wk_lines} += $line_count;
-   }
-
-   if ($w_flag) {
-      if (index($$chunk_ref, ' ') >= 0 || index($$chunk_ref, "\t") >= 0) {
-         $self->{wk_words} += $self->{wk_count_words}($chunk_ref);
+      if (defined $wc_cmd) {
+         syswrite($wc_in, $$chunk_ref);
       }
       else {
-         $self->{wk_words} += $line_count;
+         open my $_MEM_FH, '<', $chunk_ref;
+         binmode $_MEM_FH;
+         1 while <$_MEM_FH>;
+         $line_count = $.;
+         close $_MEM_FH;
+
+         $self->{wk_lines} += $line_count;
+
+         if ($w_flag) {
+            if (index($$chunk_ref, ' ') >= 0 || index($$chunk_ref, "\t") >= 0) {
+               my $words = 0; $words++ while ($$chunk_ref =~ m!\S+!mg);
+               $self->{wk_words} += $words;
+            }
+            else {
+               $self->{wk_words} += $line_count;
+            }
+         }
       }
    }
 
@@ -192,11 +213,34 @@ sub user_func {
    return;
 }
 
-## Called once per file -- after chunking.
+## Called once per file (after chunking) -- think of awk END { ... }
 
 sub user_end {
 
    my $self = shift;
+
+   if (defined $wc_cmd && ($l_flag || $w_flag)) {
+      close $wc_in;
+
+      my $result = <$wc_out>; chomp $result;
+
+      if ($result) {
+         if ($l_flag && $w_flag) {
+            if ($result =~ m/(\d+)\s+(\d+)/) {
+               $self->{wk_lines} = $1;
+               $self->{wk_words} = $2;
+            }
+         }
+         elsif ($l_flag) {
+            $self->{wk_lines} = $result;
+         }
+         else {
+            $self->{wk_words} = $result;
+         }
+      }
+
+      waitpid($wc_pid, 0);
+   }
 
    my %subtotal = (
       'lines' => $self->{wk_lines},
@@ -212,15 +256,13 @@ sub user_end {
 ## Instantiate Many-core Engine and spawn workers.
 
 my $mce = MCE->new(
-   user_begin  => \&user_begin,          ## Called before chunking
+   user_begin  => \&user_begin,          ## Called prior to chunking
    user_func   => \&user_func,           ## Think of forchunk { ... }
    user_end    => \&user_end,            ## Called after chunking
    chunk_size  => $chunk_size,
    max_workers => $max_workers,
    use_slurpio => 1
 );
-
-$mce->spawn();
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -274,7 +316,13 @@ if (@files > 0) {
          $exit_status = 1;
       }
       else {
-         $mce->process($file);
+         if ($c_flag && ($l_flag + $w_flag == 0)) {
+            $f_bytes  = -s $file;
+            $t_bytes += $f_bytes;
+         }
+         else {
+            $mce->process($file);
+         }
          display_result($f_lines, $f_words, $f_bytes, $file);
          $f_lines = $f_words = $f_bytes = 0;
       }
