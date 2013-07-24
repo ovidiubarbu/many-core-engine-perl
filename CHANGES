@@ -1,10 +1,64 @@
 
 Revision history for MCE
 
-1.499 Mon Jun 17 15:00:00 EST 2013
+1.499 Mon Jul 23 22:00:00 EST 2013
 
     * Stay tuned... More to come for the upcoming 1.5 release...
-      Queues with auto serialization (forking supported as well)
+      Queues with auto serialization (forking is supported as well)
+
+    * MCE 1.5.x is backwards compatible with 1.4.x and lower.
+
+    * All public methods can be called directly using the package name
+      and method e.g. MCE->wid, MCE->run.
+
+         MCE->new(
+            max_workers => 'auto',
+            user_func => sub {
+               my $wid = MCE->wid;
+               MCE->sendto('STDOUT', "Hello from $wid\n");
+            }
+         );
+
+         MCE->run;
+
+    * New option (name). Changes to other options are described below.
+
+      The task_end option can now be specified at the top level.
+      See docs for use case.
+
+      Input_data can be specified inside the first task instead of
+      having to specify this at the top level. Note that input_data
+      is ignored if specified for tasks having task_id > 0.
+
+         user_tasks => [{
+            input_data => \@list,
+            ...
+         },{
+            ...
+         }
+
+    * New public methods (chunk_id, name, freeze, thaw).
+
+    * Optimized the egrep.pl and wc.pl examples. These run much faster.
+      Try these out against large log files. Both examples fly.
+
+    * Barrier synchronization update. Two sockets are utilized instead of
+      two lock files. This, at last, now works wonderfully under the Cygwin
+      environment. For threading, the removal of the 2 lock files allows
+      one to have a greater number of threads within the limits of ulimit.
+      Previously, only about 1/3rd of ulimit -n was possible. One can now
+      spawn just under 1/2 of ulimit -- int(ulimit -n / 2 - 10).
+
+    * Removed the logic for determining MAX_OPEN_FILES and MAX_USER_PROCS.
+      MCE no longer limits on max_workers allowed.
+
+    * Documentation updates. Emphasis on user_tasks. In addition, updated
+      code snippets to use MCE->method convention when calling public
+      methods.
+
+    * Code refactor work. Added a private method _validate_runstate called
+      by various methods. Organized the code slightly such as placement of
+      methods.
 
     * Localize the input scalar $_ prior to calling user_func. Folks can
       use $_ for input_data and sequence of numbers. Added section to docs
@@ -18,7 +72,7 @@ Revision history for MCE
                              (Before)      (After)
          Parallel::Loops          600          600
          $mce->foreach         21,500       22,500  (+  1,000)
-         $mce->forseq          64,000       65,000  (+  1,000)
+         $mce->forseq          64,000       66,000  (+  2,000)
          $mce->forchunk       450,000      450,000
 
 1.415 Mon Jun 17 15:00:00 EST 2013
