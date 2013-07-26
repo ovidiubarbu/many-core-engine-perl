@@ -9,6 +9,8 @@ package MCE;
 use strict;
 use warnings;
 
+use Time::HiRes qw( time );
+
 use Fcntl qw( :flock O_RDONLY );
 use Socket qw( :DEFAULT :crlf );
 use Storable 2.04;
@@ -53,7 +55,7 @@ BEGIN {
    foreach my $_id (qw( freeze thaw )) {
       *{ $_id } = sub () {
          my $x = shift; my MCE $self = ref($x) ? $x : $MCE;
-         return $self->{$_id}->(@_);
+         return $self->{$_id}(@_);
       };
    }
 }
@@ -190,7 +192,8 @@ use constant {
 ## _com_r_sock _com_w_sock _dat_r_sock _dat_w_sock _que_r_sock _que_w_sock
 ## _exiting _exit_pid _total_exited _total_running _total_workers _task_wid
 ## _send_cnt _sess_dir _spawned _state _status _task _task_id _wrk_status
-## _q_data _q_map _qr_sock _qw_sock _com_lock _dat_lock
+## _i_app_st _i_app_tb _i_wrk_st _q_data _q_map _qr_sock _qw_sock
+## _com_lock _dat_lock
 
 my %_valid_fields_new = map { $_ => 1 } qw(
    name max_workers tmp_dir use_threads user_tasks task_end freeze thaw
@@ -198,20 +201,20 @@ my %_valid_fields_new = map { $_ => 1 } qw(
 
    chunk_size input_data sequence job_delay spawn_delay submit_delay RS
    flush_file flush_stderr flush_stdout stderr_file stdout_file use_slurpio
-   user_args user_begin user_end user_func user_error user_output
+   interval user_args user_begin user_end user_func user_error user_output
    on_post_exit on_post_run
 );
 
 my %_params_allowed_args = map { $_ => 1 } qw(
    chunk_size input_data sequence job_delay spawn_delay submit_delay RS
    flush_file flush_stderr flush_stdout stderr_file stdout_file use_slurpio
-   user_args user_begin user_end user_func user_error user_output
+   interval user_args user_begin user_end user_func user_error user_output
    on_post_exit on_post_run
 );
 
 my %_valid_fields_task = map { $_ => 1 } qw(
    name max_workers chunk_size input_data sequence task_end
-   user_args user_begin user_end user_func use_threads
+   interval user_args user_begin user_end user_func use_threads
 );
 
 my %_valid_fields_queue = map { $_ => 1 } qw(
@@ -281,6 +284,7 @@ sub new {
 
    $self->{name}          = $argv{name}          if (exists $argv{name});
    $self->{queues}        = $argv{queues}        if (exists $argv{queues});
+   $self->{interval}      = $argv{interval}      if (exists $argv{interval});
    $self->{input_data}    = $argv{input_data}    if (exists $argv{input_data});
    $self->{sequence}      = $argv{sequence}      if (exists $argv{sequence});
    $self->{job_delay}     = $argv{job_delay}     if (exists $argv{job_delay});
@@ -455,7 +459,7 @@ sub spawn {
 
    ## Obtain lock.
    open my $_COM_LOCK, '+>>:raw:stdio', "$_sess_dir/_com.lock"
-      or die "(S) open error $_sess_dir/_com.lock: $!\n";
+      or die "(M) open error $_sess_dir/_com.lock: $!\n";
 
    flock $_COM_LOCK, LOCK_EX;
 
@@ -554,12 +558,16 @@ sub spawn {
       local $/ = $LF; <$_COM_R_SOCK>;
    }
 
+   open my $_DAT_LOCK, '+>>:raw:stdio', "$_sess_dir/_dat.lock"
+      or die "(M) open error $_sess_dir/_dat.lock: $!\n";
+
+   $self->{_com_lock} = $_COM_LOCK;
+   $self->{_dat_lock} = $_DAT_LOCK;
    $self->{_send_cnt} = 0;
    $self->{_spawned}  = 1;
 
    ## Release lock.
    flock $_COM_LOCK, LOCK_UN;
-   close $_COM_LOCK; undef $_COM_LOCK;
 
    $SIG{__DIE__}  = $_die_handler;
    $SIG{__WARN__} = $_warn_handler;
@@ -879,6 +887,9 @@ sub run {
 
    ## -------------------------------------------------------------------------
 
+   my $_COM_LOCK      = $self->{_com_lock};
+   my $_DAT_LOCK      = $self->{_dat_lock};
+   my $_interval      = $self->{interval};
    my $_sequence      = $self->{sequence};
    my $_user_args     = $self->{user_args};
    my $_use_slurpio   = $self->{use_slurpio};
@@ -886,22 +897,22 @@ sub run {
    my $_total_workers = $self->{_total_workers};
    my $_send_cnt      = $self->{_send_cnt};
 
-   my $_COM_LOCK;
-
    ## Begin processing.
    unless ($_send_cnt) {
 
       my %_params = (
-         '_abort_msg'  => $_abort_msg,    '_run_mode'    => $_run_mode,
-         '_chunk_size' => $_chunk_size,   '_single_dim'  => $_single_dim,
-         '_input_file' => $_input_file,   '_sequence'    => $_sequence,
-         '_user_args'  => $_user_args,    '_use_slurpio' => $_use_slurpio
+         '_abort_msg'   => $_abort_msg,    '_run_mode'    => $_run_mode,
+         '_chunk_size'  => $_chunk_size,   '_single_dim'  => $_single_dim,
+         '_input_file'  => $_input_file,   '_sequence'    => $_sequence,
+         '_interval'    => $_interval,     '_user_args'   => $_user_args,
+         '_use_slurpio' => $_use_slurpio
       );
       my %_params_nodata = (
-         '_abort_msg'  => undef,          '_run_mode'    => 'nodata',
-         '_chunk_size' => $_chunk_size,   '_single_dim'  => $_single_dim,
-         '_input_file' => $_input_file,   '_sequence'    => $_sequence,
-         '_user_args'  => $_user_args,    '_use_slurpio' => $_use_slurpio
+         '_abort_msg'   => undef,          '_run_mode'    => 'nodata',
+         '_chunk_size'  => $_chunk_size,   '_single_dim'  => $_single_dim,
+         '_input_file'  => $_input_file,   '_sequence'    => $_sequence,
+         '_interval'    => $_interval,     '_user_args'   => $_user_args,
+         '_use_slurpio' => $_use_slurpio
       );
 
       local $\ = undef; local $/ = $LF;
@@ -921,9 +932,6 @@ sub run {
       }}
 
       ## Obtain lock 1 of 2.
-      open my $_DAT_LOCK, '+>>:raw:stdio', "$_sess_dir/_dat.lock"
-         or die "(R) open error $_sess_dir/_dat.lock: $!\n";
-
       flock $_DAT_LOCK, LOCK_EX;
 
       ## Insert the first message into the queue if defined.
@@ -950,19 +958,13 @@ sub run {
             if (defined $_submit_delay && $_submit_delay > 0.0);
       }
 
-      select(undef, undef, undef, 0.005) if ($_is_WinEnv);
-
       ## Obtain lock 2 of 2.
-      open $_COM_LOCK, '+>>:raw:stdio', "$_sess_dir/_com.lock"
-         or die "(R) open error $_sess_dir/_com.lock: $!\n";
-
       flock $_COM_LOCK, LOCK_EX;
 
       ## Release lock 1 of 2.
       flock $_DAT_LOCK, LOCK_UN;
-      select(undef, undef, undef, 0.002);
 
-      close $_DAT_LOCK; undef $_DAT_LOCK;
+      select(undef, undef, undef, 0.002);
    }
 
    ## -------------------------------------------------------------------------
@@ -1005,7 +1007,6 @@ sub run {
 
       ## Release lock 2 of 2.
       flock $_COM_LOCK, LOCK_UN;
-      close $_COM_LOCK; undef $_COM_LOCK;
    }
 
    $self->{_send_cnt} = 0;
@@ -1111,6 +1112,8 @@ sub shutdown {
 
    lock $_MCE_LOCK if ($_has_threads);            ## Obtain MCE lock.
 
+   my $_COM_LOCK      = $self->{_com_lock};
+   my $_DAT_LOCK      = $self->{_dat_lock};
    my $_COM_R_SOCK    = $self->{_com_r_sock};
    my $_mce_sid       = $self->{_mce_sid};
    my $_sess_dir      = $self->{_sess_dir};
@@ -1123,10 +1126,6 @@ sub shutdown {
 
    ## Notify workers to exit loop.
    local $\ = undef; local $/ = $LF;
-
-   open my $_DAT_LOCK, '+>>:raw:stdio', "$_sess_dir/_dat.lock"
-      or die "(S) open error $_sess_dir/_dat.lock: $!\n";
-
    flock $_DAT_LOCK, LOCK_EX;
 
    for (1 .. $_total_workers) {
@@ -1179,7 +1178,8 @@ sub shutdown {
       }
    }
 
-   close $_DAT_LOCK; undef $_DAT_LOCK;
+   close $_COM_LOCK; undef $_COM_LOCK; delete $self->{_com_lock};
+   close $_DAT_LOCK; undef $_DAT_LOCK; delete $self->{_dat_lock};
 
    ## Remove session directory.
    if (defined $_sess_dir) {
@@ -1196,7 +1196,7 @@ sub shutdown {
    $self->{_total_running} = $self->{_total_workers} = 0;
    $self->{_total_exited}  = 0;
 
-   select(undef, undef, undef, 0.082)
+   select(undef, undef, undef, 0.003)
       if ($self->{_mce_tid} ne '' && $self->{_mce_tid} ne '0');
 
    $self->{_mce_sid}  = $self->{_mce_tid}  = $self->{_sess_dir} = undef;
@@ -1248,6 +1248,33 @@ sub sync {
 
    ## Wait here until all workers (task_id 0) have un-synced.
    $_BSE_R_SOCK->sysread($_buffer, 1);
+
+   return;
+}
+
+###############################################################################
+## ----------------------------------------------------------------------------
+## Yield method.
+##
+###############################################################################
+
+sub yield {
+
+   my $x = shift; my MCE $self = ref($x) ? $x : $MCE;
+
+   return unless ($self->{_i_wrk_st});
+   return unless ($self->{_task_wid});
+
+   my $_delay = $self->{_i_wrk_st} - time();
+   my $_count;
+
+   if ($_delay < 0.0) {
+      $_count  = int($_delay * -1 / $self->{_i_app_tb} + 0.499) + 1;
+      $_delay += $self->{_i_app_tb} * $_count;
+   }
+
+   select(undef, undef, undef, $_delay) if ($_delay > 0.0);
+   $self->{_i_wrk_st} = time() if ($_count && $_count > 2000000000);
 
    return;
 }
@@ -1739,6 +1766,27 @@ sub _validate_args_s {
       ) {
          _croak("$_tag: impossible 'step' size for sequence");
       }
+   }
+
+   if (defined $_s->{interval}) {
+      my $_i = $_s->{interval};
+
+      _croak("$_tag: 'interval' is not a HASH reference")
+         if (ref $_i ne 'HASH');
+      _croak("$_tag: 'delay' is not defined for interval")
+         unless (defined $_i->{delay});
+
+      for (qw(delay max_nodes node_id)) {
+         _croak("$_tag: '$_' is not valid for interval")
+            if (defined $_i->{$_} && (
+               $_i->{$_} eq '' ||
+               $_i->{$_} !~ /\A\-?\d*(?:e\-|\.)?\d*\z/ ||
+               $_i->{$_} == 0 || $_i->{$_} < 0
+            ));
+      }
+      $_i->{max_nodes} = 1 unless (exists $_i->{max_nodes});
+      $_i->{node_id}   = 1 unless (exists $_i->{node_id});
+      $_i->{_time}     = time();
    }
 
    return;
@@ -3008,15 +3056,29 @@ sub _worker_do {
    my $_task_id    = $self->{_task_id};
 
    ## Do not override params if defined in user_tasks during instantiation.
-   for (qw(chunk_size sequence user_args)) {
+   for (qw(chunk_size interval sequence user_args)) {
       if (defined $_params_ref->{"_$_"}) {
          $self->{$_} = $_params_ref->{"_$_"}
             unless (defined $self->{_task}->{$_});
       }
    }
 
+   ## Set time_block & start_time values for interval.
+   if (defined $self->{interval}) {
+      my $_i     = $self->{interval};
+      my $_delay = $_i->{delay} * $_i->{max_nodes};
+
+      $self->{_i_app_tb} = $_delay * $self->{max_workers};
+
+      $self->{_i_app_st} =
+         $_i->{_time} + ($_delay / $_i->{max_nodes} * $_i->{node_id});
+
+      $self->{_i_wrk_st} =
+         ($self->{_task_wid} - 1) * $_delay + $self->{_i_app_st};
+   }
+
    ## Call user_begin if defined.
-   $self->{user_begin}->($self)
+   $self->{user_begin}($self)
       if (defined $self->{user_begin});
 
    ## Call worker function.
@@ -3047,7 +3109,7 @@ sub _worker_do {
    undef $self->{user_data} if (defined $self->{user_data});
 
    ## Call user_end if defined.
-   $self->{user_end}->($self)
+   $self->{user_end}($self)
       if (defined $self->{user_end});
 
    ## Notify the main process a worker has completed.
@@ -3206,6 +3268,7 @@ sub _worker_main {
    ## Use options from user_tasks if defined.
    $self->{max_workers}   = $_task->{max_workers}   if ($_task->{max_workers});
    $self->{chunk_size}    = $_task->{chunk_size}    if ($_task->{chunk_size});
+   $self->{interval}      = $_task->{interval}      if ($_task->{interval});
    $self->{sequence}      = $_task->{sequence}      if ($_task->{sequence});
    $self->{user_args}     = $_task->{user_args}     if ($_task->{user_args});
    $self->{user_begin}    = $_task->{user_begin}    if ($_task->{user_begin});
