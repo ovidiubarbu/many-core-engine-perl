@@ -1,7 +1,7 @@
 
 Revision history for MCE
 
-1.499 Mon Jul 23 22:00:00 EST 2013
+1.499 Mon Jul 25 23:30:00 EST 2013
 
     * Stay tuned... More to come for the upcoming 1.5 release...
       Queues with auto serialization (forking is supported as well)
@@ -21,7 +21,11 @@ Revision history for MCE
 
          MCE->run;
 
-    * New option (name). Changes to other options are described below.
+    * New example (interval.pl).
+
+    * New options (name, interval).
+
+      Changes to other options are described below.
 
       The task_end option can now be specified at the top level.
       See docs for use case.
@@ -37,7 +41,7 @@ Revision history for MCE
             ...
          }
 
-    * New public methods (chunk_id, name, freeze, thaw).
+    * New public methods (chunk_id, name, freeze, thaw, yield).
 
     * Optimized the egrep.pl and wc.pl examples. These run much faster.
       Try these out against large log files. Both examples fly.
@@ -49,14 +53,18 @@ Revision history for MCE
       Previously, only about 1/3rd of ulimit -n was possible. One can now
       spawn just under 1/2 of ulimit -- int(ulimit -n / 2 - 10).
 
+    * Core update. File handles to _com_lock and _dat_lock are created once
+      by the Manager process. Previously was 3 times -- opened and closed
+      by spawn, run, and shutdown.
+
     * Removed the logic for determining MAX_OPEN_FILES and MAX_USER_PROCS.
       MCE no longer limits on max_workers allowed.
 
     * Documentation updates. Emphasis on user_tasks. In addition, updated
       code snippets to use MCE->method convention when calling public
-      methods.
+      methods. New options and methods are documented as well.
 
-    * Code refactor work. Added a private method _validate_runstate called
+    * Code re-factor work. Added a private method _validate_runstate called
       by various methods. Organized the code slightly such as placement of
       methods.
 

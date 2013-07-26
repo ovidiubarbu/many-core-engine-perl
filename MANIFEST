@@ -17,6 +17,7 @@ examples/findnull.pl
 examples/forchunk.pl
 examples/foreach.pl
 examples/forseq.pl
+examples/interval.pl
 examples/matmult/README
 examples/matmult/matmult_base.pl
 examples/matmult/matmult_mce_d.pl
