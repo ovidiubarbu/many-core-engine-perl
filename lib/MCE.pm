@@ -79,7 +79,6 @@ use constant { SELF => 0, CHUNK => 1, CID => 2 };
 
 our $_MCE_LOCK : shared = 1;
 our $_has_threads;
-our $_use_queue;
 
 our $MAX_WORKERS = 1;
 our $CHUNK_SIZE  = 1;
@@ -133,7 +132,7 @@ sub import {
    }
 
    ## Instantiate a module-level instance.
-   $MCE = MCE->new( _module_instance => 1 );
+   $MCE = MCE->new( _module_instance => 1, max_workers => 0 );
 
    return;
 }
@@ -192,12 +191,10 @@ use constant {
 ## _com_r_sock _com_w_sock _dat_r_sock _dat_w_sock _que_r_sock _que_w_sock
 ## _exiting _exit_pid _total_exited _total_running _total_workers _task_wid
 ## _send_cnt _sess_dir _spawned _state _status _task _task_id _wrk_status
-## _i_app_st _i_app_tb _i_wrk_st _q_data _q_map _qr_sock _qw_sock
-## _com_lock _dat_lock
+## _i_app_st _i_app_tb _i_wrk_st _com_lock _dat_lock
 
 my %_valid_fields_new = map { $_ => 1 } qw(
    name max_workers tmp_dir use_threads user_tasks task_end freeze thaw
-   queues
 
    chunk_size input_data sequence job_delay spawn_delay submit_delay RS
    flush_file flush_stderr flush_stdout stderr_file stdout_file use_slurpio
@@ -213,12 +210,8 @@ my %_params_allowed_args = map { $_ => 1 } qw(
 );
 
 my %_valid_fields_task = map { $_ => 1 } qw(
-   name max_workers chunk_size input_data sequence task_end
-   interval user_args user_begin user_end user_func use_threads
-);
-
-my %_valid_fields_queue = map { $_ => 1 } qw(
-   name
+   name max_workers chunk_size input_data interval sequence task_end
+   user_args user_begin user_end user_func use_threads
 );
 
 our %_mce_sess_dir = ();
@@ -250,7 +243,9 @@ sub new {
    my $self = {}; bless($self, ref($class) || $class);
 
    ## Public options.
-   $self->{max_workers}   = $argv{max_workers}   || $MCE::MAX_WORKERS;
+   $self->{max_workers} = (exists $argv{max_workers})
+      ? $argv{max_workers} : $MCE::MAX_WORKERS;
+
    $self->{chunk_size}    = $argv{chunk_size}    || $MCE::CHUNK_SIZE;
    $self->{tmp_dir}       = $argv{tmp_dir}       || $MCE::TMP_DIR;
    $self->{freeze}        = $argv{freeze}        || $MCE::FREEZE;
@@ -282,32 +277,31 @@ sub new {
    $MCE::Signal::has_threads = 1
       if ($self->{use_threads} && !$MCE::Signal::has_threads);
 
-   $self->{name}          = $argv{name}          if (exists $argv{name});
-   $self->{queues}        = $argv{queues}        if (exists $argv{queues});
-   $self->{interval}      = $argv{interval}      if (exists $argv{interval});
-   $self->{input_data}    = $argv{input_data}    if (exists $argv{input_data});
-   $self->{sequence}      = $argv{sequence}      if (exists $argv{sequence});
-   $self->{job_delay}     = $argv{job_delay}     if (exists $argv{job_delay});
-   $self->{spawn_delay}   = $argv{spawn_delay}   if (exists $argv{spawn_delay});
-   $self->{submit_delay}  = $argv{submit_delay}  if (exists $argv{submit_delay});
-   $self->{on_post_exit}  = $argv{on_post_exit}  if (exists $argv{on_post_exit});
-   $self->{on_post_run}   = $argv{on_post_run}   if (exists $argv{on_post_run});
-   $self->{user_args}     = $argv{user_args}     if (exists $argv{user_args});
-   $self->{user_begin}    = $argv{user_begin}    if (exists $argv{user_begin});
-   $self->{user_func}     = $argv{user_func}     if (exists $argv{user_func});
-   $self->{user_end}      = $argv{user_end}      if (exists $argv{user_end});
-   $self->{user_error}    = $argv{user_error}    if (exists $argv{user_error});
-   $self->{user_output}   = $argv{user_output}   if (exists $argv{user_output});
-   $self->{stderr_file}   = $argv{stderr_file}   if (exists $argv{stderr_file});
-   $self->{stdout_file}   = $argv{stdout_file}   if (exists $argv{stdout_file});
-   $self->{user_tasks}    = $argv{user_tasks}    if (exists $argv{user_tasks});
-   $self->{task_end}      = $argv{task_end}      if (exists $argv{task_end});
-   $self->{RS}            = $argv{RS}            if (exists $argv{RS});
+   $self->{name}         = $argv{name}         if (exists $argv{name});
+   $self->{interval}     = $argv{interval}     if (exists $argv{interval});
+   $self->{input_data}   = $argv{input_data}   if (exists $argv{input_data});
+   $self->{sequence}     = $argv{sequence}     if (exists $argv{sequence});
+   $self->{job_delay}    = $argv{job_delay}    if (exists $argv{job_delay});
+   $self->{spawn_delay}  = $argv{spawn_delay}  if (exists $argv{spawn_delay});
+   $self->{submit_delay} = $argv{submit_delay} if (exists $argv{submit_delay});
+   $self->{on_post_exit} = $argv{on_post_exit} if (exists $argv{on_post_exit});
+   $self->{on_post_run}  = $argv{on_post_run}  if (exists $argv{on_post_run});
+   $self->{user_args}    = $argv{user_args}    if (exists $argv{user_args});
+   $self->{user_begin}   = $argv{user_begin}   if (exists $argv{user_begin});
+   $self->{user_func}    = $argv{user_func}    if (exists $argv{user_func});
+   $self->{user_end}     = $argv{user_end}     if (exists $argv{user_end});
+   $self->{user_error}   = $argv{user_error}   if (exists $argv{user_error});
+   $self->{user_output}  = $argv{user_output}  if (exists $argv{user_output});
+   $self->{stderr_file}  = $argv{stderr_file}  if (exists $argv{stderr_file});
+   $self->{stdout_file}  = $argv{stdout_file}  if (exists $argv{stdout_file});
+   $self->{user_tasks}   = $argv{user_tasks}   if (exists $argv{user_tasks});
+   $self->{task_end}     = $argv{task_end}     if (exists $argv{task_end});
+   $self->{RS}           = $argv{RS}           if (exists $argv{RS});
 
-   $self->{flush_file}    = $argv{flush_file}    || 0;
-   $self->{flush_stderr}  = $argv{flush_stderr}  || 0;
-   $self->{flush_stdout}  = $argv{flush_stdout}  || 0;
-   $self->{use_slurpio}   = $argv{use_slurpio}   || 0;
+   $self->{flush_file}   = $argv{flush_file}   || 0;
+   $self->{flush_stderr} = $argv{flush_stderr} || 0;
+   $self->{flush_stdout} = $argv{flush_stdout} || 0;
+   $self->{use_slurpio}  = $argv{use_slurpio}  || 0;
 
    ## -------------------------------------------------------------------------
    ## Validation.
@@ -348,39 +342,12 @@ sub new {
       for my $_task (@{ $self->{user_tasks} }) {
          $_value = (defined $_task->{use_threads})
             ? $_task->{use_threads} : $self->{use_threads};
+
          $_values{$_value} = '';
       }
 
       _croak("MCE::new: 'cannot mix' use_threads => 0/1 under Cygwin")
          if ($_is_cygwin && keys %_values > 1);
-   }
-
-   ## -------------------------------------------------------------------------
-
-   if (defined $self->{queues}) {
-      my $_qid = -1;
-
-      _croak("MCE::new: 'queues' is not an ARRAY reference")
-         unless (ref $self->{queues} eq 'ARRAY');
-
-      for my $_q (@{ $self->{queues} }) {
-         _croak("MCE::new: 'queues' wants an ARRAY of HASHES")
-            unless (ref $_q eq 'HASH');
-
-         for (keys %{ $_q }) {
-            _croak("MCE::new: '$_' is not a valid queue constructor argument")
-               unless (exists $_valid_fields_queue{$_});
-         }
-         _croak("MCE::new: 'name' is not specified for queue constructor")
-            unless (exists $_q->{name});
-         _croak("MCE::new: 'name' is not unique for queue constructor")
-            if (exists $self->{_q_map}->{ $_q->{name} });
-
-         $self->{_q_map}->{ $_q->{name} } = ++$_qid;
-         $_q->{_q_data} = [ ];
-
-         bless($_q, ref($self) || $self);
-      }
    }
 
    _validate_args($self); %argv = ();
@@ -469,27 +436,21 @@ sub spawn {
    my $_use_threads = $self->{use_threads};
 
    ## Create socket pairs for IPC.
-   _create_socket_pair($self, '_com_r_sock', '_com_w_sock', 0);
-   _create_socket_pair($self, '_dat_r_sock', '_dat_w_sock', 0);
-   _create_socket_pair($self, '_que_r_sock', '_que_w_sock', 1);
-   _create_socket_pair($self, '_bsb_r_sock', '_bsb_w_sock', 1);
-   _create_socket_pair($self, '_bse_r_sock', '_bse_w_sock', 1);
+   _create_socket_pair($self, '_com_r_sock', '_com_w_sock', 0);  ## Core
+   _create_socket_pair($self, '_dat_r_sock', '_dat_w_sock', 0);  ## Core
+   _create_socket_pair($self, '_que_r_sock', '_que_w_sock', 1);  ## Core
+   _create_socket_pair($self, '_bsb_r_sock', '_bsb_w_sock', 1);  ## Sync
+   _create_socket_pair($self, '_bse_r_sock', '_bse_w_sock', 1);  ## Sync
 
    ## Place 1 char in one socket to ensure Perl loads the required modules
    ## prior to spawning. The last worker spawned will perform the read.
    $self->{_que_w_sock}->syswrite($LF);
 
-   ## Init queues.
-   if (defined $self->{queues}) {
-      _create_socket_pair($self, '_qr_sock', '_qw_sock', 1, $_)
-         for (@{ $self->{queues} });
-   }
+   ## Spawn workers.
+   $_mce_spawned{$_mce_sid} = $self;
 
    $self->{_pids}   = (); $self->{_thrs}  = (); $self->{_tids} = ();
    $self->{_status} = (); $self->{_state} = (); $self->{_task} = ();
-
-   ## Spawn workers.
-   $_mce_spawned{$_mce_sid} = $self;
 
    if (!defined $self->{user_tasks}) {
       $self->{_total_workers} = $_max_workers;
@@ -1134,15 +1095,6 @@ sub shutdown {
    }
 
    ## Close sockets.
-   if (defined $self->{queues}) {
-      for (@{ $self->{queues} }) {
-         CORE::shutdown $_->{_qr_sock}, 0;
-         CORE::shutdown $_->{_qw_sock}, 1;
-         close $_->{_qr_sock}; undef $_->{_qr_sock};
-         close $_->{_qw_sock}; undef $_->{_qw_sock};
-      }
-   }
-
    CORE::shutdown $self->{_que_r_sock}, 0;        ## Queue channels
    CORE::shutdown $self->{_que_w_sock}, 1;
    CORE::shutdown $self->{_dat_r_sock}, 2;        ## Data channels
@@ -1528,8 +1480,8 @@ sub _warn { MCE::Signal->_warn_handler(@_); }
 
 sub _croak {
 
-   $SIG{__DIE__}  = \&_die;
-   $SIG{__WARN__} = \&_warn;
+   $SIG{__DIE__}  = \&MCE::_die;
+   $SIG{__WARN__} = \&MCE::_warn;
 
    $\ = undef; require Carp; goto &Carp::croak;
 
@@ -1547,29 +1499,27 @@ sub _NOOP { }
 sub _create_socket_pair {
 
    my MCE $self  = $_[0]; my $_r_sock = $_[1]; my $_w_sock = $_[2];
-   my $_shutdown = $_[3]; my $_queue  = $_[4];
+   my $_shutdown = $_[3];
 
    @_ = ();
 
    die "Private method called" unless (caller)[0]->isa( ref($self) );
 
-   my $_obj = (defined $_queue) ? $_queue : $self;
-
-   socketpair( $_obj->{$_r_sock}, $_obj->{$_w_sock},
+   socketpair( $self->{$_r_sock}, $self->{$_w_sock},
       AF_UNIX, SOCK_STREAM, PF_UNSPEC ) or die "socketpair: $!\n";
 
-   binmode $_obj->{$_r_sock};
-   binmode $_obj->{$_w_sock};
+   binmode $self->{$_r_sock};
+   binmode $self->{$_w_sock};
 
    if ($_shutdown) {
-      CORE::shutdown $_obj->{$_r_sock}, 1;        ## No more writing
-      CORE::shutdown $_obj->{$_w_sock}, 0;        ## No more reading
+      CORE::shutdown $self->{$_r_sock}, 1;        ## No more writing
+      CORE::shutdown $self->{$_w_sock}, 0;        ## No more reading
    }
 
    ## Autoflush handles. This is done this way versus the inclusion of the
    ## large IO::Handle module just to call autoflush(1).
-   my $_old_hndl = select $_obj->{$_r_sock}; $| = 1;
-                   select $_obj->{$_w_sock}; $| = 1;
+   my $_old_hndl = select $self->{$_r_sock}; $| = 1;
+                   select $self->{$_w_sock}; $| = 1;
 
    select $_old_hndl;
 
@@ -1710,7 +1660,7 @@ sub _validate_args_s {
 
    _croak("$_tag: 'max_workers' is not valid")
       if (defined $_s->{max_workers} && (
-         $_s->{max_workers} !~ /\A\d+\z/ or $_s->{max_workers} == 0
+         $_s->{max_workers} !~ /\A\d+\z/
       ));
    _croak("$_tag: 'chunk_size' is not valid")
       if (defined $_s->{chunk_size} && (
@@ -2032,7 +1982,7 @@ sub _validate_runstate {
    ## -------------------------------------------------------------------------
    ## Create hash structure containing various output functions.
 
-   my %_output_function = (
+   our %_output_function = (
 
       OUTPUT_W_ABT.$LF => sub {                   ## Worker has aborted
          $_aborted = 1;
@@ -2515,6 +2465,9 @@ sub _validate_runstate {
       ## Exit loop when all workers have completed or ended.
       my $_func;
 
+      MCE::Queue::_mce_m_loop_begin($self)
+         if (defined $MCE::Queue::VERSION);
+
       while (1) {
          $_func = <$_DAT_R_SOCK>;
          next unless (defined $_func);
@@ -2524,6 +2477,9 @@ sub _validate_runstate {
             last unless ($self->{_total_running});
          }
       }
+
+      MCE::Queue::_mce_m_loop_end($self)
+         if (defined $MCE::Queue::VERSION);
 
       ## Call on_post_run callback.
       $_on_post_run->($self, $self->{_status}) if (defined $_on_post_run);
@@ -3014,10 +2970,9 @@ sub _worker_sequence_generator {
 
 sub _worker_user_func {
 
-   my MCE $self  = $_[0];
-   my $_chunk    = $_[1];
-   my $_chunk_id = $_[2] || $self->{_task_wid};
-
+   my MCE $self   = $_[0];
+   my $_chunk     = $_[1];
+   my $_chunk_id  = $_[2] || $self->{_task_wid};
    my $_user_func = $self->{user_func};
 
    $self->{_chunk_id} = $_chunk_id;
@@ -3266,15 +3221,15 @@ sub _worker_main {
    };
 
    ## Use options from user_tasks if defined.
-   $self->{max_workers}   = $_task->{max_workers}   if ($_task->{max_workers});
-   $self->{chunk_size}    = $_task->{chunk_size}    if ($_task->{chunk_size});
-   $self->{interval}      = $_task->{interval}      if ($_task->{interval});
-   $self->{sequence}      = $_task->{sequence}      if ($_task->{sequence});
-   $self->{user_args}     = $_task->{user_args}     if ($_task->{user_args});
-   $self->{user_begin}    = $_task->{user_begin}    if ($_task->{user_begin});
-   $self->{user_func}     = $_task->{user_func}     if ($_task->{user_func});
-   $self->{user_end}      = $_task->{user_end}      if ($_task->{user_end});
-   $self->{name}          = $_task->{name}          if ($_task->{name});
+   $self->{max_workers} = $_task->{max_workers} if ($_task->{max_workers});
+   $self->{chunk_size}  = $_task->{chunk_size}  if ($_task->{chunk_size});
+   $self->{interval}    = $_task->{interval}    if ($_task->{interval});
+   $self->{sequence}    = $_task->{sequence}    if ($_task->{sequence});
+   $self->{user_args}   = $_task->{user_args}   if ($_task->{user_args});
+   $self->{user_begin}  = $_task->{user_begin}  if ($_task->{user_begin});
+   $self->{user_func}   = $_task->{user_func}   if ($_task->{user_func});
+   $self->{user_end}    = $_task->{user_end}    if ($_task->{user_end});
+   $self->{name}        = $_task->{name}        if ($_task->{name});
 
    ## Init runtime vars. Obtain handle to lock files.
    my $_mce_sid  = $self->{_mce_sid};
@@ -3293,6 +3248,9 @@ sub _worker_main {
    $self->{_dat_lock} = $_DAT_LOCK;
    $self->{_com_lock} = $_COM_LOCK;
 
+   MCE::Queue::_mce_w_init($self)
+      if (defined $MCE::Queue::VERSION);
+
    _do_send_init($self);
 
    ## Delete attributes no longer required after being spawned.
@@ -3302,9 +3260,6 @@ sub _worker_main {
       _pids _state _status _thrs _tids
    )};
 
-   if (defined $self->{queues}) {
-      delete $_->{_q_data} for (@{ $self->{queues} });
-   }
    foreach (keys %_mce_spawned) {
       delete $_mce_spawned{$_} unless ($_ eq $_mce_sid);
    }
