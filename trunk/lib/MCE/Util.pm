@@ -12,7 +12,7 @@ use warnings;
 
 use base qw( Exporter );
 
-our $VERSION = '1.499'; $VERSION = eval $VERSION;
+our $VERSION = '1.499_001'; $VERSION = eval $VERSION;
 
 our @EXPORT_OK = qw( get_ncpu );
 our %EXPORT_TAGS = ( all => \@EXPORT_OK );
@@ -27,7 +27,11 @@ our %EXPORT_TAGS = ( all => \@EXPORT_OK );
 ##
 ###############################################################################
 
+my $g_cpus;
+
 sub get_ncpu {
+
+   return $g_cpus if (defined $g_cpus);
 
    local $ENV{PATH} = "/usr/sbin:/sbin:/usr/bin:/bin:$ENV{PATH}";
 
@@ -88,7 +92,34 @@ sub get_ncpu {
       );
    }
 
-   return $cpus;
+   return $g_cpus = $cpus;
+}
+
+###############################################################################
+## ----------------------------------------------------------------------------
+## Private methods.
+##
+###############################################################################
+
+sub _parse_max_workers {
+
+   my ($_max_workers) = @_;
+
+   return $_max_workers unless (defined $_max_workers);
+
+   if ($_max_workers =~ /^auto(?:$|\s*([\-\+\/\*])\s*(.+)$)/i) {
+      my $_ncpu = get_ncpu();
+
+      if ($1 && $2) {
+         local $@; $_max_workers = eval "int($_ncpu $1 $2 + 0.5)";
+         $_max_workers = 1 if (!$_max_workers || $_max_workers < 1);
+      }
+      else {
+         $_max_workers = $_ncpu;
+      }
+   }
+
+   return $_max_workers;
 }
 
 1;
@@ -107,7 +138,7 @@ MCE::Util - Provides utility functions for Many-Core Engine.
 
 =head1 VERSION
 
-This document describes MCE::Util version 1.499
+This document describes MCE::Util version 1.499_001
 
 =head1 SYNOPSIS
 

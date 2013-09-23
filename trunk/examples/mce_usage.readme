@@ -9,7 +9,7 @@ MCE - Many-Core Engine for Perl. Provides parallel processing capabilities.
 
 <> VERSION
 
-This document describes MCE version 1.499
+This document describes MCE version 1.499_001
 
 <> DESCRIPTION
 
@@ -109,13 +109,6 @@ Below, a new instance is configured with all available options.
 
    my $mce = MCE->new(
 
-      name         => 'string',          ## Default undef
-
-          ## Added in MCE 1.5. This is beneficial for user_tasks.
-          ## Each task can be specified with a different name value.
-          ## It allows for task_end to be specified at the top level.
-          ## The name value is passed as the 3rd arg to task_end.
-
       max_workers  => 8,                 ## Default $MCE::MAX_WORKERS
 
           ## Number of workers to spawn. This can be set automatically
@@ -153,6 +146,16 @@ Below, a new instance is configured with all available options.
           ## use Sereal qw(encode_sereal decode_sereal);
           ## use JSON::XS qw(encode_json decode_json);
           ## use MCE;
+
+      gather       => \@a,               ## Default undef
+
+          ## Release 1.5 allows for gathering of data to an array
+          ## reference, a MCE::Queue or Thread::Queue object, or
+          ## a code reference. One invokes gathering by calling
+          ## the gather method as often as needed.
+
+          ## gather => $Q,
+          ## gather => \&preserve_order,
 
       input_data   => $input_file,       ## Default undef
       RS           => "\n::\n",          ## Default undef
@@ -277,6 +280,13 @@ Below, a new instance is configured with all available options.
           ## This is called by the manager process after the task
           ## has completed processing.
 
+      task_name    => 'string',          ## Default undef
+
+          ## Added in MCE 1.5. This is beneficial for user_tasks.
+          ## Each task can be specified with a different name value.
+          ## It allows for task_end to be specified at the top level.
+          ## The task_name value is passed as the 3rd arg to task_end.
+
       user_tasks   => [                  ## Default undef
          { ... },                        ## Options for task 0
          { ... },                        ## Options for task 1
@@ -286,9 +296,9 @@ Below, a new instance is configured with all available options.
           ## Takes a list of hash references, each allowing up to 11
           ## options. All other MCE options are ignored. Input_data
           ## is applicable for the first task only.
-          ##   name, max_workers, chunk_size, input_data, sequence,
+          ##   task_name, max_workers, chunk_size, input_data, sequence,
           ##   task_end, user_args, user_begin, user_end, user_func,
-          ##   use_threads
+          ##   gather, use_threads
 
           ## Options not specified here will default to same option
           ## specified at the top level.
@@ -381,13 +391,13 @@ This option takes an array of tasks. Each task allows for 11 MCE options.
 Input_data can be specified inside the first task or at the top level only,
 otherwise is ignored.
 
-   name, max_workers, chunk_size, input_data, sequence, task_end,
-   user_args, user_begin, user_end, user_func, use_threads
+   max_workers, chunk_size, input_data, sequence, task_end, task_name,
+   gather, user_args, user_begin, user_end, user_func, use_threads
 
 Sequence and chunk_size were added in 1.3. User_args was introduced in 1.4.
 Name and input_data are new options allowed in 1.5. In addition, one can
 specify task_end at the top level. Task_end also receives 2 additional
-arguments $task_id and $name (shown below).
+arguments $task_id and $task_name (shown below).
 
 Options not specified here will default to the same option specified at the
 top level. The task_end option is called by the manager process when all
@@ -406,18 +416,18 @@ L<http://code.google.com/p/many-core-engine-perl/wiki/MCE_Tasks>
       input_data => $list_file,
 
       task_end   => sub {
-         my ($self, $task_id, $name) = @_;
-         print "Task [$task_id -- $name] completed processing\n";
+         my ($self, $task_id, $task_name) = @_;
+         print "Task [$task_id -- $task_name] completed processing\n";
       },
 
       user_tasks => [{
-         name        => 'a',
+         task_name   => 'a',
          max_workers => 2,
          user_func   => \&parallel_task1,
          use_threads => 0
 
       },{
-         name        => 'b',
+         task_name   => 'b',
          max_workers => 4,
          user_func   => \&parallel_task2,
          use_threads => 1
@@ -675,15 +685,6 @@ Returns the value for max_workers used by MCE.
    my $max_workers = MCE->max_workers();
 
 -------------------------------------------------------------------------------
-name ( void )
--------------------------------------------------------------------------------
-
-Returns the name value specified via the name option when configuring MCE.
-
-   my $name = $self->name();
-   my $name = MCE->name();
-
--------------------------------------------------------------------------------
 sess_dir ( void )
 -------------------------------------------------------------------------------
 
@@ -701,6 +702,16 @@ Returns the task ID. This applies to the user_tasks option (starts at 0).
 
    my $task_id = $self->task_id();
    my $task_id = MCE->task_id();
+
+-------------------------------------------------------------------------------
+task_name ( void )
+-------------------------------------------------------------------------------
+
+Returns the task_name value specified via the task_name option when
+configuring MCE.
+
+   my $task_name = $self->task_name();
+   my $task_name = MCE->task_name();
 
 -------------------------------------------------------------------------------
 task_wid ( void )
@@ -730,6 +741,15 @@ Returns the temporary directory used by MCE.
 
    my $tmp_dir = $self->tmp_dir();
    my $tmp_dir = MCE->tmp_dir();
+
+-------------------------------------------------------------------------------
+user_args ( void )
+-------------------------------------------------------------------------------
+
+Returns the arguments specified via the user_args option.
+
+   my ($arg1, $arg2, $arg3) = $self->user_args();
+   my ($arg1, $arg2, $arg3) = MCE->user_args();
 
 -------------------------------------------------------------------------------
 wid ( void )
@@ -1149,6 +1169,16 @@ on_post_run options for callback support.
    MCE->exit(0, 'ok', 'pebbles');
 
 -------------------------------------------------------------------------------
+gather ( $arg1, [, $arg2, ... ] )
+-------------------------------------------------------------------------------
+
+A worker can submit data to the location specified via the gather option by
+calling this method.
+
+   MCE->gather(\@results, $chunk_id);
+   MCE->gather([ $arg1, $arg2 ]);
+
+-------------------------------------------------------------------------------
 last ( void )
 -------------------------------------------------------------------------------
 
@@ -1211,6 +1241,30 @@ foreach, forchunk, forseq, and user_func.
    78
    79
    80
+
+-------------------------------------------------------------------------------
+print ( $list [, ... ] )
+printf ( $format, $list [, ... ] )
+say ( $list [, ... ] )
+-------------------------------------------------------------------------------
+
+Use the print, printf, and say methods when wanting to serialize output among
+workers. These are sugar syntax for the sendto method. These behave similar
+to the native subroutines in Perl with the exception that barewords must be 
+surrounded with quotes and require the comma after it including glob handles.
+Say is like print, but implicitly appends a newline.
+
+   MCE->print("$output_msg\n");
+   MCE->print("STDERR", "$error_msg\n");
+   MCE->print($fh, $log_msg);
+
+   MCE->printf("%s: %d\n", $name, $age);
+   MCE->printf("STDOUT", "%s: %d\n", $name, $age);
+   MCE->printf($fh, "%s: %d\n", $name, $age);
+
+   MCE->say($output_msg);
+   MCE->say("STDERR", $error_msg);
+   MCE->say($fh, $log_msg);
 
 -------------------------------------------------------------------------------
 sendto ( 'to_string', $arg1, ... )
@@ -2019,7 +2073,7 @@ parallelizing PDL with MCE.
 
 -- SEE ALSO
 
-MCE::Signal, MCE::Util
+MCE::Signal, MCE::Subs, MCE::Util
 
 -- SOURCE
 

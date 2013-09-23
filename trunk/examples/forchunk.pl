@@ -10,9 +10,9 @@
 ## Parallel::Loops is based on Parallel::ForkManager.
 ##
 ## Parallel::Loops..:       600  Forking each @input is expensive
-## MCE foreach......:    22,500  Sends result after each @input
-## MCE forseq.......:    66,000  Loops through sequence of numbers
-## MCE forchunk.....:   450,000  Chunking reduces overhead
+## MCE foreach......:    34,000  Sends result after each @input
+## MCE forseq.......:    70,000  Loops through sequence of numbers
+## MCE forchunk.....:   465,000  Chunking reduces overhead
 ##
 ## usage: forchunk.pl [ size ]
 ##
@@ -53,8 +53,7 @@ my $order_id    = 1;
 
 sub display_result {
 
-   my ($wk_result, $chunk_id) = @_;
-   $result{$chunk_id} = $wk_result;
+   $result{$_[1]} = $_[0];
 
    while (1) {
       last unless exists $result{$order_id};
@@ -64,16 +63,18 @@ sub display_result {
          printf "n: %d sqrt(n): %f\n", $input_data[$i++], $_;
       }
 
-      delete $result{$order_id};
-      $order_id++;
+      delete $result{$order_id++};
    }
+
+   return;
 }
 
 ## Compute via MCE.
 
 my $mce = MCE->new(
    max_workers => $max_workers,
-   chunk_size  => $chunk_size
+   chunk_size  => $chunk_size,
+   gather      => \&display_result
 );
 
 $start = time();
@@ -90,7 +91,7 @@ $mce->forchunk(\@input_data, sub {
       push @result, sqrt($_);
    }
 
-   $self->do('display_result', \@result, $chunk_id);
+   MCE->gather(\@result, $chunk_id);
 });
 
 $end = time();
