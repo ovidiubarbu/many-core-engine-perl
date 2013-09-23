@@ -10,8 +10,10 @@ package MCE::Signal;
 use strict;
 use warnings;
 
-use Fcntl qw( :flock );
+use Fcntl qw( :flock O_RDONLY );
 use base qw( Exporter );
+
+our $VERSION = '1.499_001'; $VERSION = eval $VERSION;
 
 our ($has_threads, $main_proc_id, $prog_name);
 our ($display_die_with_localtime, $display_warn_with_localtime);
@@ -23,8 +25,6 @@ BEGIN {
    $prog_name    =  $0;
    $prog_name    =~ s{^.*[\\/]}{}g;
 }
-
-our $VERSION = '1.499'; $VERSION = eval $VERSION;
 
 our $tmp_dir = undef;
 
@@ -441,7 +441,7 @@ MCE::Signal - Provides tmp_dir creation & signal handling for Many-Core Engine.
 
 =head1 VERSION
 
-This document describes MCE::Signal version 1.499
+This document describes MCE::Signal version 1.499_001
 
 =head1 SYNOPSIS
 

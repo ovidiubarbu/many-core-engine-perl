@@ -9,25 +9,25 @@ package MCE;
 use strict;
 use warnings;
 
-use Time::HiRes qw( time );
-
 use Fcntl qw( :flock O_RDONLY );
-use Socket qw( :DEFAULT :crlf );
-use Storable 2.04;
+use Socket qw( :crlf AF_UNIX SOCK_STREAM PF_UNSPEC );
+use Symbol qw( qualify_to_ref );
+use Storable qw( );
 
+use Time::HiRes qw( time );
 use MCE::Signal;
 
+our $VERSION = '1.499_001'; $VERSION = eval $VERSION;
+
+my  (%_valid_fields_new, %_params_allowed_args, %_valid_fields_task);
+our ($_is_cygwin, $_is_MSWin32, $_is_WinEnv);
 our ($_que_read_size, $_que_template);
 
-our $_is_cygwin  = ($^O eq 'cygwin');
-our $_is_MSWin32 = ($^O eq 'MSWin32');
-our $_is_WinEnv  = ($_is_cygwin || $_is_MSWin32);
-
-our $MCE;
+our $MCE; my $_prev_mce;
 
 BEGIN {
 
-   ## Configure template to use for pack/unpack for writing to and reading from
+   ## Configure pack/unpack template for writing to and reading from
    ## the queue. Each entry contains 2 positive numbers: chunk_id & msg_id.
    ## Attempt 64-bit size, otherwize fall back to host machine's word length.
    {
@@ -37,10 +37,45 @@ BEGIN {
       $_que_read_size = length pack($_que_template, 0, 0);
    }
 
+   ## ** Attributes which are used internally.
+   ## _abort_msg _chn _com_lock _dat_lock _i_app_st _i_app_tb _i_wrk_st _wuf
+   ## _chunk_id _mce_sid _mce_tid _pids _run_mode _single_dim _thrs _tids _wid
+   ## _exiting _exit_pid _total_exited _total_running _total_workers _task_wid
+   ## _send_cnt _sess_dir _spawned _state _status _task _task_id _wrk_status
+   ## _gather_allowed
+   ##
+   ## _bsb_r_sock _bsb_w_sock _bse_r_sock _bse_w_sock _com_r_sock _com_w_sock
+   ## _dat_r_sock _dat_w_sock _que_r_sock _que_w_sock _data_channels _lock_chn
+
+   %_valid_fields_new = map { $_ => 1 } qw(
+      max_workers tmp_dir use_threads user_tasks task_end task_name freeze thaw
+
+      chunk_size input_data sequence job_delay spawn_delay submit_delay RS
+      flush_file flush_stderr flush_stdout stderr_file stdout_file use_slurpio
+      interval user_args user_begin user_end user_func user_error user_output
+      gather on_post_exit on_post_run
+   );
+
+   %_params_allowed_args = map { $_ => 1 } qw(
+      chunk_size input_data sequence job_delay spawn_delay submit_delay RS
+      flush_file flush_stderr flush_stdout stderr_file stdout_file use_slurpio
+      interval user_args user_begin user_end user_func user_error user_output
+      gather on_post_exit on_post_run
+   );
+
+   %_valid_fields_task = map { $_ => 1 } qw(
+      max_workers chunk_size input_data interval sequence task_end task_name
+      gather user_args user_begin user_end user_func use_threads
+   );
+
+   $_is_cygwin  = ($^O eq 'cygwin');
+   $_is_MSWin32 = ($^O eq 'MSWin32');
+   $_is_WinEnv  = ($_is_cygwin || $_is_MSWin32);
+
    ## Create accessor functions.
    no strict 'refs'; no warnings 'redefine';
 
-   foreach my $_id (qw( chunk_size max_workers name tmp_dir )) {
+   foreach my $_id (qw( chunk_size max_workers task_name tmp_dir user_args )) {
       *{ $_id } = sub () {
          my $x = shift; my MCE $self = ref($x) ? $x : $MCE;
          return $self->{$_id};
@@ -58,16 +93,16 @@ BEGIN {
          return $self->{$_id}(@_);
       };
    }
+
+   ## PDL + MCE (spawning as threads) is not stable. Thanks to David Mertens
+   ## for reporting on how he fixed it for his PDL::Parallel::threads module.
+   ## The same fix is also needed here in order for PDL + MCE threads to not
+   ## crash during exiting.
+
+   sub PDL::CLONE_SKIP { 1 };
+
+   return;
 }
-
-our $VERSION = '1.499'; $VERSION = eval $VERSION;
-
-## PDL + MCE (spawning as threads) is not stable. Thanks goes to David Mertens
-## for reporting on how he fixed it for his PDL::Parallel::threads module. The
-## same fix is also needed here in order for PDL + MCE threads to not crash
-## during exiting.
-
-{ no warnings 'redefine'; sub PDL::CLONE_SKIP { 1 } }
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -93,23 +128,33 @@ sub import {
    my $class = shift;
    return if ($_loaded++);
 
+   my $_package = caller();
+
    ## Process module arguments.
    while (my $_arg = shift) {
 
-      $MCE::MAX_WORKERS = shift and next if ($_arg eq 'MAX_WORKERS');
-      $MCE::CHUNK_SIZE  = shift and next if ($_arg eq 'CHUNK_SIZE');
-      $MCE::TMP_DIR     = shift and next if ($_arg eq 'TMP_DIR');
-      $MCE::FREEZE      = shift and next if ($_arg eq 'FREEZE');
-      $MCE::THAW        = shift and next if ($_arg eq 'THAW');
+      $MCE::MAX_WORKERS = shift and next if ( $_arg =~ /^max_workers$/i );
+      $MCE::CHUNK_SIZE  = shift and next if ( $_arg =~ /^chunk_size$/i );
+      $MCE::TMP_DIR     = shift and next if ( $_arg =~ /^tmp_dir$/i );
+      $MCE::FREEZE      = shift and next if ( $_arg =~ /^freeze$/i );
+      $MCE::THAW        = shift and next if ( $_arg =~ /^thaw$/i );
 
-      if ($_arg eq 'CONST' or $_arg eq 'EXPORT_CONST') {
-         if (shift eq '1') {
-            my $_package = caller();
-            no strict 'refs'; no warnings 'redefine';
-            *{ $_package . '::SELF'  } = \&SELF;
-            *{ $_package . '::CHUNK' } = \&CHUNK;
-            *{ $_package . '::CID'   } = \&CID;
+      if ( $_arg =~ /^sereal$/i ) {
+         if (shift) {
+            local $@; eval 'use Sereal qw(encode_sereal decode_sereal)';
+            unless ($@) {
+               $MCE::FREEZE = \&encode_sereal;
+               $MCE::THAW   = \&decode_sereal;
+            }
          }
+         next;
+      }
+
+      ## MCE 1.4 supported EXPORT_CONST and CONST as arguments.
+      ## Oops! This should have been named IMPORT_CONSTS instead.
+
+      if ( $_arg =~ /^(?:import_consts|export_const|const)$/i ) {
+         _import_consts($_package) if (shift eq '1');
          next;
       }
 
@@ -131,6 +176,11 @@ sub import {
       $_has_threads = $_has_threads || 0;
    }
 
+   ## Preload essential modules early on.
+   require MCE::Core::Validation;
+   require MCE::Core::Manager;
+   require MCE::Core::Worker;
+
    ## Instantiate a module-level instance.
    $MCE = MCE->new( _module_instance => 1, max_workers => 0 );
 
@@ -145,8 +195,9 @@ sub import {
 
 use constant {
 
-   MAX_CHUNK_SIZE => 24 * 1024 * 1024,   ## Set max constraints
+   DATA_CHANNELS  => 8,                  ## Maximum IPC "DATA" channels
 
+   MAX_CHUNK_SIZE => 24 * 1024 * 1024,   ## Maximum chunk size allowed
    MAX_RECS_SIZE  => 8192,               ## Reads # of records if <= value
                                          ## Reads # of bytes   if >  value
 
@@ -161,12 +212,17 @@ use constant {
    OUTPUT_S_CBK   => 'S~CBK',            ## Callback w/ 1 scalar arg
    OUTPUT_N_CBK   => 'N~CBK',            ## Callback w/ no args
 
+   OUTPUT_A_GTR   => 'A~GTR',            ## Gather w/ multiple args
+   OUTPUT_R_GTR   => 'R~GTR',            ## Gather w/ 1 reference arg
+   OUTPUT_S_GTR   => 'S~GTR',            ## Gather w/ 1 scalar arg
+
    OUTPUT_O_SND   => 'O~SND',            ## Send >> STDOUT
    OUTPUT_E_SND   => 'E~SND',            ## Send >> STDERR
    OUTPUT_F_SND   => 'F~SND',            ## Send >> File
+   OUTPUT_D_SND   => 'D~SND',            ## Send >> File descriptor
 
-   OUTPUT_B_SYN   => 'B~SYN',            ## Worker barrier sync - begin
-   OUTPUT_E_SYN   => 'E~SYN',            ## Worker barrier sync - end
+   OUTPUT_B_SYN   => 'B~SYN',            ## Barrier sync - begin
+   OUTPUT_E_SYN   => 'E~SYN',            ## Barrier sync - end
 
    READ_FILE      => 0,                  ## Worker reads file handle
    READ_MEMORY    => 1,                  ## Worker reads memory handle
@@ -178,6 +234,7 @@ use constant {
    SENDTO_FILEV2  => 1,                  ## Worker sends to 'file:/path', $a
    SENDTO_STDOUT  => 2,                  ## Worker sends to STDOUT
    SENDTO_STDERR  => 3,                  ## Worker sends to STDERR
+   SENDTO_FD      => 4,                  ## Worker sends to file descriptor
 
    WANTS_UNDEF    => 0,                  ## Callee wants nothing
    WANTS_ARRAY    => 1,                  ## Callee wants list
@@ -185,38 +242,9 @@ use constant {
    WANTS_REF      => 3                   ## Callee wants H/A/S ref
 };
 
-## ** Attributes which are used internally.
-## _abort_msg _bsb_r_sock _bsb_w_sock _bse_r_sock _bse_w_sock
-## _chunk_id _mce_sid _mce_tid _pids _run_mode _single_dim _thrs _tids _wid
-## _com_r_sock _com_w_sock _dat_r_sock _dat_w_sock _que_r_sock _que_w_sock
-## _exiting _exit_pid _total_exited _total_running _total_workers _task_wid
-## _send_cnt _sess_dir _spawned _state _status _task _task_id _wrk_status
-## _i_app_st _i_app_tb _i_wrk_st _com_lock _dat_lock
-
-my %_valid_fields_new = map { $_ => 1 } qw(
-   name max_workers tmp_dir use_threads user_tasks task_end freeze thaw
-
-   chunk_size input_data sequence job_delay spawn_delay submit_delay RS
-   flush_file flush_stderr flush_stdout stderr_file stdout_file use_slurpio
-   interval user_args user_begin user_end user_func user_error user_output
-   on_post_exit on_post_run
-);
-
-my %_params_allowed_args = map { $_ => 1 } qw(
-   chunk_size input_data sequence job_delay spawn_delay submit_delay RS
-   flush_file flush_stderr flush_stdout stderr_file stdout_file use_slurpio
-   interval user_args user_begin user_end user_func user_error user_output
-   on_post_exit on_post_run
-);
-
-my %_valid_fields_task = map { $_ => 1 } qw(
-   name max_workers chunk_size input_data interval sequence task_end
-   user_args user_begin user_end user_func use_threads
-);
-
+my  $_mce_count    = 0;
 our %_mce_sess_dir = ();
 our %_mce_spawned  = ();
-my  $_mce_count    = 0;
 
 $MCE::Signal::mce_sess_dir_ref = \%_mce_sess_dir;
 $MCE::Signal::mce_spawned_ref  = \%_mce_spawned;
@@ -227,6 +255,58 @@ $MCE::Signal::mce_spawned_ref  = \%_mce_spawned;
 no warnings 'threads'; no warnings 'uninitialized';
 
 sub DESTROY { }
+
+###############################################################################
+## ----------------------------------------------------------------------------
+## Plugin interface for external modules plugging into MCE, e.g. MCE::Queue.
+##
+###############################################################################
+
+my (%_plugin_function, @_plugin_loop_begin, @_plugin_loop_end);
+my (%_plugin_list, @_plugin_worker_init);
+
+sub _attach_plugin {
+
+   my $_ext_module = caller();
+
+   unless (exists $_plugin_list{$_ext_module}) {
+      $_plugin_list{$_ext_module} = 1;
+
+      my $_ext_output_function    = $_[0];
+      my $_ext_output_loop_begin  = $_[1];
+      my $_ext_output_loop_end    = $_[2];
+      my $_ext_worker_init        = $_[3];
+
+      return unless (ref $_ext_output_function   eq 'HASH');
+      return unless (ref $_ext_output_loop_begin eq 'CODE');
+      return unless (ref $_ext_output_loop_end   eq 'CODE');
+      return unless (ref $_ext_worker_init       eq 'CODE');
+
+      for (keys %{ $_ext_output_function }) {
+         $_plugin_function{$_} = $_ext_output_function->{$_}
+            unless (exists $_plugin_function{$_});
+      }
+
+      push @_plugin_loop_begin, $_ext_output_loop_begin;
+      push @_plugin_loop_end, $_ext_output_loop_end;
+      push @_plugin_worker_init, $_ext_worker_init;
+   }
+
+   return;
+}
+
+## Functions for saving and restoring $MCE::MCE. This is mainly helpful
+## for Modules using MCE. e.g. MCE::Map.
+
+sub _save_state {
+   $_prev_mce = $MCE;
+   return;
+}
+
+sub _restore_state {
+   $MCE = $_prev_mce; $_prev_mce = undef;
+   return;
+}
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -246,16 +326,17 @@ sub new {
    $self->{max_workers} = (exists $argv{max_workers})
       ? $argv{max_workers} : $MCE::MAX_WORKERS;
 
-   $self->{chunk_size}    = $argv{chunk_size}    || $MCE::CHUNK_SIZE;
-   $self->{tmp_dir}       = $argv{tmp_dir}       || $MCE::TMP_DIR;
-   $self->{freeze}        = $argv{freeze}        || $MCE::FREEZE;
-   $self->{thaw}          = $argv{thaw}          || $MCE::THAW;
+   $self->{chunk_size}   = $argv{chunk_size}   || $MCE::CHUNK_SIZE;
+   $self->{tmp_dir}      = $argv{tmp_dir}      || $MCE::TMP_DIR;
+   $self->{freeze}       = $argv{freeze}       || $MCE::FREEZE;
+   $self->{thaw}         = $argv{thaw}         || $MCE::THAW;
+   $self->{task_name}    = $argv{task_name}    || 'MCE';
 
    if (exists $argv{_module_instance}) {
       $self->{_spawned} = $self->{_task_id} = $self->{_task_wid} =
           $self->{_wid} = $self->{_wrk_status} = 0;
 
-      return;
+      return $MCE = $self;
    }
 
    if (exists $argv{use_threads}) {
@@ -277,7 +358,7 @@ sub new {
    $MCE::Signal::has_threads = 1
       if ($self->{use_threads} && !$MCE::Signal::has_threads);
 
-   $self->{name}         = $argv{name}         if (exists $argv{name});
+   $self->{gather}       = $argv{gather}       if (exists $argv{gather});
    $self->{interval}     = $argv{interval}     if (exists $argv{interval});
    $self->{input_data}   = $argv{input_data}   if (exists $argv{input_data});
    $self->{sequence}     = $argv{sequence}     if (exists $argv{sequence});
@@ -366,6 +447,22 @@ sub new {
    $self->{chunk_size} = MAX_CHUNK_SIZE
       if ($self->{chunk_size} > MAX_CHUNK_SIZE);
 
+   my $_total_workers = 0;
+
+   if (defined $self->{user_tasks}) {
+      $_total_workers += $_->{max_workers}
+         for (@{ $self->{user_tasks} });
+   }
+   else {
+      $_total_workers = $self->{max_workers};
+   }
+
+   $self->{_data_channels} = ($_total_workers < DATA_CHANNELS)
+      ? $_total_workers : DATA_CHANNELS;
+
+   $self->{_lock_chn} = ($_total_workers > DATA_CHANNELS)
+      ? 1 : 0;
+
    return $MCE = $self;
 }
 
@@ -377,7 +474,7 @@ sub new {
 
 sub spawn {
 
-   my $x = $_[0]; my MCE $self = ref($x) ? $x : $MCE;
+   my $x = shift; my MCE $self = ref($x) ? $x : $MCE;
 
    ## To avoid leaking (Scalars leaked: 1) messages (fixed in Perl 5.12.x).
    @_ = ();
@@ -432,25 +529,56 @@ sub spawn {
 
    ## -------------------------------------------------------------------------
 
-   my $_max_workers = $self->{max_workers};
-   my $_use_threads = $self->{use_threads};
+   my $_data_channels = $self->{_data_channels};
+   my $_max_workers   = $self->{max_workers};
+   my $_use_threads   = $self->{use_threads};
 
    ## Create socket pairs for IPC.
-   _create_socket_pair($self, '_com_r_sock', '_com_w_sock', 0);  ## Core
-   _create_socket_pair($self, '_dat_r_sock', '_dat_w_sock', 0);  ## Core
-   _create_socket_pair($self, '_que_r_sock', '_que_w_sock', 1);  ## Core
+   if (exists $self->{_dat_r_sock}) {
+      @{ $self->{_dat_r_sock} } = (); @{ $self->{_dat_w_sock} } = ();
+   } else {
+      $self->{_dat_r_sock} = []; $self->{_dat_w_sock} = [];
+   }
+
    _create_socket_pair($self, '_bsb_r_sock', '_bsb_w_sock', 1);  ## Sync
    _create_socket_pair($self, '_bse_r_sock', '_bse_w_sock', 1);  ## Sync
+   _create_socket_pair($self, '_com_r_sock', '_com_w_sock', 0);  ## Core
+   _create_socket_pair($self, '_que_r_sock', '_que_w_sock', 1);  ## Core
+
+   _create_socket_pair($self, '_dat_r_sock', '_dat_w_sock', 1, 0);
+   _create_socket_pair($self, '_dat_r_sock', '_dat_w_sock', 0, $_)
+      for (1 .. $_data_channels);
 
    ## Place 1 char in one socket to ensure Perl loads the required modules
    ## prior to spawning. The last worker spawned will perform the read.
-   $self->{_que_w_sock}->syswrite($LF);
+   syswrite $self->{_que_w_sock}, $LF;
+
+   ## Preload the input module if required.
+   if (!defined $self->{user_tasks}) {
+      if (defined $self->{input_data}) {
+         my $_ref_type = ref $self->{input_data};
+         if ($_ref_type eq '' || $_ref_type eq 'SCALAR') {
+            require MCE::Core::Input::Handle
+               unless (defined $MCE::Core::Input::Handle::VERSION);
+         }
+         else {
+            require MCE::Core::Input::Request
+               unless (defined $MCE::Core::Input::Request::VERSION);
+         }
+      }
+      elsif (defined $self->{sequence}) {
+         require MCE::Core::Input::Sequence
+            unless (defined $MCE::Core::Input::Sequence::VERSION);
+      }
+   }
+
+   ## -------------------------------------------------------------------------
 
    ## Spawn workers.
    $_mce_spawned{$_mce_sid} = $self;
 
-   $self->{_pids}   = (); $self->{_thrs}  = (); $self->{_tids} = ();
-   $self->{_status} = (); $self->{_state} = (); $self->{_task} = ();
+   $self->{_pids}   = []; $self->{_thrs}  = []; $self->{_tids} = [];
+   $self->{_status} = []; $self->{_state} = []; $self->{_task} = [];
 
    if (!defined $self->{user_tasks}) {
       $self->{_total_workers} = $_max_workers;
@@ -464,10 +592,10 @@ sub spawn {
       $self->{_task}->[0] = { _total_workers => $_max_workers };
 
       for (1 .. $_max_workers) {
-         keys(%{ $self->{_state}->[$_] }) = 4;
+         keys(%{ $self->{_state}->[$_] }) = 5;
          $self->{_state}->[$_] = {
             _task => undef, _task_id => undef, _task_wid => undef,
-            _params => undef
+            _params => undef, _chn => $_ % $_data_channels + 1
          }
       }
    }
@@ -500,10 +628,10 @@ sub spawn {
             _total_running => 0, _total_workers => $_task->{max_workers}
          };
          for (1 .. $_task->{max_workers}) {
-            keys(%{ $self->{_state}->[++$_wid] }) = 4;
+            keys(%{ $self->{_state}->[++$_wid] }) = 5;
             $self->{_state}->[$_wid] = {
                _task => $_task, _task_id => $_task_id, _task_wid => $_,
-               _params => undef
+               _params => undef, _chn => $_wid % $_data_channels + 1
             }
          }
 
@@ -513,19 +641,15 @@ sub spawn {
 
    ## -------------------------------------------------------------------------
 
+   $self->{_com_lock} = $_COM_LOCK;
+   $self->{_send_cnt} = 0;
+   $self->{_spawned}  = 1;
+
    ## Await reply from the last worker spawned.
    if ($self->{_total_workers} > 0) {
       my $_COM_R_SOCK = $self->{_com_r_sock};
       local $/ = $LF; <$_COM_R_SOCK>;
    }
-
-   open my $_DAT_LOCK, '+>>:raw:stdio', "$_sess_dir/_dat.lock"
-      or die "(M) open error $_sess_dir/_dat.lock: $!\n";
-
-   $self->{_com_lock} = $_COM_LOCK;
-   $self->{_dat_lock} = $_DAT_LOCK;
-   $self->{_send_cnt} = 0;
-   $self->{_spawned}  = 1;
 
    ## Release lock.
    flock $_COM_LOCK, LOCK_UN;
@@ -545,17 +669,17 @@ sub spawn {
 
 sub forchunk {
 
-   my $x = $_[0]; my MCE $self = ref($x) ? $x : $MCE;
-   my $_input_data = $_[1];
+   my $x = shift; my MCE $self = ref($x) ? $x : $MCE;
+   my $_input_data = $_[0];
 
    _validate_runstate($self, "MCE::forchunk");
 
    my ($_user_func, $_params_ref);
 
-   if (ref $_[2] eq 'HASH') {
-      $_user_func = $_[3]; $_params_ref = $_[2];
+   if (ref $_[1] eq 'HASH') {
+      $_user_func = $_[2]; $_params_ref = $_[1];
    } else {
-      $_user_func = $_[2]; $_params_ref = {};
+      $_user_func = $_[1]; $_params_ref = {};
    }
 
    @_ = ();
@@ -575,17 +699,17 @@ sub forchunk {
 
 sub foreach {
 
-   my $x = $_[0]; my MCE $self = ref($x) ? $x : $MCE;
-   my $_input_data = $_[1];
+   my $x = shift; my MCE $self = ref($x) ? $x : $MCE;
+   my $_input_data = $_[0];
 
    _validate_runstate($self, "MCE::foreach");
 
    my ($_user_func, $_params_ref);
 
-   if (ref $_[2] eq 'HASH') {
-      $_user_func = $_[3]; $_params_ref = $_[2];
+   if (ref $_[1] eq 'HASH') {
+      $_user_func = $_[2]; $_params_ref = $_[1];
    } else {
-      $_user_func = $_[2]; $_params_ref = {};
+      $_user_func = $_[1]; $_params_ref = {};
    }
 
    @_ = ();
@@ -606,17 +730,17 @@ sub foreach {
 
 sub forseq {
 
-   my $x = $_[0]; my MCE $self = ref($x) ? $x : $MCE;
-   my $_sequence = $_[1];
+   my $x = shift; my MCE $self = ref($x) ? $x : $MCE;
+   my $_sequence = $_[0];
 
    _validate_runstate($self, "MCE::forseq");
 
    my ($_user_func, $_params_ref);
 
-   if (ref $_[2] eq 'HASH') {
-      $_user_func = $_[3]; $_params_ref = $_[2];
+   if (ref $_[1] eq 'HASH') {
+      $_user_func = $_[2]; $_params_ref = $_[1];
    } else {
-      $_user_func = $_[2]; $_params_ref = {};
+      $_user_func = $_[1]; $_params_ref = {};
    }
 
    @_ = ();
@@ -642,16 +766,16 @@ sub forseq {
 
 sub process {
 
-   my $x = $_[0]; my MCE $self = ref($x) ? $x : $MCE;
+   my $x = shift; my MCE $self = ref($x) ? $x : $MCE;
 
    _validate_runstate($self, "MCE::process");
 
    my ($_input_data, $_params_ref);
 
-   if (ref $_[1] eq 'HASH') {
-      $_input_data = $_[2]; $_params_ref = $_[1];
+   if (ref $_[0] eq 'HASH') {
+      $_input_data = $_[1]; $_params_ref = $_[0];
    } else {
-      $_input_data = $_[1]; $_params_ref = $_[2];
+      $_input_data = $_[0]; $_params_ref = $_[1];
    }
 
    @_ = ();
@@ -679,23 +803,22 @@ sub process {
 
 sub restart_worker {
 
-   my $x = $_[0]; my MCE $self = ref($x) ? $x : $MCE;
-   my $_wid = $_[1];
+   my $x = shift; my MCE $self = ref($x) ? $x : $MCE;
 
    _croak("MCE::restart_worker: method cannot be called by the worker process")
       if ($self->{_wid});
 
    @_ = ();
 
-   _croak("MCE::restart_worker: 'wid' is not specified")
-      unless (defined $_wid);
-   _croak("MCE::restart_worker: 'wid' is not valid")
-      unless (defined $self->{_state}->[$_wid]);
+   my $_wid = $self->{_exited_wid};
 
    my $_params   = $self->{_state}->[$_wid]->{_params};
    my $_task_wid = $self->{_state}->[$_wid]->{_task_wid};
    my $_task_id  = $self->{_state}->[$_wid]->{_task_id};
    my $_task     = $self->{_state}->[$_wid]->{_task};
+   my $_chn      = $self->{_state}->[$_wid]->{_chn};
+
+   $_params->{_chn} = $_chn;
 
    my $_use_threads = (defined $_task_id)
       ? $_task->{use_threads} : $self->{use_threads};
@@ -725,19 +848,19 @@ sub restart_worker {
 
 sub run {
 
-   my $x = $_[0]; my MCE $self = ref($x) ? $x : $MCE;
+   my $x = shift; my MCE $self = ref($x) ? $x : $MCE;
 
    _croak("MCE::run: method cannot be called by the worker process")
       if ($self->{_wid});
 
    my ($_auto_shutdown, $_params_ref);
 
-   if (ref $_[1] eq 'HASH') {
-      $_auto_shutdown = (defined $_[2]) ? $_[2] : 1;
-      $_params_ref    = $_[1];
-   } else {
+   if (ref $_[0] eq 'HASH') {
       $_auto_shutdown = (defined $_[1]) ? $_[1] : 1;
-      $_params_ref    = $_[2];
+      $_params_ref    = $_[0];
+   } else {
+      $_auto_shutdown = (defined $_[0]) ? $_[0] : 1;
+      $_params_ref    = $_[1];
    }
 
    @_ = ();
@@ -849,7 +972,6 @@ sub run {
    ## -------------------------------------------------------------------------
 
    my $_COM_LOCK      = $self->{_com_lock};
-   my $_DAT_LOCK      = $self->{_dat_lock};
    my $_interval      = $self->{interval};
    my $_sequence      = $self->{sequence};
    my $_user_args     = $self->{user_args};
@@ -857,23 +979,24 @@ sub run {
    my $_sess_dir      = $self->{_sess_dir};
    my $_total_workers = $self->{_total_workers};
    my $_send_cnt      = $self->{_send_cnt};
+   my $_wants_gather  = (defined $self->{gather}) ? 1 : 0;
 
    ## Begin processing.
    unless ($_send_cnt) {
 
       my %_params = (
-         '_abort_msg'   => $_abort_msg,    '_run_mode'    => $_run_mode,
-         '_chunk_size'  => $_chunk_size,   '_single_dim'  => $_single_dim,
-         '_input_file'  => $_input_file,   '_sequence'    => $_sequence,
-         '_interval'    => $_interval,     '_user_args'   => $_user_args,
-         '_use_slurpio' => $_use_slurpio
+         '_abort_msg'   => $_abort_msg,    '_run_mode'     => $_run_mode,
+         '_chunk_size'  => $_chunk_size,   '_single_dim'   => $_single_dim,
+         '_input_file'  => $_input_file,   '_sequence'     => $_sequence,
+         '_interval'    => $_interval,     '_user_args'    => $_user_args,
+         '_use_slurpio' => $_use_slurpio,  '_wants_gather' => $_wants_gather
       );
       my %_params_nodata = (
-         '_abort_msg'   => undef,          '_run_mode'    => 'nodata',
-         '_chunk_size'  => $_chunk_size,   '_single_dim'  => $_single_dim,
-         '_input_file'  => $_input_file,   '_sequence'    => $_sequence,
-         '_interval'    => $_interval,     '_user_args'   => $_user_args,
-         '_use_slurpio' => $_use_slurpio
+         '_abort_msg'   => undef,          '_run_mode'     => 'nodata',
+         '_chunk_size'  => $_chunk_size,   '_single_dim'   => $_single_dim,
+         '_input_file'  => $_input_file,   '_sequence'     => $_sequence,
+         '_interval'    => $_interval,     '_user_args'    => $_user_args,
+         '_use_slurpio' => $_use_slurpio,  '_wants_gather' => $_wants_gather
       );
 
       local $\ = undef; local $/ = $LF;
@@ -881,6 +1004,7 @@ sub run {
 
       my ($_wid, %_task0_wids);
 
+      my $_BSE_W_SOCK    = $self->{_bse_w_sock};
       my $_COM_R_SOCK    = $self->{_com_r_sock};
       my $_submit_delay  = $self->{submit_delay};
       my $_frozen_params = $self->{freeze}(\%_params);
@@ -892,18 +1016,16 @@ sub run {
          $_task0_wids{$_} = 1 unless ($self->{_state}->[$_]->{_task_id});
       }}
 
-      ## Obtain lock 1 of 2.
-      flock $_DAT_LOCK, LOCK_EX;
-
       ## Insert the first message into the queue if defined.
       if (defined $_first_msg) {
          my $_QUE_W_SOCK = $self->{_que_w_sock};
-         print $_QUE_W_SOCK pack($_que_template, 0, $_first_msg);
+         syswrite $_QUE_W_SOCK, pack($_que_template, 0, $_first_msg);
       }
 
       ## Submit params data to workers.
       for (1 .. $_total_workers) {
-         print $_COM_R_SOCK $_ . $LF; chomp($_wid = <$_COM_R_SOCK>);
+         print $_COM_R_SOCK $_ . $LF;
+         chomp($_wid = <$_COM_R_SOCK>);
 
          if (!$_has_user_tasks || exists $_task0_wids{$_wid}) {
             print $_COM_R_SOCK length($_frozen_params) . $LF . $_frozen_params;
@@ -919,13 +1041,16 @@ sub run {
             if (defined $_submit_delay && $_submit_delay > 0.0);
       }
 
-      ## Obtain lock 2 of 2.
+      select(undef, undef, undef, 0.005) if ($_is_WinEnv);
+
+      ## Obtain lock.
       flock $_COM_LOCK, LOCK_EX;
 
-      ## Release lock 1 of 2.
-      flock $_DAT_LOCK, LOCK_UN;
+      syswrite $_BSE_W_SOCK, $LF for (1 .. $_total_workers);
 
-      select(undef, undef, undef, 0.002);
+      select(undef, undef, undef, 0.002)
+         if (($self->{_mce_tid} ne '' && $self->{_mce_tid} ne '0') ||
+             $_is_WinEnv );
    }
 
    ## -------------------------------------------------------------------------
@@ -949,7 +1074,9 @@ sub run {
       $self->{_run_mode}   = $_run_mode;
       $self->{_single_dim} = $_single_dim;
 
-      _output_loop($self, $_input_data, $_input_glob);
+      _output_loop( $self, $_input_data, $_input_glob,
+         \%_plugin_function, \@_plugin_loop_begin, \@_plugin_loop_end
+      );
 
       undef $self->{_abort_msg};
       undef $self->{_run_mode};
@@ -962,11 +1089,11 @@ sub run {
          unlink "$_sess_dir/_store.db" if ($_run_mode eq 'array');
          if (defined $self->{_que_r_sock}) {
             my $_next; my $_QUE_R_SOCK = $self->{_que_r_sock};
-            read $_QUE_R_SOCK, $_next, $_que_read_size;
+            sysread $_QUE_R_SOCK, $_next, $_que_read_size;
          }
       }
 
-      ## Release lock 2 of 2.
+      ## Release lock.
       flock $_COM_LOCK, LOCK_UN;
    }
 
@@ -986,7 +1113,7 @@ sub run {
 
 sub send {
 
-   my $x = $_[0]; my MCE $self = ref($x) ? $x : $MCE;
+   my $x = shift; my MCE $self = ref($x) ? $x : $MCE;
 
    _croak("MCE::send: method cannot be called by the worker process")
       if ($self->{_wid});
@@ -1000,8 +1127,8 @@ sub send {
 
    my $_data_ref;
 
-   if (ref $_[1] eq 'ARRAY' || ref $_[1] eq 'HASH' || ref $_[1] eq 'PDL') {
-      $_data_ref = $_[1];
+   if (ref $_[0] eq 'ARRAY' || ref $_[0] eq 'HASH' || ref $_[0] eq 'PDL') {
+      $_data_ref = $_[0];
    } else {
       _croak("MCE::send: ARRAY, HASH, or a PDL reference is not specified");
    }
@@ -1056,7 +1183,7 @@ sub send {
 
 sub shutdown {
 
-   my $x = $_[0]; my MCE $self = ref($x) ? $x : $MCE;
+   my $x = shift; my MCE $self = ref($x) ? $x : $MCE;
 
    @_ = ();
 
@@ -1073,48 +1200,26 @@ sub shutdown {
 
    lock $_MCE_LOCK if ($_has_threads);            ## Obtain MCE lock.
 
-   my $_COM_LOCK      = $self->{_com_lock};
-   my $_DAT_LOCK      = $self->{_dat_lock};
-   my $_COM_R_SOCK    = $self->{_com_r_sock};
-   my $_mce_sid       = $self->{_mce_sid};
-   my $_sess_dir      = $self->{_sess_dir};
-   my $_total_workers = $self->{_total_workers};
-
-   ## -------------------------------------------------------------------------
+   my $_is_mce_thr     = ($self->{_mce_tid} ne '' && $self->{_mce_tid} ne '0');
+   my $_COM_R_SOCK     = $self->{_com_r_sock};
+   my $_data_channels  = $self->{_data_channels};
+   my $_mce_sid        = $self->{_mce_sid};
+   my $_sess_dir       = $self->{_sess_dir};
+   my $_total_workers  = $self->{_total_workers};
 
    ## Delete entry.
    delete $_mce_spawned{$_mce_sid};
 
    ## Notify workers to exit loop.
    local $\ = undef; local $/ = $LF;
-   flock $_DAT_LOCK, LOCK_EX;
 
    for (1 .. $_total_workers) {
       print $_COM_R_SOCK '_exit' . $LF;
       <$_COM_R_SOCK>;
    }
 
-   ## Close sockets.
-   CORE::shutdown $self->{_que_r_sock}, 0;        ## Queue channels
-   CORE::shutdown $self->{_que_w_sock}, 1;
-   CORE::shutdown $self->{_dat_r_sock}, 2;        ## Data channels
-   CORE::shutdown $self->{_dat_w_sock}, 2;
-   CORE::shutdown $self->{_com_r_sock}, 2;        ## Communication channels
-   CORE::shutdown $self->{_com_w_sock}, 2;
-   CORE::shutdown $self->{_bsb_r_sock}, 0;        ## Barrier sync channels
-   CORE::shutdown $self->{_bsb_w_sock}, 1;
+   CORE::shutdown $self->{_bse_w_sock}, 1;        ## Barrier end channels
    CORE::shutdown $self->{_bse_r_sock}, 0;
-   CORE::shutdown $self->{_bse_w_sock}, 1;
-
-   for ( qw( _que_r_sock _que_w_sock _dat_r_sock _dat_w_sock _com_r_sock
-             _com_w_sock _bsb_r_sock _bsb_w_sock _bse_r_sock _bse_w_sock )
-   ) {
-      close $self->{$_}; undef $self->{$_};
-   }
-
-   flock $_DAT_LOCK, LOCK_UN;
-
-   ## -------------------------------------------------------------------------
 
    ## Reap children/threads.
    if ( $self->{_pids} && @{ $self->{_pids} } > 0 ) {
@@ -1130,29 +1235,61 @@ sub shutdown {
       }
    }
 
-   close $_COM_LOCK; undef $_COM_LOCK; delete $self->{_com_lock};
-   close $_DAT_LOCK; undef $_DAT_LOCK; delete $self->{_dat_lock};
+   close $self->{_com_lock}; undef $self->{_com_lock};
 
-   ## Remove session directory.
+   ## -------------------------------------------------------------------------
+
+   ## Close sockets.
+   CORE::shutdown $self->{_bsb_w_sock}, 1;        ## Barrier begin channels
+   CORE::shutdown $self->{_bsb_r_sock}, 0;
+   CORE::shutdown $self->{_com_w_sock}, 2;        ## Communication channels
+   CORE::shutdown $self->{_com_r_sock}, 2;
+   CORE::shutdown $self->{_que_w_sock}, 1;        ## Queue channels
+   CORE::shutdown $self->{_que_r_sock}, 0;
+
+   CORE::shutdown $self->{_dat_w_sock}->[0], 1;   ## Data channels
+   CORE::shutdown $self->{_dat_r_sock}->[0], 0;
+
+   for (1 .. $_data_channels) {
+      CORE::shutdown $self->{_dat_w_sock}->[$_], 2;
+      CORE::shutdown $self->{_dat_r_sock}->[$_], 2;
+   }
+
+   for (
+      qw( _bsb_w_sock _bsb_r_sock _bse_w_sock _bse_r_sock _com_w_sock
+          _com_r_sock _que_w_sock _que_r_sock _dat_w_sock _dat_r_sock )
+   ) {
+      if (ref $self->{$_} eq 'ARRAY') {
+         for my $_s (@{ $self->{$_} }) {
+            close $_s; undef $_s;
+         }
+      } else {
+         close $self->{$_}; undef $self->{$_};
+      }
+   }
+
+   ## -------------------------------------------------------------------------
+
+   ## Remove the session directory.
    if (defined $_sess_dir) {
-      unlink "$_sess_dir/_com.lock";  unlink "$_sess_dir/_dat.lock";
+      unlink "$_sess_dir/_dat.lock.$_" for (1 .. $_data_channels);
+      unlink "$_sess_dir/_com.lock";
       rmdir  "$_sess_dir";
 
       delete $_mce_sess_dir{$_sess_dir};
    }
 
    ## Reset instance.
-   $self->{_pids}   = (); $self->{_thrs}  = (); $self->{_tids} = ();
-   $self->{_status} = (); $self->{_state} = (); $self->{_task} = ();
-
-   $self->{_total_running} = $self->{_total_workers} = 0;
-   $self->{_total_exited}  = 0;
-
-   select(undef, undef, undef, 0.003)
-      if ($self->{_mce_tid} ne '' && $self->{_mce_tid} ne '0');
+   @{$self->{_pids}}   = (); @{$self->{_thrs}}  = (); @{$self->{_tids}} = ();
+   @{$self->{_status}} = (); @{$self->{_state}} = (); @{$self->{_task}} = ();
 
    $self->{_mce_sid}  = $self->{_mce_tid}  = $self->{_sess_dir} = undef;
    $self->{_chunk_id} = $self->{_send_cnt} = $self->{_spawned}  = 0;
+
+   select(undef, undef, undef, 0.082) if ($_is_mce_thr);
+
+   $self->{_total_running} = $self->{_total_workers} = 0;
+   $self->{_total_exited}  = 0;
 
    return;
 }
@@ -1175,31 +1312,31 @@ sub sync {
 
    return if ($self->{_task_id} > 0);
 
+   my $_chn        = $self->{_chn};
    my $_DAT_LOCK   = $self->{_dat_lock};
-   my $_DAT_W_SOCK = $self->{_dat_w_sock};
+   my $_DAT_W_SOCK = $self->{_dat_w_sock}->[0];
    my $_BSB_R_SOCK = $self->{_bsb_r_sock};
    my $_BSE_R_SOCK = $self->{_bse_r_sock};
+   my $_lock_chn   = $self->{_lock_chn};
    my $_buffer;
 
    local $\ = undef if (defined $\); local $/ = $LF if (!$/ || $/ ne $LF);
 
    ## Notify the manager process (begin).
-   flock $_DAT_LOCK, LOCK_EX;
-   print $_DAT_W_SOCK OUTPUT_B_SYN . $LF;
-   <$_DAT_W_SOCK>;
-   flock $_DAT_LOCK, LOCK_UN;
+   flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
+   print $_DAT_W_SOCK OUTPUT_B_SYN . $LF . $_chn . $LF;
+   flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
 
    ## Wait here until all workers (task_id 0) have synced.
-   $_BSB_R_SOCK->sysread($_buffer, 1);
+   sysread $_BSB_R_SOCK, $_buffer, 1;
 
    ## Notify the manager process (end).
-   flock $_DAT_LOCK, LOCK_EX;
-   print $_DAT_W_SOCK OUTPUT_E_SYN . $LF;
-   <$_DAT_W_SOCK>;
-   flock $_DAT_LOCK, LOCK_UN;
+   flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
+   print $_DAT_W_SOCK OUTPUT_E_SYN . $LF . $_chn . $LF;
+   flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
 
    ## Wait here until all workers (task_id 0) have un-synced.
-   $_BSE_R_SOCK->sysread($_buffer, 1);
+   sysread $_BSE_R_SOCK, $_buffer, 1;
 
    return;
 }
@@ -1245,20 +1382,23 @@ sub abort {
 
    my $_QUE_R_SOCK = $self->{_que_r_sock};
    my $_QUE_W_SOCK = $self->{_que_w_sock};
-   my $_DAT_W_SOCK = $self->{_dat_w_sock};
    my $_abort_msg  = $self->{_abort_msg};
+   my $_lock_chn   = $self->{_lock_chn};
 
    if (defined $_abort_msg) {
       local $\ = undef;
 
-      my $_next; read $_QUE_R_SOCK, $_next, $_que_read_size;
-      print $_QUE_W_SOCK pack($_que_template, 0, $_abort_msg);
+      my $_next; sysread $_QUE_R_SOCK, $_next, $_que_read_size;
+      syswrite $_QUE_W_SOCK, pack($_que_template, 0, $_abort_msg);
 
       if ($self->{_wid} > 0) {
-         my $_DAT_LOCK = $self->{_dat_lock};
-         flock $_DAT_LOCK, LOCK_EX;
-         print $_DAT_W_SOCK OUTPUT_W_ABT . $LF;
-         flock $_DAT_LOCK, LOCK_UN;
+         my $_chn        = $self->{_chn};
+         my $_DAT_LOCK   = $self->{_dat_lock};
+         my $_DAT_W_SOCK = $self->{_dat_w_sock}->[0];
+
+         flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
+         print $_DAT_W_SOCK OUTPUT_W_ABT . $LF . $_chn . $LF;
+         flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
       }
    }
 
@@ -1269,43 +1409,55 @@ sub abort {
 
 sub exit {
 
-   my $x = $_[0]; my MCE $self = ref($x) ? $x : $MCE;
+   my $x = shift; my MCE $self = ref($x) ? $x : $MCE;
 
-   my $_exit_status = (defined $_[1]) ? $_[1] : $?;
-   my $_exit_msg    = (defined $_[2]) ? $_[2] : '';
-   my $_exit_id     = (defined $_[3]) ? $_[3] : '';
+   my $_exit_status = (defined $_[0]) ? $_[0] : $?;
+   my $_exit_msg    = (defined $_[1]) ? $_[1] : '';
+   my $_exit_id     = (defined $_[2]) ? $_[2] : '';
 
    @_ = ();
 
    _croak("MCE::exit: method cannot be called by the manager process")
       unless ($self->{_wid});
 
-   my $_COM_LOCK = $self->{_com_lock};
-   my $_DAT_LOCK = $self->{_dat_lock};
-
    delete $_mce_spawned{ $self->{_mce_sid} };
+
+   my $_chn        = $self->{_chn};
+   my $_COM_LOCK   = $self->{_com_lock};
+   my $_DAT_LOCK   = $self->{_dat_lock};
+   my $_DAT_W_SOCK = $self->{_dat_w_sock}->[0];
+   my $_DAU_W_SOCK = $self->{_dat_w_sock}->[$_chn];
+   my $_lock_chn   = $self->{_lock_chn};
+   my $_task_id    = $self->{_task_id};
+   my $_sess_dir   = $self->{_sess_dir};
+
+   if (!$_lock_chn || $_chn != 1) {
+      if (defined $_DAT_LOCK) {
+         close $_DAT_LOCK; undef $_DAT_LOCK;
+         select(undef, undef, undef, 0.002);
+      }
+      open $_DAT_LOCK, '+>>:raw:stdio', "$_sess_dir/_dat.lock.1"
+         or die "(W) open error $_sess_dir/_dat.lock.1: $!\n";
+   }
 
    unless ($self->{_exiting}) {
       $self->{_exiting} = 1;
 
-      my $_DAT_W_SOCK = $self->{_dat_w_sock};
-      my $_task_id    = $self->{_task_id};
+      my $_len = length $_exit_msg;
+      local $\ = undef;
 
-      if (defined $_DAT_LOCK) {
-         my $_len = length $_exit_msg;
-         local $\ = undef;
+      $_exit_id =~ s/[\r\n][\r\n]*/ /mg;
 
-         $_exit_id =~ s/[\r\n][\r\n]*/ /mg;
+      flock $_DAT_LOCK, LOCK_EX;
+      select(undef, undef, undef, 0.02) if ($_is_cygwin);
 
-         flock $_DAT_LOCK, LOCK_EX;
-         select(undef, undef, undef, 0.02) if ($_is_cygwin);
+      print $_DAT_W_SOCK OUTPUT_W_EXT . $LF . $_chn . $LF;
+      print $_DAU_W_SOCK
+         $_task_id . $LF . $self->{_wid} . $LF . $self->{_exit_pid} . $LF .
+         $_exit_status . $LF . $_exit_id . $LF . $_len . $LF . $_exit_msg
+      ;
 
-         print $_DAT_W_SOCK OUTPUT_W_EXT . $LF .
-            $_task_id . $LF . $self->{_wid} . $LF . $self->{_exit_pid} . $LF .
-            $_exit_status . $LF . $_exit_id . $LF . $_len . $LF . $_exit_msg;
-
-         flock $_DAT_LOCK, LOCK_UN;
-      }
+      flock $_DAT_LOCK, LOCK_UN;
    }
 
    ## Exit thread/child process.
@@ -1313,7 +1465,6 @@ sub exit {
 
    close $_DAT_LOCK; undef $_DAT_LOCK;
    close $_COM_LOCK; undef $_COM_LOCK;
-
    close STDERR; close STDOUT;
 
    threads->exit($_exit_status)
@@ -1367,7 +1518,7 @@ sub status {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Do & sendto methods for serializing data from workers to main thread.
+## Methods for serializing data from workers to the main thread.
 ##
 ###############################################################################
 
@@ -1388,6 +1539,20 @@ sub do {
    return _do_callback($self, $_callback, \@_);
 }
 
+## Gather method.
+
+sub gather {
+
+   my $x = shift; my MCE $self = ref($x) ? $x : $MCE;
+
+   _croak("MCE::gather: method cannot be called by the manager process")
+      unless ($self->{_wid});
+   _croak("MCE::gather: the 'gather' option is not specified")
+      unless ($self->{_gather_allowed});
+
+   return _do_gather($self, \@_);
+}
+
 ## Sendto method.
 
 {
@@ -1395,7 +1560,8 @@ sub do {
       'file'   => SENDTO_FILEV1, 'FILE'   => SENDTO_FILEV1,
       'file:'  => SENDTO_FILEV2, 'FILE:'  => SENDTO_FILEV2,
       'stdout' => SENDTO_STDOUT, 'STDOUT' => SENDTO_STDOUT,
-      'stderr' => SENDTO_STDERR, 'STDERR' => SENDTO_STDERR
+      'stderr' => SENDTO_STDERR, 'STDERR' => SENDTO_STDERR,
+      'fd:'    => SENDTO_FD,     'FD:'    => SENDTO_FD
    );
 
    my $_v2_regx = qr/^([^:]+:)(.+)/;
@@ -1418,7 +1584,9 @@ sub do {
             $_dest  = (exists $_sendto_lkup{$1}) ? $_sendto_lkup{$1} : undef;
             $_value = $2;
          }
-         if (!defined $_dest || ($_dest == SENDTO_FILEV2 && !defined $_value)) {
+         if ( !defined $_dest || ( !defined $_value && (
+               $_dest == SENDTO_FILEV2 || $_dest == SENDTO_FD
+         ))) {
             my $_msg  = "\n";
                $_msg .= "MCE::sendto: improper use of method\n";
                $_msg .= "\n";
@@ -1426,6 +1594,7 @@ sub do {
                $_msg .= "##    ->sendto(\"stderr\", ...);\n";
                $_msg .= "##    ->sendto(\"stdout\", ...);\n";
                $_msg .= "##    ->sendto(\"file:/path/to/file\", ...);\n";
+               $_msg .= "##    ->sendto(\"fd:2\", ...);\n";
                $_msg .= "\n";
 
             _croak($_msg);
@@ -1444,6 +1613,88 @@ sub do {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
+## Functions for serializing print, printf and say statements.
+##
+###############################################################################
+
+sub print {
+
+   my $x = shift; my MCE $self = ref($x) ? $x : $MCE;
+
+   if (defined (my $_fd = fileno($_[0]))) {
+      my $_glob = shift;
+      my $_data = (scalar @_) ? join('', @_) : $_;
+
+      _do_send_glob($self, $_glob, $_fd, \$_data);
+   }
+   else {
+      my $_data = (scalar @_) ? join('', @_) : $_;
+
+      if ($self->{_wid}) {
+         $self->_do_send(SENDTO_STDOUT, undef, \$_data);
+      }
+      else {
+         local $\ = undef if (defined $\);
+         print $_data;
+      }
+   }
+
+   return;
+}
+
+sub printf {
+
+   my $x = shift; my MCE $self = ref($x) ? $x : $MCE;
+
+   if (defined (my $_fd = fileno($_[0]))) {
+      my $_glob = shift; my $_fmt = shift || '%s';
+      my $_data = (scalar @_) ? sprintf($_fmt, @_) : sprintf($_fmt, $_);
+
+      _do_send_glob($self, $_glob, $_fd, \$_data);
+   }
+   else {
+      my $_fmt  = shift || '%s';
+      my $_data = (scalar @_) ? sprintf($_fmt, @_) : sprintf($_fmt, $_);
+
+      if ($self->{_wid}) {
+         $self->_do_send(SENDTO_STDOUT, undef, \$_data);
+      }
+      else {
+         local $\ = undef if (defined $\);
+         print $_data;
+      }
+   }
+
+   return;
+}
+
+sub say {
+
+   my $x = shift; my MCE $self = ref($x) ? $x : $MCE;
+
+   if (defined (my $_fd = fileno($_[0]))) {
+      my $_glob = shift;
+      my $_data = (scalar @_) ? join("\n", @_) . "\n" : $_ . "\n";
+
+      _do_send_glob($self, $_glob, $_fd, \$_data);
+   }
+   else {
+      my $_data = (scalar @_) ? join("\n", @_) . "\n" : $_ . "\n";
+
+      if ($self->{_wid}) {
+         $self->_do_send(SENDTO_STDOUT, undef, \$_data);
+      }
+      else {
+         local $\ = undef if (defined $\);
+         print $_data;
+      }
+   }
+
+   return;
+}
+
+###############################################################################
+## ----------------------------------------------------------------------------
 ## Private methods.
 ##
 ###############################################################################
@@ -1457,7 +1708,7 @@ sub do {
       return unless ($self);
 
       if ($self->{max_workers} =~ /^auto(?:$|\s*([\-\+\/\*])\s*(.+)$)/i) {
-         require  MCE::Util unless ($MCE::Util::VERSION);
+         require  MCE::Util unless (defined $MCE::Util::VERSION);
          $_ncpu = MCE::Util::get_ncpu() unless ($_ncpu);
 
          if ($1 && $2) {
@@ -1499,29 +1750,48 @@ sub _NOOP { }
 sub _create_socket_pair {
 
    my MCE $self  = $_[0]; my $_r_sock = $_[1]; my $_w_sock = $_[2];
-   my $_shutdown = $_[3];
+   my $_shutdown = $_[3]; my $_i      = $_[4];
 
    @_ = ();
 
    die "Private method called" unless (caller)[0]->isa( ref($self) );
 
-   socketpair( $self->{$_r_sock}, $self->{$_w_sock},
-      AF_UNIX, SOCK_STREAM, PF_UNSPEC ) or die "socketpair: $!\n";
+   if (defined $_i) {
+      socketpair( $self->{$_r_sock}->[$_i], $self->{$_w_sock}->[$_i],
+         AF_UNIX, SOCK_STREAM, PF_UNSPEC ) or die "socketpair: $!\n";
 
-   binmode $self->{$_r_sock};
-   binmode $self->{$_w_sock};
+      binmode $self->{$_r_sock}->[$_i];
+      binmode $self->{$_w_sock}->[$_i];
 
-   if ($_shutdown) {
-      CORE::shutdown $self->{$_r_sock}, 1;        ## No more writing
-      CORE::shutdown $self->{$_w_sock}, 0;        ## No more reading
+      if ($_shutdown) {
+         CORE::shutdown $self->{$_r_sock}->[$_i], 1;   ## No more writing
+         CORE::shutdown $self->{$_w_sock}->[$_i], 0;   ## No more reading
+      }
+
+      ## Autoflush handles.
+      my $_old_hndl = select $self->{$_r_sock}->[$_i]; $| = 1;
+                      select $self->{$_w_sock}->[$_i]; $| = 1;
+
+      select $_old_hndl;
    }
+   else {
+      socketpair( $self->{$_r_sock}, $self->{$_w_sock},
+         AF_UNIX, SOCK_STREAM, PF_UNSPEC ) or die "socketpair: $!\n";
 
-   ## Autoflush handles. This is done this way versus the inclusion of the
-   ## large IO::Handle module just to call autoflush(1).
-   my $_old_hndl = select $self->{$_r_sock}; $| = 1;
-                   select $self->{$_w_sock}; $| = 1;
+      binmode $self->{$_r_sock};
+      binmode $self->{$_w_sock};
 
-   select $_old_hndl;
+      if ($_shutdown) {
+         CORE::shutdown $self->{$_r_sock}, 1;          ## No more writing
+         CORE::shutdown $self->{$_w_sock}, 0;          ## No more reading
+      }
+
+      ## Autoflush handles.
+      my $_old_hndl = select $self->{$_r_sock}; $| = 1;
+                      select $self->{$_w_sock}; $| = 1;
+
+      select $_old_hndl;
+   }
 
    return;
 }
@@ -1578,1730 +1848,6 @@ sub _sync_params {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Validation method (attributes allowed for top-level).
-##
-###############################################################################
-
-sub _validate_args {
-
-   my MCE $_s = $_[0];
-
-   die "Private method called" unless (caller)[0]->isa( ref($_s) );
-
-   my $_tag = 'MCE::_validate_args';
-
-   if (defined $_s->{input_data} && ref $_s->{input_data} eq '') {
-      _croak("$_tag: '$_s->{input_data}' does not exist")
-         unless (-e $_s->{input_data});
-   }
-
-   _croak("$_tag: 'use_slurpio' is not 0 or 1")
-      if ($_s->{use_slurpio} && $_s->{use_slurpio} !~ /\A[01]\z/);
-   _croak("$_tag: 'job_delay' is not valid")
-      if ($_s->{job_delay} && $_s->{job_delay} !~ /\A[\d\.]+\z/);
-   _croak("$_tag: 'spawn_delay' is not valid")
-      if ($_s->{spawn_delay} && $_s->{spawn_delay} !~ /\A[\d\.]+\z/);
-   _croak("$_tag: 'submit_delay' is not valid")
-      if ($_s->{submit_delay} && $_s->{submit_delay} !~ /\A[\d\.]+\z/);
-
-   _croak("$_tag: 'freeze' is not a CODE reference")
-      if ($_s->{freeze} && ref $_s->{freeze} ne 'CODE');
-   _croak("$_tag: 'thaw' is not a CODE reference")
-      if ($_s->{thaw} && ref $_s->{thaw} ne 'CODE');
-
-   _croak("$_tag: 'on_post_exit' is not a CODE reference")
-      if ($_s->{on_post_exit} && ref $_s->{on_post_exit} ne 'CODE');
-   _croak("$_tag: 'on_post_run' is not a CODE reference")
-      if ($_s->{on_post_run} && ref $_s->{on_post_run} ne 'CODE');
-   _croak("$_tag: 'user_error' is not a CODE reference")
-      if ($_s->{user_error} && ref $_s->{user_error} ne 'CODE');
-   _croak("$_tag: 'user_output' is not a CODE reference")
-      if ($_s->{user_output} && ref $_s->{user_output} ne 'CODE');
-
-   _croak("$_tag: 'flush_file' is not 0 or 1")
-      if ($_s->{flush_file} && $_s->{flush_file} !~ /\A[01]\z/);
-   _croak("$_tag: 'flush_stderr' is not 0 or 1")
-      if ($_s->{flush_stderr} && $_s->{flush_stderr} !~ /\A[01]\z/);
-   _croak("$_tag: 'flush_stdout' is not 0 or 1")
-      if ($_s->{flush_stdout} && $_s->{flush_stdout} !~ /\A[01]\z/);
-
-   $_s->_validate_args_s();
-
-   if (defined $_s->{user_tasks}) {
-      for my $_t (@{ $_s->{user_tasks} }) {
-         $_s->_validate_args_s($_t);
-
-         _croak("$_tag: 'task_end' is not a CODE reference")
-            if ($_t->{task_end} && ref $_t->{task_end} ne 'CODE');
-      }
-   }
-
-   return;
-}
-
-###############################################################################
-## ----------------------------------------------------------------------------
-## Validation method (top-level and sub-tasks).
-##
-###############################################################################
-
-sub _validate_args_s {
-
-   my MCE $self = $_[0];
-   my $_s       = $_[1] || $self;
-
-   @_ = ();
-
-   die "Private method called" unless (caller)[0]->isa( ref($self) );
-
-   my $_tag = 'MCE::_validate_args_s';
-
-   _parse_max_workers($_s);
-
-   _croak("$_tag: 'max_workers' is not valid")
-      if (defined $_s->{max_workers} && (
-         $_s->{max_workers} !~ /\A\d+\z/
-      ));
-   _croak("$_tag: 'chunk_size' is not valid")
-      if (defined $_s->{chunk_size} && (
-         $_s->{chunk_size} !~ /\A\d+\z/ or $_s->{chunk_size} == 0
-      ));
-
-   _croak("$_tag: 'RS' is not valid")
-      if ($_s->{RS} && ref $_s->{RS} ne '');
-   _croak("$_tag: 'use_threads' is not 0 or 1")
-      if ($_s->{use_threads} && $_s->{use_threads} !~ /\A[01]\z/);
-   _croak("$_tag: 'user_begin' is not a CODE reference")
-      if ($_s->{user_begin} && ref $_s->{user_begin} ne 'CODE');
-   _croak("$_tag: 'user_func' is not a CODE reference")
-      if ($_s->{user_func} && ref $_s->{user_func} ne 'CODE');
-   _croak("$_tag: 'user_end' is not a CODE reference")
-      if ($_s->{user_end} && ref $_s->{user_end} ne 'CODE');
-
-   if (defined $_s->{sequence}) {
-      my $_seq = $_s->{sequence};
-
-      if (ref $_seq eq 'ARRAY') {
-         my ($_begin, $_end, $_step, $_fmt) = @{ $_seq };
-         $_seq = {
-            begin => $_begin, end => $_end, step => $_step, format => $_fmt
-         };
-      }
-      else {
-         _croak("$_tag: 'sequence' is not a HASH or ARRAY reference")
-            if (ref $_seq ne 'HASH');
-      }
-
-      _croak("$_tag: 'begin' is not defined for sequence")
-         unless (defined $_seq->{begin});
-      _croak("$_tag: 'end' is not defined for sequence")
-         unless (defined $_seq->{end});
-
-      for (qw(begin end step)) {
-         _croak("$_tag: '$_' is not valid for sequence")
-            if (defined $_seq->{$_} && (
-               $_seq->{$_} eq '' || $_seq->{$_} !~ /\A-?\d*\.?\d*\z/
-            ));
-      }
-
-      unless (defined $_seq->{step}) {
-         $_seq->{step} = ($_seq->{begin} < $_seq->{end}) ? 1 : -1;
-         if (ref $_s->{sequence} eq 'ARRAY') {
-            $_s->{sequence}->[2] = $_seq->{step};
-         }
-      }
-      if ( ($_seq->{step} < 0 && $_seq->{begin} < $_seq->{end}) ||
-           ($_seq->{step} > 0 && $_seq->{begin} > $_seq->{end}) ||
-           ($_seq->{step} == 0)
-      ) {
-         _croak("$_tag: impossible 'step' size for sequence");
-      }
-   }
-
-   if (defined $_s->{interval}) {
-      my $_i = $_s->{interval};
-
-      _croak("$_tag: 'interval' is not a HASH reference")
-         if (ref $_i ne 'HASH');
-      _croak("$_tag: 'delay' is not defined for interval")
-         unless (defined $_i->{delay});
-
-      for (qw(delay max_nodes node_id)) {
-         _croak("$_tag: '$_' is not valid for interval")
-            if (defined $_i->{$_} && (
-               $_i->{$_} eq '' ||
-               $_i->{$_} !~ /\A\-?\d*(?:e\-|\.)?\d*\z/ ||
-               $_i->{$_} == 0 || $_i->{$_} < 0
-            ));
-      }
-      $_i->{max_nodes} = 1 unless (exists $_i->{max_nodes});
-      $_i->{node_id}   = 1 unless (exists $_i->{node_id});
-      $_i->{_time}     = time();
-   }
-
-   return;
-}
-
-###############################################################################
-## ----------------------------------------------------------------------------
-## Validation method (run state).
-##
-###############################################################################
-
-sub _validate_runstate {
-
-   my MCE $self = $_[0]; my $_tag = $_[1];
-
-   _croak("$_tag: method cannot be called by the worker process")
-      if ($self->{_wid});
-   _croak("$_tag: method cannot be called while processing")
-      if ($self->{_send_cnt});
-   _croak("$_tag: method cannot be called while running")
-      if ($self->{_total_running});
-
-   return;
-}
-
-###############################################################################
-## ----------------------------------------------------------------------------
-## Internal do & send related functions for serializing data to destination.
-##
-###############################################################################
-
-{
-   my ($_data_ref, $_dest, $_value, $_len, $_send_init_called);
-   my ($_sess_dir, $_DAT_LOCK, $_DAT_W_SOCK, $_want_id);
-
-   ## Create array structure containing various send functions.
-   my @_dest_function = ();
-
-   $_dest_function[SENDTO_FILEV2] = sub {
-
-      return unless (defined $_value);
-
-      local $\ = undef if (defined $\);           ## Content >> File
-      $_len = length ${ $_[0] };
-
-      flock $_DAT_LOCK, LOCK_EX;
-      print $_DAT_W_SOCK OUTPUT_F_SND . $LF .
-         $_value . $LF . $_len . $LF . ${ $_[0] };
-
-      flock $_DAT_LOCK, LOCK_UN;
-
-      return;
-   };
-
-   $_dest_function[SENDTO_STDOUT] = sub {
-
-      local $\ = undef if (defined $\);           ## Content >> STDOUT
-      $_len = length ${ $_[0] };
-
-      flock $_DAT_LOCK, LOCK_EX;
-      print $_DAT_W_SOCK OUTPUT_O_SND . $LF . $_len . $LF . ${ $_[0] };
-      flock $_DAT_LOCK, LOCK_UN;
-
-      return;
-   };
-
-   $_dest_function[SENDTO_STDERR] = sub {
-
-      local $\ = undef if (defined $\);           ## Content >> STDERR
-      $_len = length ${ $_[0] };
-
-      flock $_DAT_LOCK, LOCK_EX;
-      print $_DAT_W_SOCK OUTPUT_E_SND . $LF . $_len . $LF . ${ $_[0] };
-      flock $_DAT_LOCK, LOCK_UN;
-
-      return;
-   };
-
-   ## -------------------------------------------------------------------------
-
-   sub _do_callback {
-
-      my MCE $self = $_[0]; $_value = $_[1]; $_data_ref = $_[2];
-
-      @_ = ();
-
-      local $\ = undef if (defined $\); my $_buffer;
-
-      unless (defined wantarray) {
-         $_want_id = WANTS_UNDEF;
-      } elsif (wantarray) {
-         $_want_id = WANTS_ARRAY;
-      } else {
-         $_want_id = WANTS_SCALAR;
-      }
-
-      ## Crossover: Send arguments
-
-      if (@$_data_ref > 0) {                      ## Multiple Args >> Callback
-         if (@$_data_ref > 1 || ref $_data_ref->[0]) {
-            $_buffer = $self->{freeze}($_data_ref);
-            $_len = length $_buffer;
-
-            flock $_DAT_LOCK, LOCK_EX;
-            print $_DAT_W_SOCK OUTPUT_A_CBK . $LF .
-               $_want_id . $LF . $_value . $LF . $_len . $LF . $_buffer;
-
-            undef $_buffer;
-         }
-         else {                                   ## Scalar >> Callback
-            $_len = length $_data_ref->[0];
-
-            flock $_DAT_LOCK, LOCK_EX;
-            print $_DAT_W_SOCK OUTPUT_S_CBK . $LF .
-               $_want_id . $LF . $_value . $LF . $_len . $LF . $_data_ref->[0];
-         }
-      }
-      else {                                      ## No Args >> Callback
-         flock $_DAT_LOCK, LOCK_EX;
-         print $_DAT_W_SOCK OUTPUT_N_CBK . $LF .
-            $_want_id . $LF . $_value . $LF;
-      }
-
-      $_data_ref = '';
-
-      ## Crossover: Receive return value
-
-      if ($_want_id == WANTS_UNDEF) {
-         flock $_DAT_LOCK, LOCK_UN;
-         return;
-      }
-      elsif ($_want_id == WANTS_ARRAY) {
-         local $/ = $LF if (!$/ || $/ ne $LF);
-
-         chomp($_len = <$_DAT_W_SOCK>);
-         read $_DAT_W_SOCK, $_buffer, $_len || 0;
-         flock $_DAT_LOCK, LOCK_UN;
-
-         return @{ $self->{thaw}($_buffer) };
-      }
-      else {
-         local $/ = $LF if (!$/ || $/ ne $LF);
-
-         chomp($_want_id = <$_DAT_W_SOCK>);
-         chomp($_len     = <$_DAT_W_SOCK>);
-         read $_DAT_W_SOCK, $_buffer, $_len || 0;
-         flock $_DAT_LOCK, LOCK_UN;
-
-         return $_buffer if ($_want_id == WANTS_SCALAR);
-         return $self->{thaw}($_buffer);
-      }
-   }
-
-   ## -------------------------------------------------------------------------
-
-   sub _do_send_init {
-
-      my MCE $self = $_[0];
-
-      @_ = ();
-
-      die "Private method called" unless (caller)[0]->isa( ref($self) );
-
-      $_sess_dir   = $self->{_sess_dir};
-      $_DAT_LOCK   = $self->{_dat_lock};
-      $_DAT_W_SOCK = $self->{_dat_w_sock};
-
-      $_send_init_called = 1;
-
-      return;
-   }
-
-   sub _do_send {
-
-      my MCE $self = shift; $_dest = shift; $_value = shift;
-
-      my $_buffer;
-
-      if (@_ > 1) {
-         $_buffer = join('', @_);
-         return $_dest_function[$_dest](\$_buffer);
-      }
-      elsif (my $_ref = ref $_[0]) {
-         if ($_ref eq 'SCALAR') {
-            return $_dest_function[$_dest]($_[0]);
-         } elsif ($_ref eq 'ARRAY') {
-            $_buffer = join('', @{ $_[0] });
-         } elsif ($_ref eq 'HASH') {
-            $_buffer = join('', %{ $_[0] });
-         } else {
-            $_buffer = join('', @_);
-         }
-         return $_dest_function[$_dest](\$_buffer);
-      }
-      else {
-         return $_dest_function[$_dest](\$_[0]);
-      }
-   }
-}
-
-###############################################################################
-## ----------------------------------------------------------------------------
-## Process output.
-##
-## Awaits and processes events from workers. The sendto/do methods tag the
-## output accordingly. The hash structure below is key-driven.
-##
-###############################################################################
-
-{
-   my ($_aborted, $_eof_flag, $_input_data, $_syn_flag, $_value, $_want_id);
-   my ($_callback, $_chunk_id, $_chunk_size, $_file, $_len, %_sendto_fhs);
-   my ($_flush_file, $_has_user_tasks, $self, $_user_error, $_user_output);
-   my ($_input_glob, $_input_size, $_offset_pos, $_single_dim, $_use_slurpio);
-   my ($_exit_id, $_exit_pid, $_exit_status, $_exit_wid, $_sync_cnt);
-   my ($_on_post_exit, $_on_post_run, $_sess_dir, $_task_id);
-
-   my ($_DAT_R_SOCK, $_I_SEP, $_O_SEP, $_MCE_STDERR, $_MCE_STDOUT, $_RS);
-   my ($_BSB_W_SOCK, $_BSE_W_SOCK, $_I_FLG, $_O_FLG, $_RS_FLG);
-
-   ## -------------------------------------------------------------------------
-   ## Call on task_end.
-
-   sub _task_end {
-
-      my $self = $_[0]; my $_task_id = $_[1];
-
-      my $_task_end = ($self->{user_tasks}->[$_task_id]->{task_end})
-         ? $self->{user_tasks}->[$_task_id]->{task_end}
-         : $self->{task_end};
-
-      if (defined $_task_end) {
-         my $_name = ($self->{user_tasks}->[$_task_id]->{name})
-            ? $self->{user_tasks}->[$_task_id]->{name}
-            : $self->{name};
-
-         $_task_end->($self, $_task_id, $_name);
-      }
-
-      return;
-   }
-
-   ## -------------------------------------------------------------------------
-   ## Create hash structure containing various output functions.
-
-   our %_output_function = (
-
-      OUTPUT_W_ABT.$LF => sub {                   ## Worker has aborted
-         $_aborted = 1;
-         return;
-      },
-
-      OUTPUT_W_DNE.$LF => sub {                   ## Worker has completed
-         chomp($_task_id = <$_DAT_R_SOCK>);
-         $self->{_total_running} -= 1;
-
-         if ($_has_user_tasks && $_task_id >= 0) {
-            $self->{_task}->[$_task_id]->{_total_running} -= 1;
-         }
-
-         my $_total_running = ($_has_user_tasks)
-            ? $self->{_task}->[$_task_id]->{_total_running}
-            : $self->{_total_running};
-
-         if ($_task_id == 0 && defined $_syn_flag && $_sync_cnt) {
-            if ($_sync_cnt == $_total_running) {
-               $_BSB_W_SOCK->syswrite($LF) for (1 .. $_total_running);
-               undef $_syn_flag;
-            }
-         }
-
-         _task_end($self, $_task_id) unless ($_total_running);
-
-         return;
-      },
-
-      ## ----------------------------------------------------------------------
-
-      OUTPUT_W_EXT.$LF => sub {                   ## Worker has exited
-         chomp($_task_id = <$_DAT_R_SOCK>);
-
-         $self->{_total_exited}  += 1;
-         $self->{_total_running} -= 1;
-         $self->{_total_workers} -= 1;
-
-         if ($_has_user_tasks && $_task_id >= 0) {
-            $self->{_task}->[$_task_id]->{_total_running} -= 1;
-            $self->{_task}->[$_task_id]->{_total_workers} -= 1;
-         }
-
-         my $_total_running = ($_has_user_tasks)
-            ? $self->{_task}->[$_task_id]->{_total_running}
-            : $self->{_total_running};
-
-         if ($_task_id == 0 && defined $_syn_flag && $_sync_cnt) {
-            if ($_sync_cnt == $_total_running) {
-               $_BSB_W_SOCK->syswrite($LF) for (1 .. $_total_running);
-               undef $_syn_flag;
-            }
-         }
-
-         my $_exit_msg = '';
-
-         chomp($_exit_wid    = <$_DAT_R_SOCK>);
-         chomp($_exit_pid    = <$_DAT_R_SOCK>);
-         chomp($_exit_status = <$_DAT_R_SOCK>);
-         chomp($_exit_id     = <$_DAT_R_SOCK>);
-         chomp($_len         = <$_DAT_R_SOCK>);
-
-         read($_DAT_R_SOCK, $_exit_msg, $_len) if ($_len);
-
-         $self->{_wrk_status} = $_exit_status
-            if (abs($_exit_status) > abs($self->{_wrk_status}));
-
-         ## Reap child/thread. Note: Win32 uses negative PIDs.
-
-         if ($_exit_pid =~ /^PID_(-?\d+)/) {
-            my $_pid = $1; my $_list = $self->{_pids};
-            for my $i (0 .. @$_list) {
-               if ($_list->[$i] && $_list->[$i] == $_pid) {
-                  waitpid $_pid, 0;
-                  $self->{_pids}->[$i] = undef;
-                  last;
-               }
-            }
-         }
-         elsif ($_exit_pid =~ /^TID_(\d+)/) {
-            my $_tid = $1; my $_list = $self->{_tids};
-            for my $i (0 .. @$_list) {
-               if ($_list->[$i] && $_list->[$i] == $_tid) {
-                  ${ $self->{_thrs}->[$i] }->join();
-                  $self->{_thrs}->[$i] = undef;
-                  $self->{_tids}->[$i] = undef;
-                  last;
-               }
-            }
-         }
-
-         ## Call on_post_exit callback if defined. Otherwise, append status
-         ## information if on_post_run is defined for later retrieval.
-
-         if (defined $_on_post_exit) {
-            $_on_post_exit->($self, {
-               wid => $_exit_wid, pid => $_exit_pid, status => $_exit_status,
-               msg => $_exit_msg, id  => $_exit_id
-            });
-         }
-         elsif (defined $_on_post_run) {
-            push @{ $self->{_status} }, {
-               wid => $_exit_wid, pid => $_exit_pid, status => $_exit_status,
-               msg => $_exit_msg, id  => $_exit_id
-            };
-         }
-
-         _task_end($self, $_task_id) unless ($_total_running);
-
-         return;
-      },
-
-      ## ----------------------------------------------------------------------
-
-      OUTPUT_A_ARY.$LF => sub {                   ## Array << Array
-         my $_buffer;
-
-         if ($_offset_pos >= $_input_size || $_aborted) {
-            local $\ = undef if (defined $\);
-            print $_DAT_R_SOCK '0' . $LF;
-            return;
-         }
-
-         if ($_single_dim && $_chunk_size == 1) {
-            $_buffer = $_input_data->[$_offset_pos];
-         }
-         else {
-            if ($_offset_pos + $_chunk_size - 1 < $_input_size) {
-               $_buffer = $self->{freeze}( [ @$_input_data[
-                  $_offset_pos .. $_offset_pos + $_chunk_size - 1
-               ] ] );
-            }
-            else {
-               $_buffer = $self->{freeze}( [ @$_input_data[
-                  $_offset_pos .. $_input_size - 1
-               ] ] );
-            }
-         }
-
-         local $\ = undef if (defined $\); $_len = length $_buffer;
-         print $_DAT_R_SOCK $_len . $LF . (++$_chunk_id) . $LF . $_buffer;
-
-         $_offset_pos += $_chunk_size;
-
-         return;
-      },
-
-      OUTPUT_S_GLB.$LF => sub {                   ## Scalar << Glob FH
-         my $_buffer;
-
-         ## The logic below honors ('Ctrl/Z' in Windows, 'Ctrl/D' in Unix)
-         ## when reading from standard input. No output will be lost as
-         ## far as what was previously read into the buffer.
-
-         if ($_eof_flag || $_aborted) {
-            local $\ = undef if (defined $\);
-            print $_DAT_R_SOCK '0' . $LF;
-            return;
-         }
-
-         {
-            local $/ = $_RS if ($_RS_FLG);
-
-            if ($_chunk_size <= MAX_RECS_SIZE) {
-               for (1 .. $_chunk_size) {
-                  if (defined($_ = <$_input_glob>)) {
-                     $_buffer .= $_; next;
-                  }
-                  $_eof_flag = 1; last;
-               }
-            }
-            else {
-               if (read($_input_glob, $_buffer, $_chunk_size) == $_chunk_size) {
-                  if (defined($_ = <$_input_glob>)) {
-                     $_buffer .= $_;
-                  } else {
-                     $_eof_flag = 1;
-                  }
-               }
-            }
-         }
-
-         local $\ = undef if (defined $\); $_len = length $_buffer;
-
-         print $_DAT_R_SOCK ($_len)
-            ? $_len . $LF . (++$_chunk_id) . $LF . $_buffer
-            : '0' . $LF;
-
-         return;
-      },
-
-      ## ----------------------------------------------------------------------
-
-      OUTPUT_A_CBK.$LF => sub {                   ## Callback w/ multiple args
-         my $_buffer;
-
-         chomp($_want_id  = <$_DAT_R_SOCK>);
-         chomp($_callback = <$_DAT_R_SOCK>);
-         chomp($_len      = <$_DAT_R_SOCK>);
-
-         read $_DAT_R_SOCK, $_buffer, $_len;
-         my $_data_ref = $self->{thaw}($_buffer);
-
-         undef $_buffer;
-
-         local $\ = $_O_SEP if ($_O_FLG); local $/ = $_I_SEP if ($_I_FLG);
-         no strict 'refs';
-
-         if ($_want_id == WANTS_UNDEF) {
-            $_callback->(@{ $_data_ref });
-         }
-         elsif ($_want_id == WANTS_ARRAY) {
-            my @_ret_a = $_callback->(@{ $_data_ref });
-            $_buffer = $self->{freeze}(\@_ret_a);
-            local $\ = undef if (defined $\); $_len = length $_buffer;
-            print $_DAT_R_SOCK $_len . $LF . $_buffer;
-         }
-         else {
-            my $_ret_s = $_callback->(@{ $_data_ref });
-            unless (ref $_ret_s) {
-               local $\ = undef if (defined $\); $_len = length $_ret_s;
-               print $_DAT_R_SOCK WANTS_SCALAR . $LF . $_len . $LF . $_ret_s;
-            }
-            else {
-               $_buffer = $self->{freeze}($_ret_s);
-               local $\ = undef if (defined $\); $_len = length $_buffer;
-               print $_DAT_R_SOCK WANTS_REF . $LF . $_len . $LF . $_buffer;
-            }
-         }
-
-         return;
-      },
-
-      OUTPUT_S_CBK.$LF => sub {                   ## Callback w/ 1 scalar arg
-         my $_buffer;
-
-         chomp($_want_id  = <$_DAT_R_SOCK>);
-         chomp($_callback = <$_DAT_R_SOCK>);
-         chomp($_len      = <$_DAT_R_SOCK>);
-
-         read $_DAT_R_SOCK, $_buffer, $_len;
-
-         local $\ = $_O_SEP if ($_O_FLG); local $/ = $_I_SEP if ($_I_FLG);
-         no strict 'refs';
-
-         if ($_want_id == WANTS_UNDEF) {
-            $_callback->($_buffer);
-         }
-         elsif ($_want_id == WANTS_ARRAY) {
-            my @_ret_a = $_callback->($_buffer);
-            $_buffer = $self->{freeze}(\@_ret_a);
-            local $\ = undef if (defined $\); $_len = length $_buffer;
-            print $_DAT_R_SOCK $_len . $LF . $_buffer;
-         }
-         else {
-            my $_ret_s = $_callback->($_buffer);
-            unless (ref $_ret_s) {
-               local $\ = undef if (defined $\); $_len = length $_ret_s;
-               print $_DAT_R_SOCK WANTS_SCALAR . $LF . $_len . $LF . $_ret_s;
-            }
-            else {
-               $_buffer = $self->{freeze}($_ret_s);
-               local $\ = undef if (defined $\); $_len = length $_buffer;
-               print $_DAT_R_SOCK WANTS_REF . $LF . $_len . $LF . $_buffer;
-            }
-         }
-
-         return;
-      },
-
-      OUTPUT_N_CBK.$LF => sub {                   ## Callback w/ no args
-         my $_buffer;
-
-         chomp($_want_id  = <$_DAT_R_SOCK>);
-         chomp($_callback = <$_DAT_R_SOCK>);
-
-         local $\ = $_O_SEP if ($_O_FLG); local $/ = $_I_SEP if ($_I_FLG);
-         no strict 'refs';
-
-         if ($_want_id == WANTS_UNDEF) {
-            $_callback->();
-         }
-         elsif ($_want_id == WANTS_ARRAY) {
-            my @_ret_a = $_callback->();
-            $_buffer = $self->{freeze}(\@_ret_a);
-            local $\ = undef if (defined $\); $_len = length $_buffer;
-            print $_DAT_R_SOCK $_len . $LF . $_buffer;
-         }
-         else {
-            my $_ret_s = $_callback->();
-            unless (ref $_ret_s) {
-               local $\ = undef if (defined $\); $_len = length $_ret_s;
-               print $_DAT_R_SOCK WANTS_SCALAR . $LF . $_len . $LF . $_ret_s;
-            }
-            else {
-               $_buffer = $self->{freeze}($_ret_s);
-               local $\ = undef if (defined $\); $_len = length $_buffer;
-               print $_DAT_R_SOCK WANTS_REF . $LF . $_len . $LF . $_buffer;
-            }
-         }
-
-         return;
-      },
-
-      ## ----------------------------------------------------------------------
-
-      OUTPUT_O_SND.$LF => sub {                   ## Send >> STDOUT
-         my $_buffer;
-
-         chomp($_len = <$_DAT_R_SOCK>);
-         read $_DAT_R_SOCK, $_buffer, $_len;
-
-         if (defined $_user_output) {
-            $_user_output->($_buffer);
-         } else {
-            print $_MCE_STDOUT $_buffer;
-         }
-
-         return;
-      },
-
-      OUTPUT_E_SND.$LF => sub {                   ## Send >> STDERR
-         my $_buffer;
-
-         chomp($_len = <$_DAT_R_SOCK>);
-         read $_DAT_R_SOCK, $_buffer, $_len;
-
-         if (defined $_user_error) {
-            $_user_error->($_buffer);
-         } else {
-            print $_MCE_STDERR $_buffer;
-         }
-
-         return;
-      },
-
-      OUTPUT_F_SND.$LF => sub {                   ## Send >> File
-         my ($_buffer, $_OUT_FILE);
-
-         chomp($_file = <$_DAT_R_SOCK>);
-         chomp($_len  = <$_DAT_R_SOCK>);
-
-         read $_DAT_R_SOCK, $_buffer, $_len;
-
-         unless (exists $_sendto_fhs{$_file}) {
-            open    $_sendto_fhs{$_file}, '>>', $_file or die "$_file: $!\n";
-            binmode $_sendto_fhs{$_file};
-
-            ## Select new FH, turn on autoflush, restore the old FH.
-            ## IO::Handle is too large just to call autoflush(1).
-            select((select($_sendto_fhs{$_file}), $| = 1)[0])
-               if ($_flush_file);
-         }
-
-         $_OUT_FILE = $_sendto_fhs{$_file};
-         print $_OUT_FILE $_buffer;
-
-         return;
-      },
-
-      ## ----------------------------------------------------------------------
-
-      OUTPUT_B_SYN.$LF => sub {                   ## Worker barrier sync - beg
-
-         if (!defined $_sync_cnt || $_sync_cnt == 0) {
-            $_syn_flag = 1;
-            $_sync_cnt = 0;
-         }
-
-         print $_DAT_R_SOCK $LF;
-
-         my $_total_running = ($_has_user_tasks)
-            ? $self->{_task}->[0]->{_total_running}
-            : $self->{_total_running};
-
-         if (++$_sync_cnt == $_total_running) {
-            $_BSB_W_SOCK->syswrite($LF) for (1 .. $_total_running);
-            undef $_syn_flag;
-         }
-
-         return;
-      },
-
-      OUTPUT_E_SYN.$LF => sub {                   ## Worker barrier sync - end
-
-         print $_DAT_R_SOCK $LF;
-
-         if (--$_sync_cnt == 0) {
-            my $_total_running = ($_has_user_tasks)
-               ? $self->{_task}->[0]->{_total_running}
-               : $self->{_total_running};
-
-            $_BSE_W_SOCK->syswrite($LF) for (1 .. $_total_running);
-         }
-
-         return;
-      }
-
-   );
-
-   ## -------------------------------------------------------------------------
-
-   sub _output_loop {
-
-      $self = $_[0]; $_input_data = $_[1]; $_input_glob = $_[2];
-
-      @_ = ();
-
-      die "Private method called" unless (caller)[0]->isa( ref($self) );
-
-      $_on_post_exit = $self->{on_post_exit};
-      $_on_post_run  = $self->{on_post_run};
-      $_chunk_size   = $self->{chunk_size};
-      $_flush_file   = $self->{flush_file};
-      $_use_slurpio  = $self->{use_slurpio};
-      $_user_output  = $self->{user_output};
-      $_user_error   = $self->{user_error};
-      $_single_dim   = $self->{_single_dim};
-      $_sess_dir     = $self->{_sess_dir};
-
-      $_has_user_tasks = (defined $self->{user_tasks});
-      $_aborted = $_chunk_id = $_eof_flag = 0;
-
-      $_chunk_size = $self->{user_tasks}->[0]->{chunk_size}
-         if ($_has_user_tasks && $self->{user_tasks}->[0]->{chunk_size});
-
-      if (defined $_input_data && ref $_input_data eq 'ARRAY') {
-         $_input_size = @$_input_data;
-         $_offset_pos = 0;
-      } else {
-         $_input_size = $_offset_pos = 0;
-      }
-
-      ## ----------------------------------------------------------------------
-      ## Set STDOUT/STDERR to user parameters.
-
-      if (defined $self->{stdout_file}) {
-         open $_MCE_STDOUT, '>>', $self->{stdout_file}
-            or die $self->{stdout_file} . ": $!\n";
-         binmode $_MCE_STDOUT;
-      }
-      else {
-         open $_MCE_STDOUT, ">&=STDOUT";
-         binmode $_MCE_STDOUT;
-      }
-
-      if (defined $self->{stderr_file}) {
-         open $_MCE_STDERR, '>>', $self->{stderr_file}
-            or die $self->{stderr_file} . ": $!\n";
-         binmode $_MCE_STDERR;
-      }
-      else {
-         open $_MCE_STDERR, ">&=STDERR";
-         binmode $_MCE_STDERR;
-      }
-
-      ## Make MCE_STDOUT the default handle.
-      ## Flush STDERR/STDOUT handles if requested.
-      my $_old_hndl = select $_MCE_STDOUT;
-      $| = 1 if ($self->{flush_stdout});
-
-      if ($self->{flush_stderr}) {
-         select $_MCE_STDERR; $| = 1;
-         select $_MCE_STDOUT;
-      }
-
-      ## ----------------------------------------------------------------------
-      ## Output event loop.
-
-      $_DAT_R_SOCK = $self->{_dat_r_sock};        ## For serialized reads
-      $_BSB_W_SOCK = $self->{_bsb_w_sock};
-      $_BSE_W_SOCK = $self->{_bse_w_sock};
-
-      $_RS    = $self->{RS} || $/;    $_RS_FLG = (!$_RS || $_RS ne $LF);
-      $_O_SEP = $\; local $\ = undef; $_O_FLG  = defined $_O_SEP;
-      $_I_SEP = $/; local $/ = $LF;   $_I_FLG  = (!$_I_SEP || $_I_SEP ne $LF);
-
-      ## Call on hash function if value exists in hash structure.
-      ## Exit loop when all workers have completed or ended.
-      my $_func;
-
-      MCE::Queue::_mce_m_loop_begin($self)
-         if (defined $MCE::Queue::VERSION);
-
-      while (1) {
-         $_func = <$_DAT_R_SOCK>;
-         next unless (defined $_func);
-
-         if (exists $_output_function{$_func}) {
-            $_output_function{$_func}();
-            last unless ($self->{_total_running});
-         }
-      }
-
-      MCE::Queue::_mce_m_loop_end($self)
-         if (defined $MCE::Queue::VERSION);
-
-      ## Call on_post_run callback.
-      $_on_post_run->($self, $self->{_status}) if (defined $_on_post_run);
-
-      ## Close opened sendto file handles.
-      for (keys %_sendto_fhs) {
-         close  $_sendto_fhs{$_};
-         undef  $_sendto_fhs{$_};
-         delete $_sendto_fhs{$_};
-      }
-
-      ## Restore the default handle. Close MCE STDOUT/STDERR handles.
-      select $_old_hndl;
-
-      close $_MCE_STDOUT; undef $_MCE_STDOUT;
-      close $_MCE_STDERR; undef $_MCE_STDERR;
-
-      return;
-   }
-}
-
-###############################################################################
-## ----------------------------------------------------------------------------
-## Worker process -- Read handle.
-##
-###############################################################################
-
-sub _worker_read_handle {
-
-   my MCE $self = $_[0]; my $_proc_type = $_[1]; my $_input_data = $_[2];
-
-   @_ = ();
-
-   die "Private method called" unless (caller)[0]->isa( ref($self) );
-
-   _croak("MCE::_worker_read_handle: 'user_func' is not specified")
-      unless (defined $self->{user_func});
-
-   my $_QUE_R_SOCK  = $self->{_que_r_sock};
-   my $_QUE_W_SOCK  = $self->{_que_w_sock};
-   my $_chunk_size  = $self->{chunk_size};
-   my $_use_slurpio = $self->{use_slurpio};
-   my $_RS          = $self->{RS} || $/;
-   my $_RS_FLG      = (!$_RS || $_RS ne $LF);
-
-   my ($_data_size, $_next, $_chunk_id, $_offset_pos, $_IN_FILE);
-   my @_records = (); $_chunk_id = $_offset_pos = 0;
-
-   $_data_size = ($_proc_type == READ_MEMORY)
-      ? length $$_input_data : -s $_input_data;
-
-   if ($_chunk_size <= MAX_RECS_SIZE || $_proc_type == READ_MEMORY) {
-      open    $_IN_FILE, '<', $_input_data or die "$_input_data: $!\n";
-      binmode $_IN_FILE;
-   } else {
-      sysopen $_IN_FILE, $_input_data, O_RDONLY or die "$_input_data: $!\n";
-   }
-
-   ## -------------------------------------------------------------------------
-
-   $self->{_next_jmp} = sub { goto _WORKER_READ_HANDLE__NEXT; };
-   $self->{_last_jmp} = sub { goto _WORKER_READ_HANDLE__LAST; };
-
-   _WORKER_READ_HANDLE__NEXT:
-
-   while (1) {
-
-      ## Don't declare $_buffer with other vars above, instead it's done here.
-      ## Doing so will fail with Perl 5.8.0 under Solaris 5.10 on large files.
-
-      local $/ = $_RS if ($_RS_FLG);
-      my $_buffer;
-
-      ## Obtain the next chunk_id and offset position.
-      {
-         local $\ = undef if (defined $\);
-
-         read $_QUE_R_SOCK, $_next, $_que_read_size;
-         ($_chunk_id, $_offset_pos) = unpack($_que_template, $_next);
-
-         if ($_offset_pos >= $_data_size) {
-            print $_QUE_W_SOCK pack($_que_template, 0, $_offset_pos);
-            close $_IN_FILE; undef $_IN_FILE;
-            return;
-         }
-      }
-
-      $_chunk_id++;
-
-      ## Read data.
-      if ($_chunk_size <= MAX_RECS_SIZE) {        ## One or many records.
-         seek $_IN_FILE, $_offset_pos, 0;
-         if ($_chunk_size == 1) {
-            $_buffer = <$_IN_FILE>;
-         }
-         else {
-            if ($_use_slurpio) {
-               $_buffer .= <$_IN_FILE> for (0 .. $_chunk_size - 1);
-            }
-            else {
-               for (0 .. $_chunk_size - 1) {
-                  $_records[$_] = <$_IN_FILE>;
-                  unless (defined $_records[$_]) {
-                     delete @_records[$_ .. $_chunk_size - 1];
-                     last;
-                  }
-               }
-            }
-         }
-      }
-      else {                                      ## Large chunk.
-         if ($_proc_type == READ_MEMORY) {
-            seek $_IN_FILE, $_offset_pos, 0;
-            if (read($_IN_FILE, $_buffer, $_chunk_size) == $_chunk_size) {
-               $_buffer .= <$_IN_FILE>;
-            }
-         }
-         else {
-            sysseek $_IN_FILE, $_offset_pos, 0;
-            if (sysread($_IN_FILE, $_buffer, $_chunk_size) == $_chunk_size) {
-               seek $_IN_FILE, sysseek($_IN_FILE, 0, 1), 0;
-               $_buffer .= <$_IN_FILE>;
-            }
-            else {
-               seek $_IN_FILE, sysseek($_IN_FILE, 0, 1), 0;
-            }
-         }
-      }
-
-      ## Append the next offset position into the queue.
-      {
-         local $\ = undef if (defined $\);
-         print $_QUE_W_SOCK pack($_que_template, $_chunk_id, tell $_IN_FILE);
-      }
-
-      ## Call user function.
-      if ($_use_slurpio) {
-         local $_ = \$_buffer;
-         _worker_user_func($self, \$_buffer, $_chunk_id);
-      }
-      else {
-         if ($_chunk_size == 1) {
-            local $_ = $_buffer;
-            _worker_user_func($self, [ $_buffer ], $_chunk_id);
-         }
-         else {
-            if ($_chunk_size > MAX_RECS_SIZE) {
-               _sync_buffer_to_array(\$_buffer, \@_records);
-            }
-            local $_ = \@_records;
-            _worker_user_func($self, \@_records, $_chunk_id);
-         }
-      }
-   }
-
-   _WORKER_READ_HANDLE__LAST:
-
-   close $_IN_FILE; undef $_IN_FILE;
-
-   return;
-}
-
-###############################################################################
-## ----------------------------------------------------------------------------
-## Worker process -- Request chunk.
-##
-###############################################################################
-
-sub _worker_request_chunk {
-
-   my MCE $self = $_[0]; my $_proc_type = $_[1];
-
-   @_ = ();
-
-   die "Private method called" unless (caller)[0]->isa( ref($self) );
-
-   _croak("MCE::_worker_request_chunk: 'user_func' is not specified")
-      unless (defined $self->{user_func});
-
-   my $_DAT_LOCK    = $self->{_dat_lock};
-   my $_DAT_W_SOCK  = $self->{_dat_w_sock};
-   my $_single_dim  = $self->{_single_dim};
-   my $_chunk_size  = $self->{chunk_size};
-   my $_use_slurpio = $self->{use_slurpio};
-   my $_RS          = $self->{RS} || $/;
-   my $_RS_FLG      = (!$_RS || $_RS ne $LF);
-   my $_I_FLG       = (!$/ || $/ ne $LF);
-
-   my ($_next, $_chunk_id, $_len, $_chunk_ref);
-   my ($_output_tag, @_records);
-
-   if ($_proc_type == REQUEST_ARRAY) {
-      $_output_tag = OUTPUT_A_ARY;
-   } else {
-      $_output_tag = OUTPUT_S_GLB;
-      @_records    = ();
-   }
-
-   ## -------------------------------------------------------------------------
-
-   $self->{_next_jmp} = sub { goto _WORKER_REQUEST_CHUNK__NEXT; };
-   $self->{_last_jmp} = sub { goto _WORKER_REQUEST_CHUNK__LAST; };
-
-   _WORKER_REQUEST_CHUNK__NEXT:
-
-   while (1) {
-
-      ## Don't declare $_buffer with other vars above, instead it's done here.
-      ## Doing so will fail with Perl 5.8.0 under Solaris 5.10 on large files.
-
-      my $_buffer;
-
-      ## Obtain the next chunk of data.
-      {
-         local $\ = undef if (defined $\); local $/ = $LF if ($_I_FLG);
-
-         flock $_DAT_LOCK, LOCK_EX;
-         print $_DAT_W_SOCK $_output_tag . $LF;
-         chomp($_len = <$_DAT_W_SOCK>);
-
-         if ($_len == 0) {
-            flock $_DAT_LOCK, LOCK_UN;
-            return;
-         }
-
-         chomp($_chunk_id = <$_DAT_W_SOCK>);
-         read $_DAT_W_SOCK, $_buffer, $_len;
-         flock $_DAT_LOCK, LOCK_UN;
-      }
-
-      ## Call user function.
-      if ($_proc_type == REQUEST_ARRAY) {
-         if ($_single_dim && $_chunk_size == 1) {
-            local $/ = $_RS if ($_RS_FLG);
-            local $_ = $_buffer;
-            _worker_user_func($self, [ $_buffer ], $_chunk_id);
-         }
-         else {
-            $_chunk_ref = $self->{thaw}($_buffer);
-            local $/ = $_RS if ($_RS_FLG);
-            local $_ = ($_chunk_size == 1) ? $_chunk_ref->[0] : $_chunk_ref;
-            _worker_user_func($self, $_chunk_ref, $_chunk_id);
-         }
-      }
-      else {
-         local $/ = $_RS if ($_RS_FLG);
-         if ($_use_slurpio) {
-            local $_ = \$_buffer;
-            _worker_user_func($self, \$_buffer, $_chunk_id);
-         }
-         else {
-            if ($_chunk_size == 1) {
-               local $_ = $_buffer;
-               _worker_user_func($self, [ $_buffer ], $_chunk_id);
-            }
-            else {
-               _sync_buffer_to_array(\$_buffer, \@_records);
-               local $_ = \@_records;
-               _worker_user_func($self, \@_records, $_chunk_id);
-            }
-         }
-      }
-   }
-
-   _WORKER_REQUEST_CHUNK__LAST:
-
-   return;
-}
-
-###############################################################################
-## ----------------------------------------------------------------------------
-## Worker process -- Sequence Queue (distribution via bank queuing model).
-##
-###############################################################################
-
-sub _worker_sequence_queue {
-
-   my MCE $self = $_[0];
-
-   @_ = ();
-
-   die "Private method called" unless (caller)[0]->isa( ref($self) );
-
-   _croak("MCE::_worker_sequence_queue: 'user_func' is not specified")
-      unless (defined $self->{user_func});
-
-   my $_QUE_R_SOCK = $self->{_que_r_sock};
-   my $_QUE_W_SOCK = $self->{_que_w_sock};
-   my $_chunk_size = $self->{chunk_size};
-
-   my ($_next, $_chunk_id, $_seq_n, $_begin, $_end, $_step, $_fmt);
-   my ($_abort, $_offset);
-
-   if (ref $self->{sequence} eq 'ARRAY') {
-      ($_begin, $_end, $_step, $_fmt) = @{ $self->{sequence} };
-   }
-   else {
-      $_begin = $self->{sequence}->{begin};
-      $_end   = $self->{sequence}->{end};
-      $_step  = $self->{sequence}->{step};
-      $_fmt   = $self->{sequence}->{format};
-   }
-
-   $_abort    = $self->{_abort_msg};
-   $_chunk_id = $_offset = 0;
-
-   ## -------------------------------------------------------------------------
-
-   $self->{_next_jmp} = sub { goto _WORKER_SEQUENCE__NEXT; };
-   $self->{_last_jmp} = sub { goto _WORKER_SEQUENCE__LAST; };
-
-   while (1) {
-
-      ## Obtain the next chunk_id and sequence number.
-      {
-         local $\ = undef if (defined $\);
-
-         read $_QUE_R_SOCK, $_next, $_que_read_size;
-         ($_chunk_id, $_offset) = unpack($_que_template, $_next);
-
-         if ($_offset >= $_abort) {
-            print $_QUE_W_SOCK pack($_que_template, 0, $_offset);
-            return;
-         }
-
-         print $_QUE_W_SOCK pack($_que_template, $_chunk_id + 1, $_offset + 1);
-      }
-
-      $_chunk_id++;
-
-      if ($_chunk_size == 1) {
-         $_seq_n = $_offset * $_step + $_begin;
-         $_seq_n = sprintf("%$_fmt", $_seq_n) if (defined $_fmt);
-         local $_ = $_seq_n;
-         _worker_user_func($self, $_seq_n, $_chunk_id);
-      }
-      else {
-         my $_n_begin = ($_offset * $_chunk_size) * $_step + $_begin;
-         my @_n = ();
-
-         $_seq_n = $_n_begin;
-
-         if ($_begin < $_end) {
-            for (1 .. $_chunk_size) {
-               last if ($_seq_n > $_end);
-               push @_n, (defined $_fmt) ? sprintf("%$_fmt", $_seq_n) : $_seq_n;
-               $_seq_n = $_step * $_ + $_n_begin;
-            }
-         }
-         else {
-            for (1 .. $_chunk_size) {
-               last if ($_seq_n < $_end);
-               push @_n, (defined $_fmt) ? sprintf("%$_fmt", $_seq_n) : $_seq_n;
-               $_seq_n = $_step * $_ + $_n_begin;
-            }
-         }
-
-         local $_ = \@_n;
-         _worker_user_func($self, \@_n, $_chunk_id);
-      }
-
-      _WORKER_SEQUENCE__NEXT:
-   }
-
-   _WORKER_SEQUENCE__LAST:
-
-   return;
-}
-
-###############################################################################
-## ----------------------------------------------------------------------------
-## Worker process -- Sequence Generator (equal distribution among workers).
-##
-###############################################################################
-
-sub _worker_sequence_generator {
-
-   my MCE $self = $_[0];
-
-   @_ = ();
-
-   die "Private method called" unless (caller)[0]->isa( ref($self) );
-
-   _croak("MCE::_worker_sequence_generator: 'user_func' is not specified")
-      unless (defined $self->{user_func});
-
-   my $_max_workers = $self->{max_workers};
-   my $_chunk_size  = $self->{chunk_size};
-
-   my ($_begin, $_end, $_step, $_fmt);
-
-   if (ref $self->{sequence} eq 'ARRAY') {
-      ($_begin, $_end, $_step, $_fmt) = @{ $self->{sequence} };
-   }
-   else {
-      $_begin = $self->{sequence}->{begin};
-      $_end   = $self->{sequence}->{end};
-      $_step  = $self->{sequence}->{step};
-      $_fmt   = $self->{sequence}->{format};
-   }
-
-   my $_wid      = $self->{_task_wid} || $self->{_wid};
-   my $_next     = ($_wid - 1) * $_chunk_size * $_step + $_begin;
-   my $_chunk_id = $_wid;
-
-   ## -------------------------------------------------------------------------
-
-   $self->{_last_jmp} = sub { goto _WORKER_SEQ_GEN__LAST; };
-
-   if ($_begin == $_end) {                        ## Both are identical.
-
-      if ($_wid == 1) {
-         $self->{_next_jmp} = sub { goto _WORKER_SEQ_GEN__LAST; };
-
-         local $_ = (defined $_fmt) ? sprintf("%$_fmt", $_next) : $_next;
-
-         if ($_chunk_size > 1) {
-            _worker_user_func($self, [ $_ ], $_chunk_id);
-         } else {
-            _worker_user_func($self, $_, $_chunk_id);
-         }
-      }
-   }
-   elsif ($_chunk_size == 1) {                    ## Does no chunking.
-
-      $self->{_next_jmp} = sub { goto _WORKER_SEQ_GEN__NEXT_A; };
-
-      my $_flag = ($_begin < $_end);
-
-      while (1) {
-         return if ( $_flag && $_next > $_end);
-         return if (!$_flag && $_next < $_end);
-
-         local $_ = (defined $_fmt) ? sprintf("%$_fmt", $_next) : $_next;
-         _worker_user_func($self, $_, $_chunk_id);
-
-         _WORKER_SEQ_GEN__NEXT_A:
-
-         $_chunk_id += $_max_workers;
-         $_next      = ($_chunk_id - 1) * $_step + $_begin;
-      }
-   }
-   else {                                         ## Yes, does chunking.
-
-      $self->{_next_jmp} = sub { goto _WORKER_SEQ_GEN__NEXT_B; };
-
-      while (1) {
-         my $_n_begin = $_next;
-         my @_n = ();
-
-         if ($_begin < $_end) {
-            for (1 .. $_chunk_size) {
-               last if ($_next > $_end);
-               push @_n, (defined $_fmt) ? sprintf("%$_fmt", $_next) : $_next;
-               $_next = $_step * $_ + $_n_begin;
-            }
-         }
-         else {
-            for (1 .. $_chunk_size) {
-               last if ($_next < $_end);
-               push @_n, (defined $_fmt) ? sprintf("%$_fmt", $_next) : $_next;
-               $_next = $_step * $_ + $_n_begin;
-            }
-         }
-
-         return unless (@_n > 0);
-
-         local $_ = \@_n;
-         _worker_user_func($self, \@_n, $_chunk_id);
-
-         _WORKER_SEQ_GEN__NEXT_B:
-
-         $_chunk_id += $_max_workers;
-         $_next      = ($_chunk_id - 1) * $_chunk_size * $_step + $_begin;
-      }
-   }
-
-   _WORKER_SEQ_GEN__LAST:
-
-   return;
-}
-
-###############################################################################
-## ----------------------------------------------------------------------------
-## Worker process -- User Func.
-##
-###############################################################################
-
-sub _worker_user_func {
-
-   my MCE $self   = $_[0];
-   my $_chunk     = $_[1];
-   my $_chunk_id  = $_[2] || $self->{_task_wid};
-   my $_user_func = $self->{user_func};
-
-   $self->{_chunk_id} = $_chunk_id;
-
-   (defined $_chunk)
-      ? $_user_func->($self, $_chunk, $_chunk_id)
-      : $_user_func->($self);
-
-   return;
-}
-
-###############################################################################
-## ----------------------------------------------------------------------------
-## Worker process -- Do.
-##
-###############################################################################
-
-sub _worker_do {
-
-   my MCE $self = $_[0]; my $_params_ref = $_[1];
-
-   @_ = ();
-
-   die "Private method called" unless (caller)[0]->isa( ref($self) );
-
-   ## Set options.
-   $self->{_abort_msg}  = $_params_ref->{_abort_msg};
-   $self->{_run_mode}   = $_params_ref->{_run_mode};
-   $self->{_single_dim} = $_params_ref->{_single_dim};
-   $self->{use_slurpio} = $_params_ref->{_use_slurpio};
-
-   ## Init local vars.
-   my $_DAT_LOCK   = $self->{_dat_lock};
-   my $_DAT_W_SOCK = $self->{_dat_w_sock};
-   my $_run_mode   = $self->{_run_mode};
-   my $_task_id    = $self->{_task_id};
-
-   ## Do not override params if defined in user_tasks during instantiation.
-   for (qw(chunk_size interval sequence user_args)) {
-      if (defined $_params_ref->{"_$_"}) {
-         $self->{$_} = $_params_ref->{"_$_"}
-            unless (defined $self->{_task}->{$_});
-      }
-   }
-
-   ## Set time_block & start_time values for interval.
-   if (defined $self->{interval}) {
-      my $_i     = $self->{interval};
-      my $_delay = $_i->{delay} * $_i->{max_nodes};
-
-      $self->{_i_app_tb} = $_delay * $self->{max_workers};
-
-      $self->{_i_app_st} =
-         $_i->{_time} + ($_delay / $_i->{max_nodes} * $_i->{node_id});
-
-      $self->{_i_wrk_st} =
-         ($self->{_task_wid} - 1) * $_delay + $self->{_i_app_st};
-   }
-
-   ## Call user_begin if defined.
-   $self->{user_begin}($self)
-      if (defined $self->{user_begin});
-
-   ## Call worker function.
-   if ($_run_mode eq 'sequence') {
-      _worker_sequence_queue($self);
-   }
-   elsif (defined $self->{_task}->{sequence}) {
-      _worker_sequence_generator($self);
-   }
-   elsif ($_run_mode eq 'array') {
-      _worker_request_chunk($self, REQUEST_ARRAY);
-   }
-   elsif ($_run_mode eq 'glob') {
-      _worker_request_chunk($self, REQUEST_GLOB);
-   }
-   elsif ($_run_mode eq 'file') {
-      _worker_read_handle($self, READ_FILE, $_params_ref->{_input_file});
-   }
-   elsif ($_run_mode eq 'memory') {
-      _worker_read_handle($self, READ_MEMORY, $self->{input_data});
-   }
-   elsif (defined $self->{user_func}) {
-      _worker_user_func($self);
-   }
-
-   undef $self->{_next_jmp} if (defined $self->{_next_jmp});
-   undef $self->{_last_jmp} if (defined $self->{_last_jmp});
-   undef $self->{user_data} if (defined $self->{user_data});
-
-   ## Call user_end if defined.
-   $self->{user_end}($self)
-      if (defined $self->{user_end});
-
-   ## Notify the main process a worker has completed.
-   local $\ = undef if (defined $\);
-
-   flock $_DAT_LOCK, LOCK_EX;
-   print $_DAT_W_SOCK OUTPUT_W_DNE . $LF . $_task_id . $LF;
-   flock $_DAT_LOCK, LOCK_UN;
-
-   return;
-}
-
-###############################################################################
-## ----------------------------------------------------------------------------
-## Worker process -- Loop.
-##
-###############################################################################
-
-sub _worker_loop {
-
-   my MCE $self = $_[0];
-
-   @_ = ();
-
-   die "Private method called" unless (caller)[0]->isa( ref($self) );
-
-   my ($_response, $_len, $_buffer, $_params_ref);
-
-   my $_COM_LOCK   = $self->{_com_lock};
-   my $_DAT_LOCK   = $self->{_dat_lock};
-   my $_COM_W_SOCK = $self->{_com_w_sock};
-   my $_job_delay  = $self->{job_delay};
-   my $_wid        = $self->{_wid};
-
-   while (1) {
-
-      {
-         local $\ = undef; local $/ = $LF;
-         flock $_COM_LOCK, LOCK_EX;
-
-         ## Wait until next job request.
-         $_response = <$_COM_W_SOCK>;
-         print $_COM_W_SOCK $_wid . $LF;
-
-         last unless (defined $_response);
-         chomp $_response;
-
-         ## End loop if an invalid reply.
-         last if ($_response !~ /\A(?:\d+|_data|_exit)\z/);
-
-         if ($_response eq '_data') {
-            ## Acquire and process user data.
-            chomp($_len = <$_COM_W_SOCK>);
-            read $_COM_W_SOCK, $_buffer, $_len;
-
-            print $_COM_W_SOCK $_wid . $LF;
-            flock $_COM_LOCK, LOCK_UN;
-
-            $self->{user_data} = $self->{thaw}($_buffer);
-            undef $_buffer;
-
-            select(undef, undef, undef, $_job_delay * $_wid)
-               if (defined $_job_delay && $_job_delay > 0.0);
-
-            _worker_do($self, { });
-         }
-         else {
-            ## Return to caller if instructed to exit.
-            if ($_response eq '_exit') {
-               flock $_COM_LOCK, LOCK_UN;
-               return 0;
-            }
-
-            ## Retrieve params data.
-            chomp($_len = <$_COM_W_SOCK>);
-            read $_COM_W_SOCK, $_buffer, $_len;
-
-            print $_COM_W_SOCK $_wid . $LF;
-            flock $_COM_LOCK, LOCK_UN;
-
-            $_params_ref = $self->{thaw}($_buffer);
-            undef $_buffer;
-         }
-      }
-
-      ## Start over if the last response was for processing user data.
-      next if ($_response eq '_data');
-
-      ## Wait until MCE completes params submission to all workers.
-      flock $_DAT_LOCK, LOCK_SH or die "(L) cannot obtain shared lock: $!\n";
-      flock $_DAT_LOCK, LOCK_UN;
-
-      ## Update IDs. Process request.
-      $self->{_task_wid} = $self->{_wid} = $_wid = $_response
-         unless (defined $self->{user_tasks});
-
-      select(undef, undef, undef, $_job_delay * $_wid)
-         if (defined $_job_delay && $_job_delay > 0.0);
-
-      _worker_do($self, $_params_ref); undef $_params_ref;
-
-      ## Wait until remaining workers complete processing.
-      flock $_COM_LOCK, LOCK_SH or die "(L) cannot obtain shared lock: $!\n";
-      flock $_COM_LOCK, LOCK_UN;
-   }
-
-   ## Notify the main process a worker has ended. The following is executed
-   ## when an invalid reply was received above (not likely to occur).
-
-   flock $_COM_LOCK, LOCK_UN;
-   die "worker $self->{_wid} has ended prematurely";
-
-   return 1;
-}
-
-###############################################################################
-## ----------------------------------------------------------------------------
-## Worker process -- Main.
-##
-###############################################################################
-
-sub _worker_main {
-
-   my MCE $self = $_[0]; my $_wid      = $_[1]; my $_task   = $_[2];
-   my $_task_id = $_[3]; my $_task_wid = $_[4]; my $_params = $_[5];
-
-   @_ = ();
-
-   ## Commented out -- fails with the 'forks' module under FreeBSD.
-   ## die "Private method called" unless (caller)[0]->isa( ref($self) );
-
-   ## Define status ID.
-   my $_use_threads = (defined $_task->{use_threads})
-      ? $_task->{use_threads} : $self->{use_threads};
-
-   if ($_has_threads && $_use_threads) {
-      $self->{_exit_pid} = "TID_" . threads->tid();
-   } else {
-      $self->{_exit_pid} = "PID_" . $$;
-   }
-
-   ## Define handlers.
-   $SIG{PIPE} = \&MCE::_NOOP;
-
-   $SIG{__DIE__} = sub {
-      ## For threads, $^S is 1 when "not" eval'ing a die statement.
-      unless ($_has_threads && $_use_threads) {
-         CORE::die(@_) if ($^S);   ## Direct to CORE::die if executing an eval
-      }
-      local $SIG{__DIE__} = sub { };
-      local $\ = undef; print STDERR $_[0];
-
-      $self->exit(255, $_[0]);
-   };
-
-   ## Use options from user_tasks if defined.
-   $self->{max_workers} = $_task->{max_workers} if ($_task->{max_workers});
-   $self->{chunk_size}  = $_task->{chunk_size}  if ($_task->{chunk_size});
-   $self->{interval}    = $_task->{interval}    if ($_task->{interval});
-   $self->{sequence}    = $_task->{sequence}    if ($_task->{sequence});
-   $self->{user_args}   = $_task->{user_args}   if ($_task->{user_args});
-   $self->{user_begin}  = $_task->{user_begin}  if ($_task->{user_begin});
-   $self->{user_func}   = $_task->{user_func}   if ($_task->{user_func});
-   $self->{user_end}    = $_task->{user_end}    if ($_task->{user_end});
-   $self->{name}        = $_task->{name}        if ($_task->{name});
-
-   ## Init runtime vars. Obtain handle to lock files.
-   my $_mce_sid  = $self->{_mce_sid};
-   my $_sess_dir = $self->{_sess_dir};
-
-   $self->{_task_id}  = (defined $_task_id ) ? $_task_id  : 0;
-   $self->{_task_wid} = (defined $_task_wid) ? $_task_wid : $_wid;
-   $self->{_task}     = $_task;
-   $self->{_wid}      = $_wid;
-
-   open my $_DAT_LOCK, '+>>:raw:stdio', "$_sess_dir/_dat.lock"
-      or die "(W) open error $_sess_dir/_dat.lock: $!\n";
-   open my $_COM_LOCK, '+>>:raw:stdio', "$_sess_dir/_com.lock"
-      or die "(W) open error $_sess_dir/_com.lock: $!\n";
-
-   $self->{_dat_lock} = $_DAT_LOCK;
-   $self->{_com_lock} = $_COM_LOCK;
-
-   MCE::Queue::_mce_w_init($self)
-      if (defined $MCE::Queue::VERSION);
-
-   _do_send_init($self);
-
-   ## Delete attributes no longer required after being spawned.
-   delete @{ $self }{ qw(
-      flush_file flush_stderr flush_stdout stderr_file stdout_file
-      on_post_exit on_post_run user_data user_error user_output
-      _pids _state _status _thrs _tids
-   )};
-
-   foreach (keys %_mce_spawned) {
-      delete $_mce_spawned{$_} unless ($_ eq $_mce_sid);
-   }
-
-   ## Begin processing if worker was added during processing. Otherwise,
-   ## respond back to the main process if the last worker spawned.
-   if (defined $_params) {
-      _worker_do($self, $_params); undef $_params;
-   }
-   elsif ($self->{_wid} == $self->{_total_workers}) {
-      my $_buffer; my $_COM_W_SOCK = $self->{_com_w_sock};
-      local $\ = undef; print $_COM_W_SOCK $LF;
-      $self->{_que_r_sock}->sysread($_buffer, 1);
-   }
-
-   ## Wait until MCE completes spawning or running.
-   flock $_COM_LOCK, LOCK_SH or die "(M) cannot obtain shared lock: $!\n";
-   flock $_COM_LOCK, LOCK_UN;
-
-   ## Enter worker loop.
-   my $_status = _worker_loop($self);
-
-   delete $_mce_spawned{$_mce_sid};
-
-   ## Wait until MCE completes exit notification.
-   $SIG{__DIE__} = $SIG{__WARN__} = sub { };
-
-   eval {
-      flock $_DAT_LOCK, LOCK_SH;
-      flock $_DAT_LOCK, LOCK_UN;
-   };
-
-   close $_DAT_LOCK; undef $_DAT_LOCK;
-   close $_COM_LOCK; undef $_COM_LOCK;
-
-   close STDERR; close STDOUT;
-
-   return;
-}
-
-###############################################################################
-## ----------------------------------------------------------------------------
 ## Worker process -- Wrap.
 ##
 ###############################################################################
@@ -3310,51 +1856,7 @@ sub _worker_wrap {
 
    $MCE = $_[0];
 
-   return _worker_main(@_);
-}
-
-###############################################################################
-## ----------------------------------------------------------------------------
-## Dispatch child.
-##
-###############################################################################
-
-sub _dispatch_child {
-
-   my MCE $self = $_[0]; my $_wid      = $_[1]; my $_task   = $_[2];
-   my $_task_id = $_[3]; my $_task_wid = $_[4]; my $_params = $_[5];
-
-   @_ = ();
-
-   die "Private method called" unless (caller)[0]->isa( ref($self) );
-
-   my $_pid = fork();
-
-   _croak("MCE::_dispatch_child: Failed to spawn worker $_wid: $!")
-      unless (defined $_pid);
-
-   unless ($_pid) {
-      _worker_wrap($self, $_wid, $_task, $_task_id, $_task_wid, $_params);
-      kill 9, $$ unless ($_is_WinEnv);
-      CORE::exit();
-   }
-
-   if (defined $_pid) {
-      ## Store into an available slot, otherwise append to array.
-      if (defined $_params) { for (0 .. @{ $self->{_pids} } - 1) {
-         unless (defined $self->{_pids}->[$_]) {
-            $self->{_pids}->[$_] = $_pid;
-            return;
-         }
-      }}
-
-      push @{ $self->{_pids} }, $_pid;
-   }
-
-   select(undef, undef, undef, $self->{spawn_delay})
-      if (defined $self->{spawn_delay} && $self->{spawn_delay} > 0.0);
-
-   return;
+   return _worker_main(@_, \@_plugin_worker_init);
 }
 
 ###############################################################################
@@ -3391,6 +1893,50 @@ sub _dispatch_thread {
 
       push @{ $self->{_thrs} }, \$_thr;
       push @{ $self->{_tids} }, $_thr->tid();
+   }
+
+   select(undef, undef, undef, $self->{spawn_delay})
+      if (defined $self->{spawn_delay} && $self->{spawn_delay} > 0.0);
+
+   return;
+}
+
+###############################################################################
+## ----------------------------------------------------------------------------
+## Dispatch child.
+##
+###############################################################################
+
+sub _dispatch_child {
+
+   my MCE $self = $_[0]; my $_wid      = $_[1]; my $_task   = $_[2];
+   my $_task_id = $_[3]; my $_task_wid = $_[4]; my $_params = $_[5];
+
+   @_ = ();
+
+   die "Private method called" unless (caller)[0]->isa( ref($self) );
+
+   my $_pid = fork();
+
+   _croak("MCE::_dispatch_child: Failed to spawn worker $_wid: $!")
+      unless (defined $_pid);
+
+   unless ($_pid) {
+      _worker_wrap($self, $_wid, $_task, $_task_id, $_task_wid, $_params);
+      kill 9, $$ unless ($MCE::_is_WinEnv);
+      CORE::exit();
+   }
+
+   if (defined $_pid) {
+      ## Store into an available slot, otherwise append to array.
+      if (defined $_params) { for (0 .. @{ $self->{_pids} } - 1) {
+         unless (defined $self->{_pids}->[$_]) {
+            $self->{_pids}->[$_] = $_pid;
+            return;
+         }
+      }}
+
+      push @{ $self->{_pids} }, $_pid;
    }
 
    select(undef, undef, undef, $self->{spawn_delay})

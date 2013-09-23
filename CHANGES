@@ -1,12 +1,39 @@
 
 Revision history for MCE
 
-1.499 Mon Jul 25 23:30:00 EST 2013
+1.499_001 Sun Sep 22 23:30:00 EST 2013
 
-    * Stay tuned... More to come for the upcoming 1.5 release...
-      Queues with auto serialization (forking is supported as well)
+    * MCE 1.5 is underway. I have one method to add to MCE::Queue.
+      In the meantime, the following have been completed code-wise.
 
-    * MCE 1.5.x is backwards compatible with 1.4.x and lower.
+      Will work on documentation in the next 2 weeks and add additional
+      examples to highlight the various forms of parallel computing with MCE.
+
+      Regards,
+      ;) Mario
+
+    * MCE.pm (8 data channels for up to 3x IPC handling)
+
+      e.g. 8 workers calling sendto in MCE 1.4 sends 80,000 per second.
+      That is now over 250,000 per second in MCE 1.5. That is just the
+      beginning. The following is not a good benchmark due to printf
+      formatting being done inside the preserve order code block run by
+      the manager. Foreach is able to do 40,000 and forseq 78,000 when
+      commenting out the printf statement. In any event, IPC is much
+      faster in MCE 1.5.
+
+                             (Before)      (After)
+         Parallel::Loops          600          600
+         $mce->foreach         21,500       34,000  (+ 12,500)
+         $mce->forseq          64,000       70,000  (+  6,000)
+         $mce->forchunk       450,000      465,000  (+ 15,000)
+
+    * MCE::Flow, MCE::Grep, MCE::Loop, MCE::Map, MCE::Queue, MCE::Stream
+
+      How did I forget... The gather option... Take a look at the
+      MCE::Flow pod page when you have a chance.
+
+    * MCE 1.5 is backwards compatible with 1.4.x and lower.
 
     * All public methods can be called directly using the package name
       and method e.g. MCE->wid, MCE->run.
@@ -21,9 +48,9 @@ Revision history for MCE
 
          MCE->run;
 
-    * New example (interval.pl).
+    * New example (interval.pl). More to come for the final 1.5 release.
 
-    * New options (name, interval).
+    * New options (gather, interval, task_name).
 
       Changes to other options are described below.
 
@@ -41,7 +68,8 @@ Revision history for MCE
             ...
          }
 
-    * New public methods (chunk_id, name, freeze, thaw, yield).
+    * New public methods
+      chunk_id, gather, freeze, thaw, yield, task_name, print, printf, say
 
     * Optimized the egrep.pl and wc.pl examples. These run much faster.
       Try these out against large log files. Both examples fly.
@@ -53,16 +81,8 @@ Revision history for MCE
       Previously, only about 1/3rd of ulimit -n was possible. One can now
       spawn just under 1/2 of ulimit -- int(ulimit -n / 2 - 10).
 
-    * Core update. File handles to _com_lock and _dat_lock are created once
-      by the Manager process. Previously was 3 times -- opened and closed
-      by spawn, run, and shutdown.
-
     * Removed the logic for determining MAX_OPEN_FILES and MAX_USER_PROCS.
       MCE no longer limits on max_workers allowed.
-
-    * Documentation updates. Emphasis on user_tasks. In addition, updated
-      code snippets to use MCE->method convention when calling public
-      methods. New options and methods are documented as well.
 
     * Code re-factor work. Added a private method _validate_runstate called
       by various methods. Organized the code slightly such as placement of
@@ -71,17 +91,6 @@ Revision history for MCE
     * Localize the input scalar $_ prior to calling user_func. Folks can
       use $_ for input_data and sequence of numbers. Added section to docs
       explaining DEFAULT INPUT SCALAR.
-
-    * Removed one socket pair. The core IPC is done using 3 socket pairs
-      from 4 before.
-
-         Before and after results comparing 1.415 against 1.500.
-
-                             (Before)      (After)
-         Parallel::Loops          600          600
-         $mce->foreach         21,500       22,500  (+  1,000)
-         $mce->forseq          64,000       66,000  (+  2,000)
-         $mce->forchunk       450,000      450,000
 
 1.415 Mon Jun 17 15:00:00 EST 2013
 

@@ -10,9 +10,9 @@
 ## Parallel::Loops is based on Parallel::ForkManager.
 ##
 ## Parallel::Loops..:       600  Forking each @input is expensive
-## MCE foreach......:    22,500  Sends result after each @input
-## MCE forseq.......:    66,000  Loops through sequence of numbers
-## MCE forchunk.....:   450,000  Chunking reduces overhead
+## MCE foreach......:    34,000  Sends result after each @input
+## MCE forseq.......:    70,000  Loops through sequence of numbers
+## MCE forchunk.....:   465,000  Chunking reduces overhead
 ##
 ## usage: forseq.pl [ size ]
 ## usage: forseq.pl [ begin end [ step [ format ] ] ]
@@ -63,10 +63,8 @@ my $order_id    = 1;
 
 sub display_result {
 
-   my ($wk_i, $wk_result, $chunk_id) = @_;
-
-   $result_n{$chunk_id} = $wk_i;
-   $result{$chunk_id}   = $wk_result;
+   $result_n{$_[2]} = $_[0];
+   $result{$_[2]}   = $_[1];
 
    while (1) {
       last unless exists $result{$order_id};
@@ -75,16 +73,17 @@ sub display_result {
          $result_n{$order_id}, $result{$order_id};
 
       delete $result_n{$order_id};
-      delete $result{$order_id};
-
-      $order_id++;
+      delete $result{$order_id++};
    }
+
+   return;
 }
 
 ## Compute via MCE.
 
 my $mce = MCE->new(
-   max_workers => $max_workers
+   max_workers => $max_workers,
+   gather => \&display_result
 );
 
 my $seq = {
@@ -97,7 +96,7 @@ $start = time();
 $mce->forseq($seq, sub {
    my ($self, $n, $chunk_id) = @_;
    my $result = sqrt($n);
-   $self->do('display_result', $n, $result, $chunk_id);
+   MCE->gather($n, $result, $chunk_id);
 });
 
 $end = time();
