@@ -91,16 +91,30 @@ sub _worker_sequence_queue {
          $_seq_n = $_n_begin;
 
          if ($_begin < $_end) {
-            for (1 .. $_chunk_size) {
-               last if ($_seq_n > $_end);
-               push @_n, (defined $_fmt) ? sprintf("%$_fmt", $_seq_n) : $_seq_n;
-               $_seq_n = $_step * $_ + $_n_begin;
+            if (!defined $_fmt && $_step == 1 &&
+                  $_seq_n + $_chunk_size <= $_end)
+            {
+               @_n = ($_seq_n .. $_seq_n + $_chunk_size - 1);
+               $_seq_n += $_chunk_size;
+            }
+            else {
+               for (1 .. $_chunk_size) {
+                  last if ($_seq_n > $_end);
+
+                  push @_n, (defined $_fmt)
+                     ? sprintf("%$_fmt", $_seq_n) : $_seq_n;
+
+                  $_seq_n = $_step * $_ + $_n_begin;
+               }
             }
          }
          else {
             for (1 .. $_chunk_size) {
                last if ($_seq_n < $_end);
-               push @_n, (defined $_fmt) ? sprintf("%$_fmt", $_seq_n) : $_seq_n;
+
+               push @_n, (defined $_fmt)
+                  ? sprintf("%$_fmt", $_seq_n) : $_seq_n;
+
                $_seq_n = $_step * $_ + $_n_begin;
             }
          }
