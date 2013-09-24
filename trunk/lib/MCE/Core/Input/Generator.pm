@@ -98,16 +98,30 @@ sub _worker_sequence_generator {
          my @_n = ();
 
          if ($_begin < $_end) {
-            for (1 .. $_chunk_size) {
-               last if ($_next > $_end);
-               push @_n, (defined $_fmt) ? sprintf("%$_fmt", $_next) : $_next;
-               $_next = $_step * $_ + $_n_begin;
+            if (!defined $_fmt && $_step == 1 &&
+                  $_next + $_chunk_size <= $_end)
+            {
+               @_n = ($_next .. $_next + $_chunk_size - 1);
+               $_next += $_chunk_size;
+            }
+            else {
+               for (1 .. $_chunk_size) {
+                  last if ($_next > $_end);
+
+                  push @_n, (defined $_fmt)
+                     ? sprintf("%$_fmt", $_next) : $_next;
+
+                  $_next = $_step * $_ + $_n_begin;
+               }
             }
          }
          else {
             for (1 .. $_chunk_size) {
                last if ($_next < $_end);
-               push @_n, (defined $_fmt) ? sprintf("%$_fmt", $_next) : $_next;
+
+               push @_n, (defined $_fmt)
+                  ? sprintf("%$_fmt", $_next) : $_next;
+
                $_next = $_step * $_ + $_n_begin;
             }
          }
