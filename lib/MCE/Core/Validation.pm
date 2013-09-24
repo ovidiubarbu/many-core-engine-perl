@@ -220,7 +220,7 @@ __END__
 
 =head1 NAME
 
-MCE::Core::Validation - Validation methods for MCE.
+MCE::Core::Validation - Validation methods for the manager process.
 
 =head1 SYNOPSIS
 
@@ -228,12 +228,20 @@ There is no public API.
 
 =head1 DESCRIPTION
 
-This package provides the validation methods used internally by the manager
+This package provides validation methods used internally by the manager
 process.
 
-=head1 SEE ALSO
+=head1 AUTHOR
 
-L<MCE>
+Mario E. Roy, S<E<lt>marioeroy AT gmail DOT comE<gt>>
+
+=head1 LICENSE
+
+This program is free software; you can redistribute it and/or modify it
+under the terms of either: the GNU General Public License as published
+by the Free Software Foundation; or the Artistic License.
+
+See L<http://dev.perl.org/licenses/> for more information.
 
 =cut
 

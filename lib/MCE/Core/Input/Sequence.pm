@@ -121,9 +121,15 @@ sub _worker_sequence_queue {
 
 __END__
 
+###############################################################################
+## ----------------------------------------------------------------------------
+## Module usage.
+##
+###############################################################################
+
 =head1 NAME
 
-MCE::Core::Input::Sequence - Sequence of numbers (task0) for MCE.
+MCE::Core::Input::Sequence - Sequence of numbers (used by task 0 workers).
 
 =head1 SYNOPSIS
 
@@ -134,9 +140,17 @@ There is no public API.
 This package provides a sequence of numbers used internally by the worker
 process. Distribution follows a bank-queuing model.
 
-=head1 SEE ALSO
+=head1 AUTHOR
 
-L<MCE>
+Mario E. Roy, S<E<lt>marioeroy AT gmail DOT comE<gt>>
+
+=head1 LICENSE
+
+This program is free software; you can redistribute it and/or modify it
+under the terms of either: the GNU General Public License as published
+by the Free Software Foundation; or the Artistic License.
+
+See L<http://dev.perl.org/licenses/> for more information.
 
 =cut
 

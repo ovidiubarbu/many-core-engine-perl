@@ -173,9 +173,7 @@ L<Test::Smoke::SysInfo>.
 
 Mario E. Roy, S<E<lt>marioeroy AT gmail DOT comE<gt>>
 
-=head1 COPYRIGHT AND LICENSE
-
-Copyright (C) 2013 by Mario E. Roy
+=head1 LICENSE
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of either: the GNU General Public License as published

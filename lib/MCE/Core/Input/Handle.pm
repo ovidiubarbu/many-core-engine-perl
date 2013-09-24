@@ -157,9 +157,15 @@ sub _worker_read_handle {
 
 __END__
 
+###############################################################################
+## ----------------------------------------------------------------------------
+## Module usage.
+##
+###############################################################################
+
 =head1 NAME
 
-MCE::Core::Input::Handle - File_Path/Scalar_Ref input reader for MCE.
+MCE::Core::Input::Handle - File_path and Scalar_ref input reader.
 
 =head1 SYNOPSIS
 
@@ -170,9 +176,17 @@ There is no public API.
 This package provides the read handle method used internally by the worker
 process. Distribution follows a bank-queuing model.
 
-=head1 SEE ALSO
+=head1 AUTHOR
 
-L<MCE>
+Mario E. Roy, S<E<lt>marioeroy AT gmail DOT comE<gt>>
+
+=head1 LICENSE
+
+This program is free software; you can redistribute it and/or modify it
+under the terms of either: the GNU General Public License as published
+by the Free Software Foundation; or the Artistic License.
+
+See L<http://dev.perl.org/licenses/> for more information.
 
 =cut
 

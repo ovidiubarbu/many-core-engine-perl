@@ -704,7 +704,7 @@ __END__
 
 =head1 NAME
 
-MCE::Core::Manager - Loop method for the manager process.
+MCE::Core::Manager - Loop and related methods for the manager process.
 
 =head1 SYNOPSIS
 
@@ -714,9 +714,17 @@ There is no public API.
 
 This package provides the loop method used internally by the manager process.
 
-=head1 SEE ALSO
+=head1 AUTHOR
 
-L<MCE>
+Mario E. Roy, S<E<lt>marioeroy AT gmail DOT comE<gt>>
+
+=head1 LICENSE
+
+This program is free software; you can redistribute it and/or modify it
+under the terms of either: the GNU General Public License as published
+by the Free Software Foundation; or the Artistic License.
+
+See L<http://dev.perl.org/licenses/> for more information.
 
 =cut
 
