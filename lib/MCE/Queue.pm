@@ -97,6 +97,7 @@ sub import {
       _mce_m_init();
    }
    else {
+      *{ 'MCE::Queue::clear'      } = \&MCE::Queue::_clear;
       *{ 'MCE::Queue::enqueue'    } = \&MCE::Queue::_enqueue;
       *{ 'MCE::Queue::enqueuep'   } = \&MCE::Queue::_enqueuep;
       *{ 'MCE::Queue::dequeue'    } = \&MCE::Queue::_dequeue;
@@ -120,6 +121,8 @@ sub import {
 ###############################################################################
 
 use constant {
+
+   OUTPUT_C_QUE => 'C~QUE',           ## Clear the queue
 
    OUTPUT_A_QUE => 'A~QUE',           ## Enqueue into queue (array)
    OUTPUT_A_QUP => 'A~QUP',           ## Enqueue into queue (array (p))
@@ -257,18 +260,19 @@ sub new {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Accessor methods.
+## Clear method.
 ##
 ###############################################################################
 
-sub porder {
+sub _clear {
 
-   return shift->{_porder};
-}
+   my $_queue = shift;
 
-sub type {
+   %{ $_queue->{_datp} } = ();
+   @{ $_queue->{_datq} } = ();
+   @{ $_queue->{_heap} } = ();
 
-   return shift->{_type};
+   return;
 }
 
 ###############################################################################
@@ -594,6 +598,24 @@ sub _heap_insert_high {
    my ($_len, $_p, $_queue);
 
    my %_output_function = (
+
+      OUTPUT_C_QUE.$LF => sub {                   ## Clear the queue
+
+         $_DAU_R_SOCK = $$_DAU_R_SOCK_REF;
+         my $_buffer;
+
+         chomp($_id = <$_DAU_R_SOCK>);
+         $_queue = $_queues->{$_id};
+
+         sysread $_queue->{_qr_sock}, $_buffer, 1
+            if ($_queue->_has_data());
+
+         $_queue->_clear();
+
+         print $_DAU_R_SOCK $LF;
+
+         return;
+      },
 
       ## ----------------------------------------------------------------------
 
@@ -1006,6 +1028,7 @@ sub _heap_insert_high {
 
       no strict 'refs'; no warnings 'redefine';
 
+      *{ 'MCE::Queue::clear'      } = \&MCE::Queue::_mce_m_clear;
       *{ 'MCE::Queue::enqueue'    } = \&MCE::Queue::_mce_m_enqueue;
       *{ 'MCE::Queue::enqueuep'   } = \&MCE::Queue::_mce_m_enqueuep;
       *{ 'MCE::Queue::dequeue'    } = \&MCE::Queue::_mce_m_dequeue;
@@ -1029,6 +1052,18 @@ sub _heap_insert_high {
 ## Wrapper methods for the MCE manager process.
 ##
 ###############################################################################
+
+sub _mce_m_clear {
+
+   my $_next; my $_queue = shift;
+
+   sysread $_queue->{_qr_sock}, $_next, 1
+      if ($_queue->_has_data());
+
+   $_queue->_clear();
+
+   return;
+}
 
 sub _mce_m_enqueue {
 
@@ -1163,6 +1198,7 @@ sub _mce_m_insertp {
 
       no strict 'refs'; no warnings 'redefine';
 
+      *{ 'MCE::Queue::clear'      } = \&MCE::Queue::_mce_w_clear;
       *{ 'MCE::Queue::enqueue'    } = \&MCE::Queue::_mce_w_enqueue;
       *{ 'MCE::Queue::enqueuep'   } = \&MCE::Queue::_mce_w_enqueuep;
       *{ 'MCE::Queue::dequeue'    } = \&MCE::Queue::_mce_w_dequeue;
@@ -1174,6 +1210,28 @@ sub _mce_m_insertp {
       *{ 'MCE::Queue::peekp'      } = \&MCE::Queue::_mce_w_peekp;
       *{ 'MCE::Queue::peekh'      } = \&MCE::Queue::_mce_w_peekh;
       *{ 'MCE::Queue::heap'       } = \&MCE::Queue::_mce_w_heap;
+
+      return;
+   }
+
+   ## -------------------------------------------------------------------------
+
+   sub _mce_w_clear {
+
+      my $_queue = shift;
+
+      return $_queue->_clear()
+         if (exists $_queue->{_standalone});
+
+      local $\ = undef if (defined $\);
+      local $/ = $LF if (!$/ || $/ ne $LF);
+
+      flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
+      print $_DAT_W_SOCK OUTPUT_C_QUE . $LF . $_chn . $LF;
+      print $_DAU_W_SOCK $_queue->{_id} . $LF;
+
+      <$_DAU_W_SOCK>;
+      flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
 
       return;
    }
@@ -1646,9 +1704,7 @@ TODO ...
 
 =item new
 
-=item porder
-
-=item type
+=item clear
 
 =item enqueue
 
