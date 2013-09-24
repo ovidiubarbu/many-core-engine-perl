@@ -538,9 +538,7 @@ The source is hosted at: L<http://code.google.com/p/many-core-engine-perl/>
 
 Mario E. Roy, S<E<lt>marioeroy AT gmail DOT comE<gt>>
 
-=head1 COPYRIGHT AND LICENSE
-
-Copyright (C) 2012-2013 by Mario E. Roy
+=head1 LICENSE
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of either: the GNU General Public License as published

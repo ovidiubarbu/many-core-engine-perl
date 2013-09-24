@@ -1,7 +1,7 @@
 ###############################################################################
 ## ----------------------------------------------------------------------------
 ## MCE::Subs
-## -- Imports subroutines wrapping around Many-Core Engine's methods.
+## -- Imports funtions mapped directly to Many-Core Engine methods.
 ##
 ###############################################################################
 
@@ -16,7 +16,37 @@ our $VERSION = '1.499_001'; $VERSION = eval $VERSION;
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Define subroutines wrapping around MCE's methods.
+## Import routine.
+##
+###############################################################################
+
+my $_loaded;
+
+sub import {
+
+   my $class = shift;
+   return if ($_loaded++);
+
+   my $_flg = sub { 1 }; my $_m_flg = 0; my $_w_flg = 0;
+   my $_package = caller();
+
+   ## Process module arguments.
+   while (my $_arg = shift) {
+      $_m_flg = $_flg->() and next if ( $_arg =~ /^manager$/i );
+      $_w_flg = $_flg->() and next if ( $_arg =~ /^worker$/i );
+
+      _croak("MCE::import: '$_arg' is not a valid module argument");
+   }
+
+   $_m_flg = $_w_flg = 1 if ($_m_flg == 0 && $_w_flg == 0);
+   _import_subs($_package, $_m_flg, $_w_flg);
+
+   return;
+}
+
+###############################################################################
+## ----------------------------------------------------------------------------
+## Define functions.
 ##
 ###############################################################################
 
@@ -40,71 +70,20 @@ sub mce_spawn    ( ) { return $MCE::MCE->spawn(); }
 sub mce_do       (@) { return $MCE::MCE->do(@_); }
 sub mce_exit     (@) { return $MCE::MCE->exit(@_); }
 sub mce_gather   (@) { return $MCE::MCE->gather(@_); }
-sub mce_sendto   (@) { return $MCE::MCE->sendto(@_); }
 sub mce_last     ( ) { return $MCE::MCE->last(); }
 sub mce_next     ( ) { return $MCE::MCE->next(); }
+sub mce_sendto   (@) { return $MCE::MCE->sendto(@_); }
 sub mce_sync     ( ) { return $MCE::MCE->sync(); }
 sub mce_yield    ( ) { return $MCE::MCE->yield(); }
 
 ## Callable by both the manager and worker processes.
 
+sub mce_abort    ( ) { return $MCE::MCE->abort(); }
+sub mce_freeze   (@) { return $MCE::MCE->{freeze}(@_); }
 sub mce_print  (;*@) { return $MCE::MCE->print(@_); }
 sub mce_printf (;*@) { return $MCE::MCE->printf(@_); }
 sub mce_say    (;*@) { return $MCE::MCE->say(@_); }
-sub mce_freeze   (@) { return $MCE::MCE->{freeze}(@_); }
 sub mce_thaw     (@) { return $MCE::MCE->{thaw}(@_); }
-sub mce_abort    ( ) { return $MCE::MCE->abort(); }
-
-###############################################################################
-## ----------------------------------------------------------------------------
-## Import routine.
-##
-###############################################################################
-
-my $_loaded;
-
-sub import {
-
-   my $class = shift;
-   return if ($_loaded++);
-
-   my $_package = caller();
-
-   ## Process module arguments.
-   while (my $_arg = shift) {
-
-      $MCE::MAX_WORKERS = shift and next if ( $_arg =~ /^max_workers$/i );
-      $MCE::CHUNK_SIZE  = shift and next if ( $_arg =~ /^chunk_size$/i );
-      $MCE::TMP_DIR     = shift and next if ( $_arg =~ /^tmp_dir$/i );
-      $MCE::FREEZE      = shift and next if ( $_arg =~ /^freeze$/i );
-      $MCE::THAW        = shift and next if ( $_arg =~ /^thaw$/i );
-
-      if ( $_arg =~ /^sereal$/i ) {
-         if (shift) {
-            local $@; eval 'use Sereal qw(encode_sereal decode_sereal)';
-            unless ($@) {
-               $MCE::FREEZE = \&encode_sereal;
-               $MCE::THAW   = \&decode_sereal;
-            }
-         }
-         next;
-      }
-
-      ## MCE 1.4 supported EXPORT_CONST and CONST as arguments.
-      ## Oops! This should have been named IMPORT_CONSTS instead.
-
-      if ( $_arg =~ /^(?:import_consts|export_const|const)$/i ) {
-         _import_consts($_package) if (shift eq '1');
-         next;
-      }
-
-      _croak("MCE::import: '$_arg' is not a valid module argument");
-   }
-
-   _import_subs($_package);
-
-   return;
-}
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -119,57 +98,50 @@ sub _croak {
    return;
 }
 
-sub _import_consts {
-
-   my $_package = shift;
-
-   no strict 'refs'; no warnings 'redefine';
-
-   *{ $_package . '::SELF'  } = \&MCE::SELF;
-   *{ $_package . '::CHUNK' } = \&MCE::CHUNK;
-   *{ $_package . '::CID'   } = \&MCE::CID;
-
-   return;
-}
-
 sub _import_subs {
 
-   my $_package = shift;
+   my ($_package, $_m_flg, $_w_flg) = @_;
 
    no strict 'refs'; no warnings 'redefine';
 
    ## Callable by the manager process only.
 
-   *{ $_package . '::mce_restart_worker' } = \&mce_restart_worker;
+   if ($_m_flg) {
+      *{ $_package . '::mce_restart_worker' } = \&mce_restart_worker;
 
-   *{ $_package . '::mce_forchunk' } = \&mce_forchunk;
-   *{ $_package . '::mce_foreach'  } = \&mce_foreach;
-   *{ $_package . '::mce_forseq'   } = \&mce_forseq;
-   *{ $_package . '::mce_process'  } = \&mce_process;
-   *{ $_package . '::mce_run'      } = \&mce_run;
-   *{ $_package . '::mce_send'     } = \&mce_send;
-   *{ $_package . '::mce_shutdown' } = \&mce_shutdown;
-   *{ $_package . '::mce_spawn'    } = \&mce_spawn;
+      *{ $_package . '::mce_forchunk' } = \&mce_forchunk;
+      *{ $_package . '::mce_foreach'  } = \&mce_foreach;
+      *{ $_package . '::mce_forseq'   } = \&mce_forseq;
+      *{ $_package . '::mce_process'  } = \&mce_process;
+      *{ $_package . '::mce_run'      } = \&mce_run;
+      *{ $_package . '::mce_send'     } = \&mce_send;
+      *{ $_package . '::mce_shutdown' } = \&mce_shutdown;
+      *{ $_package . '::mce_spawn'    } = \&mce_spawn;
+   }
 
    ## Callable by the worker process only.
 
-   *{ $_package . '::mce_do'       } = \&mce_do;
-   *{ $_package . '::mce_exit'     } = \&mce_exit;
-   *{ $_package . '::mce_gather'   } = \&mce_gather;
-   *{ $_package . '::mce_sendto'   } = \&mce_sendto;
-   *{ $_package . '::mce_last'     } = \&mce_last;
-   *{ $_package . '::mce_next'     } = \&mce_next;
-   *{ $_package . '::mce_sync'     } = \&mce_sync;
-   *{ $_package . '::mce_yield'    } = \&mce_yield;
+   if ($_w_flg) {
+      *{ $_package . '::mce_do'       } = \&mce_do;
+      *{ $_package . '::mce_exit'     } = \&mce_exit;
+      *{ $_package . '::mce_gather'   } = \&mce_gather;
+      *{ $_package . '::mce_last'     } = \&mce_last;
+      *{ $_package . '::mce_next'     } = \&mce_next;
+      *{ $_package . '::mce_sendto'   } = \&mce_sendto;
+      *{ $_package . '::mce_sync'     } = \&mce_sync;
+      *{ $_package . '::mce_yield'    } = \&mce_yield;
+   }
 
    ## Callable by both the manager and worker processes.
 
-   *{ $_package . '::mce_freeze'   } = \&mce_freeze;
-   *{ $_package . '::mce_thaw'     } = \&mce_thaw;
-   *{ $_package . '::mce_print'    } = \&mce_print;
-   *{ $_package . '::mce_printf'   } = \&mce_printf;
-   *{ $_package . '::mce_say'      } = \&mce_say;
-   *{ $_package . '::mce_abort'    } = \&mce_abort;
+   if ($_m_flg || $_w_flg) {
+      *{ $_package . '::mce_abort'    } = \&mce_abort;
+      *{ $_package . '::mce_freeze'   } = \&mce_freeze;
+      *{ $_package . '::mce_print'    } = \&mce_print;
+      *{ $_package . '::mce_printf'   } = \&mce_printf;
+      *{ $_package . '::mce_say'      } = \&mce_say;
+      *{ $_package . '::mce_thaw'     } = \&mce_thaw;
+   }
 
    return;
 }
@@ -178,9 +150,15 @@ sub _import_subs {
 
 __END__
 
+###############################################################################
+## ----------------------------------------------------------------------------
+## Module usage.
+##
+###############################################################################
+
 =head1 NAME
 
-MCE::Subs - Imports subroutines wrapping around Many-Core Engine's methods.
+MCE::Subs - Imports funtions mapped directly to Many-Core Engine methods.
 
 =head1 VERSION
 
@@ -188,49 +166,71 @@ This document describes MCE::Subs version 1.499_001
 
 =head1 SYNOPSIS
 
-   use MCE::Subs;
+   use MCE::Subs;              ## Imports functions for manager and workers
+
+   use MCE::Subs qw(manager);  ## Imports functions for manager only
+   use MCE::Subs qw(worker);   ## Imports functions for workers only
 
 =head1 DESCRIPTION
 
-This will import the functions listed below into the calling script. The
-functions are prototyped, therefore allowing one to call these without using
+This module imports functions which are mapped to MCE methods. All imported
+functions are prototyped, therefore allowing one to call them without using
 parenthesis.
 
    use MCE::Subs;
 
-   sub user_func {
+   ## barrier synchronization among workers
 
+   sub user_func {
       my $wid = MCE->wid;
 
-      mce_say "a: $wid";
+      mce_say "A: $wid";
       mce_sync;
 
-      mce_say "b: $wid";
+      mce_say "B: $wid";
       mce_sync;
 
-      mce_say "c: $wid";
+      mce_say "C: $wid";
       mce_sync;
 
       return;
    }
 
-   MCE->new( max_workers => 24, user_func => \&user_func );
+   MCE->new(
+      max_workers => 24, user_func => \&user_func
+   );
 
-   mce_run 0 for (1..100);
+   mce_run 0 for (1..100);   ## 0 means do not shutdown after running
 
-Note that print, printf, and say functions require the comma after the
-bareword filehandle.
+For the next example, we only want the worker functions to be imported due
+to using MCE::Map, which takes care of creating a MCE instance and running.
 
-   mce_print STDERR, $error_msg, "\n";
-   mce_say STDERR, $error_msg;
+   use MCE::Map;
+   use MCE::Subs qw(worker);
 
-Plese see L<MCE> for explanation of the functions listed below.
+   ## The following will serialize output to STDOUT as well as gather
+   ## to @a. mce_say displays $_ when called without arguments.
 
-=head1 FUNCTIONS for MANAGER PROCESS only
+   my @a = mce_map { mce_say; $_ } 1 .. 100;
+
+   print scalar @a, "\n";
+
+Unlike the native Perl functions, print, printf, and say methods require the
+comma after the filehandle.
+
+   MCE->print("STDERR", $error_msg, "\n");  ## Requires quotes around
+   MCE->say("STDERR", $error_msg);          ## the bareword FH.
+   MCE->say($fh, $error_msg);
+
+   mce_print STDERR, $error_msg, "\n";      ## Quotes can be ommitted
+   mce_say STDERR, $error_msg;              ## around the bareword FH.
+   mce_say $fh, $error_msg;
+
+=head1 FUNCTIONS for the MANAGER PROCESS
 
 =over
 
-=item mce_restart_worker
+=item mce_abort
 
 =item mce_forchunk
 
@@ -238,43 +238,13 @@ Plese see L<MCE> for explanation of the functions listed below.
 
 =item mce_forseq
 
+=item mce_freeze
+
 =item mce_process
 
+=item mce_restart_worker
+
 =item mce_run
-
-=item mce_send
-
-=item mce_shutdown
-
-=item mce_spawn
-
-=back
-
-=head1 FUNCTIONS for WORKERS only
-
-=over
-
-=item mce_do
-
-=item mce_exit
-
-=item mce_gather
-
-=item mce_sendto
-
-=item mce_last
-
-=item mce_next
-
-=item mce_sync
-
-=item mce_yield
-
-=back
-
-=head1 FUNCTIONS for MANAGER PROCESS and WORKERS
-
-=over
 
 =item mce_print
 
@@ -282,17 +252,54 @@ Plese see L<MCE> for explanation of the functions listed below.
 
 =item mce_say
 
-=item mce_freeze
+=item mce_send
+
+=item mce_shutdown
 
 =item mce_thaw
 
+=item mce_spawn
+
+=back
+
+=head1 FUNCTIONS for WORKERS
+
+=over
+
 =item mce_abort
+
+=item mce_do
+
+=item mce_exit
+
+=item mce_freeze
+
+=item mce_gather
+
+=item mce_last
+
+=item mce_next
+
+=item mce_print
+
+=item mce_printf
+
+=item mce_say
+
+=item mce_sendto
+
+=item mce_sync
+
+=item mce_thaw
+
+=item mce_yield
 
 =back
 
 =head1 SEE ALSO
 
-L<MCE>, L<MCE::Queue>, L<MCE::Signal>, L<MCE::Util>
+L<MCE>, L<MCE::Flow>, L<MCE::Grep>, L<MCE::Loop>, L<MCE::Map>,
+L<MCE::Queue>, L<MCE::Signal>, L<MCE::Stream>, L<MCE::Util>
 
 =head1 AUTHOR
 

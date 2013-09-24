@@ -141,7 +141,7 @@ __END__
 
 =head1 NAME
 
-MCE::Core::Input::Generator - Sequence of numbers generator for MCE.
+MCE::Core::Input::Generator - Sequence of numbers (used by task > 0 workers).
 
 =head1 SYNOPSIS
 
@@ -153,9 +153,17 @@ This package provides a sequence of numbers used internally by the worker
 process. Distribution is divided equally among workers. This allows sequence
 to be configured independently among multiple user tasks.
 
-=head1 SEE ALSO
+=head1 AUTHOR
 
-L<MCE>
+Mario E. Roy, S<E<lt>marioeroy AT gmail DOT comE<gt>>
+
+=head1 LICENSE
+
+This program is free software; you can redistribute it and/or modify it
+under the terms of either: the GNU General Public License as published
+by the Free Software Foundation; or the Artistic License.
+
+See L<http://dev.perl.org/licenses/> for more information.
 
 =cut
 

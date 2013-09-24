@@ -663,7 +663,7 @@ __END__
 
 =head1 NAME
 
-MCE::Core::Worker - Worker's main, loop, and do methods for MCE.
+MCE::Core::Worker - Main, loop, and related methods for the worker process.
 
 =head1 SYNOPSIS
 
@@ -671,12 +671,20 @@ There is no public API.
 
 =head1 DESCRIPTION
 
-This package provides the main, loop, and do methods used internally by the
-worker process.
+This package provides main, loop, and related methods used internally by
+the worker process.
 
-=head1 SEE ALSO
+=head1 AUTHOR
 
-L<MCE>
+Mario E. Roy, S<E<lt>marioeroy AT gmail DOT comE<gt>>
+
+=head1 LICENSE
+
+This program is free software; you can redistribute it and/or modify it
+under the terms of either: the GNU General Public License as published
+by the Free Software Foundation; or the Artistic License.
+
+See L<http://dev.perl.org/licenses/> for more information.
 
 =cut
 
