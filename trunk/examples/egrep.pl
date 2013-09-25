@@ -158,8 +158,6 @@ else {
    $re = $patterns[0];
 }
 
-$re = ($i_flag) ? qr/$re/i : qr/$re/;
-
 ###############################################################################
 ## ----------------------------------------------------------------------------
 ## Launch Many-core Engine.
@@ -191,11 +189,22 @@ sub user_func {
 
    if ($c_flag) {
       my $match_count = 0;
-      $match_count++ while ( $$chunk_ref =~ /$match_re/g );
+
+      if ($i_flag) {
+         $match_count++ while ( $$chunk_ref =~ /$match_re/img );
+      } else {
+         $match_count++ while ( $$chunk_ref =~ /$match_re/mg );
+      }
 
       if ($v_flag) {
          $line_count = 0;
-         $line_count++ while ( $$chunk_ref =~ /$eol_re/g );
+
+         if ($i_flag) {
+            $line_count++ while ( $$chunk_ref =~ /$eol_re/img );
+         } else {
+            $line_count++ while ( $$chunk_ref =~ /$eol_re/mg );
+         }
+
          $count += $line_count - $match_count;
       }
       else {
@@ -209,15 +218,23 @@ sub user_func {
 
    if (!$v_flag) {
       for (0 .. @patterns - 1) {
-         if ($$chunk_ref =~ /$patterns[$_]/) {
-            $found_match = 1;
-            last;
+         if ($i_flag) {
+            if ($$chunk_ref =~ /$patterns[$_]/im) {
+               $found_match = 1;
+               last;
+            }
+         }
+         else {
+            if ($$chunk_ref =~ /$patterns[$_]/m) {
+               $found_match = 1;
+               last;
+            }
          }
       }
    }
 
    ## Obtain file handle to slurped data.
-   ## Collect matched data if chunk (slurped) data contains a match.
+   ## Collect matched data if slurped chunk data contains a match.
 
    open my $_MEM_FH, '<', $chunk_ref;
    binmode $_MEM_FH;
@@ -229,18 +246,34 @@ sub user_func {
    }
    else {
       if ($v_flag) {
-         while (<$_MEM_FH>) {
-            if ($_ !~ /$re/) {
-               push @lines, $. if ($n_flag);
-               push @matches, $_;
+         if ($i_flag) {
+            while (<$_MEM_FH>) {
+               if ($_ !~ /$re/i) {
+                  push @matches, $_; push @lines, $. if ($n_flag);
+               }
+            }
+         }
+         else {
+            while (<$_MEM_FH>) {
+               if ($_ !~ /$re/) {
+                  push @matches, $_; push @lines, $. if ($n_flag);
+               }
             }
          }
       }
       else {
-         while (<$_MEM_FH>) {
-            if ($_ =~ /$re/) {
-               push @lines, $. if ($n_flag);
-               push @matches, $_;
+         if ($i_flag) {
+            while (<$_MEM_FH>) {
+               if ($_ =~ /$re/i) {
+                  push @matches, $_; push @lines, $. if ($n_flag);
+               }
+            }
+         }
+         else {
+            while (<$_MEM_FH>) {
+               if ($_ =~ /$re/) {
+                  push @matches, $_; push @lines, $. if ($n_flag);
+               }
             }
          }
       }
@@ -249,7 +282,7 @@ sub user_func {
    $line_count = $.;
    close $_MEM_FH;
 
-   ## Send result to main thread.
+   ## Send results to the manager process.
 
    my %wk_result = (
       'found_match' => scalar @matches,
