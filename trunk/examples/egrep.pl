@@ -198,13 +198,7 @@ sub user_func {
 
       if ($v_flag) {
          $line_count = 0;
-
-         if ($i_flag) {
-            $line_count++ while ( $$chunk_ref =~ /$eol_re/img );
-         } else {
-            $line_count++ while ( $$chunk_ref =~ /$eol_re/mg );
-         }
-
+         $line_count++ while ( $$chunk_ref =~ /$eol_re/mg );
          $count += $line_count - $match_count;
       }
       else {
