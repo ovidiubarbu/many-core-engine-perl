@@ -144,7 +144,7 @@ sub _parse_chunk_size {
       
       if (defined $_params && exists $_params->{_file}) {
          $_params->{input_data} = $_params->{_file};
-         $_chunk_size = 48000;
+         $_chunk_size = 240000;
       }
       else {
          $_chunk_size = int($_size / $_max_workers + 0.5);
