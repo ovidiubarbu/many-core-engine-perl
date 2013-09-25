@@ -197,8 +197,8 @@ sub user_func {
       }
 
       if ($v_flag) {
-         $line_count = 0;
-         $line_count++ while ( $$chunk_ref =~ /$eol_re/mg );
+       # $line_count = 0; $line_count++ while ( $$chunk_ref =~ /$eol_re/g );
+         $line_count = ( $$chunk_ref =~ tr/\n// );
          $count += $line_count - $match_count;
       }
       else {
