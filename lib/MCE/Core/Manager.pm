@@ -1,3 +1,8 @@
+###############################################################################
+## ----------------------------------------------------------------------------
+## MCE::Core::Manager - Core methods for the manager process.
+##
+###############################################################################
 
 package MCE::Core::Manager;
 
@@ -704,7 +709,7 @@ __END__
 
 =head1 NAME
 
-MCE::Core::Manager - Loop and related methods for the manager process.
+MCE::Core::Manager - Core methods for the manager process
 
 =head1 SYNOPSIS
 
@@ -712,7 +717,8 @@ There is no public API.
 
 =head1 DESCRIPTION
 
-This package provides the loop method used internally by the manager process.
+This package provides the loop and relevant methods used internally by the
+manager process.
 
 =head1 AUTHOR
 

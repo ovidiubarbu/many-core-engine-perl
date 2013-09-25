@@ -1,7 +1,6 @@
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## MCE::Util
-## -- Provides utility functions for Many-Core Engine.
+## MCE::Util - Public and private utility functions for Many-Core Engine.
 ##
 ###############################################################################
 
@@ -86,9 +85,8 @@ sub get_ncpu {
          last OS_CHECK;
       };
 
-      require Carp;
-      Carp::croak(
-         "MCE::Util::get_ncpu: command failed or unknown operating system\n"
+      _croak(
+         "MCE::Util: command failed or unknown operating system\n"
       );
    }
 
@@ -101,11 +99,73 @@ sub get_ncpu {
 ##
 ###############################################################################
 
+sub _croak {
+
+   unless (defined $MCE::VERSION) {
+      $\ = undef; require Carp; goto &Carp::croak;
+   } else {
+      goto &MCE::_croak;
+   }
+
+   return;
+}
+
+sub _parse_chunk_size {
+
+   my ($_chunk_size, $_max_workers, $_params, $_input_data, $_array_size) = @_;
+
+   return $_chunk_size
+      if (!defined $_chunk_size || !defined $_max_workers);
+
+   $_chunk_size = $_params->{chunk_size}
+      if (defined $_params && exists $_params->{chunk_size});
+
+   if ($_chunk_size eq 'auto') {
+      my $_size = (defined $_input_data && ref $_input_data eq 'ARRAY')
+         ? scalar @{ $_input_data } : $_array_size;
+
+      if (defined $_params && exists $_params->{sequence}) {
+         my ($_begin, $_end, $_step);
+
+         if (ref $_params->{sequence} eq 'HASH') {
+            $_begin = $_params->{sequence}->{begin};
+            $_end   = $_params->{sequence}->{end};
+            $_step  = $_params->{sequence}->{step} || 1;
+         }
+         else {
+            $_begin = $_params->{sequence}->[0];
+            $_end   = $_params->{sequence}->[1];
+            $_step  = $_params->{sequence}->[2] || 1;
+         }
+
+         $_size = abs($_end - $_begin) / $_step + 1
+            if (!defined $_input_data && !$_array_size);
+      }
+      
+      if (defined $_params && exists $_params->{_file}) {
+         $_params->{input_data} = $_params->{_file};
+         $_chunk_size = 48000;
+      }
+      else {
+         $_chunk_size = int($_size / $_max_workers + 0.5);
+         $_chunk_size = 8000 if $_chunk_size > 8000;
+         $_chunk_size = 1 if $_chunk_size < 1;
+      }
+
+      if (defined $_params && exists $_params->{sequence}) {
+         $_chunk_size = 2 if $_chunk_size < 2;
+      }
+   }
+
+   return $_chunk_size;
+}
+
 sub _parse_max_workers {
 
    my ($_max_workers) = @_;
 
-   return $_max_workers unless (defined $_max_workers);
+   return $_max_workers
+      unless (defined $_max_workers);
 
    if ($_max_workers =~ /^auto(?:$|\s*([\-\+\/\*])\s*(.+)$)/i) {
       my $_ncpu = get_ncpu();
@@ -134,7 +194,7 @@ __END__
 
 =head1 NAME
 
-MCE::Util - Provides utility functions for Many-Core Engine.
+MCE::Util - Public and private utility functions for Many-Core Engine
 
 =head1 VERSION
 
@@ -146,7 +206,8 @@ This document describes MCE::Util version 1.499_001
 
 =head1 DESCRIPTION
 
-Utility module for MCE. Nothing is exported by default. Exportable is get_ncpu.
+This is a utility module for MCE. Nothing is exported by default. Exportable
+is get_ncpu.
 
 =head2 get_ncpu()
 

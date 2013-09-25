@@ -1,7 +1,6 @@
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## MCE::Subs
-## -- Imports funtions mapped directly to Many-Core Engine methods.
+## MCE::Subs - Imports funtions mapped directly to MCE's methods.
 ##
 ###############################################################################
 
@@ -158,7 +157,7 @@ __END__
 
 =head1 NAME
 
-MCE::Subs - Imports funtions mapped directly to Many-Core Engine methods.
+MCE::Subs - Imports funtions mapped directly to MCE's methods
 
 =head1 VERSION
 

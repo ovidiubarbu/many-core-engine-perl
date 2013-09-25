@@ -1,7 +1,6 @@
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## MCE::Stream
-## -- Multiple maps and greps using Many-Core Engine.
+## MCE::Stream - Parallel stream model for chaining multiple maps and greps.
 ##
 ###############################################################################
 
@@ -14,6 +13,7 @@ use Scalar::Util qw( looks_like_number );
 
 use MCE 1.499;
 use MCE::Util;
+
 use MCE::Queue;
 
 our $VERSION = '1.499_001'; $VERSION = eval $VERSION;
@@ -72,7 +72,9 @@ sub import {
    no strict 'refs'; no warnings 'redefine';
    my $_package = caller();
 
-   *{ $_package . '::mce_stream' } = \&mce_stream;
+   *{ $_package . '::mce_streamfile' } = \&mce_streamfile;
+   *{ $_package . '::mce_streamseq'  } = \&mce_streamseq;
+   *{ $_package . '::mce_stream'     } = \&mce_stream;
 
    return;
 }
@@ -139,8 +141,7 @@ sub init (@) {
    _croak("$_tag: 'argument' is not a HASH reference")
       unless (ref $_[0] eq 'HASH');
 
-   MCE::Stream::finish();
-   $_params = shift;
+   MCE::Stream::finish(); $_params = shift;
 
    return;
 }
@@ -161,7 +162,90 @@ sub finish () {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Parallel streaming with MCE.
+## Parallel stream with MCE -- file.
+##
+###############################################################################
+
+sub mce_streamfile (&@) {
+
+   my $_code = shift; my $_file = shift;
+
+   if (defined $_params) {
+      delete $_params->{input_data} if (exists $_params->{input_data});
+      delete $_params->{sequence}   if (exists $_params->{sequence});
+   }
+   else {
+      $_params = {};
+   }
+
+   if (defined $_file && ref $_file eq "" && $_file ne "") {
+      _croak("$_tag: '$_file' does not exist") unless (-e $_file);
+      _croak("$_tag: '$_file' is not readable") unless (-r $_file);
+      _croak("$_tag: '$_file' is not a plain file") unless (-f $_file);
+      $_params->{_file} = $_file;
+   }
+   elsif (ref $_file eq 'GLOB' || ref $_file eq 'SCALAR') {
+      $_params->{_file} = $_file;
+   }
+   else {
+      _croak("$_tag: 'file' is not specified or a valid type");
+   }
+
+   @_ = ();
+
+   return mce_stream($_code);
+}
+
+###############################################################################
+## ----------------------------------------------------------------------------
+## Parallel stream with MCE -- sequence.
+##
+###############################################################################
+
+sub mce_streamseq (@) {
+
+   my $_code = shift;
+
+   if (defined $_params) {
+      delete $_params->{input_data} if (exists $_params->{input_data});
+      delete $_params->{_file}      if (exists $_params->{_file});
+   }
+   else {
+      $_params = {};
+   }
+
+   my ($_begin, $_end);
+
+   if (ref $_[0] eq 'HASH') {
+      $_begin = $_[0]->{begin}; $_end = $_[0]->{end};
+      $_params->{sequence} = $_[0];
+   }
+   elsif (ref $_[0] eq 'ARRAY') {
+      $_begin = $_[0]->[0]; $_end = $_[0]->[1];
+      $_params->{sequence} = $_[0];
+   }
+   elsif (ref $_[0] eq "") {
+      $_begin = $_[0]; $_end = $_[1];
+      $_params->{sequence} = [ @_ ];
+   }
+   else {
+      _croak("$_tag: 'sequence' is not specified or valid");
+   }
+
+   _croak("$_tag: 'begin' is not specified for sequence")
+      unless (defined $_begin);
+
+   _croak("$_tag: 'end' is not specified for sequence")
+      unless (defined $_end);
+
+   @_ = ();
+
+   return mce_stream();
+}
+
+###############################################################################
+## ----------------------------------------------------------------------------
+## Parallel stream with MCE.
 ##
 ###############################################################################
 
@@ -246,40 +330,29 @@ sub mce_stream (@) {
 
    ## -------------------------------------------------------------------------
 
-   my ($_chunk_size, $_max_workers) = ($CHUNK_SIZE, $MAX_WORKERS);
-   my $_r = ref $_[0];
+   my $_max_workers = $MAX_WORKERS; my $_r = ref $_[0];
 
    my $_input_data = shift
       if ($_r eq 'ARRAY' || $_r eq 'GLOB' || $_r eq 'SCALAR');
 
-   if (defined $_params) {
-      my $_p = $_params;
-
-      $_chunk_size = $_p->{chunk_size} if (exists $_p->{chunk_size});
-      delete $_p->{user_func} if (exists $_p->{user_func});
-      delete $_p->{gather} if (exists $_p->{gather});
-
+   if (defined $_params) { my $_p = $_params;
       $_max_workers = MCE::Util::_parse_max_workers($_p->{max_workers})
          if (exists $_p->{max_workers} && ref $_p->{max_workers} ne 'ARRAY');
 
-      $_input_data = $_p->{input_data}
-         if (!defined $_input_data && exists $_p->{input_data});
+      delete $_p->{user_func} if (exists $_p->{user_func});
+      delete $_p->{gather}    if (exists $_p->{gather});
    }
-
    $_max_workers = int($_max_workers / @_code + 0.5) + 1
       if (@_code > 1);
 
-   if ($_chunk_size eq 'auto') {
-      my $_size = (defined $_input_data && ref $_input_data eq 'ARRAY')
-         ? scalar @{ $_input_data } : scalar @_;
+   my $_chunk_size = MCE::Util::_parse_chunk_size(
+      $CHUNK_SIZE, $_max_workers, $_params, $_input_data, scalar @_
+   );
+   $_chunk_size = int($_chunk_size / @_code + 0.5) + 1
+      if (@_code > 1);
 
-      $_chunk_size = int($_size / $_max_workers / @_code + 0.5);
-      $_chunk_size = 8000 if $_chunk_size > 8000;
-      $_chunk_size = 1 if $_chunk_size < 1;
-
-      $_chunk_size = 800
-         if (defined $_params && exists $_params->{sequence});
-   }
+   $_input_data = $_params->{input_data}
+      if (defined $_params && exists $_params->{input_data});
 
    ## -------------------------------------------------------------------------
 
@@ -458,7 +531,7 @@ __END__
 
 =head1 NAME
 
-MCE::Stream - Multiple maps and greps using Many-Core Engine.
+MCE::Stream - Parallel stream model for chaining multiple maps and greps
 
 =head1 VERSION
 
@@ -495,6 +568,14 @@ TODO ...
 
    my @a = mce_stream sub { ... }, sub { ... }, 1..100;
 
+=item mce_streamfile
+
+TODO ...
+
+=item mce_streamseq
+
+TODO ...
+
 =item init
 
    MCE::Stream::init {
@@ -518,8 +599,8 @@ TODO ...
 
 =head1 SEE ALSO
 
-L<MCE::Flow>, L<MCE::Grep>, L<MCE::Loop>, L<MCE::Map>,
-L<MCE::Queue>, L<MCE>
+L<MCE>, L<MCE::Flow>, L<MCE::Grep>, L<MCE::Loop>, L<MCE::Map>,
+L<MCE::Queue>, L<MCE::Signal>, L<MCE::Subs>, L<MCE::Util>
 
 =head1 AUTHOR
 

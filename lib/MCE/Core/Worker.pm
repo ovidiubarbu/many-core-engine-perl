@@ -1,3 +1,8 @@
+###############################################################################
+## ----------------------------------------------------------------------------
+## MCE::Core::Worker - Core methods for the worker process.
+##
+###############################################################################
 
 package MCE::Core::Worker;
 
@@ -663,7 +668,7 @@ __END__
 
 =head1 NAME
 
-MCE::Core::Worker - Main, loop, and related methods for the worker process.
+MCE::Core::Worker - Core methods for the worker process
 
 =head1 SYNOPSIS
 
@@ -671,7 +676,7 @@ There is no public API.
 
 =head1 DESCRIPTION
 
-This package provides main, loop, and related methods used internally by
+This package provides main, loop, and relevant methods used internally by
 the worker process.
 
 =head1 AUTHOR

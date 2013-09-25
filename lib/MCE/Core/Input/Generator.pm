@@ -1,3 +1,8 @@
+###############################################################################
+## ----------------------------------------------------------------------------
+## MCE::Core::Input::Generator - Sequence of numbers (for task_id > 0).
+##
+###############################################################################
 
 package MCE::Core::Input::Generator;
 
@@ -155,7 +160,7 @@ __END__
 
 =head1 NAME
 
-MCE::Core::Input::Generator - Sequence of numbers (used by task > 0 workers).
+MCE::Core::Input::Generator - Sequence of numbers (for task_id > 0)
 
 =head1 SYNOPSIS
 

@@ -1,3 +1,8 @@
+###############################################################################
+## ----------------------------------------------------------------------------
+## MCE::Core::Input::Sequence - Sequence of numbers (for task_id == 0).
+##
+###############################################################################
 
 package MCE::Core::Input::Sequence;
 
@@ -143,7 +148,7 @@ __END__
 
 =head1 NAME
 
-MCE::Core::Input::Sequence - Sequence of numbers (used by task 0 workers).
+MCE::Core::Input::Sequence - Sequence of numbers (for task_id == 0)
 
 =head1 SYNOPSIS
 

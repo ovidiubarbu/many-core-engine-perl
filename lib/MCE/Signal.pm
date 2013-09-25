@@ -1,7 +1,6 @@
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## MCE::Signal
-## -- Provides tmp_dir creation & signal handling for Many-Core Engine.
+## MCE::Signal - Temporary directory creation/cleanup & signal handling.
 ##
 ###############################################################################
 
@@ -437,7 +436,7 @@ __END__
 
 =head1 NAME
 
-MCE::Signal - Provides tmp_dir creation & signal handling for Many-Core Engine.
+MCE::Signal - Temporary directory creation/cleanup & signal handling
 
 =head1 VERSION
 

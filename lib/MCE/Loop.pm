@@ -1,7 +1,6 @@
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## MCE::Loop
-## -- Small parallel loop implementation using Many-Core Engine.
+## MCE::Loop - Parallel loop model for building creative loops.
 ##
 ###############################################################################
 
@@ -24,7 +23,7 @@ our $VERSION = '1.499_001'; $VERSION = eval $VERSION;
 ###############################################################################
 
 our $MAX_WORKERS = 'auto';
-our $CHUNK_SIZE  = '1';
+our $CHUNK_SIZE  = 'auto';
 
 my ($_MCE, $_loaded); my ($_params, $_prev_c); my $_tag = 'MCE::Loop';
 
@@ -65,7 +64,9 @@ sub import {
    no strict 'refs'; no warnings 'redefine';
    my $_package = caller();
 
-   *{ $_package . '::mce_loop' } = \&mce_loop;
+   *{ $_package . '::mce_loopfile' } = \&mce_loopfile;
+   *{ $_package . '::mce_loopseq'  } = \&mce_loopseq;
+   *{ $_package . '::mce_loop'     } = \&mce_loop;
 
    return;
 }
@@ -91,8 +92,7 @@ sub init (@) {
    _croak("$_tag: 'argument' is not a HASH reference")
       unless (ref $_[0] eq 'HASH');
 
-   MCE::Loop::finish();
-   $_params = shift;
+   MCE::Loop::finish(); $_params = shift;
 
    return;
 }
@@ -110,6 +110,89 @@ sub finish () {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
+## Parallel loop with MCE -- file.
+##
+###############################################################################
+
+sub mce_loopfile (&@) {
+
+   my $_code = shift; my $_file = shift;
+
+   if (defined $_params) {
+      delete $_params->{input_data} if (exists $_params->{input_data});
+      delete $_params->{sequence}   if (exists $_params->{sequence});
+   }
+   else {
+      $_params = {};
+   }
+
+   if (defined $_file && ref $_file eq "" && $_file ne "") {
+      _croak("$_tag: '$_file' does not exist") unless (-e $_file);
+      _croak("$_tag: '$_file' is not readable") unless (-r $_file);
+      _croak("$_tag: '$_file' is not a plain file") unless (-f $_file);
+      $_params->{_file} = $_file;
+   }
+   elsif (ref $_file eq 'GLOB' || ref $_file eq 'SCALAR') {
+      $_params->{_file} = $_file;
+   }
+   else {
+      _croak("$_tag: 'file' is not specified or a valid type");
+   }
+
+   @_ = ();
+
+   return mce_loop($_code);
+}
+
+###############################################################################
+## ----------------------------------------------------------------------------
+## Parallel loop with MCE -- sequence.
+##
+###############################################################################
+
+sub mce_loopseq (&@) {
+
+   my $_code = shift;
+
+   if (defined $_params) {
+      delete $_params->{input_data} if (exists $_params->{input_data});
+      delete $_params->{_file}      if (exists $_params->{_file});
+   }
+   else {
+      $_params = {};
+   }
+
+   my ($_begin, $_end);
+
+   if (ref $_[0] eq 'HASH') {
+      $_begin = $_[0]->{begin}; $_end = $_[0]->{end};
+      $_params->{sequence} = $_[0];
+   }
+   elsif (ref $_[0] eq 'ARRAY') {
+      $_begin = $_[0]->[0]; $_end = $_[0]->[1];
+      $_params->{sequence} = $_[0];
+   }
+   elsif (ref $_[0] eq "") {
+      $_begin = $_[0]; $_end = $_[1];
+      $_params->{sequence} = [ @_ ];
+   }
+   else {
+      _croak("$_tag: 'sequence' is not specified or valid");
+   }
+
+   _croak("$_tag: 'begin' is not specified for sequence")
+      unless (defined $_begin);
+
+   _croak("$_tag: 'end' is not specified for sequence")
+      unless (defined $_end);
+
+   @_ = ();
+
+   return mce_loop($_code);
+}
+
+###############################################################################
+## ----------------------------------------------------------------------------
 ## Parallel loop with MCE.
 ##
 ###############################################################################
@@ -122,47 +205,24 @@ sub mce_loop (&@) {
       );
    }
 
-   my $_code = shift;
-
-   if (ref $_[0] eq 'HASH') {
-      $_params = {} unless defined $_params;
-      $_params->{$_} = $_[0]->{$_} foreach (keys %{ $_[0] });
-
-      shift;
-   }
-
-   ## -------------------------------------------------------------------------
-
-   my ($_chunk_size, $_max_workers) = ($CHUNK_SIZE, $MAX_WORKERS);
-   my $_r = ref $_[0];
+   my $_code = shift; my $_max_workers = $MAX_WORKERS; my $_r = ref $_[0];
 
    my $_input_data = shift
       if ($_r eq 'ARRAY' || $_r eq 'GLOB' || $_r eq 'SCALAR');
 
-   if (defined $_params) {
-      my $_p = $_params;
-
-      $_chunk_size = $_p->{chunk_size} if (exists $_p->{chunk_size});
-      delete $_p->{user_func} if (exists $_p->{user_func});
-
+   if (defined $_params) { my $_p = $_params;
       $_max_workers = MCE::Util::_parse_max_workers($_p->{max_workers})
          if (exists $_p->{max_workers});
 
-      $_input_data = $_p->{input_data}
-         if (!defined $_input_data && exists $_p->{input_data});
+      delete $_p->{user_func} if (exists $_p->{user_func});
    }
 
-   if ($_chunk_size eq 'auto') {
-      my $_size = (defined $_input_data && ref $_input_data eq 'ARRAY')
-         ? scalar @{ $_input_data } : scalar @_;
+   my $_chunk_size = MCE::Util::_parse_chunk_size(
+      $CHUNK_SIZE, $_max_workers, $_params, $_input_data, scalar @_
+   );
 
-      $_chunk_size = int($_size / $_max_workers + 0.5);
-      $_chunk_size = 8000 if $_chunk_size > 8000;
-      $_chunk_size = 1 if $_chunk_size < 1;
-
-      $_chunk_size = 800
-         if (defined $_params && exists $_params->{sequence});
-   }
+   $_input_data = $_params->{input_data}
+      if (defined $_params && exists $_params->{input_data});
 
    ## -------------------------------------------------------------------------
 
@@ -231,7 +291,7 @@ __END__
 
 =head1 NAME
 
-MCE::Loop - Small parallel loop implementation using Many-Core Engine.
+MCE::Loop - Parallel loop model for building creative loops
 
 =head1 VERSION
 
@@ -254,6 +314,14 @@ TODO ...
    ## mce_loop is imported into the calling script.
 
    mce_loop { ... } 1..100;
+
+=item mce_loopfile
+
+TODO ...
+
+=item mce_loopseq
+
+TODO ...
 
 =item init
 
@@ -278,8 +346,8 @@ TODO ...
 
 =head1 SEE ALSO
 
-L<MCE::Flow>, L<MCE::Grep>, L<MCE::Map>, L<MCE::Stream>,
-L<MCE::Queue>, L<MCE>
+L<MCE>, L<MCE::Flow>, L<MCE::Grep>, L<MCE::Map>, L<MCE::Queue>,
+L<MCE::Signal>, L<MCE::Stream>, L<MCE::Subs>, L<MCE::Util>
 
 =head1 AUTHOR
 

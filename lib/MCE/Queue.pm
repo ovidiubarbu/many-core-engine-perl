@@ -1,7 +1,6 @@
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## MCE::Queue
-## -- Provides queues for Many-Core Engine.
+## MCE::Queue - Hybrid normal/priority queues for Many-Core Engine.
 ##
 ## ## MCE::Queue can be utilized in the following 3 modes:
 ##
@@ -1632,7 +1631,7 @@ __END__
 
 =head1 NAME
 
-MCE::Queue - Provides queues for Many-Core Engine.
+MCE::Queue - Hybrid normal/priority queues for Many-Core Engine
 
 =head1 VERSION
 

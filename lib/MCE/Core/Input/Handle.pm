@@ -1,3 +1,8 @@
+###############################################################################
+## ----------------------------------------------------------------------------
+## MCE::Core::Input::Handle - File_path and Scalar_ref input reader.
+##
+###############################################################################
 
 package MCE::Core::Input::Handle;
 
@@ -165,7 +170,7 @@ __END__
 
 =head1 NAME
 
-MCE::Core::Input::Handle - File_path and Scalar_ref input reader.
+MCE::Core::Input::Handle - File_path and Scalar_ref input reader
 
 =head1 SYNOPSIS
 
