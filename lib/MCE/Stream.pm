@@ -188,7 +188,7 @@ sub mce_streamfile (&@) {
       $_params->{_file} = $_file;
    }
    else {
-      _croak("$_tag: 'file' is not specified or a valid type");
+      _croak("$_tag: 'file' is not specified or valid");
    }
 
    @_ = ();

@@ -152,7 +152,7 @@ sub mce_grepfile (&@) {
       $_params->{_file} = $_file;
    }
    else {
-      _croak("$_tag: 'file' is not specified or a valid type");
+      _croak("$_tag: 'file' is not specified or valid");
    }
 
    @_ = ();
