@@ -1,3 +1,8 @@
+###############################################################################
+## ----------------------------------------------------------------------------
+## MCE::Core::Input::Request - Array_ref and Glob_ref input reader.
+##
+###############################################################################
 
 package MCE::Core::Input::Request;
 
@@ -139,7 +144,7 @@ __END__
 
 =head1 NAME
 
-MCE::Core::Input::Request - Array_ref and Glob_ref input reader.
+MCE::Core::Input::Request - Array_ref and Glob_ref input reader
 
 =head1 SYNOPSIS
 

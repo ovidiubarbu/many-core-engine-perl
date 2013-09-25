@@ -1,6 +1,6 @@
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Many-Core Engine (MCE) for Perl. Provides parallel processing capabilities.
+## MCE - Many-Core Engine for Perl. Provides parallel processing capabilities.
 ##
 ###############################################################################
 

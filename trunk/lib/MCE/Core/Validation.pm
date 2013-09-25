@@ -1,3 +1,8 @@
+###############################################################################
+## ----------------------------------------------------------------------------
+## MCE::Core::Validation - Core validation methods for Many-Core Engine.
+##
+###############################################################################
 
 package MCE::Core::Validation;
 
@@ -220,7 +225,7 @@ __END__
 
 =head1 NAME
 
-MCE::Core::Validation - Validation methods for the manager process.
+MCE::Core::Validation - Core validation methods for Many-Core Engine
 
 =head1 SYNOPSIS
 
