@@ -65,9 +65,9 @@ sub import {
    no strict 'refs'; no warnings 'redefine';
    my $_package = caller();
 
-   *{ $_package . '::mce_flowfile' } = \&mce_flowfile;
-   *{ $_package . '::mce_flowseq'  } = \&mce_flowseq;
-   *{ $_package . '::mce_flow'     } = \&mce_flow;
+   *{ $_package . '::mce_flow_f' } = \&mce_flow_f;
+   *{ $_package . '::mce_flow_s' } = \&mce_flow_s;
+   *{ $_package . '::mce_flow'   } = \&mce_flow;
 
    return;
 }
@@ -115,7 +115,7 @@ sub finish () {
 ##
 ###############################################################################
 
-sub mce_flowfile (&@) {
+sub mce_flow_f (&@) {
 
    my $_code = shift; my $_file = shift;
 
@@ -151,7 +151,7 @@ sub mce_flowfile (&@) {
 ##
 ###############################################################################
 
-sub mce_flowseq (@) {
+sub mce_flow_s (@) {
 
    my $_code = shift;
 
@@ -262,7 +262,8 @@ sub mce_flow (@) {
       $_max_workers = MCE::Util::_parse_max_workers($_p->{max_workers})
          if (exists $_p->{max_workers} && ref $_p->{max_workers} ne 'ARRAY');
 
-      delete $_p->{user_func} if (exists $_p->{user_func});
+      delete $_p->{user_func}  if (exists $_p->{user_func});
+      delete $_p->{user_tasks} if (exists $_p->{user_tasks});
    }
    $_max_workers = int($_max_workers / @_code + 0.5) + 1
       if (@_code > 1);
@@ -530,11 +531,11 @@ not available. Both chunk_size and max_workers default to auto.
    },
    sub { ... }, sub { ... }, sub { ... }, 1..10000;
 
-=item mce_flowfile
+=item mce_flow_f
 
 TODO ...
 
-=item mce_flowseq
+=item mce_flow_s
 
 TODO ...
 
