@@ -342,14 +342,8 @@ sub _worker_do {
       }
    }
 
-   ## Assign user function. Determine if gather is allowed.
+   ## Assign user function.
    $self->{_wuf} = \&_do_user_func;
-
-   if (defined $self->{gather} || $_params_ref->{_wants_gather}) {
-      $self->{_gather_allowed} = 1;
-   } else {
-      $self->{_gather_allowed} = 0;
-   }
 
    ## Set time_block & start_time values for interval.
    if (defined $self->{interval}) {

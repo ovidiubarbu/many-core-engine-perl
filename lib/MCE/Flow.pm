@@ -255,6 +255,9 @@ sub mce_flow (@) {
 
    my $_max_workers = $MAX_WORKERS; my $_r = ref $_[0];
 
+   my $_wa = (!defined $_params || !exists $_params->{gather})
+      ? wantarray : undef;
+
    my $_input_data = shift
       if ($_r eq 'ARRAY' || $_r eq 'GLOB' || $_r eq 'SCALAR');
 
@@ -300,6 +303,8 @@ sub mce_flow (@) {
       }
    }
 
+   my @_a; $_MCE->{gather} = \@_a if (defined $_wa);
+
    if (defined $_input_data) {
       @_ = (); $_MCE->process({ chunk_size => $_chunk_size }, $_input_data);
    }
@@ -310,9 +315,11 @@ sub mce_flow (@) {
       $_MCE->run({ chunk_size => $_chunk_size }, 0);
    }
 
+   delete $_MCE->{gather} if (defined $_wa);
+
    MCE::_restore_state;
 
-   return;
+   return ((defined $_wa) ? @_a : ());
 }
 
 ###############################################################################
