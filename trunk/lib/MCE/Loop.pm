@@ -199,19 +199,22 @@ sub mce_loop_s (&@) {
 
 sub mce_loop (&@) {
 
+   my $_code = shift;
+
    if (MCE->wid) {
       @_ = (); _croak(
          "$_tag: function cannot be called by the worker process"
       );
    }
 
-   my $_code = shift; my $_max_workers = $MAX_WORKERS; my $_r = ref $_[0];
+   my $_input_data; my $_max_workers = $MAX_WORKERS; my $_r = ref $_[0];
 
    my $_wa = (!defined $_params || !exists $_params->{gather})
       ? wantarray : undef;
 
-   my $_input_data = shift
-      if ($_r eq 'ARRAY' || $_r eq 'GLOB' || $_r eq 'SCALAR');
+   if ($_r eq 'ARRAY' || $_r eq 'GLOB' || $_r eq 'SCALAR') {
+      $_input_data = shift;
+   }
 
    if (defined $_params) { my $_p = $_params;
       $_max_workers = MCE::Util::_parse_max_workers($_p->{max_workers})
@@ -225,8 +228,10 @@ sub mce_loop (&@) {
       $CHUNK_SIZE, $_max_workers, $_params, $_input_data, scalar @_
    );
 
-   $_input_data = $_params->{input_data}
-      if (defined $_params && exists $_params->{input_data});
+   if (defined $_params) {
+      $_input_data = $_params->{input_data} if (exists $_params->{input_data});
+      $_input_data = $_params->{_file} if (exists $_params->{_file});
+   }
 
    ## -------------------------------------------------------------------------
 
@@ -259,6 +264,11 @@ sub mce_loop (&@) {
    }
    else {
       $_MCE->run({ chunk_size => $_chunk_size }, 0);
+   }
+
+   if (defined $_params) {
+      delete $_params->{input_data}; delete $_params->{_file};
+      delete $_params->{sequence};
    }
 
    delete $_MCE->{gather} if (defined $_wa);

@@ -165,7 +165,6 @@ sub _parse_chunk_size {
       }
       
       if (defined $_params && exists $_params->{_file}) {
-         $_params->{input_data} = $_params->{_file};
          my $_ref = ref $_params->{_file};
 
          if ($_ref eq 'SCALAR') {
@@ -191,10 +190,6 @@ sub _parse_chunk_size {
       if (defined $_params && exists $_params->{sequence}) {
          $_chunk_size = 2 if $_chunk_size < 2;
       }
-   }
-   else {
-      $_params->{input_data} = $_params->{_file}
-         if (defined $_params && exists $_params->{_file});
    }
 
    return $_chunk_size;

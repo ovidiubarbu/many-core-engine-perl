@@ -115,9 +115,17 @@ sub finish () {
 ##
 ###############################################################################
 
-sub mce_flow_f (&@) {
+sub mce_flow_f (@) {
 
-   my $_code = shift; my $_file = shift;
+   my ($_file, $_pos); my $_start_pos = (ref $_[0] eq 'HASH') ? 2 : 1;
+
+   for ($_start_pos .. @_ - 1) {
+      my $_ref = ref $_[$_];
+      if ($_ref eq "" || $_ref eq 'GLOB' || $_ref eq 'SCALAR') {
+         $_file = $_[$_]; $_pos = $_;
+         last;
+      }
+   }
 
    if (defined $_params) {
       delete $_params->{input_data} if (exists $_params->{input_data});
@@ -140,9 +148,11 @@ sub mce_flow_f (&@) {
       _croak("$_tag: 'file' is not specified or valid");
    }
 
-   @_ = ();
+   if (defined $_pos) {
+      pop @_ for ($_pos .. @_ - 1);
+   }
 
-   return mce_flow($_code);
+   return mce_flow(@_);
 }
 
 ###############################################################################
@@ -153,7 +163,35 @@ sub mce_flow_f (&@) {
 
 sub mce_flow_s (@) {
 
-   my $_code = shift;
+   my ($_begin, $_end, $_pos); my $_start_pos = (ref $_[0] eq 'HASH') ? 2 : 1;
+
+   delete $_params->{sequence}
+      if (exists $_params->{sequence});
+
+   for ($_start_pos .. @_ - 1) {
+      my $_ref = ref $_[$_];
+
+      if ($_ref eq "" || $_ref eq 'HASH' || $_ref eq 'ARRAY') {
+         $_pos = $_;
+
+         if ($_ref eq "") {
+            $_begin = $_[$_pos]; $_end = $_[$_pos + 1];
+            $_params->{sequence} = [
+               $_[$_pos], $_[$_pos + 1], $_[$_pos + 2], $_[$_pos + 3]
+            ];
+         }
+         elsif ($_ref eq 'HASH') {
+            $_begin = $_[$_pos]->{begin}; $_end = $_[$_pos]->{end};
+            $_params->{sequence} = $_[0];
+         }
+         elsif ($_ref eq 'ARRAY') {
+            $_begin = $_[$_pos]->[0]; $_end = $_[$_pos]->[1];
+            $_params->{sequence} = $_[0];
+         }
+
+         last;
+      }
+   }
 
    if (defined $_params) {
       delete $_params->{input_data} if (exists $_params->{input_data});
@@ -163,23 +201,8 @@ sub mce_flow_s (@) {
       $_params = {};
    }
 
-   my ($_begin, $_end);
-
-   if (ref $_[0] eq 'HASH') {
-      $_begin = $_[0]->{begin}; $_end = $_[0]->{end};
-      $_params->{sequence} = $_[0];
-   }
-   elsif (ref $_[0] eq 'ARRAY') {
-      $_begin = $_[0]->[0]; $_end = $_[0]->[1];
-      $_params->{sequence} = $_[0];
-   }
-   elsif (ref $_[0] eq "") {
-      $_begin = $_[0]; $_end = $_[1];
-      $_params->{sequence} = [ @_ ];
-   }
-   else {
-      _croak("$_tag: 'sequence' is not specified or valid");
-   }
+   _croak("$_tag: 'sequence' is not specified or valid")
+      unless (exists $_params->{sequence});
 
    _croak("$_tag: 'begin' is not specified for sequence")
       unless (defined $_begin);
@@ -187,9 +210,11 @@ sub mce_flow_s (@) {
    _croak("$_tag: 'end' is not specified for sequence")
       unless (defined $_end);
 
-   @_ = ();
+   if (defined $_pos) {
+      pop @_ for ($_pos .. @_ - 1);
+   }
 
-   return mce_flow();
+   return mce_flow(@_);
 }
 
 ###############################################################################
@@ -253,13 +278,14 @@ sub mce_flow (@) {
 
    ## -------------------------------------------------------------------------
 
-   my $_max_workers = $MAX_WORKERS; my $_r = ref $_[0];
+   my $_input_data; my $_max_workers = $MAX_WORKERS; my $_r = ref $_[0];
 
    my $_wa = (!defined $_params || !exists $_params->{gather})
       ? wantarray : undef;
 
-   my $_input_data = shift
-      if ($_r eq 'ARRAY' || $_r eq 'GLOB' || $_r eq 'SCALAR');
+   if ($_r eq 'ARRAY' || $_r eq 'GLOB' || $_r eq 'SCALAR') {
+      $_input_data = shift;
+   }
 
    if (defined $_params) { my $_p = $_params;
       $_max_workers = MCE::Util::_parse_max_workers($_p->{max_workers})
@@ -274,11 +300,16 @@ sub mce_flow (@) {
    my $_chunk_size = MCE::Util::_parse_chunk_size(
       $CHUNK_SIZE, $_max_workers, $_params, $_input_data, scalar @_
    );
-   $_chunk_size = int($_chunk_size / @_code + 0.5) + 1
-      if (@_code > 1);
 
-   $_input_data = $_params->{input_data}
-      if (defined $_params && exists $_params->{input_data});
+   if (!defined $_params || !exists $_params->{_file}) {
+      $_chunk_size = int($_chunk_size / @_code + 0.5) + 1
+         if (@_code > 1);
+   }
+
+   if (defined $_params) {
+      $_input_data = $_params->{input_data} if (exists $_params->{input_data});
+      $_input_data = $_params->{_file} if (exists $_params->{_file});
+   }
 
    ## -------------------------------------------------------------------------
 
@@ -298,6 +329,7 @@ sub mce_flow (@) {
             next if ($_ eq 'max_workers' && ref $_p->{max_workers} eq 'ARRAY');
             next if ($_ eq 'task_name' && ref $_p->{task_name} eq 'ARRAY');
             next if ($_ eq 'input_data');
+
             $_MCE->{$_} = $_p->{$_};
          }
       }
@@ -313,6 +345,11 @@ sub mce_flow (@) {
    }
    else {
       $_MCE->run({ chunk_size => $_chunk_size }, 0);
+   }
+
+   if (defined $_params) {
+      delete $_params->{input_data}; delete $_params->{_file};
+      delete $_params->{sequence};
    }
 
    delete $_MCE->{gather} if (defined $_wa);
