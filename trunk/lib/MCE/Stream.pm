@@ -72,9 +72,9 @@ sub import {
    no strict 'refs'; no warnings 'redefine';
    my $_package = caller();
 
-   *{ $_package . '::mce_streamfile' } = \&mce_streamfile;
-   *{ $_package . '::mce_streamseq'  } = \&mce_streamseq;
-   *{ $_package . '::mce_stream'     } = \&mce_stream;
+   *{ $_package . '::mce_stream_f' } = \&mce_stream_f;
+   *{ $_package . '::mce_stream_s' } = \&mce_stream_s;
+   *{ $_package . '::mce_stream'   } = \&mce_stream;
 
    return;
 }
@@ -166,7 +166,7 @@ sub finish () {
 ##
 ###############################################################################
 
-sub mce_streamfile (&@) {
+sub mce_stream_f (&@) {
 
    my $_code = shift; my $_file = shift;
 
@@ -202,7 +202,7 @@ sub mce_streamfile (&@) {
 ##
 ###############################################################################
 
-sub mce_streamseq (@) {
+sub mce_stream_s (@) {
 
    my $_code = shift;
 
@@ -339,8 +339,11 @@ sub mce_stream (@) {
       $_max_workers = MCE::Util::_parse_max_workers($_p->{max_workers})
          if (exists $_p->{max_workers} && ref $_p->{max_workers} ne 'ARRAY');
 
-      delete $_p->{user_func} if (exists $_p->{user_func});
-      delete $_p->{gather}    if (exists $_p->{gather});
+      delete $_p->{user_func}  if (exists $_p->{user_func});
+      delete $_p->{user_tasks} if (exists $_p->{user_tasks});
+
+      delete $_p->{gather}     if (exists $_p->{gather});
+      delete $_p->{task_end}   if (exists $_p->{task_end});
    }
    $_max_workers = int($_max_workers / @_code + 0.5) + 1
       if (@_code > 1);
@@ -568,11 +571,11 @@ TODO ...
 
    my @a = mce_stream sub { ... }, sub { ... }, 1..100;
 
-=item mce_streamfile
+=item mce_stream_f
 
 TODO ...
 
-=item mce_streamseq
+=item mce_stream_s
 
 TODO ...
 

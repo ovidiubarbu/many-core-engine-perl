@@ -64,9 +64,9 @@ sub import {
    no strict 'refs'; no warnings 'redefine';
    my $_package = caller();
 
-   *{ $_package . '::mce_mapfile' } = \&mce_mapfile;
-   *{ $_package . '::mce_mapseq'  } = \&mce_mapseq;
-   *{ $_package . '::mce_map'     } = \&mce_map;
+   *{ $_package . '::mce_map_f' } = \&mce_map_f;
+   *{ $_package . '::mce_map_s' } = \&mce_map_s;
+   *{ $_package . '::mce_map'   } = \&mce_map;
 
    return;
 }
@@ -130,7 +130,7 @@ sub finish () {
 ##
 ###############################################################################
 
-sub mce_mapfile (&@) {
+sub mce_map_f (&@) {
 
    my $_code = shift; my $_file = shift;
 
@@ -166,7 +166,7 @@ sub mce_mapfile (&@) {
 ##
 ###############################################################################
 
-sub mce_mapseq (&@) {
+sub mce_map_s (&@) {
 
    my $_code = shift;
 
@@ -232,8 +232,10 @@ sub mce_map (&@) {
       $_max_workers = MCE::Util::_parse_max_workers($_p->{max_workers})
          if (exists $_p->{max_workers});
 
-      delete $_p->{user_func} if (exists $_p->{user_func});
-      delete $_p->{gather}    if (exists $_p->{gather});
+      delete $_p->{user_func}  if (exists $_p->{user_func});
+      delete $_p->{user_tasks} if (exists $_p->{user_tasks});
+
+      delete $_p->{gather}     if (exists $_p->{gather});
    }
 
    my $_chunk_size = MCE::Util::_parse_chunk_size(
@@ -265,7 +267,10 @@ sub mce_map (&@) {
       );
 
       if (defined $_params) {
-         $_MCE->{$_} = $_params->{$_} foreach (keys %{ $_params });
+         my $_p = $_params; foreach (keys %{ $_p }) {
+            next if ($_ eq 'input_data');
+            $_MCE->{$_} = $_p->{$_};
+         }
       }
    }
 
@@ -345,11 +350,11 @@ TODO ...
 
    my @a = mce_map { ... } 1..100;
 
-=item mce_mapfile
+=item mce_map_f
 
 TODO ...
 
-=item mce_mapseq
+=item mce_map_s
 
 TODO ...
 

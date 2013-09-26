@@ -64,9 +64,9 @@ sub import {
    no strict 'refs'; no warnings 'redefine';
    my $_package = caller();
 
-   *{ $_package . '::mce_grepfile' } = \&mce_grepfile;
-   *{ $_package . '::mce_grepseq'  } = \&mce_grepseq;
-   *{ $_package . '::mce_grep'     } = \&mce_grep;
+   *{ $_package . '::mce_grep_f' } = \&mce_grep_f;
+   *{ $_package . '::mce_grep_s' } = \&mce_grep_s;
+   *{ $_package . '::mce_grep'   } = \&mce_grep;
 
    return;
 }
@@ -130,7 +130,7 @@ sub finish () {
 ##
 ###############################################################################
 
-sub mce_grepfile (&@) {
+sub mce_grep_f (&@) {
 
    my $_code = shift; my $_file = shift;
 
@@ -166,7 +166,7 @@ sub mce_grepfile (&@) {
 ##
 ###############################################################################
 
-sub mce_grepseq (&@) {
+sub mce_grep_s (&@) {
 
    my $_code = shift;
 
@@ -232,8 +232,10 @@ sub mce_grep (&@) {
       $_max_workers = MCE::Util::_parse_max_workers($_p->{max_workers})
          if (exists $_p->{max_workers});
 
-      delete $_p->{user_func} if (exists $_p->{user_func});
-      delete $_p->{gather}    if (exists $_p->{gather});
+      delete $_p->{user_func}  if (exists $_p->{user_func});
+      delete $_p->{user_tasks} if (exists $_p->{user_tasks});
+
+      delete $_p->{gather}     if (exists $_p->{gather});
    }
 
    my $_chunk_size = MCE::Util::_parse_chunk_size(
@@ -265,7 +267,10 @@ sub mce_grep (&@) {
       );
 
       if (defined $_params) {
-         $_MCE->{$_} = $_params->{$_} foreach (keys %{ $_params });
+         my $_p = $_params; foreach (keys %{ $_p }) {
+            next if ($_ eq 'input_data');
+            $_MCE->{$_} = $_p->{$_};
+         }
       }
    }
 
@@ -345,11 +350,11 @@ TODO ...
 
    my @a = mce_grep { ... } 1..100;
 
-=item mce_grepfile
+=item mce_grep_f
 
 TODO ...
 
-=item mce_grepseq
+=item mce_grep_s
 
 TODO ...
 

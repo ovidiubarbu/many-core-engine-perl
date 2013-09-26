@@ -64,9 +64,9 @@ sub import {
    no strict 'refs'; no warnings 'redefine';
    my $_package = caller();
 
-   *{ $_package . '::mce_loopfile' } = \&mce_loopfile;
-   *{ $_package . '::mce_loopseq'  } = \&mce_loopseq;
-   *{ $_package . '::mce_loop'     } = \&mce_loop;
+   *{ $_package . '::mce_loop_f' } = \&mce_loop_f;
+   *{ $_package . '::mce_loop_s' } = \&mce_loop_s;
+   *{ $_package . '::mce_loop'   } = \&mce_loop;
 
    return;
 }
@@ -114,7 +114,7 @@ sub finish () {
 ##
 ###############################################################################
 
-sub mce_loopfile (&@) {
+sub mce_loop_f (&@) {
 
    my $_code = shift; my $_file = shift;
 
@@ -150,7 +150,7 @@ sub mce_loopfile (&@) {
 ##
 ###############################################################################
 
-sub mce_loopseq (&@) {
+sub mce_loop_s (&@) {
 
    my $_code = shift;
 
@@ -214,7 +214,8 @@ sub mce_loop (&@) {
       $_max_workers = MCE::Util::_parse_max_workers($_p->{max_workers})
          if (exists $_p->{max_workers});
 
-      delete $_p->{user_func} if (exists $_p->{user_func});
+      delete $_p->{user_func}  if (exists $_p->{user_func});
+      delete $_p->{user_tasks} if (exists $_p->{user_tasks});
    }
 
    my $_chunk_size = MCE::Util::_parse_chunk_size(
@@ -238,7 +239,10 @@ sub mce_loop (&@) {
       );
 
       if (defined $_params) {
-         $_MCE->{$_} = $_params->{$_} foreach (keys %{ $_params });
+         my $_p = $_params; foreach (keys %{ $_p }) {
+            next if ($_ eq 'input_data');
+            $_MCE->{$_} = $_p->{$_};
+         }
       }
    }
 
@@ -315,11 +319,11 @@ TODO ...
 
    mce_loop { ... } 1..100;
 
-=item mce_loopfile
+=item mce_loop_f
 
 TODO ...
 
-=item mce_loopseq
+=item mce_loop_s
 
 TODO ...
 
