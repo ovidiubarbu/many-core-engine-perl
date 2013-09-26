@@ -215,7 +215,7 @@ sub mce_map_s (&@) {
 
 sub mce_map (&@) {
 
-   $_total_chunks = 0; undef %_tmp;
+   my $_code = shift;   $_total_chunks = 0; undef %_tmp;
 
    if (MCE->wid) {
       @_ = (); _croak(
@@ -223,10 +223,11 @@ sub mce_map (&@) {
       );
    }
 
-   my $_code = shift; my $_max_workers = $MAX_WORKERS; my $_r = ref $_[0];
+   my $_input_data; my $_max_workers = $MAX_WORKERS; my $_r = ref $_[0];
 
-   my $_input_data = shift
-      if ($_r eq 'ARRAY' || $_r eq 'GLOB' || $_r eq 'SCALAR');
+   if ($_r eq 'ARRAY' || $_r eq 'GLOB' || $_r eq 'SCALAR') {
+      $_input_data = shift;
+   }
 
    if (defined $_params) { my $_p = $_params;
       $_max_workers = MCE::Util::_parse_max_workers($_p->{max_workers})
@@ -234,7 +235,6 @@ sub mce_map (&@) {
 
       delete $_p->{user_func}  if (exists $_p->{user_func});
       delete $_p->{user_tasks} if (exists $_p->{user_tasks});
-
       delete $_p->{gather}     if (exists $_p->{gather});
    }
 
@@ -242,8 +242,10 @@ sub mce_map (&@) {
       $CHUNK_SIZE, $_max_workers, $_params, $_input_data, scalar @_
    );
 
-   $_input_data = $_params->{input_data}
-      if (defined $_params && exists $_params->{input_data});
+   if (defined $_params) {
+      $_input_data = $_params->{input_data} if (exists $_params->{input_data});
+      $_input_data = $_params->{_file} if (exists $_params->{_file});
+   }
 
    ## -------------------------------------------------------------------------
 
@@ -283,6 +285,11 @@ sub mce_map (&@) {
    else {
       $_MCE->run({ chunk_size => $_chunk_size }, 0)
          if (defined $_params && exists $_params->{sequence});
+   }
+
+   if (defined $_params) {
+      delete $_params->{input_data}; delete $_params->{_file};
+      delete $_params->{sequence};
    }
 
    MCE::_restore_state;
