@@ -110,6 +110,28 @@ sub _croak {
    return;
 }
 
+sub _parse_max_workers {
+
+   my ($_max_workers) = @_;
+
+   return $_max_workers
+      unless (defined $_max_workers);
+
+   if ($_max_workers =~ /^auto(?:$|\s*([\-\+\/\*])\s*(.+)$)/i) {
+      my $_ncpu = get_ncpu();
+
+      if ($1 && $2) {
+         local $@; $_max_workers = eval "int($_ncpu $1 $2 + 0.5)";
+         $_max_workers = 1 if (!$_max_workers || $_max_workers < 1);
+      }
+      else {
+         $_max_workers = $_ncpu;
+      }
+   }
+
+   return $_max_workers;
+}
+
 sub _parse_chunk_size {
 
    my ($_chunk_size, $_max_workers, $_params, $_input_data, $_array_size) = @_;
@@ -144,7 +166,21 @@ sub _parse_chunk_size {
       
       if (defined $_params && exists $_params->{_file}) {
          $_params->{input_data} = $_params->{_file};
-         $_chunk_size = 240000;
+         my $_ref = ref $_params->{_file};
+
+         if ($_ref eq 'SCALAR') {
+            $_size = length ${ $_params->{_file} };
+         } elsif ($_ref eq '') {
+            $_size = -s $_params->{_file};
+         } else {
+            $_size = 0; $_chunk_size = 245760;
+         }
+
+         if ($_size) {
+            $_chunk_size = int($_size / $_max_workers + 0.5);
+            $_chunk_size = 245760 if $_chunk_size > 245760;
+            $_chunk_size = 1 if $_chunk_size <= 8192;
+         }
       }
       else {
          $_chunk_size = int($_size / $_max_workers + 0.5);
@@ -162,28 +198,6 @@ sub _parse_chunk_size {
    }
 
    return $_chunk_size;
-}
-
-sub _parse_max_workers {
-
-   my ($_max_workers) = @_;
-
-   return $_max_workers
-      unless (defined $_max_workers);
-
-   if ($_max_workers =~ /^auto(?:$|\s*([\-\+\/\*])\s*(.+)$)/i) {
-      my $_ncpu = get_ncpu();
-
-      if ($1 && $2) {
-         local $@; $_max_workers = eval "int($_ncpu $1 $2 + 0.5)";
-         $_max_workers = 1 if (!$_max_workers || $_max_workers < 1);
-      }
-      else {
-         $_max_workers = $_ncpu;
-      }
-   }
-
-   return $_max_workers;
 }
 
 1;
