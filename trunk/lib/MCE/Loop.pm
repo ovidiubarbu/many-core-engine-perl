@@ -209,9 +209,6 @@ sub mce_loop (&@) {
 
    my $_input_data; my $_max_workers = $MAX_WORKERS; my $_r = ref $_[0];
 
-   my $_wa = (!defined $_params || !exists $_params->{gather})
-      ? wantarray : undef;
-
    if ($_r eq 'ARRAY' || $_r eq 'GLOB' || $_r eq 'SCALAR') {
       $_input_data = shift;
    }
@@ -254,7 +251,7 @@ sub mce_loop (&@) {
       }
    }
 
-   my @_a; $_MCE->{gather} = \@_a if (defined $_wa);
+   my @_a; my $_wa = wantarray; $_MCE->{gather} = \@_a if (defined $_wa);
 
    if (defined $_input_data) {
       @_ = (); $_MCE->process({ chunk_size => $_chunk_size }, $_input_data);
