@@ -42,7 +42,6 @@ BEGIN {
    ## _chunk_id _mce_sid _mce_tid _pids _run_mode _single_dim _thrs _tids _wid
    ## _exiting _exit_pid _total_exited _total_running _total_workers _task_wid
    ## _send_cnt _sess_dir _spawned _state _status _task _task_id _wrk_status
-   ## _gather_allowed
    ##
    ## _bsb_r_sock _bsb_w_sock _bse_r_sock _bse_w_sock _com_r_sock _com_w_sock
    ## _dat_r_sock _dat_w_sock _que_r_sock _que_w_sock _data_channels _lock_chn
@@ -979,24 +978,23 @@ sub run {
    my $_sess_dir      = $self->{_sess_dir};
    my $_total_workers = $self->{_total_workers};
    my $_send_cnt      = $self->{_send_cnt};
-   my $_wants_gather  = (defined $self->{gather}) ? 1 : 0;
 
    ## Begin processing.
    unless ($_send_cnt) {
 
       my %_params = (
-         '_abort_msg'   => $_abort_msg,    '_run_mode'     => $_run_mode,
-         '_chunk_size'  => $_chunk_size,   '_single_dim'   => $_single_dim,
-         '_input_file'  => $_input_file,   '_sequence'     => $_sequence,
-         '_interval'    => $_interval,     '_user_args'    => $_user_args,
-         '_use_slurpio' => $_use_slurpio,  '_wants_gather' => $_wants_gather
+         '_abort_msg'   => $_abort_msg,    '_run_mode'   => $_run_mode,
+         '_chunk_size'  => $_chunk_size,   '_single_dim' => $_single_dim,
+         '_input_file'  => $_input_file,   '_sequence'   => $_sequence,
+         '_interval'    => $_interval,     '_user_args'  => $_user_args,
+         '_use_slurpio' => $_use_slurpio
       );
       my %_params_nodata = (
-         '_abort_msg'   => undef,          '_run_mode'     => 'nodata',
-         '_chunk_size'  => $_chunk_size,   '_single_dim'   => $_single_dim,
-         '_input_file'  => $_input_file,   '_sequence'     => $_sequence,
-         '_interval'    => $_interval,     '_user_args'    => $_user_args,
-         '_use_slurpio' => $_use_slurpio,  '_wants_gather' => $_wants_gather
+         '_abort_msg'   => undef,          '_run_mode'   => 'nodata',
+         '_chunk_size'  => $_chunk_size,   '_single_dim' => $_single_dim,
+         '_input_file'  => $_input_file,   '_sequence'   => $_sequence,
+         '_interval'    => $_interval,     '_user_args'  => $_user_args,
+         '_use_slurpio' => $_use_slurpio
       );
 
       local $\ = undef; local $/ = $LF;
@@ -1547,8 +1545,6 @@ sub gather {
 
    _croak("MCE::gather: method cannot be called by the manager process")
       unless ($self->{_wid});
-   _croak("MCE::gather: the 'gather' option is not specified")
-      unless ($self->{_gather_allowed});
 
    return _do_gather($self, \@_);
 }
