@@ -61,6 +61,8 @@ sub _worker_sequence_queue {
    $_abort    = $self->{_abort_msg};
    $_chunk_id = $_offset = 0;
 
+   $_fmt =~ s/%// if (defined $_fmt);
+
    ## -------------------------------------------------------------------------
 
    $self->{_next_jmp} = sub { goto _WORKER_SEQUENCE__NEXT; };

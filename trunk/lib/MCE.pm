@@ -333,7 +333,7 @@ sub new {
 
    if (exists $argv{_module_instance}) {
       $self->{_spawned} = $self->{_task_id} = $self->{_task_wid} =
-          $self->{_wid} = $self->{_wrk_status} = 0;
+          $self->{_chunk_id} = $self->{_wid} = $self->{_wrk_status} = 0;
 
       return $MCE = $self;
    }
@@ -1576,6 +1576,11 @@ sub gather {
       $_dest = (exists $_sendto_lkup{$_to}) ? $_sendto_lkup{$_to} : undef;
 
       if (!defined $_dest) {
+         if (defined (my $_fd = fileno($_to))) {
+            my $_data = (scalar @_) ? join('', @_) : $_;
+            _do_send_glob($self, $_to, $_fd, \$_data);
+            return;
+         }
          if (defined $_to && $_to =~ /$_v2_regx/o) {
             $_dest  = (exists $_sendto_lkup{$1}) ? $_sendto_lkup{$1} : undef;
             $_value = $2;

@@ -57,6 +57,8 @@ sub _worker_sequence_generator {
    my $_next     = ($_wid - 1) * $_chunk_size * $_step + $_begin;
    my $_chunk_id = $_wid;
 
+   $_fmt =~ s/%// if (defined $_fmt);
+
    ## -------------------------------------------------------------------------
 
    $self->{_last_jmp} = sub { goto _WORKER_SEQ_GEN__LAST; };
