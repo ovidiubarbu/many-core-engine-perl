@@ -1,6 +1,6 @@
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## MCE::Core::Validation - Core validation methods for Many-Core Engine.
+## MCE::Core::Validation - Core validation methods for Many-core Engine.
 ##
 ###############################################################################
 
@@ -225,7 +225,7 @@ __END__
 
 =head1 NAME
 
-MCE::Core::Validation - Core validation methods for Many-Core Engine
+MCE::Core::Validation - Core validation methods for Many-core Engine
 
 =head1 SYNOPSIS
 
