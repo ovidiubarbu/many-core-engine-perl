@@ -10,7 +10,7 @@ use ExtUtils::MakeMaker;
 
 WriteMakefile(
 
-   ABSTRACT       => 'Many-Core Engine for Perl. Provides parallel processing capabilities.',
+   ABSTRACT       => 'Many-core Engine for Perl. Provides parallel processing capabilities.',
 
    AUTHOR         => 'Mario E. Roy <marioeroy AT gmail DOT com>',
 
