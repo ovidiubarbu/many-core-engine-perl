@@ -260,7 +260,8 @@ sub mce_loop (&@) {
       $_MCE->process({ chunk_size => $_chunk_size }, \@_);
    }
    else {
-      $_MCE->run({ chunk_size => $_chunk_size }, 0);
+      $_MCE->run({ chunk_size => $_chunk_size }, 0)
+         if (defined $_params && exists $_params->{sequence});
    }
 
    if (defined $_params) {
