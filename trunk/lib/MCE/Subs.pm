@@ -9,7 +9,7 @@ package MCE::Subs;
 use strict;
 use warnings;
 
-use MCE 1.499;
+use MCE::Core;
 
 our $VERSION = '1.499_001'; $VERSION = eval $VERSION;
 
@@ -35,7 +35,7 @@ sub import {
       $_m_flg = $_flag->() and next if ( $_arg =~ /^:manager$/i );
       $_w_flg = $_flag->() and next if ( $_arg =~ /^:worker$/i );
 
-      _croak("MCE::import: '$_arg' is not a valid module argument");
+      _croak("MCE::Subs::import: '$_arg' is not a valid module argument");
    }
 
    $_m_flg = $_w_flg = 1 if ($_m_flg + $_w_flg == 0);
@@ -358,10 +358,9 @@ comma after the filehandle.
 
 =back
 
-=head1 SEE ALSO
+=head1 INDEX
 
-L<MCE>, L<MCE::Flow>, L<MCE::Grep>, L<MCE::Loop>, L<MCE::Map>,
-L<MCE::Queue>, L<MCE::Signal>, L<MCE::Stream>, L<MCE::Util>
+L<MCE>
 
 =head1 AUTHOR
 

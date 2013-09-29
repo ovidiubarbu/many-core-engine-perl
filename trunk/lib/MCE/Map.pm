@@ -11,7 +11,7 @@ use warnings;
 
 use Scalar::Util qw( looks_like_number );
 
-use MCE 1.499;
+use MCE::Core;
 use MCE::Util;
 
 our $VERSION = '1.499_001'; $VERSION = eval $VERSION;
@@ -386,10 +386,9 @@ TODO ...
 
 =back
 
-=head1 SEE ALSO
+=head1 INDEX
 
-L<MCE>, L<MCE::Flow>, L<MCE::Grep>, L<MCE::Loop>, L<MCE::Queue>,
-L<MCE::Signal>, L<MCE::Stream>, L<MCE::Subs>, L<MCE::Util>
+L<MCE>
 
 =head1 AUTHOR
 

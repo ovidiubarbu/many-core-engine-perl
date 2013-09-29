@@ -6,7 +6,7 @@ MANIFEST
 MANIFEST.SKIP
 README
 lib/MCE.pm
-lib/MCE.pod
+lib/MCE/Core.pm
 lib/MCE/Core/Input/Generator.pm
 lib/MCE/Core/Input/Handle.pm
 lib/MCE/Core/Input/Request.pm
@@ -14,6 +14,7 @@ lib/MCE/Core/Input/Sequence.pm
 lib/MCE/Core/Manager.pm
 lib/MCE/Core/Validation.pm
 lib/MCE/Core/Worker.pm
+lib/MCE/Examples.pod
 lib/MCE/Flow.pm
 lib/MCE/Grep.pm
 lib/MCE/Loop.pm
