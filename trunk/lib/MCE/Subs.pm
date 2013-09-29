@@ -1,6 +1,6 @@
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## MCE::Subs - Imports funtions mapped directly to MCE's methods.
+## MCE::Subs - Exports funtions mapped directly to MCE's methods.
 ##
 ###############################################################################
 
@@ -40,7 +40,7 @@ sub import {
 
    $_m_flg = $_w_flg = 1 if ($_m_flg + $_w_flg == 0);
 
-   _import_subs($_package, $_g_flg, $_m_flg, $_w_flg);
+   _export_subs($_package, $_g_flg, $_m_flg, $_w_flg);
 
    return;
 }
@@ -113,7 +113,7 @@ sub _croak {
    return;
 }
 
-sub _import_subs {
+sub _export_subs {
 
    my ($_package, $_g_flg, $_m_flg, $_w_flg) = @_;
 
@@ -189,7 +189,7 @@ __END__
 
 =head1 NAME
 
-MCE::Subs - Imports funtions mapped directly to MCE's methods
+MCE::Subs - Exports funtions mapped directly to MCE's methods
 
 =head1 VERSION
 
@@ -197,20 +197,19 @@ This document describes MCE::Subs version 1.499_001
 
 =head1 SYNOPSIS
 
-   use MCE::Subs;  ## Imports manager and worker functions, only
-                   ## Getter functions are not imported by default
+   use MCE::Subs;  ## Exports manager and worker functions only
+                   ## Getter functions are not exported by default
 
    use MCE::Subs qw( :getter  );  ## All, including getter functions
-   use MCE::Subs qw( :manager );  ## Imports manager functions, only
-   use MCE::Subs qw( :worker  );  ## Imports worker functions, only
+   use MCE::Subs qw( :manager );  ## Exports manager functions only
+   use MCE::Subs qw( :worker  );  ## Exports worker functions only
 
    use MCE::Subs qw( :getter :worker );  ## Excludes manager functions
 
 =head1 DESCRIPTION
 
-This module imports functions which are mapped to MCE methods. All imported
-functions are prototyped, therefore allowing one to call them without using
-parentheses.
+This module exports functions mapped to MCE methods. All exported functions
+are prototyped, therefore allowing one to call them without using parentheses.
 
    use MCE::Subs qw( :worker );
 
@@ -237,7 +236,7 @@ parentheses.
 
    mce_run 0 for (1..100);   ## 0 means do not shutdown after running
 
-For the next example, we only want the worker functions to be imported due
+For the next example, we only want the worker functions to be exported due
 to using MCE::Map, which takes care of creating a MCE instance and running.
 
    use MCE::Map;

@@ -139,7 +139,7 @@ sub import {
       $MCE::THAW        = shift and next if ( $_arg =~ /^thaw$/i );
 
       if ( $_arg =~ /^sereal$/i ) {
-         if (shift) {
+         if (shift eq '1') {
             local $@; eval 'use Sereal qw(encode_sereal decode_sereal)';
             unless ($@) {
                $MCE::FREEZE = \&encode_sereal;
@@ -149,11 +149,14 @@ sub import {
          next;
       }
 
-      ## MCE 1.4 supported EXPORT_CONST and CONST as arguments.
-      ## Oops! This should have been named IMPORT_CONSTS instead.
-
-      if ( $_arg =~ /^(?:import_consts|export_const|const)$/i ) {
-         _import_consts($_package) if (shift eq '1');
+      if ( $_arg =~ /^(?:export_const|const)$/i ) {
+         if (shift eq '1') {
+            no strict 'refs'; no warnings 'redefine';
+            my $_package = caller();
+            *{ $_package . '::SELF'  } = \&SELF;
+            *{ $_package . '::CHUNK' } = \&CHUNK;
+            *{ $_package . '::CID'   } = \&CID;
+         }
          next;
       }
 
