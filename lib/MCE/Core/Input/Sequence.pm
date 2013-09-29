@@ -2,6 +2,11 @@
 ## ----------------------------------------------------------------------------
 ## MCE::Core::Input::Sequence - Sequence of numbers (for task_id == 0).
 ##
+## This package provides a sequence of numbers used internally by the worker
+## process. Distribution follows a bank-queuing model.
+##
+## There is no public API.
+##
 ###############################################################################
 
 package MCE::Core::Input::Sequence;
