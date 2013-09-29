@@ -2,6 +2,11 @@
 ## ----------------------------------------------------------------------------
 ## MCE::Core::Manager - Core methods for the manager process.
 ##
+## This package provides the loop and relevant methods used internally by the
+## manager process.
+##
+## There is no public API.
+##
 ###############################################################################
 
 package MCE::Core::Manager;

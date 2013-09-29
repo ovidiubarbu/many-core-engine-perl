@@ -2,6 +2,11 @@
 ## ----------------------------------------------------------------------------
 ## MCE::Core::Worker - Core methods for the worker process.
 ##
+## This package provides main, loop, and relevant methods used internally by
+## the worker process.
+##
+## There is no public API.
+##
 ###############################################################################
 
 package MCE::Core::Worker;

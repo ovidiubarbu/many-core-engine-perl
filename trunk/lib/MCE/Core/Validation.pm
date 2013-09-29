@@ -2,6 +2,11 @@
 ## ----------------------------------------------------------------------------
 ## MCE::Core::Validation - Core validation methods for Many-core Engine.
 ##
+## This package provides validation methods used internally by the manager
+## process.
+##
+## There is no public API.
+##
 ###############################################################################
 
 package MCE::Core::Validation;
