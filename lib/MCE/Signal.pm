@@ -525,13 +525,9 @@ Nothing is exported by default. Exportable are 1 variable and 2 subroutines.
  use MCE::Signal qw( -keep_tmp_dir );
  use MCE::Signal qw( -use_dev_shm -keep_tmp_dir );
 
-=head1 REQUIREMENTS
+=head1 INDEX
 
-Perl 5.8.0 or later
-
-=head1 SOURCE
-
-The source is hosted at: L<http://code.google.com/p/many-core-engine-perl/>
+L<MCE>
 
 =head1 AUTHOR
 

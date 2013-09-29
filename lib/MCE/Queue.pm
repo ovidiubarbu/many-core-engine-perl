@@ -1729,9 +1729,8 @@ TODO ...
 
 =back
 
-=head1 SEE ALSO
+=head1 INDEX
 
-L<MCE::Flow>, L<MCE::Grep>, L<MCE::Loop>, L<MCE::Map>, L<MCE::Stream>,
 L<MCE>
 
 =head1 AUTHOR

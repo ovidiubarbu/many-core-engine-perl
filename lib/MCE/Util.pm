@@ -243,6 +243,10 @@ Specifying 'auto' for max_workers calls MCE::Util::get_ncpu automatically.
 The portable code for detecting the number of processors was borrowed from
 L<Test::Smoke::SysInfo>.
 
+=head1 INDEX
+
+L<MCE>
+
 =head1 AUTHOR
 
 Mario E. Roy, S<E<lt>marioeroy AT gmail DOT comE<gt>>
