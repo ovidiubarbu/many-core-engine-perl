@@ -42,7 +42,7 @@ sub import {
       $MCE::THAW    = shift and next if ( $_arg =~ /^thaw$/i );
 
       if ( $_arg =~ /^sereal$/i ) {
-         if (shift) {
+         if (shift eq '1') {
             local $@; eval 'use Sereal qw(encode_sereal decode_sereal)';
             unless ($@) {
                $MCE::FREEZE = \&encode_sereal;
