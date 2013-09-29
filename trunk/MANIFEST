@@ -5,7 +5,6 @@ LICENSE
 MANIFEST
 MANIFEST.SKIP
 README
-TODO
 lib/MCE.pm
 lib/MCE.pod
 lib/MCE/Core/Input/Generator.pm
@@ -44,7 +43,6 @@ examples/matmult/strassen_07_t.pl
 examples/matmult/strassen_49_f.pl
 examples/matmult/strassen_49_t.pl
 examples/matmult/strassen_perl.pl
-examples/mce_usage.readme
 examples/scaling_pings.pl
 examples/seq_demo.pl
 examples/tbray/README
@@ -65,7 +63,6 @@ images/07_Sequential_IO.gif
 images/08_Natural_Callback.gif
 images/09_Supported_OS.gif
 images/10_Scaling_Pings.gif
-images/11_SNMP_Collection.gif
 t/00_required_modules.t
 t/00_required_signals.t
 t/01_load_mce.t
