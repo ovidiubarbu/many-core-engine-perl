@@ -72,6 +72,4 @@ t/01_load_signal_tag.t
 t/02_do_callback_args.t
 t/02_do_callback_result.t
 t/03_chunk_size.t
-t/pod-coverage.t
-t/pod.t
 META.yml
