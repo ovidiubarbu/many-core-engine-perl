@@ -1,6 +1,6 @@
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## MCE::Queue - Hybrid queues (normal and priority) for Many-core Engine.
+## MCE::Queue - Hybrid queues (normal including priority) for Many-core Engine.
 ##
 ###############################################################################
 
@@ -1596,7 +1596,7 @@ __END__
 
 =head1 NAME
 
-MCE::Queue - Hybrid queues (normal and priority) for Many-core Engine
+MCE::Queue - Hybrid queues (normal including priority) for Many-core Engine
 
 =head1 VERSION
 
@@ -1632,9 +1632,10 @@ This document describes MCE::Queue version 1.499_001
 
          user_func => sub {
 
-            ## Pause briefly to allow task_wid == 1 to append new items.
+            ## Pause briefly to allow time for wid 1 to add items.
             select(undef, undef, undef, 0.05) if (MCE->task_wid > 1);
 
+            ## Worker will loop until no more directories.
             while (defined (local $_ = $D->dequeue_nb)) {
                my ($files, $dirs) = part { -d $_ ? 1 : 0 } glob("$_/*");
 
@@ -1652,7 +1653,7 @@ This document describes MCE::Queue version 1.499_001
 
          user_func => sub {
 
-            ## Worker will loop until no more work.
+            ## Worker will loop until no more files.
             while (defined (local $_ = $F->dequeue)) {
                MCE->say($_);
             }
@@ -1668,14 +1669,13 @@ This document describes MCE::Queue version 1.499_001
 
 =head1 DESCRIPTION
 
-This module provides a queue interface combining normal and priority queues
-from one module by utilizing the IPC engine behind MCE. Data resides solely
-under the manager process. MCE::Queue also allows any worker to create any
-number of queues local to itself and not available to others. Local queuing
-will run fast due to running with zero IPC overhead. Think of a CPU L3/L1
-cache.
+This module provides a queue interface supporting normal and priority queues
+and utilizing the IPC engine behind MCE. Queue data resides under the manager
+process. MCE::Queue also allows for a worker to create any number of queues
+locally not available to other workers including the manager processs. Local
+queuing runs faster due to lack of IPC. Think of a CPU having L3/L1 cache.
 
-The structure for a MCE::Queue object is provided below. It allows for normal
+The structure for the MCE::Queue object is provided below. It allows for normal
 queues to run as fast as an array. Data for priority queues are also nearly as
 fast due to having a brief lookup if the priority exists in the hash including
 adding/removal of the key. The heap array contains only priorities, not the
@@ -1701,7 +1701,7 @@ while running.
 =head1 IMPORT
 
 Two options are available for overriding the default mode used for priority
-queues (has no effect to normal queuing).
+queues (these have no effect to normal queuing).
 
    use MCE::Queue porder => $MCE::Queue::HIGHEST,
                   type   => $MCE::Queue::FIFO;
@@ -1725,28 +1725,29 @@ MCE::Queue can be utilized under the following conditions:
 
 =over 5
 
-=item A) Loading MCE prior to inclusion of MCE::Queue.
+=item A) Loading MCE prior to inclusion of MCE::Queue
 
 The dequeue method blocks for the manager process including workers. All data
-resides under the manager process. Workers send/request data via IPC.
+resides under the manager process. Workers send/request data through IPC.
 
-Creating a queue from inside the worker will cause the queue to run in local
-mode. Think of a CPU having L3/L1 cache. The data resides under the worker
-process and not available to other workers or the manager process.
+Creating a queue from the worker process will cause the queue to run in local
+mode. The data resides under the worker process and not available to other
+workers or even the manager process.
 
-=item B) Loading MCE::Queue prior to inclusion of MCE.
+=item B) Loading MCE::Queue prior to inclusion of MCE
 
 Queues behave as if running in local mode for the manager including workers
 for the duration of the script. I cannot think of a use-case for this, but
-wanted to mention the behaviour in the event MCE::Queue is loaded before MCE.
+wanted to mention the behaviour in the event MCE::Queue is loaded prior to
+MCE.
 
-=item C) Loading MCE::Queue without MCE.
+=item C) Loading MCE::Queue without MCE
 
 The dequeue method is non-blocking in this mode. This behaves like local mode
 when MCE is not present. As with local queuing, this mode is speedy due to
 minimum overhead and zero IPC.
 
-In essense, the MCE module is not required to use MCE::Queue.
+Basically, the MCE module is not a requirement for using MCE::Queue.
 
 =back
 
@@ -1756,13 +1757,87 @@ In essense, the MCE module is not required to use MCE::Queue.
 
 =item ->new ( [ queue => \@array ] )
 
-Creates a new queue. Available options are queue, porder, type, and gather.
+This creates a new queue. Available options are queue, porder, type, and
+gather. The gather option is mainly for running with MCE and wanting to pass
+item(s) to a callback function for adding to the queue.
 
-TODO... Describe all options for new...
+   use MCE;
+   use MCE::Queue;
+
+   my $q1 = MCE::Queue->new();
+   my $q2 = MCE::Queue->new( queue => [ 0, 1, 2 ] );
+
+   my $q3 = MCE::Queue->new( porder => $MCE::Queue::HIGHEST );
+   my $q4 = MCE::Queue->new( porder => $MCE::Queue::LOWEST  );
+
+   my $q5 = MCE::Queue->new( type => $MCE::Queue::FIFO );
+   my $q6 = MCE::Queue->new( type => $MCE::Queue::LIFO );
+
+Multiple queues may point to the same callback funtion. Please note that the
+first argument for the callback function is the queue object itself.
+
+   sub _append {
+      my ($Q, @items) = @_;
+      $Q->enqueue(@items);
+   }
+
+   my $q7 = MCE::Queue->new( gather => \&_append );
+   my $q8 = MCE::Queue->new( gather => \&_append );
+
+   ## Items are diverted to the gather callback function.
+   $q7->enqueue( 'apple', 'orange' );
+
+The gather option is useful when wanting to temporarily store items into a
+holding area until output order can be obtained. Although a queue is not
+required to gather data in MCE, this is simply a demonstation of the
+gather option in the context of a queue.
+
+   use MCE;
+   use MCE::Queue;
+
+   my ($_order_id, %_tmp);
+
+   sub _preserve_order {
+      my ($Q, $chunk_id, $result) = @_;
+
+      $_tmp{$chunk_id} = $result;
+
+      while (1) {
+         last unless exists $_tmp{$_order_id};
+         $Q->enqueue( $_tmp{$_order_id} );
+         delete $_tmp{$_order_id++};
+      }
+
+      return;
+   }
+
+   my @squares; my $q = MCE::Queue->new(
+      queue => \@squares, gather => \&_preserve_order
+   );
+
+   $_order_id = 1;  ## The first chunk_id equals 1;
+
+   my $mce = MCE->new(
+      chunk_size => 1, input_data => [ 1 .. 100 ],
+      user_func => sub {
+         $q->enqueue( MCE->chunk_id, $_ * $_ );
+      }
+   );
+
+   $mce->run;
+
+   print "@squares\n";
 
 =item ->clear ( void )
 
-Clears the queue of any items. This resets the queue.
+Clears the queue of any items. This has the effect of nulling the queue.
+Each queue comes with a socket used for blocking behind the scene. Use
+the clear method when wanting to clear the content of the array.
+
+   my @a; my $q = MCE::Queue->new( queue => \@a );
+
+   @a = ();     ## no, the block socket may become out of sync
+   $q->clear;   ## ok
 
 =item ->enqueue ( $item [, $item, ... ] )
 
@@ -1770,12 +1845,13 @@ Adds a list of items onto the end of the normal queue.
 
 =item ->enqueuep ( $p, $item [, $item, ... ] )
 
-Adds a list of items onto the end of the queue with priority.
+Adds a list of items onto the end of the priority queue with priority.
 
 =item ->dequeue ( [ $count ] )
 
 Returns the requested number of items (default is 1) from the queue. Priority
-data will always dequeue first from the queue before normal queue data.
+data will always dequeue first from the priority queue before any data from
+the normal queue.
 
 The method will block if the queue contains zero items. If the queue contains
 fewer than the requested number of items, the method will not block, but
@@ -1788,10 +1864,9 @@ will block until the requested number of items are available.
 
 =item ->dequeue_nb ( [ $count ] )
 
-Returns the requested number of items (default is 1) from the queue. Priority
-data will always dequeue first from the queue before normal queue data. This
-method is non-blocking and will return undef in the absence of data in the
-queue.
+Returns the requested number of items (default is 1) from the queue. Like with
+dequeue, priority data will always dequeue first. This method is non-blocking
+and will return undef in the absence of data from the queue.
 
 =item ->insert ( $index, $item [, $item, ... ] )
 
@@ -1835,7 +1910,7 @@ The main reason for writing MCE::Queue was to have Thread::Queue-like module
 for workers spawned as children with MCE. When searching for queue modules on
 CPAN, I was plesantly surprised at the number of modules out there for Perl.
 What stood out immediately were all the priority queues, heap queues, and
-whether or not FIFO/FILO or highest/lowest first options were available. It
+whether or not FIFO/LIFO or highest/lowest first options were available. It
 seemed like a daunting task to undertake. And so, I began, failed, tried again,
 failed again, and finally on the 3rd attempt was pleased with the results.
 
