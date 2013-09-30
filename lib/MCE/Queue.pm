@@ -1,27 +1,6 @@
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## MCE::Queue - Hybrid normal/priority queues for Many-core Engine.
-##
-## ## MCE::Queue can be utilized in the following 3 modes:
-##
-##    A) use MCE;           B) use MCE::Queue;    C) use MCE::Queue;
-##       use MCE::Queue;       use MCE;
-##
-## A) Loading MCE prior to inclusion of MCE::Queue:
-##    The dequeue method blocks for the manager process and workers.
-##    The manager process contains the data. Workers send/request data.
-##
-##    Creating a queue from inside the worker will run the queue in
-##    standalone mode. Think workers being able to have local queues.
-##
-## B) Loading MCE::Queue prior to inclusion of MCE:
-##    Queues behave as if running in standalone mode for both the manager
-##    and worker processes for the duration of the script.
-##
-## C) Standalone mode without the inclusion of MCE:
-##    The dequeue method is non-blocking in this mode. This mode is
-##    speedy due to minimum overhead (no socket or locking involved).
-##    Basically, the MCE module is not required to use MCE::Queue.
+## MCE::Queue - Hybrid queues (normal and priority) for Many-core Engine.
 ##
 ###############################################################################
 
@@ -39,20 +18,6 @@ our $VERSION = '1.499_001'; $VERSION = eval $VERSION;
 ###############################################################################
 ## ----------------------------------------------------------------------------
 ## Import routine.
-##
-## ** Module options for priority queuing: (no effect to normal queuing)
-##
-##    porder => $HIGHEST = Highest priority items are dequeued first
-##              $LOWEST  = Lowest priority items are dequeued first
-##
-##    type   => $FIFO    = First in, first out
-##              $LILO    =    (Synonym for FIFO)
-##              $LIFO    = Last in, first out
-##              $FILO    =    (Synonym for LIFO)
-##
-## use MCE::Queue porder => $MCE::Queue::HIGHEST, type => $MCE::Queue::FIFO;
-##
-## use MCE::Queue;      same as above 
 ##
 ###############################################################################
 
@@ -1631,7 +1596,7 @@ __END__
 
 =head1 NAME
 
-MCE::Queue - Hybrid normal/priority queues for Many-core Engine
+MCE::Queue - Hybrid queues (normal and priority) for Many-core Engine
 
 =head1 VERSION
 
@@ -1642,90 +1607,288 @@ This document describes MCE::Queue version 1.499_001
    use MCE;
    use MCE::Queue;
 
-   my $q = MCE::Queue->new();
+   my @dirs = (".");
 
-   $q->enqueue( $item1 [, $item2, ...] );
-   $q->enqueuep( $p, $item1 [, $item2, ...] );
-   
-   $q->dequeue( [ $count ] );
-   $q->dequeue_nb( [ $count ] );
+   my $D = MCE::Queue->new( queue => \@dirs );
+   my $F = MCE::Queue->new();
 
-   ## TODO ... will finish this prior to the final MCE 1.5 release
+   ## Notice the use of dequeue_nb (non-blocking) for the initial
+   ## task and dequeue for the task afterwards. The first task is
+   ## recursive.
+
+   my $mce = MCE->new(
+
+      user_tasks => [{
+         max_workers => 4,
+
+         task_end => sub {
+
+            ## Signal workers no more work remains. The number 4
+            ## indicates the numbers of workers for the 2nd task
+            ## performing the read.
+
+            $F->enqueue((undef) x 4);
+         },
+
+         user_func => sub {
+
+            ## Pause briefly to allow task_wid == 1 to append new items.
+            select(undef, undef, undef, 0.05) if (MCE->task_wid > 1);
+
+            while (defined (local $_ = $D->dequeue_nb)) {
+               my ($files, $dirs) = part { -d $_ ? 1 : 0 } glob("$_/*");
+
+               $D->enqueue(@$dirs ) if defined $dirs;
+               $F->enqueue(@$files) if defined $files;
+            }
+
+            MCE->say("STDERR", "(D) worker has ended");
+
+            return;
+         }
+
+      },{
+         max_workers => 4,
+
+         user_func => sub {
+
+            ## Worker will loop until no more work.
+            while (defined (local $_ = $F->dequeue)) {
+               MCE->say($_);
+            }
+
+            MCE->say("STDERR", "(F) worker has ended");
+
+            return;
+         }
+      }]
+   );
+
+   $mce->run;
 
 =head1 DESCRIPTION
 
-TODO ... See L<MCE::Flow> for use_case in the meantime.
+This module provides a queue interface combining normal and priority queues
+from one module by utilizing the IPC engine behind MCE. Data resides solely
+under the manager process. MCE::Queue also allows any worker to create any
+number of queues local to itself and not available to others. Local queuing
+will run fast due to running with zero IPC overhead. Think of a CPU L3/L1
+cache.
+
+The structure for a MCE::Queue object is provided below. It allows for normal
+queues to run as fast as an array. Data for priority queues are also nearly as
+fast due to having a brief lookup if the priority exists in the hash including
+adding/removal of the key. The heap array contains only priorities, not the
+data itself. This makes the management of the heap order only as neccessary
+while running.
+
+   ## Normal queue data
+   $_queue->{_datq} = [];
+
+   ## Priority data { p1 => [ ], p2 => [ ], pN => [ ] }
+   $_queue->{_datp} = {};
+
+   ## Priority heap [ pN, p2, p1 ] ## in heap order
+   ## fyi, _datp will always dequeue before _datq
+   $_queue->{_heap} = [];
+
+   ## Priority order (default)
+   $_queue->{_porder} = $MCE::Queue::HIGHEST;
+
+   ## Priority type (default)
+   $_queue->{_type} = $MCE::Queue::FIFO;
 
 =head1 IMPORT
 
-One can pass two options to override the default mode used for priority
+Two options are available for overriding the default mode used for priority
 queues (has no effect to normal queuing).
 
-   porder => $HIGHEST = Highest priority items are dequeued first
-             $LOWEST  = Lowest priority items are dequeued first
+   use MCE::Queue porder => $MCE::Queue::HIGHEST,
+                  type   => $MCE::Queue::FIFO;
 
-   type   => $FIFO    = First in, first out
-             $LILO    =    (Synonym for FIFO)
-             $LIFO    = Last in, first out
-             $FILO    =    (Synonym for LIFO)
+   use MCE::Queue;       ## same as above
 
-   use MCE::Queue porder => $MCE::Queue::HIGHEST, type => $MCE::Queue::FIFO;
+       porder => $HIGHEST = Highest priority items are dequeued first
+                 $LOWEST  = Lowest priority items are dequeued first
 
-   use MCE::Queue;      same as above
+       type   => $FIFO    = First in, first out
+                 $LILO    =    (Synonym for FIFO)
+                 $LIFO    = Last in, first out
+                 $FILO    =    (Synonym for LIFO)
 
-=head1 THREE MODES OF USE
+=head1 THREE RUN MODES
 
-MCE::Queue can be utilized in the following 3 modes:
+MCE::Queue can be utilized under the following conditions:
 
     A) use MCE;           B) use MCE::Queue;    C) use MCE::Queue;
        use MCE::Queue;       use MCE;
 
-A) Loading MCE prior to inclusion of MCE::Queue. The dequeue method blocks
-for the manager process and workers. The manager process contains the data.
-Workers send/request data.
+=over 5
 
-Creating a queue from inside the worker will run the queue in standalone mode.
-Think workers being able to have local queues.
+=item A) Loading MCE prior to inclusion of MCE::Queue.
 
-B) Loading MCE::Queue prior to inclusion of MCE. Queues behave as if running
-in standalone mode for both the manager and worker processes for the duration
-of the script.
+The dequeue method blocks for the manager process including workers. All data
+resides under the manager process. Workers send/request data via IPC.
 
-C) Standalone mode without the inclusion of MCE. The dequeue method is
-non-blocking in this mode. This mode is speedy due to minimum overhead.
+Creating a queue from inside the worker will cause the queue to run in local
+mode. Think of a CPU having L3/L1 cache. The data resides under the worker
+process and not available to other workers or the manager process.
+
+=item B) Loading MCE::Queue prior to inclusion of MCE.
+
+Queues behave as if running in local mode for the manager including workers
+for the duration of the script. I cannot think of a use-case for this, but
+wanted to mention the behaviour in the event MCE::Queue is loaded before MCE.
+
+=item C) Loading MCE::Queue without MCE.
+
+The dequeue method is non-blocking in this mode. This behaves like local mode
+when MCE is not present. As with local queuing, this mode is speedy due to
+minimum overhead and zero IPC.
+
 In essense, the MCE module is not required to use MCE::Queue.
 
-=head1 API
+=back
 
-TODO ...
+=head1 API DOCUMENTATION
 
 =over
 
-=item new
+=item ->new ( [ queue => \@array ] )
 
-=item clear
+Creates a new queue. Available options are queue, porder, type, and gather.
 
-=item enqueue
+TODO... Describe all options for new...
 
-=item enqueuep
+=item ->clear ( void )
 
-=item dequeue
+Clears the queue of any items. This resets the queue.
 
-=item dequeue_nb
+=item ->enqueue ( $item [, $item, ... ] )
 
-=item insert
+Adds a list of items onto the end of the normal queue.
 
-=item insertp
+=item ->enqueuep ( $p, $item [, $item, ... ] )
 
-=item pending
+Adds a list of items onto the end of the queue with priority.
 
-=item peek
+=item ->dequeue ( [ $count ] )
 
-=item peekh
+Returns the requested number of items (default is 1) from the queue. Priority
+data will always dequeue first from the queue before normal queue data.
 
-=item peekp
+The method will block if the queue contains zero items. If the queue contains
+fewer than the requested number of items, the method will not block, but
+return the remaining items and undef for up to the count requested.
 
-=item heap
+The $count, used for requesting the number of times, is beneficial when workers
+are passing arguments through the queue. For this release, always remember to
+dequeue using the same multiple for count. This is unlike Thread::Queue which
+will block until the requested number of items are available.
+
+=item ->dequeue_nb ( [ $count ] )
+
+Returns the requested number of items (default is 1) from the queue. Priority
+data will always dequeue first from the queue before normal queue data. This
+method is non-blocking and will return undef in the absence of data in the
+queue.
+
+=item ->insert ( $index, $item [, $item, ... ] )
+
+Adds the list of items to the queue at the specified index.
+
+=item ->insertp ( $p, $index, $item [, $item, ... ] )
+
+Adds the list of items to the queue at the specified index with priority.
+
+=item ->pending ( void )
+
+Returns the number of items remaining in the queue. This includes both normal
+and priority data.
+
+=item ->peek ( [ $index ] )
+
+Returns an item from the normal queue, at the specified index, without
+dequeuing anything. It defaults to the head of the queue if index is not
+specified.
+
+=item ->peekp ( $p [, $index ] )
+
+Returns an item from the queue with priority, at the specified index, without
+dequeuing anything. It defaults to the head of the queue if index is not
+specified.
+
+=item ->peekh ( [ $index ] )
+
+Returns an item from the heap, at the specified index.
+
+=item ->heap ( void )
+
+Returns an array containing the heap data. Heap data consists of priority
+numbers, not the data.
+
+=back
+
+=head1 ACKNOWLEDGEMENTS
+
+The main reason for writing MCE::Queue was to have Thread::Queue-like module
+for workers spawned as children with MCE. When searching for queue modules on
+CPAN, I was plesantly surprised at the number of modules out there for Perl.
+What stood out immediately were all the priority queues, heap queues, and
+whether or not FIFO/FILO or highest/lowest first options were available. It
+seemed like a daunting task to undertake. And so, I began, failed, tried again,
+failed again, and finally on the 3rd attempt was pleased with the results.
+
+The following provides a list of resources I've read in helping me create
+MCE::Queue for MCE.
+
+=over 5
+
+=item L<POE::Queue::Array>
+
+Two if statements were borrowed for checking if the item belongs at the end or
+head of the queue.
+
+=item L<List::Binary::Search>
+
+After glancing over the bsearch_num_pos method for returning the best insert
+position, a couple variations of that were in order for MCE::Queue to
+accomodate the highest/lowest order routines.
+
+The private _heap_insert_low and _heap_insert_high methods inside MCE::Queue
+are simply the 2 if statements and the binary search algorithm.
+
+=item L<Heap-Priority>, L<List::Priority>
+
+At this point, I thought why not have both normal queues and priority queues
+be efficient. And with that in mind, also provide options to allow folks to
+choose LIFO/LILO, and highest/lowest order for the queue. The data structure
+in MCE::Queue is describe above.
+
+MCE workers may also benefit from being able to create local queues not
+available to other workers including the manager process. Thus, the reason
+for the 3 run modes described at the beginning of this document.
+
+=item L<Thread::Queue>
+
+Being that MCE supports both children and threads, Thread::Queue was used as
+a guide for naming and documenting the methods in MCE::Queue. Although not
+100% compatible, pay close attention to the dequeue method in MCE::Queue when
+requesting the number of items to dequeue.
+
+   ->enqueuep( $p, $item [, $item, ... ] );    ## Extension (p)
+   ->enqueue( $item [, $item, ... ] );
+
+   ->dequeue( [ $count ] );      ## Priority data dequeues first
+   ->dequeue_nb( [ $count ] );
+
+   ->pending();                  ## Counts both normal/priority data
+                                 ## in the queue
+
+=item L<Parallel-DataPipe>
+
+The idea for the recusive synopsis used in this document came from reading
+the recursive example seen in this module's documentation.
 
 =back
 
