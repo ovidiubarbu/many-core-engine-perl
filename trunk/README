@@ -15,12 +15,10 @@ This document describes MCE version 1.499_001
  Both chunking and input data are optional in MCE. One can simply use MCE to
  have many workers run in parallel.
 
- MCE uses domain sockets for IPC versus pipes. In fact, only 4 socket pairs
- are created for IPC no matter the number of workers. The upcoming 1.5 release
- will do IPC using just 3 socket pairs. One day, a physical box will have 400
- or more cores. MCE can spawn 960 workers (via fork) for ulimit reporting 1024
- allowed for max user processes. Other parallel implementations using pipes
- cannot do this (only about half of ulimit -u).
+ MCE uses domain sockets for IPC versus pipes. One day, a physical box will
+ have hundreds of cores. MCE can spawn 960 workers (via fork) for ulimit re-
+ porting 1024 allowed for max user processes. Other parallel implementations
+ using pipes cannot do this (only about half of ulimit -u).
 
 Use Cases for MCE.
 
@@ -64,8 +62,6 @@ Use Cases for MCE.
     connections all at once. Chunking makes this trivial to do.
 
 Take MCE for a spin.
-
- The upcoming 1.5 release will be even more fun with less code.
 
 ###############################################################################
  # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * #

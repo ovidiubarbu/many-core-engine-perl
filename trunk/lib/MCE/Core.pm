@@ -1935,18 +1935,6 @@ MCE::Core - Provides the core API for Many-core Engine
 
 This document describes MCE::Core version 1.499_001
 
-=head1 DESCRIPTION
-
-Many-core Engine (MCE) for Perl helps enable a new level of performance by
-maximizing on all available cores. MCE spawns a pool of workers and therefore
-does not fork a new process per each element of data. Instead, MCE follows
-a bank queuing model. Imagine the line being the data and bank-tellers the
-parallel workers. MCE enhances that model by adding the ability to chunk
-the next N elements from the input stream to the next available worker.
-
-Chunking and input data are optional in MCE. One can simply use MCE to have
-many workers run in parallel.
-
 =head1 SYNOPSIS
 
 This is a simplistic use case of MCE running with 4 workers.
