@@ -4,8 +4,19 @@
 ##
 ###############################################################################
 
-## Items below are folded into MCE. The MCE::Core package is defined at the
-## end and contains the import routine.
+##
+## The MCE::Core package is defined below just prior to the POD section and
+## contains the import routine for the MCE::Core namespace, nothing else.
+##
+## The top level MCE.pm file is now mainly an index page (POD wise). The code
+## previously located in MCE.pm (1.4) moved here, some of which placed in
+## various files under the Core directory. The API documentation, previously
+## MCE.pod, is now placed at the end of this file with the examples section
+## becoming MCE::Examples going forward.
+##
+## With that said, MCE 1.5 retains backwards compability with 1.4 and below.
+## The core API, in entirety, is folded under the MCE namespace.
+##
 
 package MCE;
 
