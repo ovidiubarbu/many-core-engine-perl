@@ -3,30 +3,22 @@ Revision history for MCE
 
 1.499_002 Sun Sep 29 21:30:00 EST 2013
 
-    * First, MCE 1.5 is backwards compatible with 1.4.x and below.
+    * The top level MCE.pm file is now mainly an index page (POD wise). The
+      code previously located in MCE.pm (1.4) moved to MCE::Core, some of
+      which went to various files under the Core directory. The documentation,
+      previously MCE.pod, is now placed at the end of MCE::Core with the
+      examples section becoming MCE::Examples going forward.
 
-    * MCE.pm (8 data channels for up to 3x IPC handling)
+      MCE 1.5 is backwards compatible with 1.4 and below.
 
-      E.g. 8 workers calling sendto in MCE 1.4 sends 80,000 msgs per second.
-      This is now over 250,000 msgs per second with MCE 1.5. The following is
-      not a good benchmark due to printf formatting being done inside the
-      preserve order routine. Foreach is able to do 40,000 and forseq 78,000
-      when commenting out the printf statement. In any event, IPC is faster
-      in MCE 1.5.
+    * IPC has been enhanced with 8 data channels. Many operations run 3x when
+      compared with MCE 1.4.
 
-                             (Before)      (After)
-         Parallel::Loops          600          600
-         $mce->foreach         21,500       34,000  (+ 12,500)
-         $mce->forseq          64,000       70,000  (+  6,000)
-         $mce->forchunk       450,000      465,000  (+ 15,000)
+    * Five models: MCE::Flow, MCE::Grep, MCE::Loop, MCE::Map, and MCE::Stream.
 
-    * MCE::Flow, MCE::Grep, MCE::Loop, MCE::Map, MCE::Queue, MCE::Stream,
-      MCE::Subs
+    * Hybrid queues via MCE::Queue allowing for normal and priority queues.
 
-      Moved MCE.pm to MCE/Core.pm. Documentation from MCE.pod moved to
-      MCE/Core.pm and MCE/Examples.pod. MCE.pm is more or less an index file
-      containing a small import routine. The index page list the modules and
-      brief description.
+    * MCE::Subs for exporting functions prefixed with mce_; e.g. mce_wid.
 
     * All public methods can be called directly using the package name
       and method e.g. MCE->wid, MCE->run.

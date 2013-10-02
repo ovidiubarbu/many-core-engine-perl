@@ -1672,8 +1672,8 @@ This document describes MCE::Queue version 1.499_001
 This module provides a queue interface supporting normal and priority queues
 and utilizing the IPC engine behind MCE. Queue data resides under the manager
 process. MCE::Queue also allows for a worker to create any number of queues
-locally not available to other workers including the manager processs. Local
-queuing runs faster due to lack of IPC. Think of a CPU having L3/L1 cache.
+locally not available to other workers including the manager processs. Think
+of a CPU having L3 (shared) and L1 (local) cache.
 
 The structure for the MCE::Queue object is provided below. It allows for normal
 queues to run as fast as an array. Data for priority queues are also nearly as
@@ -1700,8 +1700,8 @@ while running.
 
 =head1 IMPORT
 
-Two options are available for overriding the default mode used for priority
-queues (these have no effect to normal queuing).
+Two options are available for overriding the default value used when creating
+new queues (porder applies to priority queues only).
 
    use MCE::Queue porder => $MCE::Queue::HIGHEST,
                   type   => $MCE::Queue::FIFO;
