@@ -2205,16 +2205,26 @@ Below, a new instance is configured with all available options.
 
 =head2 OVERRIDING DEFAULTS
 
-The following list 5 options which can be overridden when loading MCE.
+The following list 5 options which may be overridden when loading the module.
 
    use Sereal qw(encode_sereal decode_sereal);
 
-   use MCE MAX_WORKERS => 4,                    ## Default 1
-           CHUNK_SIZE  => 100,                  ## Default 1
-           TMP_DIR     => "/path/to/app/tmp",   ## $MCE::Signal::tmp_dir
-           FREEZE      => \&encode_sereal,      ## \&Storable::freeze
-           THAW        => \&decode_sereal;      ## \&Storable::thaw
+   use MCE max_workers => 4,                    ## Default 1
+           chunk_size  => 100,                  ## Default 1
+           tmp_dir     => "/path/to/app/tmp",   ## $MCE::Signal::tmp_dir
+           freeze      => \&encode_sereal,      ## \&Storable::freeze
+           thaw        => \&decode_sereal       ## \&Storable::thaw
+   ;
 
+   my $mce = MCE->new( ... );
+
+There is a simplier way to enable Sereal with MCE 1.5. The following will
+try to use Sereal if available, otherwise silently resorts back to using
+Storable for serialization.
+
+   use MCE Sereal => 1;
+
+   ## Serialization is through Sereal if available.
    my $mce = MCE->new( ... );
 
 =head2 RUNNING

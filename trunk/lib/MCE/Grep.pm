@@ -338,51 +338,198 @@ This document describes MCE::Grep version 1.499_001
 
 =head1 SYNOPSIS
 
-   use MCE::Map;
+   ## Exports mce_grep, mce_grep_f, and mce_grep_s
    use MCE::Grep;
 
-   my @s = mce_map { $_ * $_ } mce_grep { $_ % 5 == 0 } 1..10000;
+   ## Array or array_ref
+   my @a = mce_grep { $_ % 5 == 0 } 1..10000;
+   my @b = mce_grep { $_ % 5 == 0 } [ 1..10000 ];
+
+   ## File_path, glob_ref, or scalar_ref
+   my @c = mce_grep_f { /phrase/ } "/path/to/file";
+   my @d = mce_grep_f { /phrase/ } $file_handle;
+   my @e = mce_grep_f { /phrase/ } \$scalar;
+
+   ## Sequence of numbers (begin, end [, step, format])
+   my @f = mce_grep_s { %_ * 3 == 0 } 1, 10000, 5;
+   my @f = mce_grep_s { %_ * 3 == 0 } [ 1, 10000, 5 ];
+
+   my @g = mce_grep_s { %_ * 3 == 0 } {
+      begin => 1, end => 10000, step => 5, format => undef
+   };
 
 =head1 DESCRIPTION
 
-TODO ...
+This module provides a parallel grep implementation by using Many-core Engine
+for parallel workers. A small code block will most likely run faster using the
+native grep function. The reason is mainly from having to submit chunks of data
+to workers as well as receiving results. This overhead quickly diminishes as
+the complexity of the code block increases.
 
-=head1 API
+   my @m1 =     grep { $ % 5 == 0 } 1..1000000;           ## 0.137 secs
+   my @m2 = mce_grep { $ % 5 == 0 } 1..1000000;           ## 0.295 secs
 
-=over
+Chunking, enabled by default, greatly reduces the overhead behind the scene.
+The time for mce_grep below also includes the time for data exchanges between
+the manager and worker processes. More parallelization will be felt when the
+code block requires more CPU time than the demonstration shown below.
 
-=item mce_grep
+   my @m1 =     grep { /[2357][1468][9]/ } 1..1000000;    ## 0.653 secs
+   my @m2 = mce_grep { /[2357][1468][9]/ } 1..1000000;    ## 0.347 secs
 
-   ## mce_grep is imported into the calling script.
+The mce_grep_s funtion will provide better times, useful when input data is
+simply a range of numbers. Workers generate sequence of numbers mathematically
+among themselves without any interaction by the manager process. Two arguments
+are required for mce_grep_s (begin, end). The optional step argument defaults
+to 1 if begin is smaller than end, otherwise -1.
 
-   my @a = mce_grep { ... } 1..100;
+   my @m3 = mce_grep_s { /[2357][1468][9]/ } 1, 1000000;  ## 0.271 secs
 
-=item mce_grep_f
+Although this documentation is about MCE::Grep, the L<MCE::Stream> module can
+write results immediately without waiting for all chunks to complete. This is
+made possible by passing the reference of the array (in this case @m4 and @m5).
 
-TODO ...
+   use MCE::Stream default_mode => 'grep';
 
-=item mce_grep_s
+   my @m4; mce_stream \@m4, sub { /[2357][1468][9]/ }, 1..1000000;
 
-TODO ...
+      ## Completes in 0.304 secs. That is amazing considering the
+      ## overhead for passing data between the manager and worker.
+
+   my @m5; mce_stream_s \@m5, sub { /[2357][1468][9]/ }, 1, 1000000;
+
+      ## Completes in 0.227 secs. A lot going on in this timeframe.
+      ## Remember that MCE comes with a sequence generator.
+
+=head1 OVERRIDING DEFAULTS
+
+The following list 5 options which may be overridden when loading the module.
+
+   use Sereal qw(encode_sereal decode_sereal);
+
+   use MCE::Grep
+         max_workers => 4,                    ## Default 'auto' 
+         chunk_size  => 100,                  ## Default 'auto'
+         tmp_dir     => "/path/to/app/tmp",   ## $MCE::Signal::tmp_dir
+         freeze      => \&encode_sereal,      ## \&Storable::freeze
+         thaw        => \&decode_sereal       ## \&Storable::thaw
+   ;
+
+There is a simplier way to enable Sereal with MCE 1.5. The following will
+try to use Sereal if available, otherwise silently resorts back to using
+Storable for serialization.
+
+   use MCE::Grep Sereal => 1;
+
+   ## Serialization is through Sereal if available.
+   my @m2 = mce_grep { $_ % 5 == 0 } 1..10000;
+
+=head1 CUSTOMIZING MCE
+
+=over 2
 
 =item init
 
-   MCE::Grep::init {
+The init function takes a hash of MCE options. The gather option, if specified,
+will be set to undef due to being used internally by the module.
 
-      ## This form is available for configuring MCE options
-      ## before running.
+   use MCE::Grep;
+
+   MCE::Grep::init {
+      chunk_size => 1, max_workers => 4,
 
       user_begin => sub {
-         print "## ", MCE->wid, "\n";
-      }
+         print "## ", MCE->wid, " started\n";
+      },
+
       user_end => sub {
-         ...
+         print "## ", MCE->wid, " completed\n";
       }
    };
 
+   my @a = mce_grep { $_ % 5 == 0 } 1..100;
+
+   print "\n", "@a", "\n";
+
+   -- output
+
+   ## 1 started
+   ## 2 started
+   ## 3 started
+   ## 5 started
+   ## 4 started
+   ## 7 started
+   ## 8 started
+   ## 6 started
+   ## 4 completed
+   ## 7 completed
+   ## 8 completed
+   ## 6 completed
+   ## 3 completed
+   ## 2 completed
+   ## 1 completed
+   ## 5 completed
+
+   5 10 15 20 25 30 35 40 45 50 55 60 65 70 75 80 85 90 95 100
+
+=back
+
+=head1 API USAGE
+
+=over 2
+
+=item mce_grep { code } list
+
+Input data can be specified using a list or passing a reference to an array.
+
+   my @a = mce_grep { $_ * 2 } 1..1000;
+   my @b = mce_grep { $_ * 2 } [ 1..1000 ];
+
+=item mce_grep_f { code } file
+
+The fastest of these is the /path/to/file. Workers communicate the next offset
+position among themselves without any interaction by the manager process.
+
+   my @c = mce_grep_f { /phrase/ } "/path/to/file";
+   my @d = mce_grep_f { /phrase/ } $file_handle;
+   my @e = mce_grep_f { /phrase/ } \$scalar;
+
+=item mce_grep_s { code } sequence
+
+Sequence can be specified as a list, an array reference, or a hash reference.
+The functions require both begin and end values to run. Step and format are
+optional. The format is passed to sprintf (% can be omitted below).
+
+   my ($beg, $end, $step, $fmt) = (10, 20, 0.1, "%4.1f");
+
+   my @f = mce_grep_s { /[1234]\.[5678]/ } $beg, $end, $step, $fmt;
+   my @g = mce_grep_s { /[1234]\.[5678]/ } [ $beg, $end, $step, $fmt ];
+
+   my @h = mce_grep_s { /[1234]\.[5678]/ } {
+      begin => $beg, end => $end, step => $step, format => $fmt
+   };
+
+=back
+
+=head1 MANUAL SHUTDOWN
+
+=over 2
+
 =item finish
 
-   MCE::Grep::finish();   ## This is called automatically.
+MCE workers remain persistent as much as possible after running. Shutdown
+occurs when the script exits. One can manually shutdown MCE by simply calling
+finish after running. This resets the MCE instance.
+
+   use MCE::Grep;
+
+   MCE::Grep::init {
+      chunk_size => 20, max_workers => 'auto'
+   };
+
+   my @a = mce_grep { ... } 1..100;
+
+   MCE::Grep::finish;
 
 =back
 
