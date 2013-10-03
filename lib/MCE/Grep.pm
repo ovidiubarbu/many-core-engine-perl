@@ -352,36 +352,35 @@ This document describes MCE::Grep version 1.499_001
 
    ## Sequence of numbers (begin, end [, step, format])
    my @f = mce_grep_s { %_ * 3 == 0 } 1, 10000, 5;
-   my @f = mce_grep_s { %_ * 3 == 0 } [ 1, 10000, 5 ];
+   my @g = mce_grep_s { %_ * 3 == 0 } [ 1, 10000, 5 ];
 
-   my @g = mce_grep_s { %_ * 3 == 0 } {
+   my @h = mce_grep_s { %_ * 3 == 0 } {
       begin => 1, end => 10000, step => 5, format => undef
    };
 
 =head1 DESCRIPTION
 
-This module provides a parallel grep implementation by using Many-core Engine
-for parallel workers. A small code block will most likely run faster using the
-native grep function. The reason is mainly from having to submit chunks of data
-to workers as well as receiving results. This overhead quickly diminishes as
-the complexity of the code block increases.
+This module provides a parallel grep implementation via Many-core Engine. MCE
+incurs a small overhead due to passing of data. Therefore, a fast code block
+will likely run faster using the native grep function in Perl. The overhead
+quickly diminishes as the complexity of the code block increases.
 
-   my @m1 =     grep { $ % 5 == 0 } 1..1000000;           ## 0.137 secs
-   my @m2 = mce_grep { $ % 5 == 0 } 1..1000000;           ## 0.295 secs
+   my @m1 =     grep { $_ % 5 == 0 } 1..1000000;          ## 0.137 secs
+   my @m2 = mce_grep { $_ % 5 == 0 } 1..1000000;          ## 0.295 secs
 
 Chunking, enabled by default, greatly reduces the overhead behind the scene.
 The time for mce_grep below also includes the time for data exchanges between
-the manager and worker processes. More parallelization will be felt when the
-code block requires more CPU time than the demonstration shown below.
+the manager and worker processes. More parallelization will be seen when the
+code block requires more CPU time code-wise.
 
    my @m1 =     grep { /[2357][1468][9]/ } 1..1000000;    ## 0.653 secs
    my @m2 = mce_grep { /[2357][1468][9]/ } 1..1000000;    ## 0.347 secs
 
 The mce_grep_s funtion will provide better times, useful when input data is
-simply a range of numbers. Workers generate sequence of numbers mathematically
-among themselves without any interaction by the manager process. Two arguments
-are required for mce_grep_s (begin, end). The optional step argument defaults
-to 1 if begin is smaller than end, otherwise -1.
+simply a range of numbers. Workers generate sequences mathematically among
+themselves without any interaction by the manager process. Two arguments
+are required for mce_grep_s (begin, end). Step defaults to 1 if begin is
+smaller than end, otherwise -1.
 
    my @m3 = mce_grep_s { /[2357][1468][9]/ } 1, 1000000;  ## 0.271 secs
 
@@ -393,13 +392,14 @@ made possible by passing the reference of the array (in this case @m4 and @m5).
 
    my @m4; mce_stream \@m4, sub { /[2357][1468][9]/ }, 1..1000000;
 
-      ## Completes in 0.304 secs. That is amazing considering the
+      ## Completed in 0.304 secs. That is amazing considering the
       ## overhead for passing data between the manager and worker.
 
    my @m5; mce_stream_s \@m5, sub { /[2357][1468][9]/ }, 1, 1000000;
 
-      ## Completes in 0.227 secs. A lot going on in this timeframe.
-      ## Remember that MCE comes with a sequence generator.
+      ## Completed in 0.227 secs. Like with mce_grep_s, specifying a
+      ## sequence specification turns out to be faster due to lesser
+      ## overhead for the manager process.
 
 =head1 OVERRIDING DEFAULTS
 
@@ -453,22 +453,14 @@ will be set to undef due to being used internally by the module.
 
    -- output
 
-   ## 1 started
    ## 2 started
    ## 3 started
-   ## 5 started
+   ## 1 started
    ## 4 started
-   ## 7 started
-   ## 8 started
-   ## 6 started
-   ## 4 completed
-   ## 7 completed
-   ## 8 completed
-   ## 6 completed
    ## 3 completed
-   ## 2 completed
+   ## 4 completed
    ## 1 completed
-   ## 5 completed
+   ## 2 completed
 
    5 10 15 20 25 30 35 40 45 50 55 60 65 70 75 80 85 90 95 100
 
@@ -482,8 +474,8 @@ will be set to undef due to being used internally by the module.
 
 Input data can be specified using a list or passing a reference to an array.
 
-   my @a = mce_grep { $_ * 2 } 1..1000;
-   my @b = mce_grep { $_ * 2 } [ 1..1000 ];
+   my @a = mce_grep { /[2357]/ } 1..1000;
+   my @b = mce_grep { /[2357]/ } [ 1..1000 ];
 
 =item mce_grep_f { code } file
 
