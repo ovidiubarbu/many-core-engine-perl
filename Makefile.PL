@@ -19,6 +19,7 @@ WriteMakefile(
    PREREQ_PM => {
       'Fcntl'        => 0,
       'File::Path'   => 0,
+      'IPC::Open2'   => 0,
       'Scalar::Util' => 0,
       'Socket'       => 0,
       'Storable'     => 2.04,
@@ -26,7 +27,7 @@ WriteMakefile(
       'Time::HiRes'  => 0
    },
 
-   VERSION        => '1.499_001',
+   VERSION        => '1.499_002',
 
    (($ExtUtils::MakeMaker::VERSION lt '6.25') ?
       (PL_FILES => { }) : ()),

@@ -11,7 +11,7 @@ use warnings;
 
 use MCE::Core;
 
-our $VERSION = '1.499_001'; $VERSION = eval $VERSION;
+our $VERSION = '1.499_002'; $VERSION = eval $VERSION;
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -80,7 +80,7 @@ MCE - Many-core Engine for Perl. Provides parallel processing capabilities.
 
 =head1 VERSION
 
-This document describes MCE version 1.499_001
+This document describes MCE version 1.499_002
 
 =head1 DESCRIPTION
 
