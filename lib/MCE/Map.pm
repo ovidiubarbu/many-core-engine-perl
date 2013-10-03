@@ -424,7 +424,7 @@ The following list 5 options which may be overridden when loading the module.
    ;
 
 There is a simplier way to enable Sereal with MCE 1.5. The following will
-try to use Sereal if available, otherwise silently resorts back to using
+attempt to use Sereal if available, otherwise will default back to using
 Storable for serialization.
 
    use MCE::Map Sereal => 1;
