@@ -27,7 +27,7 @@ WriteMakefile(
       'Time::HiRes'  => 0
    },
 
-   VERSION        => '1.499_002',
+   VERSION        => '1.499_003',
 
    (($ExtUtils::MakeMaker::VERSION lt '6.25') ?
       (PL_FILES => { }) : ()),

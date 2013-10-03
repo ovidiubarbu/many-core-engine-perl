@@ -6,7 +6,8 @@ MANIFEST
 MANIFEST.SKIP
 README
 lib/MCE.pm
-lib/MCE/Core.pm
+lib/MCE.pod
+lib/MCE/Core.pod
 lib/MCE/Core/Input/Generator.pm
 lib/MCE/Core/Input/Handle.pm
 lib/MCE/Core/Input/Request.pm

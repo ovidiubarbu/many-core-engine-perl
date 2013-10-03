@@ -9,9 +9,9 @@ package MCE::Subs;
 use strict;
 use warnings;
 
-use MCE::Core;
+use MCE;
 
-our $VERSION = '1.499_002'; $VERSION = eval $VERSION;
+our $VERSION = '1.499_003'; $VERSION = eval $VERSION;
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -193,7 +193,7 @@ MCE::Subs - Exports funtions mapped directly to MCE's methods
 
 =head1 VERSION
 
-This document describes MCE::Subs version 1.499_002
+This document describes MCE::Subs version 1.499_003
 
 =head1 SYNOPSIS
 

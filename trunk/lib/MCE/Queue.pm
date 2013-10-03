@@ -13,7 +13,7 @@ use Fcntl qw( :flock O_RDONLY );
 use Socket qw( :crlf AF_UNIX SOCK_STREAM PF_UNSPEC );
 use Scalar::Util qw( looks_like_number );
 
-our $VERSION = '1.499_002'; $VERSION = eval $VERSION;
+our $VERSION = '1.499_003'; $VERSION = eval $VERSION;
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -1600,7 +1600,7 @@ MCE::Queue - Hybrid queues (normal including priority) for Many-core Engine
 
 =head1 VERSION
 
-This document describes MCE::Queue version 1.499_002
+This document describes MCE::Queue version 1.499_003
 
 =head1 SYNOPSIS
 
