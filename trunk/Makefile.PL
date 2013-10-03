@@ -26,7 +26,7 @@ WriteMakefile(
       'Time::HiRes'  => 0
    },
 
-   VERSION        => '1.499_003',
+   VERSION        => '1.499_004',
 
    (($ExtUtils::MakeMaker::VERSION lt '6.25') ?
       (PL_FILES => { }) : ()),
@@ -52,6 +52,48 @@ WriteMakefile(
             'homepage'   => 'http://code.google.com/p/many-core-engine-perl/',
             'repository' => 'http://code.google.com/p/many-core-engine-perl/',
             'license'    => 'http://dev.perl.org/licenses/'
+         },
+         provides => {
+            'MCE' => {
+               'file'    => 'lib/MCE.pm',
+               'version' => '1.499_004'
+            },
+            'MCE::Flow' => {
+               'file'    => 'lib/MCE/Flow.pm',
+               'version' => '1.499_004'
+            },
+            'MCE::Grep' => {
+               'file'    => 'lib/MCE/Grep.pm',
+               'version' => '1.499_004'
+            },
+            'MCE::Loop' => {
+               'file'    => 'lib/MCE/Loop.pm',
+               'version' => '1.499_004'
+            },
+            'MCE::Map' => {
+               'file'    => 'lib/MCE/Map.pm',
+               'version' => '1.499_004'
+            },
+            'MCE::Queue' => {
+               'file'    => 'lib/MCE/Queue.pm',
+               'version' => '1.499_004'
+            },
+            'MCE::Signal' => {
+               'file'    => 'lib/MCE/Signal.pm',
+               'version' => '1.499_004'
+            },
+            'MCE::Stream' => {
+               'file'    => 'lib/MCE/Stream.pm',
+               'version' => '1.499_004'
+            },
+            'MCE::Subs' => {
+               'file'    => 'lib/MCE/Subs.pm',
+               'version' => '1.499_004'
+            },
+            'MCE::Util' => {
+               'file'    => 'lib/MCE/Util.pm',
+               'version' => '1.499_004'
+            }
          }
       }) : ()),
 
