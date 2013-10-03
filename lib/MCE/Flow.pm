@@ -11,10 +11,10 @@ use warnings;
 
 use Scalar::Util qw( looks_like_number );
 
-use MCE::Core;
+use MCE;
 use MCE::Util;
 
-our $VERSION = '1.499_002'; $VERSION = eval $VERSION;
+our $VERSION = '1.499_003'; $VERSION = eval $VERSION;
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -410,7 +410,7 @@ MCE::Flow - Parallel flow model for building creative applications
 
 =head1 VERSION
 
-This document describes MCE::Flow version 1.499_002
+This document describes MCE::Flow version 1.499_003
 
 =head1 DESCRIPTION
 

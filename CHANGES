@@ -1,31 +1,21 @@
 
 Revision history for MCE
 
-1.499_002 Sun Sep 29 21:30:00 EST 2013
+1.499_003 Thu Oct 03 08:30:00 EST 2013
 
-    * 3 items remain before releasing the final MCE 1.5 distribution.
-      Document MCE::Stream, finish MCE::Loop and re-visit MCE::Flow.
+    * There are 3 items remaining before releasing the final MCE 1.5.
 
-      Am interested in seeing the test results due to the next item
-      mentioned below (actually the main reason for a _002 release).
-
-      This has turned out to be a very long and tiresome journey for me.
-      Am very glad that this is almost over. MCE 1.5 is very fast.
-      Also like how the models are turning out; MCE::Map, MCE::Grep,
-      MCE::Loop -- will finish that next, plus MCE:Stream and MCE::Flow
-      will become the last two to document, re-visit, finish up.
-
-      Code-wise, that is 100% completed plus tested.
+      1. Document MCE::Stream
+      2. Finish documentation on MCE::Loop
+      3. Re-visit documentation on MCE::Flow
 
       ;) mario
 
-    * The top level MCE.pm file is now mainly an index page (POD wise). The
-      code previously located in MCE.pm (1.4) moved to MCE::Core, some of
-      which went to various files under the Core directory. The documentation,
-      previously MCE.pod, is now placed at the end of MCE::Core with the
-      examples section becoming MCE::Examples going forward.
+    * MCE 1.5 is backwards compatible with 1.4 and below.
 
-      MCE 1.5 is backwards compatible with 1.4 and below.
+    * The documentation, previously MCE.pod, moved to MCE::Core.pod with the
+      examples section placed in MCE::Examples.pod. The MCE.pod file serves
+      as an index page for the various documentation.
 
     * IPC has been enhanced with 8 data channels. Many operations run 3x when
       compared with MCE 1.4.
