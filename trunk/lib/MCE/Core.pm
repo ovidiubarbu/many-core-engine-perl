@@ -31,7 +31,7 @@ use Storable qw( );
 use Time::HiRes qw( time );
 use MCE::Signal;
 
-our $VERSION = '1.499_001'; $VERSION = eval $VERSION;
+our $VERSION = '1.499_002'; $VERSION = eval $VERSION;
 
 my  (%_valid_fields_new, %_params_allowed_args, %_valid_fields_task);
 our ($_is_cygwin, $_is_MSWin32, $_is_WinEnv);
@@ -1894,7 +1894,7 @@ sub _dispatch_child {
 
 package MCE::Core;
 
-our $VERSION = '1.499_001'; $VERSION = eval $VERSION;
+our $VERSION = '1.499_002'; $VERSION = eval $VERSION;
 
 my $_loaded;
 
@@ -1944,7 +1944,7 @@ MCE::Core - Provides the core API for Many-core Engine
 
 =head1 VERSION
 
-This document describes MCE::Core version 1.499_001
+This document describes MCE::Core version 1.499_002
 
 =head1 SYNOPSIS
 
