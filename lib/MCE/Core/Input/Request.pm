@@ -11,7 +11,7 @@
 
 package MCE::Core::Input::Request;
 
-our $VERSION = '1.499_004'; $VERSION = eval $VERSION;
+our $VERSION = '1.499_005'; $VERSION = eval $VERSION;
 
 ## Items below are folded into MCE.
 

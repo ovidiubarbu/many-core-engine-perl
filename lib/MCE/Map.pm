@@ -14,7 +14,7 @@ use Scalar::Util qw( looks_like_number );
 use MCE;
 use MCE::Util;
 
-our $VERSION = '1.499_004'; $VERSION = eval $VERSION;
+our $VERSION = '1.499_005'; $VERSION = eval $VERSION;
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -334,7 +334,7 @@ MCE::Map - Parallel map model similar to the native map function
 
 =head1 VERSION
 
-This document describes MCE::Map version 1.499_004
+This document describes MCE::Map version 1.499_005
 
 =head1 SYNOPSIS
 
@@ -382,7 +382,7 @@ code block requires more CPU code-wise.
 
 The mce_map_s funtion will provide better times, useful when input data is
 simply a range of numbers. Workers generate sequences mathematically among
-themselves without any interaction by the manager process. Two arguments
+themselves without any interaction from the manager process. Two arguments
 are required for mce_map_s (begin, end). Step defaults to 1 if begin is
 smaller than end, otherwise -1.
 
@@ -481,7 +481,7 @@ will be set to undef due to being used internally by the module.
 
 =back
 
-=head1 API USAGE
+=head1 API DOCUMENTATION
 
 =over 2
 
@@ -495,7 +495,7 @@ Input data can be specified using a list or passing a reference to an array.
 =item mce_map_f { code } file
 
 The fastest of these is the /path/to/file. Workers communicate the next offset
-position among themselves without any interaction by the manager process.
+position among themselves without any interaction from the manager process.
 
    my @c = mce_map_f { chomp; $_ . "\r\n" } "/path/to/file";
    my @d = mce_map_f { chomp; $_ . "\r\n" } $file_handle;

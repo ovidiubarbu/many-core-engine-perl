@@ -14,7 +14,7 @@ use Scalar::Util qw( looks_like_number );
 use MCE;
 use MCE::Util;
 
-our $VERSION = '1.499_004'; $VERSION = eval $VERSION;
+our $VERSION = '1.499_005'; $VERSION = eval $VERSION;
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -313,18 +313,38 @@ MCE::Loop - Parallel loop model for building creative loops
 
 =head1 VERSION
 
-This document describes MCE::Loop version 1.499_004
+This document describes MCE::Loop version 1.499_005
 
-=head1 SYNOPSIS CHUNK_SIZE == 1
+=head1 DESCRIPTION
 
-All models in MCE default to 'auto' for chunk_size. MCE::Loop is not MCE::Map.
-The code block is configured as user_func for MCE. Therefore, a chunk_size > 1
-means having to loop through each item in the chunk, similar to using MCE and
-creating a function for the user_func option and chunking through the data.
+This module provides a parallel loop implementation through Many-core Engine.
+MCE::Loop is not MCE::Map but more along the lines of an easy way to spun up a
+MCE instance and have user_func pointing to your code block. If you want
+something similar to how map works, then also see L<MCE::Map>.
 
-Think of MCE::Loop as a quick way to spun up a MCE instance with user_func set
-to your code block. You have the option of disabling/enabling chunking simply
-by setting chunk_size as shown below.
+=head1 SYNOPSIS when CHUNK_SIZE EQUALS 1
+
+All models in MCE default to 'auto' for chunk_size. The arguments for the block
+are the same as writing a user_func block for the core API.
+
+Beginning with MCE 1.5, the next input item is placed into the input scalar
+variable $_ when chunk_size equals 1. Otherwise, $_ points to $chunk_ref
+containing many items. Basically, line 2 can be omitted from your code when
+using $_. One can call MCE->chunk_id to obtain the chunk_id for the current
+chunk.
+
+   line 1:  user_func => sub {
+   line 2:     my ($mce, $chunk_ref, $chunk_id) = @_;
+   line 3:
+   line 4:     $_ points to $chunk_ref->[0]
+   line 5:        in MCE 1.5 when chunk_size == 1
+   line 6:
+   line 7:     $_ points to $chunk_ref
+   line 8:        in MCE 1.5 when chunk_size  > 1
+   line 9:  }
+
+Follow this synopsis when chunk_size equals one. Looping is not required from
+within the block. The block is called once per each item.
 
    ## Exports mce_loop, mce_loop_f, and mce_loop_s
    use MCE::Loop;
@@ -350,31 +370,37 @@ by setting chunk_size as shown below.
       begin => 1, end => 10000, step => 5, format => undef
    };
 
-=head1 SYNOPSIS CHUNK_SIZE > 1
+=head1 SYNOPSIS when CHUNK_SIZE is GREATER THAN 1
 
-Use this synopsis when chunk_size is set to 'auto' or greater than 1.
+Follow this synopsis when chunk_size equals 'auto' or is greater than 1.
+This means having to loop through the chunk from within the block.
 
    use MCE::Loop;
 
    MCE::Loop::init {          ## Chunk_size defaults to 'auto' when
       chunk_size => 'auto'    ## not specified. Therefore, the init
-   };                         ## function is not needed.
+   };                         ## function may be omitted.
 
    ## Syntax is shown for mce_loop for demonstration purposes.
-   ## Chunking also applies to mce_loop_f and mce_loop_s.
+   ## Looping inside the block is the same for mce_loop_f and
+   ## mce_loop_s.
+
    mce_loop { do_work($_) for (@{ $_ }) } 1..10000;
 
-   ## Same as above. This resembles "core" MCE code.
+   ## Same as above, resembles code using the core API.
+
    mce_loop {
       my ($mce, $chunk_ref, $chunk_id) = @_;
+
       for (@{ $chunk_ref }) {
          do_work($_);
       }
+
    } 1..10000;
 
-=head1 DESCRIPTION
-
-TODO
+Chunking reduces the number of IPC calls behind the scene. Think in terms of
+chunks whenever processing a large amount of data. For relatively small data,
+choosing 1 for chunk_size is quite fine.
 
 =head1 OVERRIDING DEFAULTS
 
@@ -451,9 +477,212 @@ The init function takes a hash of MCE options.
 
 =back
 
-=head1 API USAGE
+=head1 API DOCUMENTATION
 
-TODO
+The following assumes chunk_size equals 1 in order to demonstrate all the
+possiblities of passing input data for the loop.
+
+=over 2
+
+=item mce_loop { code } list
+
+Input data can be specified using a list or passing a reference to an array.
+
+   mce_loop { $_ } 1..1000;
+   mce_loop { $_ } [ 1..1000 ];
+
+=item mce_loop_f { code } file
+
+The fastest of these is the /path/to/file. Workers communicate the next offset
+position among themselves without any interaction from the manager process.
+
+   mce_loop_f { $_ } "/path/to/file";
+   mce_loop_f { $_ } $file_handle;
+   mce_loop_f { $_ } \$scalar;
+
+=item mce_loop_s { code } sequence
+
+Sequence can be specified as a list, an array reference, or a hash reference.
+The functions require both begin and end values to run. Step and format are
+optional. The format is passed to sprintf (% can be omitted below).
+
+   my ($beg, $end, $step, $fmt) = (10, 20, 0.1, "%4.1f");
+
+   mce_loop_s { $_ } $beg, $end, $step, $fmt;
+   mce_loop_s { $_ } [ $beg, $end, $step, $fmt ];
+
+   mce_loop_s { $_ } {
+      begin => $beg, end => $end, step => $step, format => $fmt
+   };
+
+=back
+
+=head1 GATHERING DATA
+
+Unlike MCE::Map where gather and output order are done for you automatically,
+the gather method is used to have results sent back to the manager process.
+
+   use MCE::Loop chunk_size => 1;
+
+   ## Output order is not guaranteed.
+   my @a = mce_loop { MCE->gather($_ * 2) } 1..100;
+   print "@a\n\n";
+
+   ## However, one can store to a hash by gathering 2 items per
+   ## each gather call (key, value).
+   my %h1 = mce_loop { MCE->gather($_, $_ * 2) } 1..100;
+   print "@h1{1..100}\n\n";
+
+   ## This does the same thing due to chunk_id starting at one.
+   my %h2 = mce_loop { MCE->gather(MCE->chunk_id, $_ * 2) } 1..100;
+   print "@h2{1..100}\n\n";
+
+The gather method can be called multiple times within the block unlike return
+which would leave the block. Therefore, think of gather as yielding results
+immediately to the manager process without actually leaving the block.
+
+   use MCE::Loop chunk_size => 1, max_workers => '3';
+
+   my @hosts = qw(
+      hosta hostb hostc hostd hoste
+   );
+
+   my %h3 = mce_loop {
+      my ($output, $error, $status); my $host = $_;
+
+      ## Do something with $host;
+      $output = "Worker ". MCE->wid .": Hello from $host";
+
+      if (MCE->chunk_id % 3 == 0) {
+         ## Simulating an error condition
+         local $? = 1; $status = $?;
+         $error = "Error from $host"
+      }
+      else {
+         $status = 0;
+      }
+
+      ## Ensure unique keys (key, value) when gathering to
+      ## a hash.
+      MCE->gather("$host.out", $output);
+      MCE->gather("$host.err", $error) if (defined $error);
+      MCE->gather("$host.sta", $status);
+
+   } @hosts;
+
+   foreach my $host (@hosts) {
+      print $h3{"$host.out"}, "\n";
+      print $h3{"$host.err"}, "\n" if (exists $h3{"$host.err"});
+      print "Exit status: ", $h3{"$host.sta"}, "\n\n";
+   }
+
+   -- Output
+
+   Worker 2: Hello from hosta
+   Exit status: 0
+
+   Worker 1: Hello from hostb
+   Exit status: 0
+
+   Worker 3: Hello from hostc
+   Error from hostc
+   Exit status: 1
+
+   Worker 2: Hello from hostd
+   Exit status: 0
+
+   Worker 1: Hello from hoste
+   Exit status: 0
+
+Serialization is automatic behind the scene. The following uses an anoymous
+array containing 3 elements when gathering data. It's your choice. Obviously,
+calling gather once will be more efficient for IPC.
+
+   my %h3 = mce_loop {
+
+      ...
+
+      MCE->gather($host, [$output, $error, $status]);
+
+   } @hosts;
+
+   foreach my $host (@hosts) {
+      print $h3{$host}->[0], "\n";
+      print $h3{$host}->[1], "\n" if (defined $h3{$host}->[1]);
+      print "Exit status: ", $h3{$host}->[2], "\n\n";
+   }
+
+Perhaps, you want more control with gather such as appending to an array while
+retaining output order. Although MCE::Map comes to mind, some folks want "full"
+control. And here we go... but this time around in chunking style... :)
+
+The two options passed to MCE::Loop are optional as they default to 'auto'. The
+beauty of chunking data is that IPC occurs once per chunk versus once per item.
+Although IPC is quite fast, chunking becomes beneficial the larger the data
+becomes. Thus, the reason for the demonstration below.
+
+   use MCE::Loop chunk_size => 'auto', max_workers => 'auto';
+
+   my (@m2, %_tmp); my $_order_id = 1;
+
+   sub preserve_order {
+      $_tmp{ (shift) } = \@_;
+
+      while (1) {
+         last unless exists $_tmp{$_order_id};
+         push @m2, @{ $_tmp{$_order_id} };
+         delete $_tmp{$_order_id++};
+      }
+
+      return;
+   }
+
+   MCE::Loop::init { gather => \&preserve_order };
+
+   mce_loop {
+      my @a; my ($mce, $chunk_ref, $chunk_id) = @_;
+
+      ## Compute the entire chunk data at once.
+      push @a, map { $_ * 2 } @{ $chunk_ref };
+
+      ## Afterwards, invoke the gather feature, which
+      ## will direct the data to the callback function.
+      MCE->gather(MCE->chunk_id, @a);
+
+   } 1..100000;
+
+   print scalar @m2, "\n";
+
+That was fast and fun. All 5 models support 'auto' for chunk_size whereas the
+core API doesn't. Think of the models as the basis for providing JIT for MCE.
+They create the instance and tune max_workers plus chunk_size automatically
+irregardless of the hardware being run on.
+
+The following does the same thing using the core API.
+
+   use MCE;
+
+   ...
+
+   my $mce = MCE->new(
+      max_workers => 'auto', chunk_size => 8000,
+      gather => \&preserve_order,
+
+      user_func => sub {
+         my @a; my ($mce, $chunk_ref, $chunk_id) = @_;
+
+         ## Compute the entire chunk data at once.
+         push @a, map { $_ * 2 } @{ $chunk_ref };
+
+         ## Afterwards, invoke the gather feature, which
+         ## will direct the data to the callback function.
+         MCE->gather(MCE->chunk_id, @a);
+      }
+   );
+
+   $mce->process([1..100000]);
+
+   ...
 
 =head1 MANUAL SHUTDOWN
 
