@@ -1,19 +1,24 @@
 
 Revision history for MCE
 
+1.499_005 Thu Oct 03 21:10:00 EST 2013
+
+    * Added missing package modules under provides.
+
+    * Completed documentation for MCE::Loop.
+
+    * Two items remain before releasing the final MCE 1.5.
+
+      1. Document MCE::Stream
+      2. Redo documentation for MCE::Flow
+
+      ;) mario
+
 1.499_004 Thu Oct 03 09:30:00 EST 2013
 
     * Re-added provides section inside Makefile.PL and META.yml.
 
 1.499_003 Thu Oct 03 08:30:00 EST 2013
-
-    * There are 3 items remaining before releasing the final MCE 1.5.
-
-      1. Document MCE::Stream
-      2. Finish documentation on MCE::Loop
-      3. Re-visit documentation on MCE::Flow
-
-      ;) mario
 
     * MCE 1.5 is backwards compatible with 1.4 and below.
 

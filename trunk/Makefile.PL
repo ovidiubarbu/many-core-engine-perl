@@ -26,7 +26,7 @@ WriteMakefile(
       'Time::HiRes'  => 0
    },
 
-   VERSION        => '1.499_004',
+   VERSION        => '1.499_005',
 
    (($ExtUtils::MakeMaker::VERSION lt '6.25') ?
       (PL_FILES => { }) : ()),
@@ -56,43 +56,71 @@ WriteMakefile(
          provides => {
             'MCE' => {
                'file'    => 'lib/MCE.pm',
-               'version' => '1.499_004'
+               'version' => '1.499_005'
+            },
+            'MCE::Core::Input::Generator' => {
+               'file'    => 'lib/MCE/Core/Input/Generator.pm',
+               'version' => '1.499_005'
+            },
+            'MCE::Core::Input::Handle' => {
+               'file'    => 'lib/MCE/Core/Input/Handle.pm',
+               'version' => '1.499_005'
+            },
+            'MCE::Core::Input::Request' => {
+               'file'    => 'lib/MCE/Core/Input/Request.pm',
+               'version' => '1.499_005'
+            },
+            'MCE::Core::Input::Sequence' => {
+               'file'    => 'lib/MCE/Core/Input/Sequence.pm',
+               'version' => '1.499_005'
+            },
+            'MCE::Core::Manager' => {
+               'file'    => 'lib/MCE/Core/Manager.pm',
+               'version' => '1.499_005'
+            },
+            'MCE::Core::Validation' => {
+               'file'    => 'lib/MCE/Core/Validation.pm',
+               'version' => '1.499_005'
+            },
+            'MCE::Core::Worker' => {
+               'file'    => 'lib/MCE/Core/Worker.pm',
+               'version' => '1.499_005'
             },
             'MCE::Flow' => {
                'file'    => 'lib/MCE/Flow.pm',
-               'version' => '1.499_004'
+               'version' => '1.499_005'
             },
             'MCE::Grep' => {
                'file'    => 'lib/MCE/Grep.pm',
-               'version' => '1.499_004'
+               'version' => '1.499_005'
             },
             'MCE::Loop' => {
                'file'    => 'lib/MCE/Loop.pm',
-               'version' => '1.499_004'
+               'version' => '1.499_005'
             },
             'MCE::Map' => {
                'file'    => 'lib/MCE/Map.pm',
-               'version' => '1.499_004'
+               'version' => '1.499_005'
             },
             'MCE::Queue' => {
                'file'    => 'lib/MCE/Queue.pm',
-               'version' => '1.499_004'
+               'version' => '1.499_005'
             },
             'MCE::Signal' => {
                'file'    => 'lib/MCE/Signal.pm',
-               'version' => '1.499_004'
+               'version' => '1.499_005'
             },
             'MCE::Stream' => {
                'file'    => 'lib/MCE/Stream.pm',
-               'version' => '1.499_004'
+               'version' => '1.499_005'
             },
             'MCE::Subs' => {
                'file'    => 'lib/MCE/Subs.pm',
-               'version' => '1.499_004'
+               'version' => '1.499_005'
             },
             'MCE::Util' => {
                'file'    => 'lib/MCE/Util.pm',
-               'version' => '1.499_004'
+               'version' => '1.499_005'
             }
          }
       }) : ()),
