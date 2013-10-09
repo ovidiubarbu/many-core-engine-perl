@@ -340,7 +340,7 @@ sub _worker_do {
    my $_task_id    = $self->{_task_id};
 
    ## Do not override params if defined in user_tasks during instantiation.
-   for (qw(chunk_size interval sequence user_args)) {
+   for (qw(bounds_only chunk_size interval sequence user_args)) {
       if (defined $_params_ref->{"_$_"}) {
          $self->{$_} = $_params_ref->{"_$_"}
             unless (defined $self->{_task}->{$_});

@@ -45,10 +45,11 @@ sub _worker_sequence_queue {
    _croak("MCE::_worker_sequence_queue: 'user_func' is not specified")
       unless (defined $self->{user_func});
 
-   my $_QUE_R_SOCK = $self->{_que_r_sock};
-   my $_QUE_W_SOCK = $self->{_que_w_sock};
-   my $_chunk_size = $self->{chunk_size};
-   my $_wuf        = $self->{_wuf};
+   my $_QUE_R_SOCK  = $self->{_que_r_sock};
+   my $_QUE_W_SOCK  = $self->{_que_w_sock};
+   my $_bounds_only = $self->{bounds_only} || 0;
+   my $_chunk_size  = $self->{chunk_size};
+   my $_wuf         = $self->{_wuf};
 
    my ($_next, $_chunk_id, $_seq_n, $_begin, $_end, $_step, $_fmt);
    my ($_abort, $_offset);
@@ -98,20 +99,81 @@ sub _worker_sequence_queue {
       }
       else {
          my $_n_begin = ($_offset * $_chunk_size) * $_step + $_begin;
-         my @_n = ();
+         my @_n = ();    $_seq_n = $_n_begin;
 
-         $_seq_n = $_n_begin;
+         ## -------------------------------------------------------------------
 
-         if ($_begin < $_end) {
-            if (!defined $_fmt && $_step == 1 &&
-                  $_seq_n + $_chunk_size <= $_end)
-            {
-               @_n = ($_seq_n .. $_seq_n + $_chunk_size - 1);
-               $_seq_n += $_chunk_size;
+         if ($_bounds_only) {
+            my $_tmp_b = $_seq_n; my $_tmp_e;
+
+            if ($_begin < $_end) {
+               if ($_step * $_chunk_size + $_n_begin <= $_end) {
+                  $_tmp_e = $_step * ($_chunk_size - 1) + $_n_begin;
+               }
+               else {
+                  my $_start = int(
+                     ($_end - $_seq_n) / $_chunk_size / $_step * $_chunk_size
+                  );
+                  $_start = 1 if ($_start < 1);
+
+                  for ($_start .. $_chunk_size) {
+                     last if ($_seq_n > $_end);
+                     $_tmp_e = $_seq_n;
+                     $_seq_n = $_step * $_ + $_n_begin;
+                  }
+               }
+            }
+            else {
+               if ($_step * $_chunk_size + $_n_begin >= $_end) {
+                  $_tmp_e = $_step * ($_chunk_size - 1) + $_n_begin;
+               }
+               else {
+                  my $_start = int(
+                     ($_seq_n - $_end) / $_chunk_size / $_step * $_chunk_size
+                  );
+                  $_start = 1 if ($_start < 1);
+
+                  for ($_start .. $_chunk_size) {
+                     last if ($_seq_n < $_end);
+                     $_tmp_e = $_seq_n;
+                     $_seq_n = $_step * $_ + $_n_begin;
+                  }
+               }
+            }
+
+            if (defined $_fmt) {
+               @_n = (sprintf("%$_fmt", $_tmp_b), sprintf("%$_fmt", $_tmp_e));
+            } else {
+               @_n = ($_tmp_b, $_tmp_e);
+            }
+         }
+
+         ## -------------------------------------------------------------------
+
+         else {
+            if ($_begin < $_end) {
+               if (!defined $_fmt && $_step == 1) {
+                  local $_ = ($_seq_n + $_chunk_size <= $_end)
+                     ? [ $_seq_n .. $_seq_n + $_chunk_size - 1 ]
+                     : [ $_seq_n .. $_end ];
+
+                  $_wuf->($self, $_, $_chunk_id);
+                  next;
+               }
+               else {
+                  for (1 .. $_chunk_size) {
+                     last if ($_seq_n > $_end);
+
+                     push @_n, (defined $_fmt)
+                        ? sprintf("%$_fmt", $_seq_n) : $_seq_n;
+
+                     $_seq_n = $_step * $_ + $_n_begin;
+                  }
+               }
             }
             else {
                for (1 .. $_chunk_size) {
-                  last if ($_seq_n > $_end);
+                  last if ($_seq_n < $_end);
 
                   push @_n, (defined $_fmt)
                      ? sprintf("%$_fmt", $_seq_n) : $_seq_n;
@@ -120,16 +182,8 @@ sub _worker_sequence_queue {
                }
             }
          }
-         else {
-            for (1 .. $_chunk_size) {
-               last if ($_seq_n < $_end);
 
-               push @_n, (defined $_fmt)
-                  ? sprintf("%$_fmt", $_seq_n) : $_seq_n;
-
-               $_seq_n = $_step * $_ + $_n_begin;
-            }
-         }
+         ## -------------------------------------------------------------------
 
          local $_ = \@_n;
          $_wuf->($self, \@_n, $_chunk_id);

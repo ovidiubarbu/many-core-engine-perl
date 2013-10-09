@@ -43,6 +43,7 @@ sub _worker_sequence_generator {
    _croak("MCE::_worker_sequence_generator: 'user_func' is not specified")
       unless (defined $self->{user_func});
 
+   my $_bounds_only = $self->{bounds_only} || 0;
    my $_max_workers = $self->{max_workers};
    my $_chunk_size  = $self->{chunk_size};
    my $_wuf         = $self->{_wuf};
@@ -69,7 +70,7 @@ sub _worker_sequence_generator {
 
    $self->{_last_jmp} = sub { goto _WORKER_SEQ_GEN__LAST; };
 
-   if ($_begin == $_end) {                        ## Both are identical.
+   if ($_begin == $_end) {                        ## Identical, yes.
 
       if ($_wid == 1) {
          $self->{_next_jmp} = sub { goto _WORKER_SEQ_GEN__LAST; };
@@ -77,13 +78,13 @@ sub _worker_sequence_generator {
          local $_ = (defined $_fmt) ? sprintf("%$_fmt", $_next) : $_next;
 
          if ($_chunk_size > 1) {
-            $_wuf->($self, [ $_ ], $_chunk_id);
-         } else {
-            $_wuf->($self, $_, $_chunk_id);
+            $_ = ($_bounds_only) ? [ $_, $_ ] : [ $_ ];
          }
+
+         $_wuf->($self, $_, $_chunk_id);
       }
    }
-   elsif ($_chunk_size == 1) {                    ## Does no chunking.
+   elsif ($_chunk_size == 1) {                    ## Chunking, no.
 
       $self->{_next_jmp} = sub { goto _WORKER_SEQ_GEN__NEXT_A; };
 
@@ -102,24 +103,87 @@ sub _worker_sequence_generator {
          $_next      = ($_chunk_id - 1) * $_step + $_begin;
       }
    }
-   else {                                         ## Yes, does chunking.
+   else {                                         ## Chunking, yes.
 
       $self->{_next_jmp} = sub { goto _WORKER_SEQ_GEN__NEXT_B; };
 
       while (1) {
-         my $_n_begin = $_next;
-         my @_n = ();
+         my $_n_begin = $_next; my @_n = ();
 
-         if ($_begin < $_end) {
-            if (!defined $_fmt && $_step == 1 &&
-                  $_next + $_chunk_size <= $_end)
-            {
-               @_n = ($_next .. $_next + $_chunk_size - 1);
-               $_next += $_chunk_size;
+         ## -------------------------------------------------------------------
+
+         if ($_bounds_only) {
+            my $_tmp_b = $_next; my $_tmp_e;
+
+            if ($_begin < $_end) {
+               if ($_step * $_chunk_size + $_n_begin <= $_end) {
+                  $_tmp_e = $_step * ($_chunk_size - 1) + $_n_begin;
+               }
+               else {
+                  my $_start = int(
+                     ($_end - $_next) / $_chunk_size / $_step * $_chunk_size
+                  );
+                  $_start = 1 if ($_start < 1);
+
+                  for ($_start .. $_chunk_size) {
+                     last if ($_next > $_end);
+                     $_tmp_e = $_next;
+                     $_next  = $_step * $_ + $_n_begin;
+                  }
+               }
+            }
+            else {
+               if ($_step * $_chunk_size + $_n_begin >= $_end) {
+                  $_tmp_e = $_step * ($_chunk_size - 1) + $_n_begin;
+               }
+               else {
+                  my $_start = int(
+                     ($_next - $_end) / $_chunk_size / $_step * $_chunk_size
+                  );
+                  $_start = 1 if ($_start < 1);
+
+                  for ($_start .. $_chunk_size) {
+                     last if ($_next < $_end);
+                     $_tmp_e = $_next;
+                     $_next  = $_step * $_ + $_n_begin;
+                  }
+               }
+            }
+
+            return unless (defined $_tmp_e);
+
+            if (defined $_fmt) {
+               @_n = (sprintf("%$_fmt", $_tmp_b), sprintf("%$_fmt", $_tmp_e));
+            } else {
+               @_n = ($_tmp_b, $_tmp_e);
+            }
+         }
+
+         ## -------------------------------------------------------------------
+
+         else {
+            if ($_begin < $_end) {
+               if (!defined $_fmt && $_step == 1) {
+                  if ($_next + $_chunk_size <= $_end) {
+                     @_n = ($_next .. $_next + $_chunk_size - 1);
+                  } else {
+                     @_n = ($_next .. $_end);
+                  }
+               }
+               else {
+                  for (1 .. $_chunk_size) {
+                     last if ($_next > $_end);
+
+                     push @_n, (defined $_fmt)
+                        ? sprintf("%$_fmt", $_next) : $_next;
+
+                     $_next = $_step * $_ + $_n_begin;
+                  }
+               }
             }
             else {
                for (1 .. $_chunk_size) {
-                  last if ($_next > $_end);
+                  last if ($_next < $_end);
 
                   push @_n, (defined $_fmt)
                      ? sprintf("%$_fmt", $_next) : $_next;
@@ -127,19 +191,11 @@ sub _worker_sequence_generator {
                   $_next = $_step * $_ + $_n_begin;
                }
             }
-         }
-         else {
-            for (1 .. $_chunk_size) {
-               last if ($_next < $_end);
 
-               push @_n, (defined $_fmt)
-                  ? sprintf("%$_fmt", $_next) : $_next;
-
-               $_next = $_step * $_ + $_n_begin;
-            }
+            return unless (@_n > 0);
          }
 
-         return unless (@_n > 0);
+         ## -------------------------------------------------------------------
 
          local $_ = \@_n;
          $_wuf->($self, \@_n, $_chunk_id);

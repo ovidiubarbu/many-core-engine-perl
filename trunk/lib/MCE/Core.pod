@@ -215,6 +215,7 @@ Below, a new instance is configured with all available options.
           ## Both max_nodes & node_id are optional and default to 1.
           ## Delay is the amount of time between intervals.
 
+      bounds_only  => 1,                 ## Default undef
       sequence     => {                  ## Default undef
           begin => -1, end => 1 [, step => 0.1 [, format => "%4.1f" ] ]
       },
@@ -232,6 +233,13 @@ Below, a new instance is configured with all available options.
           ## instead (3rd & 4th values are optional):
           ##
           ##    sequence => [ -1, 1, 0.1, "%4.1f" ]
+
+          ## The bounds_only => 1 option will compute the begin and
+          ## end items only for the chunk and not the items in between
+          ## (hence boundaries only). This option has no effect when
+          ## sequence is missing or chunk_size equals 1.
+          ##
+          ##    my $begin = $chunk_ref->[0]; my $end = $chunk_ref->[1];
 
       task_end     => \&task_end,        ## Default undef
 
@@ -417,6 +425,46 @@ Sequence can be specified using an array or a hash reference.
    17.0 from 2 id 11
    17.7 from 3 id 12
    18.4 from 1 id 13
+
+The 1.5 release includes a new option (bounds_only). This option tells the
+sequencer engine to compute the begin and end items only for the chunk and
+not the items in between (hence boundaries only). This option has no effect
+when sequence is missing or chunk_size equals 1.
+
+   use MCE;
+
+   my $mce = MCE->new(
+      sequence    => { begin => 1, end => 10 },
+      chunk_size  => 5,
+      bounds_only => 1,
+
+      ## For sequence, the input scalar $_ points to $chunk_ref
+      ## when chunk_size > 1, otherwise has $chunk_ref->[0].
+      ##
+      ## user_func => sub {
+      ##    my $begin = $_->[0]; my $end = $_->[1];
+      ##
+      ##    for ($begin .. $end) {
+      ##       ... have fun with MCE ...
+      ##    }
+      ## },
+
+      user_func => sub {
+         my ($mce, $chunk_ref, $chunk_id) = @_;
+
+         my $begin = $chunk_ref->[0];
+         my $end   = $chunk_ref->[1];   ## or $chunk_ref->[-1]
+
+         print "$begin .. $end\n";
+      }
+   );
+
+   MCE->run();
+
+   -- Output
+
+   1 .. 5
+   6 .. 10
 
 =head2 SYNTAX for USER_BEGIN and USER_END
 

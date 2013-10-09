@@ -52,19 +52,19 @@ BEGIN {
       chunk_size input_data sequence job_delay spawn_delay submit_delay RS
       flush_file flush_stderr flush_stdout stderr_file stdout_file use_slurpio
       interval user_args user_begin user_end user_func user_error user_output
-      gather on_post_exit on_post_run
+      bounds_only gather on_post_exit on_post_run
    );
 
    %_params_allowed_args = map { $_ => 1 } qw(
       chunk_size input_data sequence job_delay spawn_delay submit_delay RS
       flush_file flush_stderr flush_stdout stderr_file stdout_file use_slurpio
       interval user_args user_begin user_end user_func user_error user_output
-      gather on_post_exit on_post_run
+      bounds_only gather on_post_exit on_post_run
    );
 
    %_valid_fields_task = map { $_ => 1 } qw(
       max_workers chunk_size input_data interval sequence task_end task_name
-      gather user_args user_begin user_end user_func use_threads
+      bounds_only gather user_args user_begin user_end user_func use_threads
    );
 
    $_is_cygwin  = ($^O eq 'cygwin');
@@ -361,6 +361,7 @@ sub new {
    $self->{interval}     = $argv{interval}     if (exists $argv{interval});
    $self->{input_data}   = $argv{input_data}   if (exists $argv{input_data});
    $self->{sequence}     = $argv{sequence}     if (exists $argv{sequence});
+   $self->{bounds_only}  = $argv{bounds_only}  if (exists $argv{bounds_only});
    $self->{job_delay}    = $argv{job_delay}    if (exists $argv{job_delay});
    $self->{spawn_delay}  = $argv{spawn_delay}  if (exists $argv{spawn_delay});
    $self->{submit_delay} = $argv{submit_delay} if (exists $argv{submit_delay});
@@ -971,6 +972,7 @@ sub run {
    ## -------------------------------------------------------------------------
 
    my $_COM_LOCK      = $self->{_com_lock};
+   my $_bounds_only   = $self->{bounds_only};
    my $_interval      = $self->{interval};
    my $_sequence      = $self->{sequence};
    my $_user_args     = $self->{user_args};
@@ -983,18 +985,18 @@ sub run {
    unless ($_send_cnt) {
 
       my %_params = (
-         '_abort_msg'   => $_abort_msg,    '_run_mode'   => $_run_mode,
-         '_chunk_size'  => $_chunk_size,   '_single_dim' => $_single_dim,
-         '_input_file'  => $_input_file,   '_sequence'   => $_sequence,
-         '_interval'    => $_interval,     '_user_args'  => $_user_args,
-         '_use_slurpio' => $_use_slurpio
+         '_abort_msg'   => $_abort_msg,    '_run_mode'    => $_run_mode,
+         '_chunk_size'  => $_chunk_size,   '_single_dim'  => $_single_dim,
+         '_input_file'  => $_input_file,   '_interval'    => $_interval,
+         '_sequence'    => $_sequence,     '_bounds_only' => $_bounds_only,
+         '_use_slurpio' => $_use_slurpio,  '_user_args'   => $_user_args
       );
       my %_params_nodata = (
-         '_abort_msg'   => undef,          '_run_mode'   => 'nodata',
-         '_chunk_size'  => $_chunk_size,   '_single_dim' => $_single_dim,
-         '_input_file'  => $_input_file,   '_sequence'   => $_sequence,
-         '_interval'    => $_interval,     '_user_args'  => $_user_args,
-         '_use_slurpio' => $_use_slurpio
+         '_abort_msg'   => undef,          '_run_mode'    => 'nodata',
+         '_chunk_size'  => $_chunk_size,   '_single_dim'  => $_single_dim,
+         '_input_file'  => $_input_file,   '_interval'    => $_interval,
+         '_sequence'    => $_sequence,     '_bounds_only' => $_bounds_only,
+         '_use_slurpio' => $_use_slurpio,  '_user_args'   => $_user_args
       );
 
       local $\ = undef; local $/ = $LF;
