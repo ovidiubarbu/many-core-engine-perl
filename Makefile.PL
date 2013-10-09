@@ -37,7 +37,8 @@ WriteMakefile(
    (($ExtUtils::MakeMaker::VERSION ge '6.46') ?
       (META_MERGE => {
          build_requires => {
-            'Test::More' => 0.45
+            'ExtUtils::MakeMaker' => 0,
+            'Test::More'          => 0.45
          },
          no_index => {
             'directory' => [
