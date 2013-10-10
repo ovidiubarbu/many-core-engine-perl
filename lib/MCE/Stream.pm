@@ -796,7 +796,7 @@ and 'map'.
    my @f = mce_stream_f sub { /ending$/ }, sub { /^starting/ }, $file;
 
 The following assumes 'map' for default_mode in order to demonstrate all the
-possiblities of passing input data into the code block.
+possibilities of passing input data into the code block.
 
 =over 2
 
