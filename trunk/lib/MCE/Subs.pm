@@ -1,6 +1,6 @@
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## MCE::Subs - Exports funtions mapped directly to MCE's methods.
+## MCE::Subs - Exports functions mapped directly to MCE's methods.
 ##
 ###############################################################################
 
@@ -189,7 +189,7 @@ __END__
 
 =head1 NAME
 
-MCE::Subs - Exports funtions mapped directly to MCE's methods
+MCE::Subs - Exports functions mapped directly to MCE's methods
 
 =head1 VERSION
 
@@ -250,14 +250,14 @@ to using MCE::Map, which takes care of creating a MCE instance and running.
    print scalar @a, "\n";
 
 Unlike the native Perl functions, print, printf, and say methods require the
-comma after the filehandle.
+comma after the file handle.
 
    MCE->print("STDERR", $error_msg, "\n");  ## Requires quotes around
-   MCE->say("STDERR", $error_msg);          ## the bareword FH.
+   MCE->say("STDERR", $error_msg);          ## the bare-word FH.
    MCE->say($fh, $error_msg);
 
-   mce_print STDERR, $error_msg, "\n";      ## Quotes can be ommitted
-   mce_say STDERR, $error_msg;              ## around the bareword FH.
+   mce_print STDERR, $error_msg, "\n";      ## Quotes can be omitted
+   mce_say STDERR, $error_msg;              ## around the bare-word FH.
    mce_say $fh, $error_msg;
 
 =head1 FUNCTIONS for the MANAGER PROCESS via ( :manager )
