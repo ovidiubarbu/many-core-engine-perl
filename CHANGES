@@ -1,24 +1,7 @@
 
 Revision history for MCE
 
-1.499_005 Thu Oct 03 21:10:00 EST 2013
-
-    * Added missing package modules under provides.
-
-    * Completed documentation for MCE::Loop.
-
-    * Two items remain before releasing the final MCE 1.5.
-
-      1. Document MCE::Stream
-      2. Redo documentation for MCE::Flow
-
-      ;) mario
-
-1.499_004 Thu Oct 03 09:30:00 EST 2013
-
-    * Re-added provides section inside Makefile.PL and META.yml.
-
-1.499_003 Thu Oct 03 08:30:00 EST 2013
+1.500 Thu Oct 10 01:00:00 EST 2013
 
     * MCE 1.5 is backwards compatible with 1.4 and below.
 
@@ -48,7 +31,11 @@ Revision history for MCE
 
          MCE->run;
 
-    * New options (gather, interval, task_name).
+    * Localize the input scalar $_ prior to calling user_func. Folks can
+      use $_ for input_data and sequence of numbers. Added section to docs
+      explaining DEFAULT INPUT SCALAR.
+
+    * New options (bounds_only, gather, interval, task_name).
 
       The task_end option can now be specified at the top level.
       See docs for use case.
@@ -84,10 +71,6 @@ Revision history for MCE
     * Code re-factor work. Added a private method _validate_runstate called
       by various methods. Organized the code slightly such as placement of
       methods.
-
-    * Localize the input scalar $_ prior to calling user_func. Folks can
-      use $_ for input_data and sequence of numbers. Added section to docs
-      explaining DEFAULT INPUT SCALAR.
 
 1.415 Mon Jun 17 15:00:00 EST 2013
 

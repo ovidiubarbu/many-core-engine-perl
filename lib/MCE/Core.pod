@@ -5,7 +5,7 @@ MCE::Core - Documentation describing the core API for Many-core Engine
 
 =head1 VERSION
 
-This document describes MCE::Core version 1.499_005
+This document describes MCE::Core version 1.500
 
 =head1 SYNOPSIS
 
@@ -111,7 +111,8 @@ Below, a new instance is configured with all available options.
           ## Release 1.5 allows for gathering of data to an array
           ## reference, a MCE::Queue or Thread::Queue object, or
           ## a code reference. One invokes gathering by calling
-          ## the gather method as often as needed.
+          ## the gather method as often as needed. See MCE::Flow
+          ## and MCE::Loop for examples.
 
           ## gather => $Q,
           ## gather => \&preserve_order,

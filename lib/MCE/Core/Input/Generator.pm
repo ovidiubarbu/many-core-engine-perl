@@ -12,7 +12,7 @@
 
 package MCE::Core::Input::Generator;
 
-our $VERSION = '1.499_005'; $VERSION = eval $VERSION;
+our $VERSION = '1.500'; $VERSION = eval $VERSION;
 
 ## Items below are folded into MCE.
 
