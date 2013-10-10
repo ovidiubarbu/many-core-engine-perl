@@ -615,7 +615,7 @@ This document describes MCE::Stream version 1.499_005
 =head1 DESCRIPTION
 
 This module allows one to stream multiple map and/or grep operations in
-parallel. Code blocks run simulatenously from right-to-left. Chunk data are
+parallel. Code blocks run simultaneously from right-to-left. Chunk data are
 sent immediately to the next code block during processing. Results are
 appended immediately as well when passing the reference to the array.
 
@@ -654,7 +654,7 @@ increases.
    my @m3; mce_stream \@m3,
          sub { $_ * 4 }, sub { $_ * 3 }, sub { $_ * 2 }, 1..1000000;
 
-The mce_stream_s funtion will provide better times, useful when input data is
+The mce_stream_s function will provide better times, useful when input data is
 simply a range of numbers. Workers generate sequences mathematically among
 themselves without any interaction from the manager process. Two arguments
 are required for mce_stream_s (begin, end). Step defaults to 1 if begin is
@@ -679,7 +679,7 @@ The following list 6 options which may be overridden when loading the module.
          thaw         => \&decode_sereal       ## \&Storable::thaw
    ;
 
-There is a simplier way to enable Sereal with MCE 1.5. The following will
+There is a simpler way to enable Sereal with MCE 1.5. The following will
 attempt to use Sereal if available, otherwise will default back to using
 Storable for serialization.
 

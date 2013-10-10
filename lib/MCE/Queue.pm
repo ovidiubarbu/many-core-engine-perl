@@ -1672,14 +1672,14 @@ This document describes MCE::Queue version 1.499_005
 This module provides a queue interface supporting normal and priority queues
 and utilizing the IPC engine behind MCE. Queue data resides under the manager
 process. MCE::Queue also allows for a worker to create any number of queues
-locally not available to other workers including the manager processs. Think
+locally not available to other workers including the manager processes. Think
 of a CPU having L3 (shared) and L1 (local) cache.
 
 The structure for the MCE::Queue object is provided below. It allows for normal
 queues to run as fast as an array. Data for priority queues are also nearly as
 fast due to having a brief lookup if the priority exists in the hash including
 adding/removal of the key. The heap array contains only priorities, not the
-data itself. This makes the management of the heap order only as neccessary
+data itself. This makes the management of the heap order only as necessary
 while running.
 
    ## Normal queue data
@@ -1738,7 +1738,7 @@ workers or even the manager process.
 
 Queues behave as if running in local mode for the manager including workers
 for the duration of the script. I cannot think of a use-case for this, but
-wanted to mention the behaviour in the event MCE::Queue is loaded prior to
+wanted to mention the behavior in the event MCE::Queue is loaded prior to
 MCE.
 
 =item C) Loading MCE::Queue without MCE
@@ -1773,7 +1773,7 @@ item(s) to a callback function for adding to the queue.
    my $q5 = MCE::Queue->new( type => $MCE::Queue::FIFO );
    my $q6 = MCE::Queue->new( type => $MCE::Queue::LIFO );
 
-Multiple queues may point to the same callback funtion. Please note that the
+Multiple queues may point to the same callback function. Please note that the
 first argument for the callback function is the queue object itself.
 
    sub _append {
@@ -1789,7 +1789,7 @@ first argument for the callback function is the queue object itself.
 
 The gather option is useful when wanting to temporarily store items into a
 holding area until output order can be obtained. Although a queue is not
-required to gather data in MCE, this is simply a demonstation of the
+required to gather data in MCE, this is simply a demonstration of the
 gather option in the context of a queue.
 
    use MCE;
@@ -1908,7 +1908,7 @@ numbers, not the data.
 
 The main reason for writing MCE::Queue was to have Thread::Queue-like module
 for workers spawned as children with MCE. When searching for queue modules on
-CPAN, I was plesantly surprised at the number of modules out there for Perl.
+CPAN, I was pleasantly surprised at the number of modules out there for Perl.
 What stood out immediately were all the priority queues, heap queues, and
 whether or not FIFO/LIFO or highest/lowest first options were available. It
 seemed like a daunting task to undertake. And so, I began, failed, tried again,
@@ -1928,7 +1928,7 @@ head of the queue.
 
 After glancing over the bsearch_num_pos method for returning the best insert
 position, a couple variations of that were in order for MCE::Queue to
-accomodate the highest/lowest order routines.
+accommodate the highest/lowest order routines.
 
 The private _heap_insert_low and _heap_insert_high methods inside MCE::Queue
 are simply the 2 if statements and the binary search algorithm.
@@ -1962,8 +1962,8 @@ requesting the number of items to dequeue.
 
 =item L<Parallel-DataPipe>
 
-The idea for the recusive synopsis used in this document came from reading
-the recursive example seen in this module's documentation.
+The idea for the recursive synopsis used in this document came from reading
+the example seen in this module's documentation.
 
 =back
 

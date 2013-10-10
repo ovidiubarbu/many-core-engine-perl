@@ -380,7 +380,7 @@ code block requires more CPU code-wise.
    my @m1 =     map { calc } 1..1000000;                  ## 0.756 secs
    my @m2 = mce_map { calc } 1..1000000;                  ## 0.623 secs
 
-The mce_map_s funtion will provide better times, useful when input data is
+The mce_map_s function will provide better times, useful when input data is
 simply a range of numbers. Workers generate sequences mathematically among
 themselves without any interaction from the manager process. Two arguments
 are required for mce_map_s (begin, end). Step defaults to 1 if begin is
@@ -423,7 +423,7 @@ The following list 5 options which may be overridden when loading the module.
          thaw        => \&decode_sereal       ## \&Storable::thaw
    ;
 
-There is a simplier way to enable Sereal with MCE 1.5. The following will
+There is a simpler way to enable Sereal with MCE 1.5. The following will
 attempt to use Sereal if available, otherwise will default back to using
 Storable for serialization.
 

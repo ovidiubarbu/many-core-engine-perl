@@ -416,7 +416,7 @@ The following list 5 options which may be overridden when loading the module.
          thaw        => \&decode_sereal       ## \&Storable::thaw
    ;
 
-There is a simplier way to enable Sereal with MCE 1.5. The following will
+There is a simpler way to enable Sereal with MCE 1.5. The following will
 attempt to use Sereal if available, otherwise will default back to using
 Storable for serialization.
 
@@ -649,7 +649,7 @@ immediately to the manager process without actually leaving the block.
    Worker 1: Hello from hoste
    Exit status: 0
 
-Serialization is automatic behind the scene. The following uses an anoymous
+Serialization is automatic behind the scene. The following uses an anonymous
 array containing 3 elements when gathering data. It's your choice. Obviously,
 calling gather once will be more efficient for IPC.
 

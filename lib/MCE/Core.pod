@@ -287,7 +287,7 @@ The following list 5 options which may be overridden when loading the module.
 
    my $mce = MCE->new( ... );
 
-There is a simplier way to enable Sereal with MCE 1.5. The following will
+There is a simpler way to enable Sereal with MCE 1.5. The following will
 attempt to use Sereal if available, otherwise will default back to using
 Storable for serialization.
 

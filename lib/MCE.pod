@@ -21,9 +21,9 @@ many workers run in parallel.
 
 =head1 CORE MODULES
 
-The core engine is made up of 3 modules. New to the 1.5 release is the
-inclusion of the gather and time interval features. In addition, the core
-has a faster IPC engine when compared to prior releases.
+Three packages make up the core engine in MCE. New to the 1.5 release is the
+inclusion of the bounds_only, gather and time interval features. In addition,
+the core has an overall faster IPC engine when compared to prior releases.
 
 =over 5
 
@@ -61,25 +61,28 @@ allows 3 options, e.g. :manager, :worker, :getter.
 
 =head1 MCE MODELS
 
-MCE 1.5 introduces 5 models for even more automation behind the scene. The
-models configure MCE, spawn plus shutdown workers automatically.
+MCE 1.5 introduces 5 models for automation behind the scene in generating the
+MCE instance and auto-tuning chunk_size and max_workers. The models configure
+MCE, spawn plus shutdown workers when script terminates.
 
 The models take Many-core Engine to a new level for ease of use.
 
 =over 5
 
+=item L<MCE::Loop>
+
+Provides a parallel loop utilizing MCE for building creative loops.
+
 =item L<MCE::Flow>
 
 A parallel flow model for building creative applications. This makes use of
 User Tasks in MCE. The author has full control when utilizing this model.
+MCE::Flow is similar to MCE::Loop, but allows for multiple code blocks to
+run simultaneously with slight change in syntax.
 
 =item L<MCE::Grep>
 
 Provides a parallel grep implementation similar to the native grep function.
-
-=item L<MCE::Loop>
-
-Provides a parallel loop utilizing MCE for building creative loops.
 
 =item L<MCE::Map>
 
@@ -88,7 +91,9 @@ Provides a parallel map model similar to the native map function.
 =item L<MCE::Stream>
 
 Provides an efficient parallel implementation for chaining multiple maps
-and greps together through the use of User Tasks and MCE::Queue.
+and greps together through the use of User Tasks and MCE::Queue. Like with
+MCE::Flow, MCE::Stream can run multiple code blocks simultaneously with
+slight change in syntax from MCE::Map and MCE::Grep.
 
 =back
 
