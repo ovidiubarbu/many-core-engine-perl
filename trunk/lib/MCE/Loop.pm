@@ -455,7 +455,7 @@ The init function takes a hash of MCE options.
 
    print "\n", "@a{1..100}", "\n";
 
-   -- output
+   -- Output
 
    ## 3 started
    ## 1 started
@@ -516,6 +516,61 @@ optional. The format is passed to sprintf (% can be omitted below).
    };
 
 =back
+
+The sequence engine can compute the begin and end items only for the chunk
+leaving out the items in between (hence boundaries only) with the bounds_only
+option. This option applies to sequence only and has no effect when chunk_size
+equals 1.
+
+The time to run for MCE below is 0.006s. This becomes 0.827s without the
+bounds_only option due to computing all items in between as well, thus
+creating a very large array. Basically, specify bounds_only => 1 when
+boundaries is all you need for looping inside the block; e.g Monte Carlo
+simulations. Time was measured using 1 worker to emphasize the difference.
+
+   use MCE::Loop;
+
+   MCE::Loop::init {
+      max_workers => 1,
+    # chunk_size  => 'auto',     ## btw, 'auto' will never drop below 2
+      chunk_size  => 1_250_000,
+      bounds_only => 1
+   };
+
+   ## For sequence, the input scalar $_ points to $chunk_ref
+   ## when chunk_size > 1, otherwise equals $chunk_ref->[0].
+   ##
+   ## mce_loop_s {
+   ##    my $begin = $_->[0]; my $end = $_->[-1];
+   ##
+   ##    for ($begin .. $end) {
+   ##       ... have fun with MCE ...
+   ##    }
+   ##
+   ## } 1, 10_000_000;
+
+   mce_loop_s {
+      my ($mce, $chunk_ref, $chunk_id) = @_;
+
+      ## $chunk_ref contains just 2 items, not 1_250_000
+
+      my $begin = $chunk_ref->[ 0];
+      my $end   = $chunk_ref->[-1];   ## or $chunk_ref->[1]
+
+      MCE->printf("%7d .. %8d\n", $begin, $end);
+
+   } 1, 10_000_000;
+
+   -- Output
+
+         1 ..  1250000
+   1250001 ..  2500000
+   2500001 ..  3750000
+   3750001 ..  5000000
+   5000001 ..  6250000
+   6250001 ..  7500000
+   7500001 ..  8750000
+   8750001 .. 10000000
 
 =head1 GATHERING DATA
 

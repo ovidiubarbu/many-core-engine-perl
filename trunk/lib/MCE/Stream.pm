@@ -233,11 +233,11 @@ sub mce_stream_s (@) {
          }
          elsif (ref $_[$_pos] eq 'HASH') {
             $_begin = $_[$_pos]->{begin}; $_end = $_[$_pos]->{end};
-            $_params->{sequence} = $_[0];
+            $_params->{sequence} = $_[$_pos];
          }
          elsif (ref $_[$_pos] eq 'ARRAY') {
             $_begin = $_[$_pos]->[0]; $_end = $_[$_pos]->[1];
-            $_params->{sequence} = $_[0];
+            $_params->{sequence} = $_[$_pos];
          }
 
          last;
@@ -578,61 +578,280 @@ This document describes MCE::Stream version 1.499_005
 
 =head1 SYNOPSIS
 
+   ## Exports mce_stream, mce_stream_f, mce_stream_s
    use MCE::Stream;
 
-   my (@a, $b);
+   my (@m1, @m2, @m3);
 
-   @a = mce_stream sub { $_ * 3 }, sub { $_ * 2 }, 1..10000;
-   mce_stream \@b, sub { $_ * 3 }, sub { $_ * 2 }, 1..10000;
+   ## Default mode is map and processed from right-to-left
+   @m1 = mce_stream sub { $_ * 3 }, sub { $_ * 2 }, 1..10000;
+   mce_stream \@m2, sub { $_ * 3 }, sub { $_ * 2 }, 1..10000;
 
    ## Native Perl
-   my @s = mce_map { $_ * $_ } mce_grep { $_ % 5 == 0 } 1..10000;
+   @m3 = map { $_ * $_ } grep { $_ % 5 == 0 } 1..10000;
 
-   ## Multiple maps and greps running in parallel (right-to-left)
-   mce_stream \@s,
+   ## Streaming grep and map in parallel
+   mce_stream \@m3,
       { mode => 'map',  code => sub { $_ * $_ } },
       { mode => 'grep', code => sub { $_ % 5 == 0 } }, 1..10000;
 
+   ## Array or array_ref
+   my @a = mce_stream sub { $_ * $_ }, 1..10000;
+   my @b = mce_stream sub { $_ * $_ }, [ 1..10000 ];
+
+   ## File_path, glob_ref, or scalar_ref
+   my @c = mce_stream_f sub { chomp; $_ }, "/path/to/file";
+   my @d = mce_stream_f sub { chomp; $_ }, $file_handle;
+   my @e = mce_stream_f sub { chomp; $_ }, \$scalar;
+
+   ## Sequence of numbers (begin, end [, step, format])
+   my @f = mce_stream_s sub { $_ * $_ }, 1, 10000, 5;
+   my @g = mce_stream_s sub { $_ * $_ }, [ 1, 10000, 5 ];
+
+   my @h = mce_stream_s sub { $_ * $_ }, {
+      begin => 1, end => 10000, step => 5, format => undef
+   };
+
 =head1 DESCRIPTION
 
-TODO ...
+This module allows one to stream multiple map and/or grep operations in
+parallel. Code blocks run simulatenously from right-to-left. Chunk data are
+sent immediately to the next code block during processing. Results are
+appended immediately as well when passing the reference to the array.
 
-=head1 API DOCUMENTATION
+   ## Appends are serialized, even out-of-order ok, but immediately.
+   ## Out-of-order chunks are held temporarily until ordered chunks
+   ## arrive before appending.
 
-=over
+   mce_stream \@a, sub { $_ }, sub { $_ }, sub { $_ }, 1..10000;
 
-=item mce_stream
+   ##                                                    input
+   ##                                        chunk1      input
+   ##                            chunk3      chunk2      input
+   ##                chunk2      chunk2      chunk3      input
+   ##   append1      chunk3      chunk1      chunk4      input
+   ##   append2      chunk1      chunk5      chunk5      input
+   ##   append3      chunk5      chunk4      chunk6      ...
+   ##   append4      chunk4      chunk6      ...
+   ##   append5      chunk6      ...
+   ##   append6      ...
+   ##   ...
+   ##
 
-   ## mce_stream is imported into the calling script.
+MCE incurs a small overhead due to passing of data. Therefore, a fast code
+block will likely run faster when chaining multiple map functions natively in
+Perl. However, the overhead quickly diminishes as the complexity of the code
+increases.
 
-   my @a = mce_stream sub { ... }, sub { ... }, 1..100;
+   ## 0.542 secs -- baseline using the native map function
+   my @m1 = map { $_ * 4 } map { $_ * 3 } map { $_ * 2 } 1..1000000;
 
-=item mce_stream_f
+   ## 0.765 secs -- this is quite amazing considering data passing
+   my @m2 = mce_stream
+         sub { $_ * 4 }, sub { $_ * 3 }, sub { $_ * 2 }, 1..1000000;
 
-TODO ...
+   ## 0.592 secs -- appends to @m3 are immediate
+   my @m3; mce_stream \@m3,
+         sub { $_ * 4 }, sub { $_ * 3 }, sub { $_ * 2 }, 1..1000000;
 
-=item mce_stream_s
+The mce_stream_s funtion will provide better times, useful when input data is
+simply a range of numbers. Workers generate sequences mathematically among
+themselves without any interaction from the manager process. Two arguments
+are required for mce_stream_s (begin, end). Step defaults to 1 if begin is
+smaller than end, otherwise -1.
 
-TODO ...
+   ## 0.447 secs -- numbers are generated mathematically via sequence
+   my @m4; mce_stream_s \@m4,
+         sub { $_ * 4 }, sub { $_ * 3 }, sub { $_ * 2 }, 1, 1000000;
+
+=head1 OVERRIDING DEFAULTS
+
+The following list 6 options which may be overridden when loading the module.
+
+   use Sereal qw(encode_sereal decode_sereal);
+
+   use MCE::Stream
+         default_mode => 'grep',               ## Default 'map'
+         max_workers  => 8,                    ## Default 'auto'
+         chunk_size   => 500,                  ## Default 'auto'
+         tmp_dir      => "/path/to/app/tmp",   ## $MCE::Signal::tmp_dir
+         freeze       => \&encode_sereal,      ## \&Storable::freeze
+         thaw         => \&decode_sereal       ## \&Storable::thaw
+   ;
+
+There is a simplier way to enable Sereal with MCE 1.5. The following will
+attempt to use Sereal if available, otherwise will default back to using
+Storable for serialization.
+
+   use MCE::Stream Sereal => 1;
+
+   ## Serialization is through Sereal if available.
+   my @m2 = mce_stream sub { $_ * $_ }, 1..10000;
+
+=head1 CUSTOMIZING MCE
+
+=over 2
 
 =item init
 
-   MCE::Stream::init {
+The init function takes a hash of MCE options. The gather and task_end options,
+if specified, will be ignored due to being used internally by the module.
 
-      ## This form is available for configuring MCE options
-      ## before running.
+   use MCE::Stream;
+
+   MCE::Stream::init {
+      chunk_size => 1, max_workers => 4,
 
       user_begin => sub {
-         print "## ", MCE->wid, "\n";
-      }
+         print "## ", MCE->wid, " started\n";
+      },
+
       user_end => sub {
-         ...
+         print "## ", MCE->wid, " completed\n";
       }
    };
 
+   my @a = mce_stream sub { $_ * $_ }, 1..100;
+
+   print "\n", "@a", "\n";
+
+   -- Output
+
+   ## 1 started
+   ## 2 started
+   ## 3 started
+   ## 4 started
+   ## 3 completed
+   ## 1 completed
+   ## 2 completed
+   ## 4 completed
+
+   1 4 9 16 25 36 49 64 81 100 121 144 169 196 225 256 289 324 361
+   400 441 484 529 576 625 676 729 784 841 900 961 1024 1089 1156
+   1225 1296 1369 1444 1521 1600 1681 1764 1849 1936 2025 2116 2209
+   2304 2401 2500 2601 2704 2809 2916 3025 3136 3249 3364 3481 3600
+   3721 3844 3969 4096 4225 4356 4489 4624 4761 4900 5041 5184 5329
+   5476 5625 5776 5929 6084 6241 6400 6561 6724 6889 7056 7225 7396
+   7569 7744 7921 8100 8281 8464 8649 8836 9025 9216 9409 9604 9801
+   10000
+
+=back
+
+Like with MCE::Stream::init above, MCE options can also be specified using an
+anonymous hash as the first argument. Both max_workers and task_name can take
+an anonymous array for setting values individually for each code block.
+
+   use MCE::Stream;
+
+   my @a = mce_stream {
+      max_workers => [ 2, 4, 3, ], task_name => [ 'c', 'b', 'a' ],
+
+      user_end => sub {
+         my ($task_id, $task_name) = (MCE->task_id, MCE->task_name);
+         print "$task_id - $task_name completed\n";
+      }
+   },
+   sub { $_ * 4 },             ## 2 workers, named c
+   sub { $_ * 3 },             ## 4 workers, named b
+   sub { $_ * 2 }, 1..10000;   ## 3 workers, named a
+
+   -- Output
+
+   0 - a completed
+   0 - a completed
+   0 - a completed
+   1 - b completed
+   1 - b completed
+   1 - b completed
+   1 - b completed
+   2 - c completed
+   2 - c completed
+
+The anonymous hash, for specifying options, also comes first when passing the
+array reference.
+
+   my @a; mce_stream {
+      ...
+   }, \@a, sub { ... }, sub { ... }, 1..10000;
+
+=head1 API DOCUMENTATION
+
+Scripts using MCE::Stream can be written using the long or short form. The long
+form becomes relavant when mixing modes. Processing occurs from right-to-left.
+
+   my @m3 = mce_stream
+      { mode => 'map',  code => sub { $_ * $_ } },
+      { mode => 'grep', code => sub { $_ % 5 == 0 } }, 1..10000;
+
+   my @m4; mce_stream \@m4,
+      { mode => 'map',  code => sub { $_ * $_ } },
+      { mode => 'grep', code => sub { $_ % 5 == 0 } }, 1..10000;
+
+For multiple grep blocks, the short form can be used. Simply specify the
+default mode for the module. The two valid values for default_mode is 'grep'
+and 'map'.
+
+   use MCE::Stream default_mode => 'grep';
+
+   my @f = mce_stream_f sub { /ending$/ }, sub { /^starting/ }, $file;
+
+The following assumes 'map' for default_mode in order to demonstrate all the
+possiblities of passing input data into the code block.
+
+=over 2
+
+=item mce_stream sub { code }, list
+
+Input data can be specified using a list or passing a reference to an array.
+
+   my @a = mce_stream sub { $_ * 2 }, 1..1000;
+   my @b = mce_stream sub { $_ * 2 }, [ 1..1000 ];
+
+=item mce_stream_f sub { code }, file
+
+The fastest of these is the /path/to/file. Workers communicate the next offset
+position among themselves without any interaction from the manager process.
+
+   my @c = mce_stream_f sub { chomp; $_ . "\r\n" }, "/path/to/file";
+   my @d = mce_stream_f sub { chomp; $_ . "\r\n" }, $file_handle;
+   my @e = mce_stream_f sub { chomp; $_ . "\r\n" }, \$scalar;
+
+=item mce_stream_s sub { code }, sequence
+
+Sequence can be specified as a list, an array reference, or a hash reference.
+The functions require both begin and end values to run. Step and format are
+optional. The format is passed to sprintf (% can be omitted below).
+
+   my ($beg, $end, $step, $fmt) = (10, 20, 0.1, "%4.1f");
+
+   my @f = mce_stream_s sub { $_ }, $beg, $end, $step, $fmt;
+   my @g = mce_stream_s sub { $_ }, [ $beg, $end, $step, $fmt ];
+
+   my @h = mce_stream_s sub { $_ }, {
+      begin => $beg, end => $end, step => $step, format => $fmt
+   };
+
+=back
+
+=head1 MANUAL SHUTDOWN
+
+=over 2
+
 =item finish
 
-   MCE::Stream::finish();   ## This is called automatically.
+MCE workers remain persistent as much as possible after running. Shutdown
+occurs when the script exits. One can manually shutdown MCE by simply calling
+finish after running. This resets the MCE instance.
+
+   use MCE::Stream;
+
+   MCE::Stream::init {
+      chunk_size => 20, max_workers => 'auto'
+   };
+
+   my @a = mce_stream { ... } 1..100;
+
+   MCE::Stream::finish;
 
 =back
 

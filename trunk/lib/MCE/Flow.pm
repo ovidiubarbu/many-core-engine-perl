@@ -182,11 +182,11 @@ sub mce_flow_s (@) {
          }
          elsif ($_ref eq 'HASH') {
             $_begin = $_[$_pos]->{begin}; $_end = $_[$_pos]->{end};
-            $_params->{sequence} = $_[0];
+            $_params->{sequence} = $_[$_pos];
          }
          elsif ($_ref eq 'ARRAY') {
             $_begin = $_[$_pos]->[0]; $_end = $_[$_pos]->[1];
-            $_params->{sequence} = $_[0];
+            $_params->{sequence} = $_[$_pos];
          }
 
          last;
@@ -518,7 +518,7 @@ serialization. This is the fastest approach in MCE with the least overhead.
    }
 
 To put it all together, MCE::Flow builds out a MCE instance behind the scene
-automatically for you and runs. Task_name can take an array reference. The
+automatically for you and runs. Task_name can take an anonymous array. The
 same is true for max_workers (not shown below).
 
    my @a; $_gather_ref = \@a; $_order_id = 1;
