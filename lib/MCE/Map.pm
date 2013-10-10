@@ -346,9 +346,9 @@ This document describes MCE::Map version 1.499_005
    my @b = mce_map { $_ * $_ } [ 1..10000 ];
 
    ## File_path, glob_ref, or scalar_ref
-   my @c = mce_map_f { chomp; do_something($_) } "/path/to/file";
-   my @d = mce_map_f { chomp; do_something($_) } $file_handle;
-   my @e = mce_map_f { chomp; do_something($_) } \$scalar;
+   my @c = mce_map_f { chomp; $_ } "/path/to/file";
+   my @d = mce_map_f { chomp; $_ } $file_handle;
+   my @e = mce_map_f { chomp; $_ } \$scalar;
 
    ## Sequence of numbers (begin, end [, step, format])
    my @f = mce_map_s { $_ * $_ } 1, 10000, 5;
@@ -459,7 +459,7 @@ will be set to undef due to being used internally by the module.
 
    print "\n", "@a", "\n";
 
-   -- output
+   -- Output
 
    ## 2 started
    ## 1 started

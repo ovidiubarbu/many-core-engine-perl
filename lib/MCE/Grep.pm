@@ -451,7 +451,7 @@ will be set to undef due to being used internally by the module.
 
    print "\n", "@a", "\n";
 
-   -- output
+   -- Output
 
    ## 2 started
    ## 3 started
