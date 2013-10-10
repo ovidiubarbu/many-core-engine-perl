@@ -480,7 +480,7 @@ The init function takes a hash of MCE options.
 =head1 API DOCUMENTATION
 
 The following assumes chunk_size equals 1 in order to demonstrate all the
-possiblities of passing input data for the loop.
+possibilities of passing input data into the loop.
 
 =over 2
 
@@ -596,7 +596,7 @@ The gather method can be called multiple times within the block unlike return
 which would leave the block. Therefore, think of gather as yielding results
 immediately to the manager process without actually leaving the block.
 
-   use MCE::Loop chunk_size => 1, max_workers => '3';
+   use MCE::Loop chunk_size => 1, max_workers => 3;
 
    my @hosts = qw(
       hosta hostb hostc hostd hoste
