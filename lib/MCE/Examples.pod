@@ -28,6 +28,9 @@ patterns and word count aggregation.
              egrep command. Try against a large file containing
              very long lines.
 
+   flow_model.pl
+             Demonstrates MCE::Flow, MCE::Queue, and MCE->gather.
+
    foreach.pl, forseq.pl, forchunk.pl
              These take the same sqrt example from Parallel::Loops
              and measures the overhead of the engine. The number

@@ -29,6 +29,7 @@ examples/barrier_sync.pl
 examples/cat.pl
 examples/egrep.pl
 examples/findnull.pl
+examples/flow_model.pl
 examples/forchunk.pl
 examples/foreach.pl
 examples/forseq.pl
