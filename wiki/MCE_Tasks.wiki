@@ -6,10 +6,6 @@ MCE::Queue, and MCE->gather.
 
 https://metacpan.org/source/MARIOROY/MCE-1.501/examples/flow_model.pl
 
-Regards,
-
-- mario
-
 The 1.2 release provides support for multiple tasks. Workers can be configured based on tasking.
 
 http://many-core-engine-perl.googlecode.com/svn/wiki/img/MCE_Tasks.png
