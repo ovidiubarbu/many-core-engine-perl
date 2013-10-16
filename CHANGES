@@ -1,6 +1,27 @@
 
 Revision history for MCE
 
+1.501 Wed Oct 16 01:20:00 EST 2013
+
+  [NEW FEATURES]
+
+  * Added examples/flow_model.pl for demonstrating MCE::Flow, MCE::Queue, and
+    MCE->gather.
+
+  [ENHANCEMENTS]
+
+  * Changelog section uses a new format beginning with this release.
+
+  [BUG FIXES]
+
+  * Addressed an issue with the worker signal "die" handler (#89538). Eval'd
+    code should not raise an exception causing the app to die. This is working
+    as expected for workers spawned as children.
+
+    For threads, a die called explicitly inside an eval block will cause the
+    worker to exit (same as previously). However, an eval 'use MissingModule'
+    will no longer cause the thread to die.
+
 1.500 Thu Oct 10 01:00:00 EST 2013
 
     * MCE 1.5 is backwards compatible with 1.4 and below.
