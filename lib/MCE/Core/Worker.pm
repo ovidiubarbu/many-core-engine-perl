@@ -25,6 +25,12 @@ use warnings;
 
 no warnings 'threads'; no warnings 'uninitialized';
 
+my $_die_msg;
+
+END {
+   MCE->exit(255, $_die_msg) if (defined $_die_msg);
+}
+
 ###############################################################################
 ## ----------------------------------------------------------------------------
 ## Internal do, gather and send related functions for serializing data to
@@ -412,6 +418,8 @@ sub _worker_do {
    $self->{user_end}($self)
       if (defined $self->{user_end});
 
+   $_die_msg = undef;
+
    ## Notify the main process a worker has completed.
    local $\ = undef if (defined $\);
 
@@ -548,14 +556,16 @@ sub _worker_main {
    $SIG{PIPE} = \&MCE::_NOOP;
 
    $SIG{__DIE__} = sub {
-      ## For threads, $^S is 1 when "not" eval'ing a die statement.
       unless ($MCE::_has_threads && $_use_threads) {
-         CORE::die(@_) if ($^S);   ## Direct to CORE::die if executing an eval
+         $_die_msg = (defined $_[0]) ? $_[0] : '';
+         CORE::die(@_);
       }
-      local $SIG{__DIE__} = sub { };
-      local $\ = undef; print STDERR $_[0];
-
-      $self->exit(255, $_[0]);
+      else {
+         CORE::die(@_) unless (defined $^S);
+         local $SIG{__DIE__} = sub { };
+         local $\ = undef; print STDERR $_[0];
+         $self->exit(255, $_[0]);
+      }
    };
 
    ## Use options from user_tasks if defined.
