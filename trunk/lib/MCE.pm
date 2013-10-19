@@ -19,7 +19,7 @@ use MCE::Signal;
 
 our $VERSION = '1.501'; $VERSION = eval $VERSION;
 
-my  (%_valid_fields_new, %_params_allowed_args, %_valid_fields_task);
+our (%_valid_fields_new, %_params_allowed_args, %_valid_fields_task);
 our ($_is_cygwin, $_is_MSWin32, $_is_WinEnv);
 our ($_que_read_size, $_que_template);
 
@@ -1465,7 +1465,6 @@ sub exit {
 
    close $_DAT_LOCK; undef $_DAT_LOCK;
    close $_COM_LOCK; undef $_COM_LOCK;
-   close STDERR; close STDOUT;
 
    threads->exit($_exit_status)
       if ($_has_threads && threads->can('exit'));

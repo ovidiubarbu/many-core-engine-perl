@@ -80,6 +80,8 @@ sub import {
 }
 
 END {
+   return if (defined $_MCE && $_MCE->wid);
+
    MCE::Stream::finish();
 }
 
@@ -399,20 +401,27 @@ sub mce_stream (@) {
 
       _gen_user_tasks(\@_queue, \@_code, \@_mode, \@_name, \@_wrks);
 
-      $_MCE = MCE->new(
+      my %_options = (
          use_threads => 0, max_workers => $_max_workers, task_name => $_tag,
          user_tasks => \@_user_tasks, task_end => \&_task_end
       );
 
       if (defined $_params) {
-         my $_p = $_params; foreach (keys %{ $_p }) {
+         my $_p = $_params;
+
+         foreach (keys %{ $_p }) {
             next if ($_ eq 'max_workers' && ref $_p->{max_workers} eq 'ARRAY');
             next if ($_ eq 'task_name' && ref $_p->{task_name} eq 'ARRAY');
             next if ($_ eq 'input_data');
 
-            $_MCE->{$_} = $_p->{$_};
+            _croak("MCE::Stream: '$_' is not a valid constructor argument")
+               unless (exists $MCE::_valid_fields_new{$_});
+
+            $_options{$_} = $_p->{$_};
          }
       }
+
+      $_MCE = MCE->new(%_options);
    }
 
    if (defined $_input_data) {
