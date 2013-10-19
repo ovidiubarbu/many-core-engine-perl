@@ -124,14 +124,14 @@ sub DESTROY {
 
    my $_queue = $_[0];
 
+   undef $_queue->{_datp}; undef $_queue->{_datq}; undef $_queue->{_heap};
+   delete $_queues->{ $_queue->{_id} } if (exists $_queue->{_id});
+
+   return if (defined $MCE::MCE && $MCE::MCE->wid);
+
    if (defined $_queue->{_qr_sock}) {
-
-      ## Close sockets.
-      CORE::shutdown $_queue->{_qr_sock}, 0;
-      CORE::shutdown $_queue->{_qw_sock}, 1;
-
-      close $_queue->{_qr_sock}; undef $_queue->{_qr_sock};
       close $_queue->{_qw_sock}; undef $_queue->{_qw_sock};
+      close $_queue->{_qr_sock}; undef $_queue->{_qr_sock};
    }
 
    return;
@@ -1906,13 +1906,13 @@ numbers, not the data.
 
 =head1 ACKNOWLEDGEMENTS
 
-The main reason for writing MCE::Queue was to have Thread::Queue-like module
-for workers spawned as children with MCE. When searching for queue modules on
-CPAN, I was pleasantly surprised at the number of modules out there for Perl.
-What stood out immediately were all the priority queues, heap queues, and
-whether or not FIFO/LIFO or highest/lowest first options were available. It
-seemed like a daunting task to undertake. And so, I began, failed, tried again,
-failed again, and finally on the 3rd attempt was pleased with the results.
+The main reason for writing MCE::Queue was to have a Thread::Queue-like module
+for workers spawned as children. When searching for queue related modules, I
+was pleasantly surprised at the number of modules out there. What stood out
+immediately were all the priority queues, heap queues, and whether or not
+(FIFO/LIFO) or (highest/lowest first) options were available. It seemed like a
+daunting task to undertake. And so began, failed, tried again, failed again,
+and finally succeeded on the 3rd attempt.
 
 The following provides a list of resources I've read in helping me create
 MCE::Queue for MCE.
@@ -1930,9 +1930,6 @@ After glancing over the bsearch_num_pos method for returning the best insert
 position, a couple variations of that were in order for MCE::Queue to
 accommodate the highest/lowest order routines.
 
-The private _heap_insert_low and _heap_insert_high methods inside MCE::Queue
-are simply the 2 if statements and the binary search algorithm.
-
 =item L<Heap-Priority>, L<List::Priority>
 
 At this point, I thought why not have both normal queues and priority queues
@@ -1940,16 +1937,16 @@ be efficient. And with that in mind, also provide options to allow folks to
 choose LIFO/LILO, and highest/lowest order for the queue. The data structure
 in MCE::Queue is describe above.
 
-MCE workers may also benefit from being able to create local queues not
-available to other workers including the manager process. Thus, the reason
-for the 3 run modes described at the beginning of this document.
+MCE workers also benefit from being able to create local queues not available
+to other workers including the manager process. Thus, the reason for the 3 run
+modes described at the beginning of this document.
 
 =item L<Thread::Queue>
 
-Being that MCE supports both children and threads, Thread::Queue was used as
-a guide for naming and documenting the methods in MCE::Queue. Although not
-100% compatible, pay close attention to the dequeue method in MCE::Queue when
-requesting the number of items to dequeue.
+Being that MCE supports both children and threads, Thread::Queue was used
+as a guide for the naming of methods and documentation. Although not 100%
+compatible, pay close attention to the dequeue method when requesting the
+number of items to dequeue.
 
    ->enqueuep( $p, $item [, $item, ... ] );    ## Extension (p)
    ->enqueue( $item [, $item, ... ] );
@@ -1963,7 +1960,7 @@ requesting the number of items to dequeue.
 =item L<Parallel-DataPipe>
 
 The idea for the recursive synopsis used in this document came from reading
-the example seen in this module's documentation.
+the example in this module's documentation.
 
 =back
 

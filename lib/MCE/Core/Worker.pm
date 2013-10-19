@@ -659,8 +659,8 @@ sub _worker_main {
    if ($_lock_chn) {
       close $_DAT_LOCK; undef $_DAT_LOCK;
    }
+
    close $_COM_LOCK; undef $_COM_LOCK;
-   close STDERR; close STDOUT;
 
    return;
 }

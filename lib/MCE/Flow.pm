@@ -73,6 +73,8 @@ sub import {
 }
 
 END {
+   return if (defined $_MCE && $_MCE->wid);
+
    MCE::Flow::finish();
 }
 
@@ -316,20 +318,27 @@ sub mce_flow (@) {
       $_MCE->shutdown() if (defined $_MCE);
       _gen_user_tasks(\@_code, \@_name, \@_wrks);
 
-      $_MCE = MCE->new(
+      my %_options = (
          max_workers => $_max_workers, task_name => $_tag,
          user_tasks => \@_user_tasks
       );
 
       if (defined $_params) {
-         my $_p = $_params; foreach (keys %{ $_p }) {
+         my $_p = $_params;
+
+         foreach (keys %{ $_p }) {
             next if ($_ eq 'max_workers' && ref $_p->{max_workers} eq 'ARRAY');
             next if ($_ eq 'task_name' && ref $_p->{task_name} eq 'ARRAY');
             next if ($_ eq 'input_data');
 
-            $_MCE->{$_} = $_p->{$_};
+            _croak("MCE::Flow: '$_' is not a valid constructor argument")
+               unless (exists $MCE::_valid_fields_new{$_});
+
+            $_options{$_} = $_p->{$_};
          }
       }
+
+      $_MCE = MCE->new(%_options);
    }
 
    my @_a; my $_wa = wantarray; $_MCE->{gather} = \@_a if (defined $_wa);

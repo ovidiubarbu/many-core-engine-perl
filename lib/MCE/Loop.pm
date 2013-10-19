@@ -72,6 +72,8 @@ sub import {
 }
 
 END {
+   return if (defined $_MCE && $_MCE->wid);
+
    MCE::Loop::finish();
 }
 
@@ -238,17 +240,23 @@ sub mce_loop (&@) {
       $_MCE->shutdown() if (defined $_MCE);
       $_prev_c = $_code;
 
-      $_MCE = MCE->new(
+      my %_options = (
          max_workers => $_max_workers, task_name => $_tag,
          user_func => $_code
       );
 
       if (defined $_params) {
-         my $_p = $_params; foreach (keys %{ $_p }) {
+         foreach (keys %{ $_params }) {
             next if ($_ eq 'input_data');
-            $_MCE->{$_} = $_p->{$_};
+
+            _croak("MCE::Loop: '$_' is not a valid constructor argument")
+               unless (exists $MCE::_valid_fields_new{$_});
+
+            $_options{$_} = $_params->{$_};
          }
       }
+
+      $_MCE = MCE->new(%_options);
    }
 
    my @_a; my $_wa = wantarray; $_MCE->{gather} = \@_a if (defined $_wa);

@@ -1,6 +1,6 @@
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## MCE::Subs - Exports functions mapped directly to MCE's methods.
+## MCE::Subs - Exports functions mapped directly to MCE methods.
 ##
 ###############################################################################
 
@@ -189,7 +189,7 @@ __END__
 
 =head1 NAME
 
-MCE::Subs - Exports functions mapped directly to MCE's methods
+MCE::Subs - Exports functions mapped directly to MCE methods
 
 =head1 VERSION
 

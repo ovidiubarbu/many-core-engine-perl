@@ -72,6 +72,8 @@ sub import {
 }
 
 END {
+   return if (defined $_MCE && $_MCE->wid);
+
    MCE::Map::finish();
 }
 
@@ -255,7 +257,7 @@ sub mce_map (&@) {
       $_MCE->shutdown() if (defined $_MCE);
       $_prev_c = $_code;
 
-      $_MCE = MCE->new(
+      my %_options = (
          use_threads => 0, max_workers => $_max_workers, task_name => $_tag,
          gather => \&_gather, user_func => sub {
 
@@ -269,11 +271,17 @@ sub mce_map (&@) {
       );
 
       if (defined $_params) {
-         my $_p = $_params; foreach (keys %{ $_p }) {
+         foreach (keys %{ $_params }) {
             next if ($_ eq 'input_data');
-            $_MCE->{$_} = $_p->{$_};
+
+            _croak("MCE::Map: '$_' is not a valid constructor argument")
+               unless (exists $MCE::_valid_fields_new{$_});
+
+            $_options{$_} = $_params->{$_};
          }
       }
+
+      $_MCE = MCE->new(%_options);
    }
 
    if (defined $_input_data) {
