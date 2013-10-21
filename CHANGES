@@ -1,6 +1,32 @@
 
 Revision history for MCE
 
+1.502 xxx xxx xx xx:xx:xx xxx xxxx
+
+  [NEW FEATURES]
+
+  * One can specify a hash reference for the gather option. Updated
+    documentation describing the gather option and the gather method.
+
+  [ENHANCEMENTS]
+
+  * All models will croak when specifying an invalid MCE option.
+
+  [BUG FIXES]
+
+  * The END block for all models will return immediately when called by a
+    worker thread or process. Removed the line closing STDERR and STDOUT
+    prior to workers exiting. It turns out that workers were calling
+    shutdown which is not allowed. This impacted MCE::Flow, MCE::Grep,
+    MCE::Loop, MCE::Map, and MCE::Stream.
+
+  * An update was applied to DESTROY in MCE::Queue to address an edge
+    case during additional testing across several environments.
+
+  * Added documentation describing the core methods in MCE. I had moved the
+    missing sections to another file some time back and totally forgotten
+    about them when finalizing on MCE::Core.pod for the 1.5 release.
+
 1.501 Wed Oct 16 01:20:00 EST 2013
 
   [NEW FEATURES]

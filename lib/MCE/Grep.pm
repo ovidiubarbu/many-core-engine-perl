@@ -434,7 +434,7 @@ Storable for serialization.
 
 =head1 CUSTOMIZING MCE
 
-=over 2
+=over 3
 
 =item init
 
@@ -476,7 +476,7 @@ will be set to undef due to being used internally by the module.
 
 =head1 API DOCUMENTATION
 
-=over 2
+=over 3
 
 =item mce_grep { code } list
 
@@ -513,7 +513,7 @@ optional. The format is passed to sprintf (% can be omitted below).
 
 =head1 MANUAL SHUTDOWN
 
-=over 2
+=over 3
 
 =item finish
 

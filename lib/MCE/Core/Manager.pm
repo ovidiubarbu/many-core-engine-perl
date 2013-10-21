@@ -75,10 +75,11 @@ sub _output_loop {
 
    my ($_aborted, $_eof_flag, $_syn_flag, %_sendto_fhs, $_value, $_want_id);
    my ($_callback, $_chunk_id, $_chunk_size, $_fd, $_file, $_flush_file);
-   my (@_gather, @_is_c_ref, @_is_q_ref, $_on_post_exit, $_on_post_run);
+   my (@_is_c_ref, @_is_h_ref, @_is_q_ref, $_on_post_exit, $_on_post_run);
    my ($_has_user_tasks, $_sess_dir, $_task_id, $_user_error, $_user_output);
    my ($_input_size, $_len, $_offset_pos, $_single_dim, $_use_slurpio);
    my ($_exit_id, $_exit_pid, $_exit_status, $_exit_wid, $_sync_cnt);
+   my (@_gather);
 
    my ($_BSB_W_SOCK, $_BSE_W_SOCK, $_DAT_R_SOCK, $_DAU_R_SOCK, $_MCE_STDERR);
    my ($_I_FLG, $_O_FLG, $_I_SEP, $_O_SEP, $_RS, $_RS_FLG, $_MCE_STDOUT);
@@ -404,10 +405,21 @@ sub _output_loop {
          read $_DAU_R_SOCK, $_buffer, $_len;
 
          if ($_is_c_ref[$_task_id]) {
-            local $_ = $self->{thaw}($_buffer); $_gather[$_task_id]->(@{ $_ });
-         } elsif ($_is_q_ref[$_task_id]) {
+            local $_ = $self->{thaw}($_buffer);
+            $_gather[$_task_id]->(@{ $_ });
+         }
+         elsif ($_is_h_ref[$_task_id]) {
+            local $_ = $self->{thaw}($_buffer);
+            while (1) {
+               my $_key = shift @{ $_ }; my $_val = shift @{ $_ };
+               $_gather[$_task_id]->{$_key} = $_val;
+               last unless (@{ $_ });
+            }
+         }
+         elsif ($_is_q_ref[$_task_id]) {
             $_gather[$_task_id]->enqueue( @{ $self->{thaw}($_buffer) } );
-         } else {
+         }
+         else {
             push @{ $_gather[$_task_id] }, @{ $self->{thaw}($_buffer) };
          }
 
@@ -422,10 +434,17 @@ sub _output_loop {
          read $_DAU_R_SOCK, $_buffer, $_len;
 
          if ($_is_c_ref[$_task_id]) {
-            local $_ = $self->{thaw}($_buffer); $_gather[$_task_id]->($_);
-         } elsif ($_is_q_ref[$_task_id]) {
+            local $_ = $self->{thaw}($_buffer);
+            $_gather[$_task_id]->($_);
+         }
+         elsif ($_is_h_ref[$_task_id]) {
+            local $_ = $self->{thaw}($_buffer);
+            $_gather[$_task_id]->{$_} = undef;
+         }
+         elsif ($_is_q_ref[$_task_id]) {
             $_gather[$_task_id]->enqueue( $self->{thaw}($_buffer) );
-         } else {
+         }
+         else {
             push @{ $_gather[$_task_id] }, $self->{thaw}($_buffer);
          }
 
@@ -440,10 +459,16 @@ sub _output_loop {
          read $_DAU_R_SOCK, $_buffer, $_len if ($_len >= 0);
 
          if ($_is_c_ref[$_task_id]) {
-            local $_ = $_buffer; $_gather[$_task_id]->($_);
-         } elsif ($_is_q_ref[$_task_id]) {
+            local $_ = $_buffer;
+            $_gather[$_task_id]->($_);
+         }
+         elsif ($_is_h_ref[$_task_id]) {
+            $_gather[$_task_id]->{$_buffer} = undef;
+         }
+         elsif ($_is_q_ref[$_task_id]) {
             $_gather[$_task_id]->enqueue( $_buffer );
-         } else {
+         }
+         else {
             push @{ $_gather[$_task_id] }, $_buffer;
          }
 
@@ -591,8 +616,10 @@ sub _output_loop {
       foreach (0 .. @{ $self->{user_tasks} } - 1) {
          $_gather[$_] = (defined $self->{user_tasks}->[$_]->{gather})
             ? $self->{user_tasks}->[$_]->{gather} : $self->{gather};
-         $_is_c_ref[$_] = (
-            ref $_gather[$_] eq 'CODE' ) ? 1 : 0;
+
+         $_is_c_ref[$_] = ( ref $_gather[$_] eq 'CODE' ) ? 1 : 0;
+         $_is_h_ref[$_] = ( ref $_gather[$_] eq 'HASH' ) ? 1 : 0;
+
          $_is_q_ref[$_] = (
             ref $_gather[$_] eq 'MCE::Queue' ||
             ref $_gather[$_] eq 'Thread::Queue' ) ? 1 : 0;
@@ -601,8 +628,10 @@ sub _output_loop {
 
    if (defined $self->{gather}) {
       $_gather[0] = $self->{gather};
-      $_is_c_ref[0] = (
-         ref $_gather[0] eq 'CODE' ) ? 1 : 0;
+
+      $_is_c_ref[0] = ( ref $_gather[0] eq 'CODE' ) ? 1 : 0;
+      $_is_h_ref[0] = ( ref $_gather[0] eq 'HASH' ) ? 1 : 0;
+
       $_is_q_ref[0] = (
          ref $_gather[0] eq 'MCE::Queue' ||
          ref $_gather[0] eq 'Thread::Queue' ) ? 1 : 0;
