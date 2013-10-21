@@ -439,7 +439,7 @@ Storable for serialization.
 
 =head1 CUSTOMIZING MCE
 
-=over 2
+=over 3
 
 =item init
 
@@ -490,7 +490,7 @@ The init function takes a hash of MCE options.
 The following assumes chunk_size equals 1 in order to demonstrate all the
 possibilities of passing input data into the loop.
 
-=over 2
+=over 3
 
 =item mce_loop { code } list
 
@@ -749,7 +749,7 @@ The following does the same thing using the core API.
 
 =head1 MANUAL SHUTDOWN
 
-=over 2
+=over 3
 
 =item finish
 

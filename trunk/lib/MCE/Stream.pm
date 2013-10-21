@@ -699,7 +699,7 @@ Storable for serialization.
 
 =head1 CUSTOMIZING MCE
 
-=over 2
+=over 3
 
 =item init
 
@@ -807,7 +807,7 @@ and 'map'.
 The following assumes 'map' for default_mode in order to demonstrate all the
 possibilities of passing input data into the code block.
 
-=over 2
+=over 3
 
 =item mce_stream sub { code }, list
 
@@ -844,7 +844,7 @@ optional. The format is passed to sprintf (% can be omitted below).
 
 =head1 MANUAL SHUTDOWN
 
-=over 2
+=over 3
 
 =item finish
 

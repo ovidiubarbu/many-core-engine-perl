@@ -262,7 +262,9 @@ comma after the file handle.
 
 =head1 FUNCTIONS for the MANAGER PROCESS via ( :manager )
 
-=over
+See METHODS in L<MCE::Core> for description.
+
+=over 3
 
 =item mce_abort
 
@@ -300,7 +302,9 @@ comma after the file handle.
 
 =head1 FUNCTIONS for MCE WORKERS via ( :worker )
 
-=over
+See METHODS in L<MCE::Core> for description.
+
+=over 3
 
 =item mce_abort
 
@@ -334,7 +338,9 @@ comma after the file handle.
 
 =head1 GETTERS for MCE ATTRIBUTES via ( :getter )
 
-=over
+See METHODS in L<MCE::Core> for description.
+
+=over 3
 
 =item mce_chunk_id
 

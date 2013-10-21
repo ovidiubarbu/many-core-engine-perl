@@ -676,7 +676,7 @@ Storable for serialization.
 
 =head1 CUSTOMIZING MCE
 
-=over 2
+=over 3
 
 =item init
 
@@ -770,7 +770,7 @@ Although input data is optional for MCE::Flow, the following assumes chunk_size
 equals 1 in order to demonstrate all the possibilities of passing input data
 into the flow.
 
-=over 2
+=over 3
 
 =item mce_flow sub { code }, list
 
@@ -1029,7 +1029,7 @@ The following does the same thing using the core API.
 
 =head1 MANUAL SHUTDOWN
 
-=over 2
+=over 3
 
 =item finish
 

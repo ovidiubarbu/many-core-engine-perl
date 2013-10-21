@@ -1723,7 +1723,7 @@ MCE::Queue can be utilized under the following conditions:
     A) use MCE;           B) use MCE::Queue;    C) use MCE::Queue;
        use MCE::Queue;       use MCE;
 
-=over 5
+=over 3
 
 =item A) Loading MCE prior to inclusion of MCE::Queue
 
@@ -1753,7 +1753,7 @@ Basically, the MCE module is not a requirement for using MCE::Queue.
 
 =head1 API DOCUMENTATION
 
-=over
+=over 3
 
 =item ->new ( [ queue => \@array ] )
 
@@ -1907,17 +1907,16 @@ numbers, not the data.
 =head1 ACKNOWLEDGEMENTS
 
 The main reason for writing MCE::Queue was to have a Thread::Queue-like module
-for workers spawned as children. When searching for queue related modules, I
-was pleasantly surprised at the number of modules out there. What stood out
-immediately were all the priority queues, heap queues, and whether or not
-(FIFO/LIFO) or (highest/lowest first) options were available. It seemed like a
-daunting task to undertake. And so began, failed, tried again, failed again,
-and finally succeeded on the 3rd attempt.
+for workers spawned as children. I was pleasantly surprised at the number of
+modules on CPAN. What stood out immediately were all the priority queues, heap
+queues, and whether or not (FIFO/LIFO) or (highest/lowest first) options were
+available. Thus the reason for MCE::Queue supporting both normal and priority
+queues.
 
 The following provides a list of resources I've read in helping me create
 MCE::Queue for MCE.
 
-=over 5
+=over 3
 
 =item L<POE::Queue::Array>
 
