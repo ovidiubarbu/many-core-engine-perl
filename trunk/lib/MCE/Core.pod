@@ -5,7 +5,7 @@ MCE::Core - Documentation describing the core API for Many-core Engine
 
 =head1 VERSION
 
-This document describes MCE::Core version 1.501
+This document describes MCE::Core version 1.502
 
 =head1 SYNOPSIS
 
@@ -23,7 +23,7 @@ This is a simplistic use case of MCE running with 4 workers.
 
    $mce->run;
 
-      ## All public methods beginning with MCE 1.5 can be called
+      ## All public methods beginning with MCE 1.5 may be called
       ## directly via the package method e.g. MCE->wid, MCE->run.
 
    -- Output
@@ -225,7 +225,7 @@ Below, a new instance is configured with all available options.
           ## For looping through a sequence of numbers in parallel.
           ## STEP, if omitted, defaults to 1 if BEGIN is smaller than
           ## END or -1 if BEGIN is greater than END. The FORMAT string
-          ## is passed to sprintf behind the scene (% can be omitted).
+          ## is passed to sprintf behind the scene (% may be omitted).
           ## e.g. $seq_n_formated = sprintf("%4.1f", $seq_n);
 
           ## Leave input_data set to undef when specifying the sequence
@@ -252,7 +252,7 @@ Below, a new instance is configured with all available options.
       task_name    => 'string',          ## Default 'MCE'
 
           ## Added in MCE 1.5. This is beneficial for user_tasks.
-          ## Each task can be specified with a different name value.
+          ## Each task can be defined with a different name value.
           ## It allows for task_end to be specified at the top level.
           ## The task_name value is passed as the 3rd arg to task_end.
 
@@ -391,7 +391,7 @@ applicable to the first task only.
 See the seq_demo.pl example, included with this distribution, on applying
 sequences with the user_tasks option including chunking.
 
-Sequence can be specified using an array or a hash reference.
+Sequence can be defined using an array or a hash reference.
 
    use MCE;
 
@@ -601,7 +601,7 @@ Handy when wanting to filter, modify, and/or direct the output elsewhere.
 =head2 SYNTAX for USER_TASKS and TASK_END
 
 This option takes an array of tasks. Each task allows for 12 MCE options.
-Input_data can be specified inside the first task or at the top level only,
+Input data can be defined inside the first task or at the top level only,
 otherwise is ignored.
 
    max_workers, chunk_size, input_data, sequence, task_end, task_name,
@@ -922,7 +922,7 @@ parallelize a serial loop with MCE.
 
 =item ->forseq ( $sequence_spec [, { options } ], sub { ... } )
 
-Sequence can be specified using a hash or an array reference.
+Sequence can be defined using a hash or an array reference.
 
    my $mce = MCE->new(
       max_workers => 3

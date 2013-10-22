@@ -11,14 +11,14 @@ use warnings;
 
 use base qw( Exporter );
 
-our $VERSION = '1.501'; $VERSION = eval $VERSION;
+our $VERSION = '1.502'; $VERSION = eval $VERSION;
 
 our @EXPORT_OK = qw( get_ncpu );
 our %EXPORT_TAGS = ( all => \@EXPORT_OK );
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## The get_ncpu subroutine (largely borrowed from Test::Smoke::Util.pm)
+## The get_ncpu subroutine (largely adopted from Test::Smoke::Util.pm)
 ## returns the number of available (online/active/enabled) CPUs.
 ##
 ## Defaults to 1. A warning is emitted to STDERR when it cannot recognize
@@ -207,7 +207,7 @@ MCE::Util - Public and private utility functions for Many-core Engine
 
 =head1 VERSION
 
-This document describes MCE::Util version 1.501
+This document describes MCE::Util version 1.502
 
 =head1 SYNOPSIS
 
@@ -236,7 +236,7 @@ Specifying 'auto' for max_workers calls MCE::Util::get_ncpu automatically.
 
 =head1 ACKNOWLEDGEMENTS
 
-The portable code for detecting the number of processors was borrowed from
+The portable code for detecting the number of processors was adopted from
 L<Test::Smoke::SysInfo>.
 
 =head1 INDEX

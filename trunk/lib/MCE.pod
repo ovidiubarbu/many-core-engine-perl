@@ -5,7 +5,7 @@ MCE - Many-core Engine for Perl. Provides parallel processing capabilities.
 
 =head1 VERSION
 
-This document describes MCE version 1.501
+This document describes MCE version 1.502
 
 =head1 DESCRIPTION
 
@@ -49,12 +49,12 @@ Public and private utility functions.
 
 Provides a hybrid queuing implementation for MCE supporting normal queues and
 priority queues from a single module. This module exchanges data via the core
-engine to enable queues to work for both children (spawned via fork) and
+engine to enable queueing to work for both children (spawned via fork) and
 threads.
 
 =item L<MCE::Subs>
 
-Exports funtions mapped directly to MCE's methods, e.g. mce_wid. The module
+Exports functions mapped directly to MCE's methods, e.g. mce_wid. The module
 allows 3 options, e.g. :manager, :worker, :getter.
 
 =back
@@ -63,7 +63,7 @@ allows 3 options, e.g. :manager, :worker, :getter.
 
 MCE 1.5 introduces 5 models for automation behind the scene in generating the
 MCE instance and auto-tuning chunk_size and max_workers. The models configure
-MCE, spawn and shutdown workers when script terminates.
+MCE, spawn plus shutdown workers when the script terminates.
 
 The models take Many-core Engine to a new level for ease of use.
 
@@ -99,7 +99,7 @@ slight change to syntax from MCE::Map and MCE::Grep.
 
 =head1 EXAMPLES
 
-A place-holder for examples included with the distribution.
+A placeholder for the examples included with the distribution.
 
 =over 3
 

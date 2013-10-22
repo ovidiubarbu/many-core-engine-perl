@@ -14,7 +14,7 @@ use Scalar::Util qw( looks_like_number );
 use MCE;
 use MCE::Util;
 
-our $VERSION = '1.501'; $VERSION = eval $VERSION;
+our $VERSION = '1.502'; $VERSION = eval $VERSION;
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -419,13 +419,13 @@ MCE::Flow - Parallel flow model for building creative applications
 
 =head1 VERSION
 
-This document describes MCE::Flow version 1.501
+This document describes MCE::Flow version 1.502
 
 =head1 DESCRIPTION
 
 MCE::Flow is great for writing custom apps to maximize on all available cores.
-Obviously, it's trivial to parallelize with mce_stream as seen below. However,
-let's have MCE::Flow compute the same in parallel.
+It's trivial to parallelize with mce_stream as seen below. However, let's have
+MCE::Flow compute the same in parallel.
 
    ## Native map function
    my @a = map { $_ * 4 } map { $_ * 3 } map { $_ * 2 } 1..10000;
@@ -438,7 +438,7 @@ let's have MCE::Flow compute the same in parallel.
         sub { $_ * 4 }, sub { $_ * 3 }, sub { $_ * 2 }, 1..10000;
 
 Let's have some fun. MCE::Flow makes it easy to harness user_tasks within MCE.
-MCE::Queue will be used as well for data flow among the sub-tasks.
+MCE::Queue will be used for data flow among the sub-tasks.
 
    use MCE::Flow;
    use MCE::Queue;
@@ -489,9 +489,9 @@ The 2nd task dequeues, performs the calculation, and enqueues into the next.
 Finally, the last task calls the gather method. Gather can be called as often
 as needed.
 
-Data is frozen in-between tasks to save from double serialization. This is the
-fastest approach when wanting to run with the least overhead for serializing
-of data between sub-tasks.
+Although serialization is done for you automatically, it's done here to save
+from double serialization. This is the fastest approach for passing data
+between sub-tasks, when wanting to run with the least overhead.
 
    sub task_a {
       my @ans; my ($mce, $chunk_ref, $chunk_id) = @_;
@@ -574,9 +574,8 @@ are the same as writing a user_func block for the core API.
 
 Beginning with MCE 1.5, the next input item is placed into the input scalar
 variable $_ when chunk_size equals 1. Otherwise, $_ points to $chunk_ref
-containing many items. Basically, line 2 can be omitted from your code when
-using $_. One can call MCE->chunk_id to obtain the chunk_id for the current
-chunk.
+containing many items. Basically, line 2 below may be omitted from your code
+when using $_. One can call MCE->chunk_id to obtain the current chunk id.
 
    line 1:  user_func => sub {
    line 2:     my ($mce, $chunk_ref, $chunk_id) = @_;
@@ -645,7 +644,7 @@ This means having to loop through the chunk from within the block.
 
 Chunking reduces the number of IPC calls behind the scene. Think in terms of
 chunks whenever processing a large amount of data. For relatively small data,
-choosing 1 for chunk_size is quite fine.
+choosing 1 for chunk_size is fine.
 
 =head1 OVERRIDING DEFAULTS
 
@@ -680,7 +679,7 @@ Storable for serialization.
 
 =item init
 
-The init function takes a hash of MCE options. Unlike with MCE::Stream, both
+The init function accepts a hash of MCE options. Unlike with MCE::Stream, both
 gather and task_end options may be specified here.
 
    use MCE::Flow;
@@ -774,7 +773,7 @@ into the flow.
 
 =item mce_flow sub { code }, list
 
-Input data can be specified using a list or passing a reference to an array.
+Input data can be defined using a list or passing a reference to an array.
 
    mce_flow sub { $_ }, 1..1000;
    mce_flow sub { $_ }, [ 1..1000 ];
@@ -790,9 +789,9 @@ position among themselves without any interaction from the manager process.
 
 =item mce_flow_s sub { code }, sequence
 
-Sequence can be specified as a list, an array reference, or a hash reference.
+Sequence can be defined as a list, an array reference, or a hash reference.
 The functions require both begin and end values to run. Step and format are
-optional. The format is passed to sprintf (% can be omitted below).
+optional. The format is passed to sprintf (% may be omitted below).
 
    my ($beg, $end, $step, $fmt) = (10, 20, 0.1, "%4.1f");
 
@@ -806,9 +805,8 @@ optional. The format is passed to sprintf (% can be omitted below).
 =back
 
 The sequence engine can compute the begin and end items only for the chunk
-leaving out the items in between (hence boundaries only) with the bounds_only
-option. This option applies to sequence only and has no effect when chunk_size
-equals 1.
+leaving out the items in between with the bounds_only (boundaries only) option.
+This option applies to sequence and has no effect when chunk_size equals 1.
 
 The time to run for MCE below is 0.006s. This becomes 0.827s without the
 bounds_only option due to computing all items in between as well, thus
@@ -937,9 +935,8 @@ immediately to the manager process without actually leaving the block.
    Worker 2: Hello from hoste
    Exit status: 0
 
-Serialization is automatic behind the scene. The following uses an anonymous
-array containing 3 elements when gathering data. It's your choice. Obviously,
-calling gather once will be more efficient for IPC.
+The following uses an anonymous array containing 3 elements when gathering
+data. Serialization is automatic behind the scene.
 
    my %h3 = mce_flow sub {
 
@@ -955,14 +952,14 @@ calling gather once will be more efficient for IPC.
       print "Exit status: ", $h3{$host}->[2], "\n\n";
    }
 
-Perhaps, you want more control with gather such as appending to an array while
+Perhaps you want more control with gather such as appending to an array while
 retaining output order. Although MCE::Map comes to mind, some folks want "full"
 control. And here we go... but this time around in chunking style... :)
 
 The two options passed to MCE::Flow are optional as they default to 'auto'. The
 beauty of chunking data is that IPC occurs once per chunk versus once per item.
 Although IPC is quite fast, chunking becomes beneficial the larger the data
-becomes. Thus, the reason for the demonstration below.
+becomes. Hence the reason for the demonstration below.
 
    use MCE::Flow chunk_size => 'auto', max_workers => 'auto';
 

@@ -16,7 +16,7 @@ use MCE::Util;
 
 use MCE::Queue;
 
-our $VERSION = '1.501'; $VERSION = eval $VERSION;
+our $VERSION = '1.502'; $VERSION = eval $VERSION;
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -583,7 +583,7 @@ MCE::Stream - Parallel stream model for chaining multiple maps and greps
 
 =head1 VERSION
 
-This document describes MCE::Stream version 1.501
+This document describes MCE::Stream version 1.502
 
 =head1 SYNOPSIS
 
@@ -625,7 +625,7 @@ This document describes MCE::Stream version 1.501
 
 This module allows one to stream multiple map and/or grep operations in
 parallel. Code blocks run simultaneously from right-to-left. Chunk data are
-sent immediately to the next code block during processing. Results are
+sent immediately to the next code block during processing. The results are
 appended immediately as well when passing the reference to the array.
 
    ## Appends are serialized, even out-of-order ok, but immediately.
@@ -663,11 +663,11 @@ increases.
    my @m3; mce_stream \@m3,
          sub { $_ * 4 }, sub { $_ * 3 }, sub { $_ * 2 }, 1..1000000;
 
-The mce_stream_s function will provide better times, useful when input data is
-simply a range of numbers. Workers generate sequences mathematically among
-themselves without any interaction from the manager process. Two arguments
-are required for mce_stream_s (begin, end). Step defaults to 1 if begin is
-smaller than end, otherwise -1.
+The mce_stream_s function will provide better times, useful when the input data
+is simply a range of numbers. Workers generate sequences mathematically among
+themselves without any interaction from the manager process. Two arguments are
+required for mce_stream_s (begin, end). Step defaults to 1 if begin is smaller
+than end, otherwise -1.
 
    ## 0.447 secs -- numbers are generated mathematically via sequence
    my @m4; mce_stream_s \@m4,
@@ -703,8 +703,9 @@ Storable for serialization.
 
 =item init
 
-The init function takes a hash of MCE options. The gather and task_end options,
-if specified, will be ignored due to being used internally by the module.
+The init function accepts a hash of MCE options. The gather and task_end
+options, if specified, will be ignored due to being used internally by the
+module.
 
    use MCE::Stream;
 
@@ -811,7 +812,7 @@ possibilities of passing input data into the code block.
 
 =item mce_stream sub { code }, list
 
-Input data can be specified using a list or passing a reference to an array.
+Input data can be defined using a list or passing a reference to an array.
 
    my @a = mce_stream sub { $_ * 2 }, 1..1000;
    my @b = mce_stream sub { $_ * 2 }, [ 1..1000 ];
@@ -827,9 +828,9 @@ position among themselves without any interaction from the manager process.
 
 =item mce_stream_s sub { code }, sequence
 
-Sequence can be specified as a list, an array reference, or a hash reference.
+Sequence can be defined as a list, an array reference, or a hash reference.
 The functions require both begin and end values to run. Step and format are
-optional. The format is passed to sprintf (% can be omitted below).
+optional. The format is passed to sprintf (% may be omitted below).
 
    my ($beg, $end, $step, $fmt) = (10, 20, 0.1, "%4.1f");
 
