@@ -1,10 +1,16 @@
 #labels Featured
 = MCE Tasks =
 
-Update Octobor 16: MCE 1.501 includes a cool example demonstrating MCE::Flow,
-MCE::Queue, and MCE->gather.
+Update Oct 22, 2013
 
-https://metacpan.org/source/MARIOROY/MCE-1.501/examples/flow_model.pl
+MCE 1.502 includes a cool example demonstrating MCE::Flow, MCE::Queue, and
+MCE->gather.
+
+https://metacpan.org/source/MARIOROY/MCE-1.502/examples/flow_model.pl
+
+Regards,
+
+- mario
 
 The 1.2 release provides support for multiple tasks. Workers can be configured based on tasking.
 
