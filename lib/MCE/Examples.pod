@@ -5,7 +5,7 @@ MCE::Examples - A list of examples demonstrating Many-core Engine
 
 =head1 VERSION
 
-This document describes MCE::Examples version 1.501
+This document describes MCE::Examples version 1.502
 
 =head1 DESCRIPTION
 
@@ -217,7 +217,7 @@ sequence of numbers with chunking applied in parallel.
 
 =head1 DEMO APPLYING SEQUENCES WITH USER_TASKS
 
-One may specify the sequence option per each task. The following is taken
+One can specify the sequence option per each task. The following is taken
 directly from the seq_demo.pl example. Think of the following demonstration
 as having 3 mini-MCEs running simultaneously in parallel. Chunking can also
 be configured independently as well.
