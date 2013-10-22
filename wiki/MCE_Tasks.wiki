@@ -1,7 +1,7 @@
 #labels Featured
 = MCE Tasks =
 
-Update Oct 22, 2013
+Update Oct 21, 2013
 
 MCE 1.502 includes a cool example demonstrating MCE::Flow, MCE::Queue, and
 MCE->gather.
