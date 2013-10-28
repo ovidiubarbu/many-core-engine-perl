@@ -5,7 +5,7 @@ MCE::Core - Documentation describing the core API for Many-core Engine
 
 =head1 VERSION
 
-This document describes MCE::Core version 1.502
+This document describes MCE::Core version 1.503
 
 =head1 SYNOPSIS
 
@@ -730,7 +730,7 @@ same as $_, due to chunk_size being greater than 1.
 
 =back
 
-=head1 METHODS for MANAGER PROCESS and WORKERS
+=head1 METHODS for the MANAGER PROCESS and WORKERS
 
 The methods listed below are callable by the main process and workers.
 
@@ -844,7 +844,7 @@ set to 0 for the manager process.
 
 =back
 
-=head1 METHODS for MANAGER PROCESS only
+=head1 METHODS for the MANAGER PROCESS only
 
 Methods listed below are callable by the main process only.
 

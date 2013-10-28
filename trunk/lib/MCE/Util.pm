@@ -11,7 +11,7 @@ use warnings;
 
 use base qw( Exporter );
 
-our $VERSION = '1.502'; $VERSION = eval $VERSION;
+our $VERSION = '1.503'; $VERSION = eval $VERSION;
 
 our @EXPORT_OK = qw( get_ncpu );
 our %EXPORT_TAGS = ( all => \@EXPORT_OK );
@@ -207,7 +207,7 @@ MCE::Util - Public and private utility functions for Many-core Engine
 
 =head1 VERSION
 
-This document describes MCE::Util version 1.502
+This document describes MCE::Util version 1.503
 
 =head1 SYNOPSIS
 

@@ -11,20 +11,20 @@
     One can diff the examples to see the comparison between using
     PDL::IO::FastRaw and PDL::Parallel::threads.
 
-       diff matmult_mce_f.pl matmult_mce_t.pl
-       diff strassen_07_f.pl strassen_07_t.pl
-       diff strassen_49_f.pl strassen_49_t.pl
+       diff  matmult_mce_f.pl  matmult_mce_t.pl
+       diff  strassen_07_f.pl  strassen_07_t.pl
+       diff  strassen_49_f.pl  strassen_49_t.pl
 
  :: All times below are reported in number of seconds.
 
-    Examples will attempt to use /dev/shm under Linux for the MMAP raw
+    Examples will attempt to use /dev/shm under Linux for the raw MMAP
     files. Try the thread variant if /dev/shm is not writable for you.
 
-    It's not recommended to run the *_[df].pl examples on a server making
-    use of /dev/shm such as Oracle. Check the available size of /dev/shm
-    before running.
+    It's not recommended to run the *_[df].pl examples on an Oracle server
+    making use of /dev/shm. Check the available size of /dev/shm before
+    running.
 
-    Benchmark results were captured from a 24-way and 32-way box.
+    Benchmark results were captured from a 24-way and a 32-way server.
 
 
 ###############################################################################
@@ -84,20 +84,19 @@
 
  :: The matmult_simd.pl example divides work equally among all workers.
     It's possible that some workers will end up taking longer due to other
-    jobs running on the system when dividing work equally. This can have
+    jobs running on the system when dividing the work equally. This can have
     the effect of a longer ramp-down time from when the first and last
     workers complete processing.
 
     MCE, on the other hand, can break up work into smaller chunks. The chunk
-    size is determined by the matrix size. The step_size for the sequence
-    option is one way of enabling chunking in MCE.
+    size is determined by the matrix size. The step_size, for the sequence
+    option, is one way of enabling chunking in MCE.
 
        my $step_size = ($tam > 2048) ? 24 : ($tam > 1024) ? 16 : 8;
 
     Chunking combined with the bank-teller queuing model helps reduce the
-    ramp-down time at the end of the job. It can be seen in the results below.
-    Please note that matmult_mce_[df].pl spawns children whereas the other
-    two spawns threads.
+    ramp-down time at the end of the job. Please note that matmult_mce_[df].pl
+    spawns children whereas the other two spawns threads.
 
        matmult_mce_d 5120:  65.556s compute:  24 workers:  66.621s script
        matmult_mce_f 5120:  60.971s compute:  24 workers:  62.558s script
@@ -110,32 +109,32 @@
        to keep up actually.
 
     The bank-teller queuing model is now applied for the sequence option
-    in MCE 1.406.
+    beginning with MCE 1.406.
 
        $mce->run(0, {
           sequence => [ 0, $rows - 1, $step_size ]
        } );
 
- :: The computing time measured for MCE is the actual compute time and does
-    not include the time to spawn, whereas matmult_simd does. Please keep
+ :: The time measured for MCE is the actual compute time and does not
+    include the time to spawn, whereas matmult_simd does. Please keep
     this in mind when comparing results. The script execution time is
-    therefore provided with the results for the MCE 1.406 release.
+    measured as well.
 
        e.g. time perl matmult_mce_f.pl 5120 24
     
     MCE has a one time cost for creating a pool of workers which can be
-    recycled without having to spawn again. One could, for example,
-    instantiate MCE inside a perldl session and reuse the same instance
-    multiple times. This one time cost quickly diminishes over time.
+    recycled without having to spawn again. One could instantiate a MCE
+    instance inside a perldl session and reuse the same instance multiple
+    times. Hence, the one time cost diminishes with multiple use.
 
  :: The strassen examples apply the Strassen divide-and-conquer algorithm
     with modifications to recycle piddles and slices as much as possible
-    during processing to maximize memory utilization.
+    to maximize memory utilization.
 
        http://en.wikipedia.org/wiki/Strassen_algorithm
 
     Two implementations are provided, each with PDL::IO::FastRaw and
-    PDL::Parallel::threads for sharing data.
+    PDL::Parallel::threads (for sharing data).
 
        One level submission, 1 MCE instance, 7 workers
        Two level submission (all-at-once), 1 MCE instance, 49 workers
@@ -262,7 +261,7 @@
 
  :: Performance mode was enabled prior to testing on this box. This has little
     effect on larger matrix sizes though, but is helpful for 1024x1024 results.
-    The following was run as root to disable frequency scaling.
+    The following was run as root to disable CPU frequency scaling.
 
        # /etc/init.d/cpuspeed stop
        Disabling ondemand cpu frequency scaling:                  [ OK ]
@@ -366,7 +365,7 @@
        $self->{r} = mapfraw("$tmp_dir/b")->copy;
 
     Readfraw also solves the problem. However that wants a whopping 50.4 GB
-    of additional memory. That seems quite high.
+    of additional memory which seems quite high.
 
        $self->{r} = readfraw("$tmp_dir/b");
 

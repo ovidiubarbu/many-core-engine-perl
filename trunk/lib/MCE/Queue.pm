@@ -10,10 +10,10 @@ use strict;
 use warnings;
 
 use Fcntl qw( :flock O_RDONLY );
-use Socket qw( :crlf AF_UNIX SOCK_STREAM PF_UNSPEC );
+use Socket qw( :crlf PF_UNIX PF_UNSPEC SOCK_STREAM );
 use Scalar::Util qw( looks_like_number );
 
-our $VERSION = '1.502'; $VERSION = eval $VERSION;
+our $VERSION = '1.503'; $VERSION = eval $VERSION;
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -197,7 +197,7 @@ sub new {
          $_queue->{_id} = ++$_id; $_queues->{$_id} = $_queue;
 
          socketpair( $_queue->{_qr_sock}, $_queue->{_qw_sock},
-            AF_UNIX, SOCK_STREAM, PF_UNSPEC ) or die "socketpair: $!\n";
+            PF_UNIX, SOCK_STREAM, PF_UNSPEC ) or die "socketpair: $!\n";
 
          binmode $_queue->{_qr_sock};
          binmode $_queue->{_qw_sock};
@@ -1599,7 +1599,7 @@ MCE::Queue - Hybrid queues (normal including priority) for Many-core Engine
 
 =head1 VERSION
 
-This document describes MCE::Queue version 1.502
+This document describes MCE::Queue version 1.503
 
 =head1 SYNOPSIS
 

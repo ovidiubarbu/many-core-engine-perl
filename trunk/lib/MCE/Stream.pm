@@ -16,7 +16,7 @@ use MCE::Util;
 
 use MCE::Queue;
 
-our $VERSION = '1.502'; $VERSION = eval $VERSION;
+our $VERSION = '1.503'; $VERSION = eval $VERSION;
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -583,7 +583,7 @@ MCE::Stream - Parallel stream model for chaining multiple maps and greps
 
 =head1 VERSION
 
-This document describes MCE::Stream version 1.502
+This document describes MCE::Stream version 1.503
 
 =head1 SYNOPSIS
 
