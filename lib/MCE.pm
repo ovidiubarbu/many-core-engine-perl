@@ -10,14 +10,14 @@ use strict;
 use warnings;
 
 use Fcntl qw( :flock O_RDONLY );
-use Socket qw( :crlf AF_UNIX SOCK_STREAM PF_UNSPEC );
+use Socket qw( :crlf PF_UNIX PF_UNSPEC SOCK_STREAM );
 use Symbol qw( qualify_to_ref );
 use Storable qw( );
 
 use Time::HiRes qw( time );
 use MCE::Signal;
 
-our $VERSION = '1.502'; $VERSION = eval $VERSION;
+our $VERSION = '1.503'; $VERSION = eval $VERSION;
 
 our (%_valid_fields_new, %_params_allowed_args, %_valid_fields_task);
 our ($_is_cygwin, $_is_MSWin32, $_is_WinEnv);
@@ -1286,7 +1286,8 @@ sub shutdown {
    $self->{_mce_sid}  = $self->{_mce_tid}  = $self->{_sess_dir} = undef;
    $self->{_chunk_id} = $self->{_send_cnt} = $self->{_spawned}  = 0;
 
-   select(undef, undef, undef, 0.082) if ($_is_mce_thr);
+   select(undef, undef, undef, ($_is_WinEnv) ? 0.082 : 0.008)
+      if ($_is_mce_thr);
 
    $self->{_total_running} = $self->{_total_workers} = 0;
    $self->{_total_exited}  = 0;
@@ -1358,7 +1359,7 @@ sub yield {
    my $_count;
 
    if ($_delay < 0.0) {
-      $_count  = int($_delay * -1 / $self->{_i_app_tb} + 0.499) + 1;
+      $_count  = int($_delay * -1 / $self->{_i_app_tb} + 0.5) + 1;
       $_delay += $self->{_i_app_tb} * $_count;
    }
 
@@ -1465,6 +1466,9 @@ sub exit {
 
    close $_DAT_LOCK; undef $_DAT_LOCK;
    close $_COM_LOCK; undef $_COM_LOCK;
+
+   select STDERR; $| = 1;
+   select STDOUT; $| = 1;
 
    threads->exit($_exit_status)
       if ($_has_threads && threads->can('exit'));
@@ -1760,7 +1764,7 @@ sub _create_socket_pair {
 
    if (defined $_i) {
       socketpair( $self->{$_r_sock}->[$_i], $self->{$_w_sock}->[$_i],
-         AF_UNIX, SOCK_STREAM, PF_UNSPEC ) or die "socketpair: $!\n";
+         PF_UNIX, SOCK_STREAM, PF_UNSPEC ) or die "socketpair: $!\n";
 
       binmode $self->{$_r_sock}->[$_i];
       binmode $self->{$_w_sock}->[$_i];
@@ -1778,7 +1782,7 @@ sub _create_socket_pair {
    }
    else {
       socketpair( $self->{$_r_sock}, $self->{$_w_sock},
-         AF_UNIX, SOCK_STREAM, PF_UNSPEC ) or die "socketpair: $!\n";
+         PF_UNIX, SOCK_STREAM, PF_UNSPEC ) or die "socketpair: $!\n";
 
       binmode $self->{$_r_sock};
       binmode $self->{$_w_sock};

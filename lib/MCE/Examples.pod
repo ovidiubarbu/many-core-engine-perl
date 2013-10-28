@@ -5,7 +5,7 @@ MCE::Examples - A list of examples demonstrating Many-core Engine
 
 =head1 VERSION
 
-This document describes MCE::Examples version 1.502
+This document describes MCE::Examples version 1.503
 
 =head1 DESCRIPTION
 
@@ -43,7 +43,7 @@ patterns and word count aggregation.
              Parallel::Loops:     600  Forking each @input is expensive
              MCE foreach....:  34,000  Sends result after each @input
              MCE forseq.....:  70,000  Loops through sequence of numbers
-             MCE forchunk...: 465,000  Chunking reduces overhead
+             MCE forchunk...: 480,000  Chunking reduces overhead
 
    interval.pl
              Demonstration of the interval option appearing in MCE 1.5.
