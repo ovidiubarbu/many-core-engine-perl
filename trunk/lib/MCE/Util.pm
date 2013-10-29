@@ -11,7 +11,7 @@ use warnings;
 
 use base qw( Exporter );
 
-our $VERSION = '1.503'; $VERSION = eval $VERSION;
+our $VERSION = '1.504'; $VERSION = eval $VERSION;
 
 our @EXPORT_OK = qw( get_ncpu );
 our %EXPORT_TAGS = ( all => \@EXPORT_OK );
@@ -176,13 +176,13 @@ sub _parse_chunk_size {
          }
 
          if ($_size) {
-            $_chunk_size = int($_size / $_max_workers + 0.5);
+            $_chunk_size = int($_size / $_max_workers / 24 + 0.5);
             $_chunk_size = 245760 if $_chunk_size > 245760;
             $_chunk_size = 2 if $_chunk_size <= 8192;
          }
       }
       else {
-         $_chunk_size = int($_size / $_max_workers + 0.5);
+         $_chunk_size = int($_size / $_max_workers / 24 + 0.5);
          $_chunk_size = 8000 if $_chunk_size > 8000;
          $_chunk_size = 2 if $_chunk_size < 2;
       }
@@ -207,7 +207,7 @@ MCE::Util - Public and private utility functions for Many-core Engine
 
 =head1 VERSION
 
-This document describes MCE::Util version 1.503
+This document describes MCE::Util version 1.504
 
 =head1 SYNOPSIS
 

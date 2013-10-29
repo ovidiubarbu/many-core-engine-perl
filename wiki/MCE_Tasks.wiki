@@ -1,12 +1,12 @@
 #labels Featured
 = MCE Tasks =
 
-Update Oct 28, 2013
+Update Oct 29, 2013
 
-MCE 1.503 includes a cool example demonstrating MCE::Flow, MCE::Queue, and
+MCE 1.504 includes a cool example demonstrating MCE::Flow, MCE::Queue, and
 MCE->gather.
 
-https://metacpan.org/source/MARIOROY/MCE-1.503/examples/flow_model.pl
+https://metacpan.org/source/MARIOROY/MCE-1.504/examples/flow_model.pl
 
 Regards,
 
