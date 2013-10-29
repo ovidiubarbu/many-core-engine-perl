@@ -14,7 +14,7 @@ use Scalar::Util qw( looks_like_number );
 use MCE;
 use MCE::Util;
 
-our $VERSION = '1.503'; $VERSION = eval $VERSION;
+our $VERSION = '1.504'; $VERSION = eval $VERSION;
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -235,9 +235,10 @@ sub mce_map (&@) {
       $_max_workers = MCE::Util::_parse_max_workers($_p->{max_workers})
          if (exists $_p->{max_workers});
 
-      delete $_p->{user_func}  if (exists $_p->{user_func});
-      delete $_p->{user_tasks} if (exists $_p->{user_tasks});
-      delete $_p->{gather}     if (exists $_p->{gather});
+      delete $_p->{user_func}   if (exists $_p->{user_func});
+      delete $_p->{user_tasks}  if (exists $_p->{user_tasks});
+      delete $_p->{bounds_only} if (exists $_p->{bounds_only});
+      delete $_p->{gather}      if (exists $_p->{gather});
    }
 
    my $_chunk_size = MCE::Util::_parse_chunk_size(
@@ -263,8 +264,13 @@ sub mce_map (&@) {
 
             my @_a; my ($_mce, $_chunk_ref, $_chunk_id) = @_;
 
-          # push @_a, &$_code foreach (@$_chunk_ref);
-            push @_a, map { &$_code } @$_chunk_ref;
+            if (ref $_chunk_ref) {
+             # push @_a, &$_code foreach (@$_chunk_ref);
+               push @_a, map { &$_code } @$_chunk_ref;
+            }
+            else {
+               push @_a, map { &$_code } $_chunk_ref;
+            }
 
             MCE->gather(\@_a, $_chunk_id);
          }
@@ -342,7 +348,7 @@ MCE::Map - Parallel map model similar to the native map function
 
 =head1 VERSION
 
-This document describes MCE::Map version 1.503
+This document describes MCE::Map version 1.504
 
 =head1 SYNOPSIS
 

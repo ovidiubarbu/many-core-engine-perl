@@ -16,7 +16,7 @@ use MCE::Util;
 
 use MCE::Queue;
 
-our $VERSION = '1.503'; $VERSION = eval $VERSION;
+our $VERSION = '1.504'; $VERSION = eval $VERSION;
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -367,10 +367,11 @@ sub mce_stream (@) {
       $_max_workers = MCE::Util::_parse_max_workers($_p->{max_workers})
          if (exists $_p->{max_workers} && ref $_p->{max_workers} ne 'ARRAY');
 
-      delete $_p->{user_func}  if (exists $_p->{user_func});
-      delete $_p->{user_tasks} if (exists $_p->{user_tasks});
-      delete $_p->{task_end}   if (exists $_p->{task_end});
-      delete $_p->{gather}     if (exists $_p->{gather});
+      delete $_p->{user_func}   if (exists $_p->{user_func});
+      delete $_p->{user_tasks}  if (exists $_p->{user_tasks});
+      delete $_p->{task_end}    if (exists $_p->{task_end});
+      delete $_p->{bounds_only} if (exists $_p->{bounds_only});
+      delete $_p->{gather}      if (exists $_p->{gather});
    }
    $_max_workers = int($_max_workers / @_code + 0.5) + 1
       if (@_code > 1);
@@ -378,11 +379,6 @@ sub mce_stream (@) {
    my $_chunk_size = MCE::Util::_parse_chunk_size(
       $CHUNK_SIZE, $_max_workers, $_params, $_input_data, scalar @_
    );
-
-   if (!defined $_params || !exists $_params->{_file}) {
-      $_chunk_size = int($_chunk_size / @_code + 0.5) + 1
-         if (@_code > 1);
-   }
 
    if (defined $_params) {
       $_input_data = $_params->{input_data} if (exists $_params->{input_data});
@@ -480,9 +476,16 @@ sub _gen_user_tasks {
          my ($_mce, $_chunk_ref, $_chunk_id) = @_;
          my @_a; my $_code = $_code_ref->[-1];
 
-         push @_a, ($_mode_ref->[-1] eq 'map')
-            ?  map { &$_code } @{ $_chunk_ref }
-            : grep { &$_code } @{ $_chunk_ref };
+         if (ref $_chunk_ref) {
+            push @_a, ($_mode_ref->[-1] eq 'map')
+               ?  map { &$_code } @{ $_chunk_ref }
+               : grep { &$_code } @{ $_chunk_ref };
+         }
+         else {
+            push @_a, ($_mode_ref->[-1] eq 'map')
+               ?  map { &$_code } $_chunk_ref
+               : grep { &$_code } $_chunk_ref;
+         }
 
          MCE->gather( (@{ $_code_ref } > 1)
             ? MCE->freeze([ \@_a, $_chunk_id ])
@@ -583,7 +586,7 @@ MCE::Stream - Parallel stream model for chaining multiple maps and greps
 
 =head1 VERSION
 
-This document describes MCE::Stream version 1.503
+This document describes MCE::Stream version 1.504
 
 =head1 SYNOPSIS
 

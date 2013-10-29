@@ -14,7 +14,7 @@ use Scalar::Util qw( looks_like_number );
 use MCE;
 use MCE::Util;
 
-our $VERSION = '1.503'; $VERSION = eval $VERSION;
+our $VERSION = '1.504'; $VERSION = eval $VERSION;
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -300,11 +300,6 @@ sub mce_flow (@) {
       $CHUNK_SIZE, $_max_workers, $_params, $_input_data, scalar @_
    );
 
-   if (!defined $_params || !exists $_params->{_file}) {
-      $_chunk_size = int($_chunk_size / @_code + 0.5) + 1
-         if (@_code > 1);
-   }
-
    if (defined $_params) {
       $_input_data = $_params->{input_data} if (exists $_params->{input_data});
       $_input_data = $_params->{_file} if (exists $_params->{_file});
@@ -419,7 +414,7 @@ MCE::Flow - Parallel flow model for building creative applications
 
 =head1 VERSION
 
-This document describes MCE::Flow version 1.503
+This document describes MCE::Flow version 1.504
 
 =head1 DESCRIPTION
 

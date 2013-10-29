@@ -1,6 +1,17 @@
 
 Revision history for MCE
 
+1.504 Tue Oct 29 16:00:00 EST 2013
+
+  [BUG FIXES]
+
+  * MCE::Grep, MCE::Map, and MCE::Stream were failing for mce_grep_s,
+    mce_map_s, and mce_stream_s when specifying chunk_size => 1.
+
+  [ENHANCEMENTS]
+
+  * Calibrated 'auto' slightly in MCE::Util::_parse_chunk_size.
+
 1.503 Mon Oct 28 17:00:00 EST 2013
 
   [BUG FIXES]
