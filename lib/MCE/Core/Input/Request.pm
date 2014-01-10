@@ -101,19 +101,16 @@ sub _worker_request_chunk {
       ## Call user function.
       if ($_proc_type == REQUEST_ARRAY) {
          if ($_single_dim && $_chunk_size == 1) {
-            local $/ = $_RS if ($_RS_FLG);
             local $_ = $_buffer;
             $_wuf->($self, [ $_buffer ], $_chunk_id);
          }
          else {
             $_chunk_ref = $self->{thaw}($_buffer); undef $_buffer;
-            local $/ = $_RS if ($_RS_FLG);
             local $_ = ($_chunk_size == 1) ? $_chunk_ref->[0] : $_chunk_ref;
             $_wuf->($self, $_chunk_ref, $_chunk_id);
          }
       }
       else {
-         local $/ = $_RS if ($_RS_FLG);
          if ($_use_slurpio) {
             local $_ = \$_buffer;
             $_wuf->($self, \$_buffer, $_chunk_id);
@@ -124,7 +121,10 @@ sub _worker_request_chunk {
                $_wuf->($self, [ $_buffer ], $_chunk_id);
             }
             else {
-               _sync_buffer_to_array(\$_buffer, \@_records);
+               {
+                  local $/ = $_RS if ($_RS_FLG);
+                  _sync_buffer_to_array(\$_buffer, \@_records);
+               }
                local $_ = \@_records;
                $_wuf->($self, \@_records, $_chunk_id);
             }

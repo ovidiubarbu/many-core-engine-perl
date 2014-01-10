@@ -980,6 +980,7 @@ sub run {
    my $_sess_dir      = $self->{_sess_dir};
    my $_total_workers = $self->{_total_workers};
    my $_send_cnt      = $self->{_send_cnt};
+   my $_RS            = $self->{RS};
 
    ## Begin processing.
    unless ($_send_cnt) {
@@ -989,14 +990,16 @@ sub run {
          '_chunk_size'  => $_chunk_size,   '_single_dim'  => $_single_dim,
          '_input_file'  => $_input_file,   '_interval'    => $_interval,
          '_sequence'    => $_sequence,     '_bounds_only' => $_bounds_only,
-         '_use_slurpio' => $_use_slurpio,  '_user_args'   => $_user_args
+         '_use_slurpio' => $_use_slurpio,  '_user_args'   => $_user_args,
+         '_RS'          => $_RS
       );
       my %_params_nodata = (
          '_abort_msg'   => undef,          '_run_mode'    => 'nodata',
          '_chunk_size'  => $_chunk_size,   '_single_dim'  => $_single_dim,
          '_input_file'  => $_input_file,   '_interval'    => $_interval,
          '_sequence'    => $_sequence,     '_bounds_only' => $_bounds_only,
-         '_use_slurpio' => $_use_slurpio,  '_user_args'   => $_user_args
+         '_use_slurpio' => $_use_slurpio,  '_user_args'   => $_user_args,
+         '_RS'          => $_RS
       );
 
       local $\ = undef; local $/ = $LF;
