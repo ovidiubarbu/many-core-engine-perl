@@ -78,7 +78,6 @@ sub _worker_read_handle {
       ## Don't declare $_buffer with other vars above, instead it's done here.
       ## Doing so will fail with Perl 5.8.0 under Solaris 5.10 on large files.
 
-      local $/ = $_RS if ($_RS_FLG);
       my $_buffer;
 
       ## Obtain the next chunk_id and offset position.
@@ -95,6 +94,7 @@ sub _worker_read_handle {
 
       ## Read data.
       if ($_chunk_size <= MAX_RECS_SIZE) {        ## One or many records.
+         local $/ = $_RS if ($_RS_FLG);
          seek $_IN_FILE, $_offset_pos, 0;
          if ($_chunk_size == 1) {
             $_buffer = <$_IN_FILE>;
@@ -115,6 +115,7 @@ sub _worker_read_handle {
          }
       }
       else {                                      ## Large chunk.
+         local $/ = $_RS if ($_RS_FLG);
          if ($_proc_type == READ_MEMORY) {
             seek $_IN_FILE, $_offset_pos, 0;
             if (read($_IN_FILE, $_buffer, $_chunk_size) == $_chunk_size) {
@@ -148,6 +149,7 @@ sub _worker_read_handle {
          }
          else {
             if ($_chunk_size > MAX_RECS_SIZE) {
+               local $/ = $_RS if ($_RS_FLG);
                _sync_buffer_to_array(\$_buffer, \@_records);
             }
             local $_ = \@_records;
