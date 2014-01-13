@@ -170,11 +170,18 @@ END {
 
          chomp($_want_id = <$_DAU_W_SOCK>);
          chomp($_len     = <$_DAU_W_SOCK>);
-         read $_DAU_W_SOCK, $_buffer, $_len || 0;
-         flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
 
-         return $_buffer if ($_want_id == WANTS_SCALAR);
-         return $self->{thaw}($_buffer);
+         if ($_len >= 0) {
+            read $_DAU_W_SOCK, $_buffer, $_len || 0;
+            flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
+
+            return $_buffer if ($_want_id == WANTS_SCALAR);
+            return $self->{thaw}($_buffer);
+         }
+         else {
+            flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
+            return;
+         }
       }
    }
 
