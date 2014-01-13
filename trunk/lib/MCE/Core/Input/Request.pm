@@ -55,7 +55,7 @@ sub _worker_request_chunk {
    my $_I_FLG       = (!$/ || $/ ne $LF);
    my $_wuf         = $self->{_wuf};
 
-   my ($_next, $_chunk_id, $_len, $_chunk_ref);
+   my ($_chunk_id, $_len, $_chunk_ref);
    my ($_output_tag, @_records);
 
    if ($_proc_type == REQUEST_ARRAY) {

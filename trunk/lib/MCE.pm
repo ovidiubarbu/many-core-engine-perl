@@ -1089,7 +1089,6 @@ sub run {
    unless ($_send_cnt) {
       ## Remove the last message from the queue.
       unless ($_run_mode eq 'nodata') {
-         unlink "$_sess_dir/_store.db" if ($_run_mode eq 'array');
          if (defined $self->{_que_r_sock}) {
             my $_next; my $_QUE_R_SOCK = $self->{_que_r_sock};
             sysread $_QUE_R_SOCK, $_next, $_que_read_size;
@@ -1392,8 +1391,10 @@ sub abort {
    if (defined $_abort_msg) {
       local $\ = undef;
 
-      my $_next; sysread $_QUE_R_SOCK, $_next, $_que_read_size;
-      syswrite $_QUE_W_SOCK, pack($_que_template, 0, $_abort_msg);
+      if ($_abort_msg > 0) {
+         my $_next; sysread $_QUE_R_SOCK, $_next, $_que_read_size;
+         syswrite $_QUE_W_SOCK, pack($_que_template, 0, $_abort_msg);
+      }
 
       if ($self->{_wid} > 0) {
          my $_chn        = $self->{_chn};
