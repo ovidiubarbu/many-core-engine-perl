@@ -312,7 +312,8 @@ sub _output_loop {
          else {
             my $_ret_s = $_callback->(@{ $_data_ref });
             unless (ref $_ret_s) {
-               local $\ = undef if (defined $\); $_len = length $_ret_s || 0;
+               local $\ = undef if (defined $\);
+               $_len = (defined $_ret_s) ? length $_ret_s : -1;
                print $_DAU_R_SOCK WANTS_SCALAR . $LF . $_len . $LF . $_ret_s;
             }
             else {
@@ -348,7 +349,8 @@ sub _output_loop {
          else {
             my $_ret_s = $_callback->($_buffer);
             unless (ref $_ret_s) {
-               local $\ = undef if (defined $\); $_len = length $_ret_s || 0;
+               local $\ = undef if (defined $\);
+               $_len = (defined $_ret_s) ? length $_ret_s : -1;
                print $_DAU_R_SOCK WANTS_SCALAR . $LF . $_len . $LF . $_ret_s;
             }
             else {
@@ -382,7 +384,8 @@ sub _output_loop {
          else {
             my $_ret_s = $_callback->();
             unless (ref $_ret_s) {
-               local $\ = undef if (defined $\); $_len = length $_ret_s || 0;
+               local $\ = undef if (defined $\);
+               $_len = (defined $_ret_s) ? length $_ret_s : -1;
                print $_DAU_R_SOCK WANTS_SCALAR . $LF . $_len . $LF . $_ret_s;
             }
             else {
