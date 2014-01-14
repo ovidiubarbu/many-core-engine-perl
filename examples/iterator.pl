@@ -1,8 +1,8 @@
 #!/usr/bin/env perl
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Similar to forseq.pl as far as usage goes. However, this script uses an
-## iterator factory for input_data.
+## This script, similar to the forseq.pl example as far as usage goes, assigns
+## input_data a closure (the iterator itself) by calling a factory function.
 ##
 ## usage: iterator.pl [ size ]
 ## usage: iterator.pl [ begin end [ step [ format ] ] ]
@@ -25,7 +25,7 @@ use lib abs_path . "/../lib";
 my $prog_name = $0; $prog_name =~ s{^.*[\\/]}{}g;
 
 use Time::HiRes qw(time);
-use MCE::Loop;
+use MCE;
 
 my $s_begin  = shift || 3000;
 my $s_end    = shift;
@@ -48,9 +48,15 @@ unless (defined $s_end) {
 ## ----------------------------------------------------------------------------
 ## Input and output iterators using closures.
 ##
+## A closure construction typically involves two functions: the closure itself;
+## and a factory, the fuction that creates the closure.
+##
 ###############################################################################
 
-## Provides sequence of numbers.
+## A factory function which creates a new closure (the iterator itself) for
+## generating a sequence of numbers. The external variables ($n, $max, $step)
+## are used for keeping state across successive calls to the closure. The
+## iterator returns undef when $n exceeds max.
 
 sub input_iterator {
    my ($n, $max, $step) = @_;
@@ -65,7 +71,8 @@ sub input_iterator {
    };
 }
 
-## Preserves output order.
+## A factory fuction which emits a closure to be used for preserving output
+## order as results are being gathered.
 
 sub output_iterator {
    my (%result_n, %result_d); my $order_id = 1;
@@ -92,28 +99,31 @@ sub output_iterator {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Parallelize via MCE::Loop.
+## Parallelize via MCE.
 ##
 ###############################################################################
 
-MCE::Loop::init {
-   max_workers => 3, chunk_size => 1, gather => output_iterator()
-};
+my $mce = MCE->new(
+
+   chunk_size => 1, max_workers => 3, gather => output_iterator(),
+
+   user_func => sub {
+      my ($self, $chunk_ref, $chunk_id) = @_;
+
+      if (defined $s_format) {
+         my $n = sprintf "%${s_format}", $_;
+         MCE->gather($n, sqrt($n), $chunk_id);
+      }
+      else {
+         MCE->gather($_, sqrt($_), $chunk_id);
+      }
+   }
+
+)->spawn;
 
 my $start = time();
 
-mce_loop {
-   my ($self, $chunk_ref, $chunk_id) = @_;
-
-   if (defined $s_format) {
-      my $n = sprintf "%${s_format}", $_;
-      MCE->gather($n, sqrt($n), $chunk_id);
-   }
-   else {
-      MCE->gather($_, sqrt($_), $chunk_id);
-   }
-
-} input_iterator($s_begin, $s_end, $s_step);
+$mce->process( input_iterator($s_begin, $s_end, $s_step) );
 
 my $end = time();
 

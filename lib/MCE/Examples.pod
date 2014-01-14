@@ -23,19 +23,18 @@ patterns and word count aggregation.
    wc.pl     Word count script, similar to the wc binary.
 
    findnull.pl
-             A parallel driven script to report lines containing
-             null fields. It's many times faster than the binary
-             egrep command. Try against a large file containing
-             very long lines.
+             A parallel script for reporting lines containing null
+             fields. It's many times faster than the egrep binary.
+             Try against a large file containing very long lines.
 
    flow_model.pl
              Demonstrates MCE::Flow, MCE::Queue, and MCE->gather.
 
    foreach.pl, forseq.pl, forchunk.pl
-             These take the same sqrt example from Parallel::Loops
-             and measures the overhead of the engine. The number
-             indicates the size of @input which can be submitted
-             and results displayed in under 1 second.
+             These take the same sqrt example from Parallel::Loops and
+             measures the overhead of the engine. The number indicates
+             the size of @input which can be submitted and results
+             displayed in under 1 second.
 
              Parallel::Loops is based on Parallel::ForkManager.
              MCE utilizes a pool of workers.
@@ -49,8 +48,9 @@ patterns and word count aggregation.
              Demonstration of the interval option appearing in MCE 1.5.
 
    iterator.pl
-             Similar to forseq.pl, however using an iterator factory for
-             input_data.
+             Similar to forseq.pl. Specifies an iterator for input_data.
+             A factory function is called which returns a closure (the
+             iterator itself).
 
    matmult/matmult_base.pl, matmult_mce.pl, strassen_mce.pl
              Various matrix multiplication demonstrations benchmarking
@@ -59,8 +59,8 @@ patterns and word count aggregation.
              Perl examples.
 
    scaling_pings.pl
-             Perform ping test and report back failing IPs to
-             standard output.
+             Perform ping test and report back failing IPs to standard
+             output.
 
    seq_demo.pl
              A demonstration of the new sequence option appearing

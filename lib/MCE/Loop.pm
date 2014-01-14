@@ -492,29 +492,6 @@ possibilities of passing input data into the loop.
 
 =over 3
 
-=item mce_loop { code } iterator
-
-An iterator factory using closures can by specified for input data.
-
-   sub input_iterator {
-      my ($n, $max, $step) = @_;
-
-      return sub {
-         return if $n > $max;
-
-         my $current = $n;
-         $n += $step;
-         
-         return $current;
-      };
-   }
-
-   MCE::Loop::init {
-      chunk_size => 1
-   };
-
-   mce_loop { $_ } input_iterator(10, 30, 2);
-
 =item mce_loop { code } list
 
 Input data can be defined using a list or passing a reference to an array.
@@ -546,9 +523,16 @@ optional. The format is passed to sprintf (% may be omitted below).
       begin => $beg, end => $end, step => $step, format => $fmt
    };
 
+=item mce_loop { code } iterator
+
+An iterator reference can by specified for input data. Iterators are described
+under "SYNTAX for INPUT_DATA" at L<MCE::Core>.
+
+   mce_loop { $_ } make_iterator(10, 30, 2);
+
 =back
 
-The sequence engine can compute the begin and end items only for the chunk
+The sequence engine can compute the begin and end items only, for the chunk,
 leaving out the items in between with the bounds_only (boundaries only) option.
 This option applies to sequence and has no effect when chunk_size equals 1.
 

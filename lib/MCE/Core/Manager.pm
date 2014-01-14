@@ -315,7 +315,7 @@ sub _output_loop {
 
          local $\ = undef if (defined $\);
          print $_DAU_R_SOCK '-1' . $LF;
-         $_aborted = 1; 
+         $_aborted = 1;
 
          return;
       },
