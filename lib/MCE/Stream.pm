@@ -359,7 +359,7 @@ sub mce_stream (@) {
 
    my $_input_data; my $_max_workers = $MAX_WORKERS; my $_r = ref $_[0];
 
-   if ($_r eq 'ARRAY' || $_r eq 'GLOB' || $_r eq 'SCALAR') {
+   if ($_r eq 'ARRAY' || $_r eq 'CODE' || $_r eq 'GLOB' || $_r eq 'SCALAR') {
       $_input_data = shift;
    }
 
@@ -409,6 +409,7 @@ sub mce_stream (@) {
             next if ($_ eq 'max_workers' && ref $_p->{max_workers} eq 'ARRAY');
             next if ($_ eq 'task_name' && ref $_p->{task_name} eq 'ARRAY');
             next if ($_ eq 'input_data');
+            next if ($_ eq 'chunk_size');
 
             _croak("MCE::Stream: '$_' is not a valid constructor argument")
                unless (exists $MCE::_valid_fields_new{$_});
@@ -812,6 +813,32 @@ The following assumes 'map' for default_mode in order to demonstrate all the
 possibilities of passing input data into the code block.
 
 =over 3
+
+=item mce_stream { input_data => iterator }, sub { code }
+
+An iterator factory using closures can by specified for input data.
+
+Notice the anonymous hash as the first argument to mce_stream. The only other
+way is to specify input_data via MCE::Stream::init. We do not want MCE::Stream
+to mistakenly configure the code reference from the iterator function as
+another user task.
+
+   sub input_iterator {
+      my ($n, $max, $step) = @_;
+
+      return sub {
+         return if $n > $max;
+
+         my $current = $n;
+         $n += $step;
+
+         return $current;
+      };
+   }
+
+   my @a = mce_stream {
+      input_data => input_iterator(10, 30, 2)
+   }, sub { $_ * 2 };
 
 =item mce_stream sub { code }, list
 

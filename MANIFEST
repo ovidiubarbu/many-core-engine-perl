@@ -10,6 +10,7 @@ lib/MCE.pod
 lib/MCE/Core.pod
 lib/MCE/Core/Input/Generator.pm
 lib/MCE/Core/Input/Handle.pm
+lib/MCE/Core/Input/Iterator.pm
 lib/MCE/Core/Input/Request.pm
 lib/MCE/Core/Input/Sequence.pm
 lib/MCE/Core/Manager.pm
@@ -34,6 +35,7 @@ examples/forchunk.pl
 examples/foreach.pl
 examples/forseq.pl
 examples/interval.pl
+examples/iterator.pl
 examples/matmult/README
 examples/matmult/matmult_base.pl
 examples/matmult/matmult_mce_d.pl

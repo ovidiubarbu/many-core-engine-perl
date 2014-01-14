@@ -119,12 +119,13 @@ Below, a new instance is configured with all available options.
           ## gather => \&order,
 
       input_data   => $input_file,       ## Default undef
-      RS           => "\n::\n",          ## Default undef
+      RS           => "::\n\n",          ## Default undef
 
-          ## input_data => '/path/to/file' for input file
-          ## input_data => \@array for input array
-          ## input_data => \*FILE_HNDL for file handle
-          ## input_data => \$scalar to treat like a file
+          ## input_data => '/path/to/file'  for file path
+          ## input_data => \@array          for array
+          ## input_data => \*FILE_HNDL      for file handle
+          ## input_data => \$scalar         treated like a file
+          ## input_data => sub { }          for input iterator
 
           ## Use the sequence option if simply wanting to loop
           ## through a sequence of numbers instead.
@@ -132,6 +133,9 @@ Below, a new instance is configured with all available options.
           ## Release 1.4 and later allows one to specify the
           ## record separator (RS) applicable to input files,
           ## file handles, and scalar references.
+
+          ## Release 1.505 adds support for input iterators
+          ## via input_data => sub { }
 
       use_slurpio  => 1,                 ## Default 0
       use_threads  => 1,                 ## Default 0 or 1
@@ -262,12 +266,12 @@ Below, a new instance is configured with all available options.
          { ... },                        ## Options for task 2
       ],
 
-          ## Takes a list of hash references, each allowing up to 12
+          ## Takes a list of hash references, each allowing up to 15
           ## options. All other MCE options are ignored. Input_data
-          ## is applicable for the first task only.
-          ##   task_name, max_workers, chunk_size, input_data, sequence,
-          ##   task_end, user_args, user_begin, user_end, user_func,
-          ##   gather, use_threads
+          ## and RS are applicable for the first task only.
+          ##   max_workers, chunk_size, input_data, interval, sequence,
+          ##   bounds_only, user_args, user_begin, user_end, user_func,
+          ##   gather, task_end, task_name, RS, use_threads
 
           ## Options not specified here will default to same option
           ## specified at the top level.
@@ -381,6 +385,158 @@ completed processing or running.
 
    MCE->run();
 
+=head2 SYNTAX for INPUT_DATA
+
+MCE supports 5 ways to specify input_data. Support for input iterators made
+its 1st appearance in MCE 1.505. The RS option allows one to specify the record
+separator when processing a file. Btw, input_data is optional and does not
+need to be configured is simply wanting many workers doing different things.
+
+MCE is a chunking engine. Therefore, chunk_size is applicable to input_data.
+Specifying 1 for use_slurpio causes the user_func to receive a scalar ref
+containing the raw data (files only) instead of an array reference.
+
+   input_data  => '/path/to/file',  ## for file path
+   input_data  => \@array,          ## for array
+   input_data  => \*FILE_HNDL,      ## for file handle
+   input_data  => \$scalar,         ## treated like a file
+   input_data  => sub { },          ## for input iterator
+
+   chunk_size  => 1,                ## >1 means looping inside user_func
+   use_slurpio => 1,                ## passes a scalar ref
+   RS          => "::\n\n",         ## record separator for file
+
+The chunk_size value determines the chunking mode to use on files. Otherwise,
+chunk_size is the number of elements for arrays. Less than or equal to 8192 is
+the number of records for files. Greater than 8192 is the number of bytes to
+read including (the rest) up to the next record separator.
+
+   chunk_size  =>     1,            ## Consists of 1 record or element
+   chunk_size  =>  1000,            ## Consists of 1000 records
+   chunk_size  => 16384,            ## Approximate 16384 bytes
+   chunk_size  => 50000,            ## Approximate 50000 bytes
+
+The format for user_func is as follow.
+
+   user_func => sub {
+      my ($self, $chunk_ref, $chunk_id) = @_;
+
+      ## for scalar reference (use_slurpio => 1)
+      ## $_ is $chunk_ref
+
+      print $$chunk_ref;
+
+      ## for array reference
+      ## $_ is $chunk_ref->[0] when chunk_size => 1
+      ## $_ is $chunk_ref otherwise
+
+      for my $record ( @{ $chunk_ref } ) {
+         print "$chunk_id: $record\n";
+      }
+   }
+
+Let's now go over the input iterator. A great example of this is simulating a
+sequence of numbers specified using input_data instead of the sequence option.
+
+When time permits, take a look at the included iterator.pl example, behaving
+similarly to forseq.pl with ordered output. Benchmark the two examples and
+notice the difference. The included sequence engine via the sequence option is
+faster due to zero involvement from the manager process. With that said, the
+below is mearly a demonstration for making a simple iterator factory using
+closures.
+
+   use MCE;
+
+   ## Provides a sequence of numbers.
+
+   sub input_iterator {
+      my ($n, $max, $step) = @_;
+
+      return sub {
+         return if $n > $max;
+
+         my $current = $n;
+         $n += $step;
+
+         return $current;
+      };
+   }
+
+   ## Run user_func in parallel.
+
+   MCE->new(
+      chunk_size => 1, max_workers => 4,
+      input_data => input_iterator(10, 30, 2),
+
+      user_func => sub {
+         my ($self, $chunk_ref, $chunk_id) = @_;
+         MCE->print("$_: ", $_ * 2, "\n");
+      }
+
+   )->run;
+
+   -- Output   Note that output order is not guaranteed.
+               Peek at iterator.pl if wanting ordered output.
+
+   10: 20
+   12: 24
+   16: 32
+   20: 40
+   14: 28
+   22: 44
+   18: 36
+   24: 48
+   26: 52
+   28: 56
+   30: 60
+
+A lazy array cannot be specified for input_data due to MCE wanting to know
+up-front the size of the array. Thus, make a generic iterator factory with
+support for chunking like so.
+
+   use Tie::Array::Lazy;
+   use MCE;
+
+   tie my @a, 'Tie::Array::Lazy', [], sub {
+      $_[0]->index;
+   };
+
+   ## Iterator with chunking support for lazy arrays.
+
+   sub make_iterator {
+      my $j = 0; my ($a_ref, $max) = @_;
+
+      return sub {
+         my $i = $j; $j += MCE->chunk_size;
+
+         return if $i > $max;
+         return $j <= $max ? @$a_ref[$i .. $j - 1] : @$a_ref[$i .. $max];
+      };
+   }
+
+   ## Run user_func in parallel.
+
+   MCE->new(
+      chunk_size => 15, max_workers => 4,
+      input_data => make_iterator(\@a, 100),
+
+      user_func => sub {
+         my ($self, $chunk_ref, $chunk_id) = @_;
+         MCE->print("$chunk_id: ", join(' ', @{ $chunk_ref }), "\n");
+      }
+
+   )->run;
+
+   -- Output
+
+   1: 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14
+   2: 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29
+   3: 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44
+   4: 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59
+   5: 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74
+   6: 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89
+   7: 90 91 92 93 94 95 96 97 98 99 100
+
 =head2 SYNTAX for SEQUENCE
 
 The 1.3 release and above allows workers to loop through a sequence of numbers
@@ -398,7 +554,7 @@ Sequence can be defined using an array or a hash reference.
    my $mce = MCE->new(
       max_workers => 3,
 
-    # sequence => [ 10, 19, 0.7, "%4.1f" ],
+    # sequence => [ 10, 19, 0.7, "%4.1f" ],  ## up to 4 options
 
       sequence => {
          begin => 10, end => 19, step => 0.7, format => "%4.1f"
@@ -600,12 +756,13 @@ Handy when wanting to filter, modify, and/or direct the output elsewhere.
 
 =head2 SYNTAX for USER_TASKS and TASK_END
 
-This option takes an array of tasks. Each task allows for 12 MCE options.
-Input data can be defined inside the first task or at the top level only,
-otherwise is ignored.
+This option takes an array of tasks. Each task allows up to 15 MCE options.
+Both input_data and RS can be defined inside the first task only or at the
+top level, otherwise both are ignored.
 
-   max_workers, chunk_size, input_data, sequence, task_end, task_name,
-   gather, user_args, user_begin, user_end, user_func, use_threads
+   max_workers, chunk_size, input_data, interval, sequence,
+   bounds_only, user_args, user_begin, user_end, user_func,
+   gather, task_end, task_name, RS, use_threads
 
 Sequence and chunk_size were added in 1.3. User_args was introduced in 1.4.
 Name and input_data are new options allowed in 1.5. In addition, one can

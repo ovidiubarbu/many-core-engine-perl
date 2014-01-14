@@ -403,6 +403,11 @@ sub _worker_do {
          unless (defined $MCE::Core::Input::Request::VERSION);
       _worker_request_chunk($self, REQUEST_GLOB);
    }
+   elsif ($_run_mode eq 'iterator') {
+      require MCE::Core::Input::Iterator
+         unless (defined $MCE::Core::Input::Iterator::VERSION);
+      _worker_user_iterator($self);
+   }
    elsif ($_run_mode eq 'file') {
       require MCE::Core::Input::Handle
          unless (defined $MCE::Core::Input::Handle::VERSION);

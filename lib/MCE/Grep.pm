@@ -227,7 +227,7 @@ sub mce_grep (&@) {
 
    my $_input_data; my $_max_workers = $MAX_WORKERS; my $_r = ref $_[0];
 
-   if ($_r eq 'ARRAY' || $_r eq 'GLOB' || $_r eq 'SCALAR') {
+   if ($_r eq 'ARRAY' || $_r eq 'CODE' || $_r eq 'GLOB' || $_r eq 'SCALAR') {
       $_input_data = shift;
    }
 
@@ -279,6 +279,7 @@ sub mce_grep (&@) {
       if (defined $_params) {
          foreach (keys %{ $_params }) {
             next if ($_ eq 'input_data');
+            next if ($_ eq 'chunk_size');
 
             _croak("MCE::Grep: '$_' is not a valid constructor argument")
                unless (exists $MCE::_valid_fields_new{$_});
@@ -483,6 +484,25 @@ specified, will be set to undef due to being used internally by the module.
 =head1 API DOCUMENTATION
 
 =over 3
+
+=item mce_grep { code } iterator
+
+An iterator factory using closures can by specified for input data.
+
+   sub input_iterator {
+      my ($n, $max, $step) = @_;
+
+      return sub {
+         return if $n > $max;
+
+         my $current = $n;
+         $n += $step;
+
+         return $current;
+      };
+   }
+
+   my @a = mce_grep { $_ % 3 == 0 } input_iterator(10, 30, 2);
 
 =item mce_grep { code } list
 

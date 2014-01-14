@@ -282,7 +282,7 @@ sub mce_flow (@) {
 
    my $_input_data; my $_max_workers = $MAX_WORKERS; my $_r = ref $_[0];
 
-   if ($_r eq 'ARRAY' || $_r eq 'GLOB' || $_r eq 'SCALAR') {
+   if ($_r eq 'ARRAY' || $_r eq 'CODE' || $_r eq 'GLOB' || $_r eq 'SCALAR') {
       $_input_data = shift;
    }
 
@@ -325,6 +325,7 @@ sub mce_flow (@) {
             next if ($_ eq 'max_workers' && ref $_p->{max_workers} eq 'ARRAY');
             next if ($_ eq 'task_name' && ref $_p->{task_name} eq 'ARRAY');
             next if ($_ eq 'input_data');
+            next if ($_ eq 'chunk_size');
 
             _croak("MCE::Flow: '$_' is not a valid constructor argument")
                unless (exists $MCE::_valid_fields_new{$_});
@@ -765,6 +766,34 @@ equals 1 in order to demonstrate all the possibilities of passing input data
 into the flow.
 
 =over 3
+
+=item mce_flow { input_data => iterator }, sub { code }
+
+An iterator factory using closures can by specified for input data.
+
+Notice the anonymous hash as the first argument to mce_flow. The only other
+way is to specify input_data via MCE::Flow::init. We do not want MCE::Flow
+to mistakenly configure the code reference from the iterator function as
+another user task.
+
+   sub input_iterator {
+      my ($n, $max, $step) = @_;
+
+      return sub {
+         return if $n > $max;
+
+         my $current = $n;
+         $n += $step;
+
+         return $current;
+      };
+   }
+
+   MCE::Flow::init {
+      chunk_size => 1
+   };
+
+   mce_flow { input_data => input_iterator(10, 30, 2) }, sub { $_ };
 
 =item mce_flow sub { code }, list
 
