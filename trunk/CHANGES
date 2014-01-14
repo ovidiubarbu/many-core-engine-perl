@@ -1,6 +1,37 @@
 
 Revision history for MCE
 
+1.50x Mon Jan 13 11:30:00 EST 2013
+
+  [NEW FEATURES]
+
+  * Allow one to make an iterator factory using closures for input_data.
+    Included a new "iterator.pl" example.
+
+  [ENHANCEMENTS]
+   
+  * Added a new "SYNTAX for INPUT_DATA" section to MCE::Core.pod.
+    The section shows one how to retrieve values from a lazy array through
+    an iterator factory using closures. Chunking is supported as well.
+
+  [BUG FIXES]
+
+  * Specifying chunk_size => 'auto' using the init method for all 5 models
+    caused MCE validation to croak due to 'auto' being carried over to the
+    core API. Note that only the 5 models are allowed 'auto' for chunk_size
+    as of this time.
+
+  * Update to the MCE->do method. Previously, an undef sent back from the
+    callback function ended up as a blank value "". Both "" and undef are
+    now properly captured and sent back to the worker process.
+
+  * Reverted the logic for the RS (record separator) option from the 1.4x
+    code base. This is now working as expected.
+
+  * Added an if statement inside the abort method.
+  * Removed an old unlink _store.db statement (old code left behind).
+  * Removed an unused _next variable inside Request.pm.
+
 1.504 Tue Oct 29 16:00:00 EST 2013
 
   [BUG FIXES]

@@ -65,6 +65,7 @@ BEGIN {
    %_valid_fields_task = map { $_ => 1 } qw(
       max_workers chunk_size input_data interval sequence task_end task_name
       bounds_only gather user_args user_begin user_end user_func use_threads
+      RS
    );
 
    $_is_cygwin  = ($^O eq 'cygwin');
@@ -206,6 +207,7 @@ use constant {
 
    OUTPUT_A_ARY   => 'A~ARY',            ## Array  << Array
    OUTPUT_S_GLB   => 'S~GLB',            ## Scalar << Glob FH
+   OUTPUT_U_ITR   => 'U~ITR',            ## User   << Iterator
 
    OUTPUT_A_CBK   => 'A~CBK',            ## Callback w/ multiple args
    OUTPUT_S_CBK   => 'S~CBK',            ## Callback w/ 1 scalar arg
@@ -561,6 +563,10 @@ sub spawn {
             require MCE::Core::Input::Handle
                unless (defined $MCE::Core::Input::Handle::VERSION);
          }
+         elsif ($_ref_type eq 'CODE') {
+            require MCE::Core::Input::Iterator
+               unless (defined $MCE::Core::Input::Iterator::VERSION);
+         }
          else {
             require MCE::Core::Input::Request
                unless (defined $MCE::Core::Input::Request::VERSION);
@@ -887,6 +893,8 @@ sub run {
 
    $self->{input_data} = $self->{user_tasks}->[0]->{input_data}
       if ($_has_user_tasks && $self->{user_tasks}->[0]->{input_data});
+   $self->{RS} = $self->{user_tasks}->[0]->{RS}
+      if ($_has_user_tasks && $self->{user_tasks}->[0]->{RS});
 
    $self->shutdown()
       if ($_requires_shutdown || ref $self->{input_data} eq 'SCALAR');
@@ -938,6 +946,13 @@ sub run {
          $_run_mode   = 'glob';
          $_input_glob = $self->{input_data};
          $_input_data = $_input_file = undef;
+         $_abort_msg  = 0; ## Flag: Has Data: No
+         $_first_msg  = 1; ## Flag: Has Data: Yes
+      }
+      elsif (ref $self->{input_data} eq 'CODE') {    ## Iterator mode.
+         $_run_mode   = 'iterator';
+         $_input_data = $self->{input_data};
+         $_input_file = $_input_glob = undef;
          $_abort_msg  = 0; ## Flag: Has Data: No
          $_first_msg  = 1; ## Flag: Has Data: Yes
       }

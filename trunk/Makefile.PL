@@ -67,6 +67,10 @@ WriteMakefile(
                'file'    => 'lib/MCE/Core/Input/Handle.pm',
                'version' => '1.504'
             },
+            'MCE::Core::Input::Iterator' => {
+               'file'    => 'lib/MCE/Core/Input/Iterator.pm',
+               'version' => '1.504'
+            },
             'MCE::Core::Input::Request' => {
                'file'    => 'lib/MCE/Core/Input/Request.pm',
                'version' => '1.504'

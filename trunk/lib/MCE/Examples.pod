@@ -48,6 +48,10 @@ patterns and word count aggregation.
    interval.pl
              Demonstration of the interval option appearing in MCE 1.5.
 
+   iterator.pl
+             Similar to forseq.pl, however using an iterator factory for
+             input_data.
+
    matmult/matmult_base.pl, matmult_mce.pl, strassen_mce.pl
              Various matrix multiplication demonstrations benchmarking
              PDL, PDL + MCE, as well as parallelizing Strassen's

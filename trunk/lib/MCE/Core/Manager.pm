@@ -284,6 +284,37 @@ sub _output_loop {
          return;
       },
 
+      OUTPUT_U_ITR.$LF => sub {                   ## User << Iterator
+         my $_buffer;
+
+         if ($_aborted) {
+            local $\ = undef if (defined $\);
+            print $_DAU_R_SOCK '-1' . $LF;
+            return;
+         }
+
+         if (my @_ret_a = $_input_data->()) {
+            if (@_ret_a > 1 || ref $_ret_a[0]) {
+               $_buffer = $self->{freeze}( [ @_ret_a ] );
+               local $\ = undef if (defined $\); $_len = length $_buffer;
+               print $_DAU_R_SOCK $_len . '1' . $LF . (++$_chunk_id) . $LF .
+                  $_buffer;
+            }
+            else {
+               local $\ = undef if (defined $\); $_len = length $_ret_a[0];
+               print $_DAU_R_SOCK $_len . '0' . $LF . (++$_chunk_id) . $LF .
+                  $_ret_a[0];
+            }
+         }
+         else {
+            local $\ = undef if (defined $\);
+            print $_DAU_R_SOCK '-1' . $LF;
+            $_aborted = 1;
+         }
+
+         return;
+      },
+
       ## ----------------------------------------------------------------------
 
       OUTPUT_A_CBK.$LF => sub {                   ## Callback w/ multiple args

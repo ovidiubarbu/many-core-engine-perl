@@ -211,7 +211,7 @@ sub mce_loop (&@) {
 
    my $_input_data; my $_max_workers = $MAX_WORKERS; my $_r = ref $_[0];
 
-   if ($_r eq 'ARRAY' || $_r eq 'GLOB' || $_r eq 'SCALAR') {
+   if ($_r eq 'ARRAY' || $_r eq 'CODE' || $_r eq 'GLOB' || $_r eq 'SCALAR') {
       $_input_data = shift;
    }
 
@@ -248,6 +248,7 @@ sub mce_loop (&@) {
       if (defined $_params) {
          foreach (keys %{ $_params }) {
             next if ($_ eq 'input_data');
+            next if ($_ eq 'chunk_size');
 
             _croak("MCE::Loop: '$_' is not a valid constructor argument")
                unless (exists $MCE::_valid_fields_new{$_});
@@ -490,6 +491,29 @@ The following assumes chunk_size equals 1 in order to demonstrate all the
 possibilities of passing input data into the loop.
 
 =over 3
+
+=item mce_loop { code } iterator
+
+An iterator factory using closures can by specified for input data.
+
+   sub input_iterator {
+      my ($n, $max, $step) = @_;
+
+      return sub {
+         return if $n > $max;
+
+         my $current = $n;
+         $n += $step;
+         
+         return $current;
+      };
+   }
+
+   MCE::Loop::init {
+      chunk_size => 1
+   };
+
+   mce_loop { $_ } input_iterator(10, 30, 2);
 
 =item mce_loop { code } list
 
