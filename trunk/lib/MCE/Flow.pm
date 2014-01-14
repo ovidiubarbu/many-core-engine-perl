@@ -442,7 +442,7 @@ MCE::Queue will be used for data flow among the sub-tasks.
 This calls for preserving output order. Remember to set $_order_id to 1 before
 running.
 
-   my ($_gather_ref, $_order_id, %_tmp); 
+   my ($_gather_ref, $_order_id, %_tmp);
 
    sub _preserve_order {
 
@@ -767,34 +767,6 @@ into the flow.
 
 =over 3
 
-=item mce_flow { input_data => iterator }, sub { code }
-
-An iterator factory using closures can by specified for input data.
-
-Notice the anonymous hash as the first argument to mce_flow. The only other
-way is to specify input_data via MCE::Flow::init. We do not want MCE::Flow
-to mistakenly configure the code reference from the iterator function as
-another user task.
-
-   sub input_iterator {
-      my ($n, $max, $step) = @_;
-
-      return sub {
-         return if $n > $max;
-
-         my $current = $n;
-         $n += $step;
-
-         return $current;
-      };
-   }
-
-   MCE::Flow::init {
-      chunk_size => 1
-   };
-
-   mce_flow { input_data => input_iterator(10, 30, 2) }, sub { $_ };
-
 =item mce_flow sub { code }, list
 
 Input data can be defined using a list or passing a reference to an array.
@@ -826,9 +798,24 @@ optional. The format is passed to sprintf (% may be omitted below).
       begin => $beg, end => $end, step => $step, format => $fmt
    };
 
+=item mce_flow { input_data => iterator }, sub { code }
+
+An iterator reference can by specified for input data. Notice the anonymous
+hash as the first argument to mce_flow. The only other way is to specify
+input_data via MCE::Flow::init. This prevents MCE::Flow from configuring
+the iterator reference as another user task which will not work.
+
+Iterators are described under "SYNTAX for INPUT_DATA" at L<MCE::Core>.
+
+   MCE::Flow::init {
+      input_data => iterator
+   };
+
+   mce_flow sub { $_ };
+
 =back
 
-The sequence engine can compute the begin and end items only for the chunk
+The sequence engine can compute the begin and end items only, for the chunk,
 leaving out the items in between with the bounds_only (boundaries only) option.
 This option applies to sequence and has no effect when chunk_size equals 1.
 

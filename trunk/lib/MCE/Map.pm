@@ -500,25 +500,6 @@ specified, will be set to undef due to being used internally by the module.
 
 =over 3
 
-=item mce_map { code } iterator
-
-An iterator factory using closures can by specified for input data.
-
-   sub input_iterator {
-      my ($n, $max, $step) = @_;
-
-      return sub {
-         return if $n > $max;
-
-         my $current = $n;
-         $n += $step;
-
-         return $current;
-      };
-   }
-
-   my @a = mce_map { $_ * 2 } input_iterator(10, 30, 2);
-
 =item mce_map { code } list
 
 Input data can be defined using a list or passing a reference to an array.
@@ -549,6 +530,13 @@ optional. The format is passed to sprintf (% may be omitted below).
    my @h = mce_map_s { $_ } {
       begin => $beg, end => $end, step => $step, format => $fmt
    };
+
+=item mce_map { code } iterator
+
+An iterator reference can by specified for input data. Iterators are described
+under "SYNTAX for INPUT_DATA" at L<MCE::Core>.
+
+   my @a = mce_map { $_ * 2 } make_iterator(10, 30, 2);
 
 =back
 

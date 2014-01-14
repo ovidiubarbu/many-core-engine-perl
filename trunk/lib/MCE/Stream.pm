@@ -814,32 +814,6 @@ possibilities of passing input data into the code block.
 
 =over 3
 
-=item mce_stream { input_data => iterator }, sub { code }
-
-An iterator factory using closures can by specified for input data.
-
-Notice the anonymous hash as the first argument to mce_stream. The only other
-way is to specify input_data via MCE::Stream::init. We do not want MCE::Stream
-to mistakenly configure the code reference from the iterator function as
-another user task.
-
-   sub input_iterator {
-      my ($n, $max, $step) = @_;
-
-      return sub {
-         return if $n > $max;
-
-         my $current = $n;
-         $n += $step;
-
-         return $current;
-      };
-   }
-
-   my @a = mce_stream {
-      input_data => input_iterator(10, 30, 2)
-   }, sub { $_ * 2 };
-
 =item mce_stream sub { code }, list
 
 Input data can be defined using a list or passing a reference to an array.
@@ -870,6 +844,21 @@ optional. The format is passed to sprintf (% may be omitted below).
    my @h = mce_stream_s sub { $_ }, {
       begin => $beg, end => $end, step => $step, format => $fmt
    };
+
+=item mce_stream { input_data => iterator }, sub { code }
+
+An iterator reference can by specified for input data. Notice the anonymous
+hash as the first argument to mce_stream. The only other way is to specify
+input_data via MCE::Stream::init. This prevents MCE::Stream from configuring
+the iterator reference as another user task which will not work.
+
+Iterators are described under "SYNTAX for INPUT_DATA" at L<MCE::Core>.
+
+   MCE::Stream::init {
+      input_data => iterator
+   };
+
+   my @a = mce_stream sub { $_ * 3 }, sub { $_ * 2 };
 
 =back
 

@@ -121,11 +121,11 @@ Below, a new instance is configured with all available options.
       input_data   => $input_file,       ## Default undef
       RS           => "::\n\n",          ## Default undef
 
-          ## input_data => '/path/to/file'  for file path
-          ## input_data => \@array          for array
-          ## input_data => \*FILE_HNDL      for file handle
+          ## input_data => '/path/to/file'  for file paths
+          ## input_data => \@array          for arrays
+          ## input_data => \*FILE_HNDL      for file handles
           ## input_data => \$scalar         treated like a file
-          ## input_data => sub { }          for input iterator
+          ## input_data => \&iterator       for iterators
 
           ## Use the sequence option if simply wanting to loop
           ## through a sequence of numbers instead.
@@ -134,8 +134,7 @@ Below, a new instance is configured with all available options.
           ## record separator (RS) applicable to input files,
           ## file handles, and scalar references.
 
-          ## Release 1.505 adds support for input iterators
-          ## via input_data => sub { }
+          ## Support for iterators was added in 1.505.
 
       use_slurpio  => 1,                 ## Default 0
       use_threads  => 1,                 ## Default 0 or 1
@@ -241,7 +240,7 @@ Below, a new instance is configured with all available options.
           ##    sequence => [ -1, 1, 0.1, "%4.1f" ]
 
           ## The bounds_only => 1 option will compute the begin and
-          ## end items only for the chunk and not the items in between
+          ## end items only, for the chunk, and not the items in between
           ## (hence boundaries only). This option has no effect when
           ## sequence is missing or chunk_size equals 1.
           ##
@@ -387,67 +386,63 @@ completed processing or running.
 
 =head2 SYNTAX for INPUT_DATA
 
-MCE supports 5 ways to specify input_data. Support for input iterators made
-its 1st appearance in MCE 1.505. The RS option allows one to specify the record
-separator when processing a file. Btw, input_data is optional and does not
-need to be configured is simply wanting many workers doing different things.
+MCE supports 5 ways to specify input_data. Support for iterators was added
+in MCE 1.505. The RS option allows one to specify the record separator when
+processing files. Specifying input_data is optional and not a requirement
+for spawning many workers to do different things.
 
 MCE is a chunking engine. Therefore, chunk_size is applicable to input_data.
 Specifying 1 for use_slurpio causes the user_func to receive a scalar ref
-containing the raw data (files only) instead of an array reference.
+containing the raw data (applicable to files only) instead of an array
+reference.
 
-   input_data  => '/path/to/file',  ## for file path
-   input_data  => \@array,          ## for array
-   input_data  => \*FILE_HNDL,      ## for file handle
+   input_data  => '/path/to/file',  ## for file paths
+   input_data  => \@array,          ## for arrays
+   input_data  => \*FILE_HNDL,      ## for file handles
    input_data  => \$scalar,         ## treated like a file
-   input_data  => sub { },          ## for input iterator
+   input_data  => \&iterator,       ## for iterators
 
    chunk_size  => 1,                ## >1 means looping inside user_func
-   use_slurpio => 1,                ## passes a scalar ref
-   RS          => "::\n\n",         ## record separator for file
+   use_slurpio => 1,                ## $chunk_ref is a scalar ref
+   RS          => "::\n\n",         ## record separator
 
-The chunk_size value determines the chunking mode to use on files. Otherwise,
-chunk_size is the number of elements for arrays. Less than or equal to 8192 is
-the number of records for files. Greater than 8192 is the number of bytes to
-read including (the rest) up to the next record separator.
+The chunk_size value determines the chunking mode to use when processing files.
+Otherwise, chunk_size is the number of elements for arrays. For files, a chunk
+size value of <= 8192 is how many records to read. Greater than 8192 is how
+many bytes to read. MCE appends (the rest) up to the next record separator.
+
+   chunk_size  =>  8192,            ## Consists of 8192 records
+   chunk_size  =>  8193,            ## Approximate 8193 bytes for files
 
    chunk_size  =>     1,            ## Consists of 1 record or element
    chunk_size  =>  1000,            ## Consists of 1000 records
-   chunk_size  => 16384,            ## Approximate 16384 bytes
-   chunk_size  => 50000,            ## Approximate 50000 bytes
+   chunk_size  => 16384,            ## Approximate 16384 bytes for files
+   chunk_size  => 50000,            ## Approximate 50000 bytes for files
 
-The format for user_func is as follow.
+The construction for user_func is as follow when chunk_size > 1 and assuming
+use_slurpio equals 0.
 
    user_func => sub {
       my ($self, $chunk_ref, $chunk_id) = @_;
 
-      ## for scalar reference (use_slurpio => 1)
-      ## $_ is $chunk_ref
-
-      print $$chunk_ref;
-
-      ## for array reference
-      ## $_ is $chunk_ref->[0] when chunk_size => 1
-      ## $_ is $chunk_ref otherwise
+      ## $_ is $chunk_ref->[0] when chunk_size equals 1
+      ## $_ is $chunk_ref otherwise; $_ can be used below
 
       for my $record ( @{ $chunk_ref } ) {
          print "$chunk_id: $record\n";
       }
    }
 
-Let's now go over the input iterator. A great example of this is simulating a
-sequence of numbers specified using input_data instead of the sequence option.
-
-When time permits, take a look at the included iterator.pl example, behaving
-similarly to forseq.pl with ordered output. Benchmark the two examples and
-notice the difference. The included sequence engine via the sequence option is
-faster due to zero involvement from the manager process. With that said, the
-below is mearly a demonstration for making a simple iterator factory using
-closures.
+Specifying a value for input_data is pretty much straight forward for arrays
+and files. What about iterators? Ok, the next several examples all use an
+iterator reference for input_data.
 
    use MCE;
 
-   ## Provides a sequence of numbers.
+   ## A factory function which creates a closure (the iterator itself)
+   ## for generating a sequence of numbers. The external variables
+   ## ($n, $max, $step) are used for keeping state across successive
+   ## calls to the closure. The iterator returns undef when $n > max.
 
    sub input_iterator {
       my ($n, $max, $step) = @_;
@@ -462,21 +457,25 @@ closures.
       };
    }
 
-   ## Run user_func in parallel.
+   ## Run user_func in parallel. Input data can be specified during
+   ## the construction or as an argument to the process method.
 
-   MCE->new(
+   my $mce = MCE->new(
+
       chunk_size => 1, max_workers => 4,
-      input_data => input_iterator(10, 30, 2),
+    # input_data => input_iterator(10, 30, 2),
 
       user_func => sub {
          my ($self, $chunk_ref, $chunk_id) = @_;
          MCE->print("$_: ", $_ * 2, "\n");
       }
 
-   )->run;
+   )->spawn;
 
-   -- Output   Note that output order is not guaranteed.
-               Peek at iterator.pl if wanting ordered output.
+   $mce->process( input_iterator(10, 30, 2) );
+
+   -- Output   Note that output order is not guaranteed
+               Take a look at iterator.pl for ordered output
 
    10: 20
    12: 24
@@ -490,9 +489,61 @@ closures.
    28: 56
    30: 60
 
-A lazy array cannot be specified for input_data due to MCE wanting to know
-up-front the size of the array. Thus, make an iterator factory like so.
-Below, the code block for the lazy array returns undef when completed.
+There are many modules on CPAN which return an iterator reference. Below
+showing one such example. The demonstration ensures MCE workers are spawned
+before obtaining the iterator. Note the worker_id value (left column) in the
+output.
+
+   use Path::Iterator::Rule;
+   use MCE;
+
+   my $start_dir = shift
+      or die "Please specify a starting directory";
+
+   -d $start_dir
+      or die "Cannot open '$start_dir': No such file or directory";
+
+   my $mce = MCE->new(
+      max_workers => 'auto',
+      user_func => sub { MCE->print( MCE->wid, ": $_\n" ) }
+   )->spawn;
+
+   my $rule = Path::Iterator::Rule->new->file->name( qr/[.](pm)$/ );
+
+   my $iterator = $rule->iter(
+      $start_dir, { follow_symlinks => 0, depthfirst => 1 }
+   );
+
+   $mce->process( $iterator );
+
+   -- Output
+
+   8: lib/MCE/Core/Input/Generator.pm
+   5: lib/MCE/Core/Input/Handle.pm
+   6: lib/MCE/Core/Input/Iterator.pm
+   2: lib/MCE/Core/Input/Request.pm
+   3: lib/MCE/Core/Manager.pm
+   4: lib/MCE/Core/Input/Sequence.pm
+   7: lib/MCE/Core/Validation.pm
+   1: lib/MCE/Core/Worker.pm
+   8: lib/MCE/Flow.pm
+   5: lib/MCE/Grep.pm
+   6: lib/MCE/Loop.pm
+   2: lib/MCE/Map.pm
+   3: lib/MCE/Queue.pm
+   4: lib/MCE/Signal.pm
+   7: lib/MCE/Stream.pm
+   1: lib/MCE/Subs.pm
+   8: lib/MCE/Util.pm
+   5: lib/MCE.pm
+
+Although MCE supports arrays, extra measures are needed to use a "lazy" array
+as input data for MCE. The reason for this is that MCE wants the size of the
+array before processing which may be unknown for lazy arrays. Therefore,
+closures provides an excellent mechanism for this.
+
+Note that undef is returned from the code block belonging to the lazy array
+to have the process stop, otherwise will never end.
 
    use Tie::Array::Lazy;
    use MCE;
@@ -534,9 +585,9 @@ Below, the code block for the lazy array returns undef when completed.
    5
    9
 
-The following example demonstrates how one can retrieve a chunk from the array
-per each request. In this scenario, undef is sent by the iterator block when
-reaching the maximum index value.
+The following demonstrates how to retrieve a chunk from the lazy array per
+each successive call. Here, undef is sent by the iterator block when $i is
+greater than $max.
 
    use Tie::Array::Lazy;
    use MCE;
@@ -544,8 +595,6 @@ reaching the maximum index value.
    tie my @a, 'Tie::Array::Lazy', [], sub {
       $_[0]->index;
    };
-
-   ## Iterator with chunking support for lazy arrays.
 
    sub make_iterator {
       my $j = 0; my ($a_ref, $max) = @_;
@@ -557,8 +606,6 @@ reaching the maximum index value.
          return $j <= $max ? @$a_ref[$i .. $j - 1] : @$a_ref[$i .. $max];
       };
    }
-
-   ## Run user_func in parallel.
 
    MCE->new(
       chunk_size => 15, max_workers => 4,
