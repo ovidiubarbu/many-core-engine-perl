@@ -491,8 +491,52 @@ closures.
    30: 60
 
 A lazy array cannot be specified for input_data due to MCE wanting to know
-up-front the size of the array. Thus, make a generic iterator factory with
-support for chunking like so.
+up-front the size of the array. Thus, make an iterator factory like so.
+Below, the code block for the lazy array returns undef when completed.
+
+   use Tie::Array::Lazy;
+   use MCE;
+
+   tie my @a, 'Tie::Array::Lazy', [], sub {
+      my $i = $_[0]->index;
+
+      return ($i < 10) ? $i : undef;
+   };
+
+   sub make_iterator {
+      my $i = 0; my $a_ref = shift;
+
+      return sub {
+         return $a_ref->[$i++];
+      };
+   }
+
+   MCE->new(
+      max_workers => 4, input_data => make_iterator(\@a),
+
+      user_func => sub {
+         my ($self, $chunk_ref, $chunk_id) = @_;
+         MCE->print($_, "\n");
+      }
+
+   )->run;
+
+   -- Output
+
+   0
+   1
+   2
+   3
+   4
+   6
+   7
+   8
+   5
+   9
+
+The following example demonstrates how one can retrieve a chunk from the array
+per each request. In this scenario, undef is sent by the iterator block when
+reaching the maximum index value.
 
    use Tie::Array::Lazy;
    use MCE;

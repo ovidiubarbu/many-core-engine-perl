@@ -297,20 +297,25 @@ sub _output_loop {
             if (@_ret_a > 1 || ref $_ret_a[0]) {
                $_buffer = $self->{freeze}( [ @_ret_a ] );
                local $\ = undef if (defined $\); $_len = length $_buffer;
+
                print $_DAU_R_SOCK $_len . '1' . $LF . (++$_chunk_id) . $LF .
                   $_buffer;
+
+               return;
             }
-            else {
+            elsif (defined $_ret_a[0]) {
                local $\ = undef if (defined $\); $_len = length $_ret_a[0];
+
                print $_DAU_R_SOCK $_len . '0' . $LF . (++$_chunk_id) . $LF .
                   $_ret_a[0];
+
+               return;
             }
          }
-         else {
-            local $\ = undef if (defined $\);
-            print $_DAU_R_SOCK '-1' . $LF;
-            $_aborted = 1;
-         }
+
+         local $\ = undef if (defined $\);
+         print $_DAU_R_SOCK '-1' . $LF;
+         $_aborted = 1; 
 
          return;
       },
