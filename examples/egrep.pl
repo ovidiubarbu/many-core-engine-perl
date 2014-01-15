@@ -10,6 +10,7 @@
 ## are only 4 shared socket pairs in MCE no matter the number of workers.
 ##
 ## The usage description was largely ripped off from the egrep man page.
+## Look at bin/mce_grep for a wrapper script around the grep binary.
 ##
 ###############################################################################
 
@@ -420,7 +421,7 @@ if (@files > 0) {
       }
       elsif (-d $file) {
          print STDERR "$prog_name: $file: Is a directory\n";
-         $exit_status = 1;
+         $exit_status = 2;
       }
       else {
          $mce->process($file);
@@ -442,6 +443,6 @@ if (!$q_flag && $exit_status) {
    exit($exit_status);
 }
 else {
-   exit(($found_match) ? 0 : 1);
+   exit($found_match ? 0 : ($exit_status ? $exit_status : 1));
 }
 

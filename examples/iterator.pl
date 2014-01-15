@@ -7,12 +7,12 @@
 ## usage: iterator.pl [ size ]
 ## usage: iterator.pl [ begin end [ step [ format ] ] ]
 ##
-## e.g. : iterator.pl 10 20 0.2 4.1f
+##   e.g. iterator.pl 10 20 2
 ##
-## For the format arg, think of passing format to sprintf (% is optional).
+## The format string is passed to sprintf (% is optional).
 ##
-##   iterator.pl 20 30 0.2 %4.1f
-##   iterator.pl 20 30 0.2  4.1f
+##   e.g. iterator.pl 20 30 0.2 %4.1f
+##        iterator.pl 20 30 0.2  4.1f
 ##
 ###############################################################################
 
@@ -53,8 +53,7 @@ unless (defined $s_end) {
 ##
 ###############################################################################
 
-## A factory function which creates a new closure (the iterator itself) for
-## generating a sequence of numbers. The external variables ($n, $max, $step)
+## Generates a sequence of numbers. The external variables ($n, $max, $step)
 ## are used for keeping state across successive calls to the closure. The
 ## iterator returns undef when $n exceeds max.
 
@@ -71,8 +70,12 @@ sub input_iterator {
    };
 }
 
-## A factory fuction which emits a closure to be used for preserving output
-## order as results are being gathered.
+## Preserves output order. The external variables (%result_n, %result_d) are
+## used for temporary storage for out-of-order results. The external variable
+## ($order_id) is incremented after printing to STDOUT in an orderly fashion.
+##
+## The external variables keep their state across successive calls to the
+## closure.
 
 sub output_iterator {
    my (%result_n, %result_d); my $order_id = 1;
