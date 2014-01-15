@@ -1,0 +1,754 @@
+#!/usr/bin/env perl
+###############################################################################
+## ----------------------------------------------------------------------------
+## Demo for MCE.
+##
+## MCE driven wrapper script for the following C binaries:
+##   agrep, grep, egrep, fgrep, tre-agrep
+##
+## Simply copy/rename this script or create a hard-link. The prefix 'mce_' is
+## stripped from the name for determining the actual binary to use. A trailing
+## '.pl' extension is optional. Please ensure the binary is installed and in
+## your path.
+##
+##   ln mce_grep mce_agrep      (or)  ln mce_grep mce_agrep.pl
+##   ln mce_grep mce_tre-agrep  (or)  cp mce_grep mce_tre-agrep.pl
+##   ln mce_grep mce_egrep
+##   ln mce_grep mce_fgrep
+##
+## Options specific to this script (not passed to the binary):
+##
+##   --lang=LANG  e.g. --lang=C, --lang=en_US.UTF-8, --lang=en_US.ISO-8859-1
+##
+##   --chunk-size=NUM[KM]  default:   2M  min: 200K  max: 20M
+##   --max-workers=STR     default: auto  --max-workers=auto-2
+##                                        --max-workers=4
+##
+##   --chunk_size and --max_workers are also valid options ( _ in name )
+##
+## Caveat for grep, egrep, fgrep. MCE chunks input while running which may
+## cause the following options to report inaccurately. It's possible that
+## the requested NUM lines may cross chunking boundaries. Specifying a
+## larger chunk size value will minimize this effect.
+##
+##   -A NUM, --after-context=NUM
+##   -B NUM, --before-context=NUM
+##   -C NUM, --context=NUM
+##
+## ============================================================================
+## Created by Mario Roy, 2014-01-15, v1.000.
+## ----------------------------------------------------------------------------
+###############################################################################
+
+use strict;
+use warnings;
+
+use Cwd qw(abs_path);
+use lib abs_path . "/../lib";
+
+use Fcntl qw(O_RDONLY);
+use Scalar::Util qw(looks_like_number);
+
+use MCE::Signal qw(-use_dev_shm);
+use MCE 1.5;
+
+###############################################################################
+## ----------------------------------------------------------------------------
+## Validation.
+##
+###############################################################################
+
+my ($script_name, $cmd_name, $cmd_path, %valid_names);
+
+$script_name = $0;
+$script_name =~ s{^.*[\\/]}{}g;
+
+if ($^O eq 'MSWin32') {
+   print STDERR "$script_name: $^O: OS not supported\n";
+   exit 1;
+}
+
+$cmd_name = $script_name;
+$cmd_name =~ s{^mce_}{};
+$cmd_name =~ s{\.pl$}{};
+
+for (split ':', $ENV{'PATH'}) {
+   if (-x "$_/$cmd_name") {
+      $cmd_path = "$_/$cmd_name";
+      last;
+   }
+}
+unless (defined $cmd_path) {
+   print STDERR "$script_name: $cmd_name: command not found\n";
+   exit 1;
+}
+
+%valid_names = map { $_ => 1 } qw(
+   agrep grep egrep fgrep tre-agrep
+);
+unless (exists $valid_names{$cmd_name}) {
+   print STDERR "$script_name: $cmd_name: command not supported\n";
+   exit 1;
+}
+
+###############################################################################
+## ----------------------------------------------------------------------------
+## Process arguments.
+##
+###############################################################################
+
+my ($h_patn, $b_flag, $c_flag, $h_flag, $H_flag, $n_flag, $q_flag) = ((0) x 7);
+my (@args, $arg, @files, $file);
+
+my $max_count = 0; my $no_msg = 0;
+
+my $chunk_size  = 2_097_152;  ## 2M
+my $max_workers = 'auto';
+
+my $exit_status = 0;
+my $found_match = 0;
+my $skip_args   = 0;
+my $w_filename  = 0;
+
+while (@ARGV) {
+
+   $arg = shift @ARGV;
+   $arg =~ s/ /\\ /g;
+
+   if ($skip_args) {
+      push @files, $arg;
+      next;
+   }
+
+   ################################
+   ## --OPTION (for double dashes)
+   ################################
+
+   if (substr($arg, 0, 2) eq '--') {
+
+      if ($arg eq '--') {
+         $skip_args = 1;
+         next;
+      }
+
+      ## for script
+      if ($arg =~ /^--lang=(.+)/) {
+         delete $ENV{'LC_MESSAGES'};
+         delete $ENV{'LC_COLLATE'};
+         delete $ENV{'LC_CTYPE'};
+         delete $ENV{'LC_ALL'};
+
+         $ENV{'LANG'} = $1;
+      }
+      elsif ($arg =~ /^--chunk[-_]size=(.+)/) {
+         $chunk_size = $1;
+
+         if ($chunk_size =~ /^(\d+)K/i) {
+            $chunk_size = $1 * 1024;
+         }
+         elsif ($chunk_size =~ /^(\d+)M/i) {
+            $chunk_size = $1 * 1024 * 1024;
+         }
+
+         if (looks_like_number($chunk_size) && $chunk_size > 0) {
+            $chunk_size = 20_971_520 if $chunk_size > 20_971_520;  ## 20M
+            $chunk_size =    204_800 if $chunk_size <    204_800;  ## 200K
+         }
+         else {
+            print STDERR "$script_name: invalid chunk size\n";
+            exit 1;
+         }
+      }
+      elsif ($arg =~ /^--max[-_]workers=(.+)/) {
+         $max_workers = $1;
+
+         if ($max_workers !~ /^auto/) {
+            unless (looks_like_number($max_workers) && $max_workers > 0) {
+               print STDERR "$script_name: invalid max workers\n";
+               exit 1;
+            }
+         }
+      }
+
+      ## for binary
+      elsif ($arg eq '--version') {
+         system $cmd_path, $arg;
+         exit 0;
+      }
+      elsif ($arg eq '--help') {
+         system $cmd_path, $arg;
+         exit 0;
+      }
+      else {
+         $h_patn = 1 if $arg =~ /^--regexp=/;
+         $h_patn = 1 if $arg =~ /^--file=/;
+
+         $b_flag = 1 if $arg eq '--byte-offset';
+         $c_flag = 1 if $arg eq '--count';
+         $n_flag = 1 if $arg eq '--record-number';
+         $n_flag = 1 if $arg eq '--line-number';
+         $q_flag = 1 if $arg eq '--silent';
+         $q_flag = 1 if $arg eq '--quiet';
+
+         $no_msg = 1 if $arg eq '--no-messages';
+
+         if ($arg eq '--no-filename') {
+            $h_flag = 1; $H_flag = 0;
+         }
+         elsif ($arg eq '--with-filename') {
+            $h_flag = 0; $H_flag = 1;
+         }
+         elsif ($arg =~ /^--max-count=(.+)/) {
+            $max_count = $1;
+            unless (looks_like_number($max_count) && $max_count >= 0) {
+               print STDERR "$script_name: invalid max count\n";
+               exit 1;
+            }
+         }
+
+         ## Pass arguments to the C binary
+         push @args, $arg if (
+            $arg ne '--no-filename' &&
+            $arg ne '--with-filename' &&
+            $arg ne '--quiet' &&
+            $arg ne '--silent' &&
+            $arg ne '--max-count'
+         );
+      }
+   }
+
+   ################################
+   ## -OPTION (for single dash)
+   ################################
+
+   elsif (substr($arg, 0, 1) eq '-') {
+
+      if ($arg eq '-') {
+         push @files, $arg;
+         next;
+      }
+
+      my $len = length $arg;
+
+      for (my $x = 1; $x < $len; $x++) {
+         my $a = substr($arg, $x, 1);
+
+         if ($a eq 'V') {
+            system $cmd_path, $arg;
+            exit 0;
+         }
+         elsif ($a eq 'h') {
+            $h_flag = 1; $H_flag = 0;
+         }
+         elsif ($a eq 'H') {
+            $h_flag = 0; $H_flag = 1;
+         }
+         elsif ($a eq 'm') {
+            if (substr($arg, -1) eq 'm') {
+               $max_count = shift @ARGV;
+               if (defined $max_count) {
+                  unless (looks_like_number($max_count) && $max_count >= 0) {
+                     print STDERR "$script_name: invalid max count\n";
+                     exit 1;
+                  }
+               }
+            }
+            elsif ($arg =~ /m(\d+)$/) {
+               $max_count = $1;
+            }
+         }
+
+         $h_patn = 1 if $a eq 'e';
+         $h_patn = 1 if $a eq 'f';
+
+         $b_flag = 1 if $a eq 'b';
+         $c_flag = 1 if $a eq 'c';
+         $n_flag = 1 if $a eq 'n';
+         $q_flag = 1 if $a eq 'q';
+
+         $no_msg = 1
+            if ($a eq 's' && $cmd_name !~ /agrep/);
+      }
+
+      ## Do not pass these arguments
+      $arg =~ s/h//g; $arg =~ s/H//g;
+      $arg =~ s/q//g; $arg =~ s/m\d*//g;
+
+      ## Pass arguments to the C binary
+      push @args, $arg if $arg ne '-';
+
+      if ($cmd_name =~ /agrep/) {
+         if (substr($arg, -1) =~ /[efDISEd]/) {
+            $arg =  shift @ARGV;
+            $arg =~ s/ /\\ /g;
+            push @args, $arg;
+         }
+      }
+      else {
+         if (substr($arg, -1) =~ /[efABCDd]/) {
+            $arg =  shift @ARGV;
+            $arg =~ s/ /\\ /g;
+            push @args, $arg;
+         }
+      }
+   }
+
+   ################################
+   ## FILE
+   ################################
+
+   else {
+      push @files, $arg;
+   }
+}
+
+push @args, shift @files
+   if ($h_patn == 0 && @files > 0);
+
+if (@args == 0) {
+   system $cmd_path;
+   exit 2;
+}
+
+$w_filename = 1
+   if ((!$h_flag && @files > 1) || $H_flag);
+
+###############################################################################
+## ----------------------------------------------------------------------------
+## Callback functions: Miscellaneous
+##
+###############################################################################
+
+my ($_order_id, %_tmp, %_nrecs, %_nsize, $_start_nrecs, $_start_nsize);
+my ($_abort_all, $_abort_job, $_total_found);
+
+sub _error {
+
+   print STDERR $_[0];
+   $exit_status = 1;
+
+   return;
+}
+
+sub _output_cnt {
+
+   my $out_file = $_[0];
+
+   open my $fh, '<', $out_file;
+   my $cnt = <$fh>; chomp $cnt;
+   close $fh;
+
+   $_total_found += $cnt;
+   unlink $out_file;
+
+   if ($cnt) {
+      $found_match = 1;
+      if ($q_flag && !$_abort_all) {
+         MCE->abort(); $_abort_all = $_abort_job = 1;
+      }
+   }
+
+   return;
+}
+
+###############################################################################
+## ----------------------------------------------------------------------------
+## Callback function: Output with no line-number or byte-offset
+##
+###############################################################################
+
+sub _output_n0 {
+
+   $_tmp{ $_[0] } = $_[1];
+
+   return unless exists $_tmp{ $_order_id };
+
+   do {
+      my $out_file = $_tmp{ $_order_id };
+
+      if (!$_abort_job && -s $out_file) {
+         my ($fh, $buffer); $found_match = 1;
+
+         if ($q_flag) {
+            unless ($_abort_all) {
+               MCE->abort(); $_abort_all = $_abort_job = 1;
+            }
+         }
+         else {
+            if ($w_filename) {
+               open $fh, '<', $out_file;
+               while (<$fh>) {
+                  print $file . ':' . $_;
+                  if ($max_count && ++$_total_found == $max_count) {
+                     MCE->abort(); $_abort_job = 1;
+                     last;
+                  }
+               }
+               close $fh;
+            }
+            else {
+               if ($max_count) {
+                  open  $fh, '<', $out_file;
+                  while (<$fh>) {
+                     print $_;
+                     if ($max_count && ++$_total_found == $max_count) {
+                        MCE->abort(); $_abort_job = 1;
+                        last;
+                     }
+                  }
+                  close $fh;
+               }
+               else {
+                  sysopen $fh, $out_file, O_RDONLY;
+                  sysread $fh, $buffer, -s $fh;
+                  close   $fh;
+
+                  print $buffer;
+               }
+            }
+         }
+      }
+
+      delete $_tmp{ $_order_id };
+      unlink $out_file;
+
+   } while (exists $_tmp{ ++$_order_id });
+
+   return;
+}
+
+###############################################################################
+## ----------------------------------------------------------------------------
+## Callback function: Output with line-number or byte-offset
+##
+###############################################################################
+
+sub _output_n1 {
+
+   $_tmp{   $_[0] } = $_[1];
+   $_nsize{ $_[0] } = $_[2];
+
+   return unless exists $_tmp{ $_order_id };
+
+   do {
+      my $out_file = $_tmp{ $_order_id };
+
+      if ($_order_id > 1) {
+         $_start_nsize += $_nsize{ $_order_id - 1 };
+         delete $_nsize{ $_order_id - 1 };
+      }
+
+      if (!$_abort_job && -s $out_file) {
+         my ($p1, $size); $found_match = 1;
+
+         if ($q_flag) {
+            unless ($_abort_all) {
+               MCE->abort(); $_abort_all = $_abort_job = 1;
+            }
+         }
+         else {
+            open my $fh, '<', $out_file;
+
+            if ($w_filename) {
+               while (<$fh>) {
+                  $p1   = index($_, ':');
+                  $size = $_start_nsize + substr($_, 0, $p1);
+
+                  print $file . ':' . $size . substr($_, $p1);
+                  if ($max_count && ++$_total_found == $max_count) {
+                     MCE->abort(); $_abort_job = 1;
+                     last;
+                  }
+               }
+            }
+            else {
+               while (<$fh>) {
+                  $p1   = index($_, ':');
+                  $size = $_start_nsize + substr($_, 0, $p1);
+
+                  print $size . substr($_, $p1);
+                  if ($max_count && ++$_total_found == $max_count) {
+                     MCE->abort(); $_abort_job = 1;
+                     last;
+                  }
+               }
+            }
+
+            close $fh;
+         }
+      }
+
+      delete $_tmp{ $_order_id };
+      unlink $out_file;
+
+   } while (exists $_tmp{ ++$_order_id });
+
+   return;
+}
+
+###############################################################################
+## ----------------------------------------------------------------------------
+## Callback function: Output with both line-number and byte-offset
+##
+###############################################################################
+
+sub _output_n2 {
+
+   $_tmp{   $_[0] } = $_[1];
+   $_nrecs{ $_[0] } = $_[2];
+   $_nsize{ $_[0] } = $_[3];
+
+   return unless exists $_tmp{ $_order_id };
+
+   do {
+      my $out_file = $_tmp{ $_order_id };
+
+      if ($_order_id > 1) {
+         $_start_nrecs += $_nrecs{ $_order_id - 1 };
+         delete $_nrecs{ $_order_id - 1 };
+
+         $_start_nsize += $_nsize{ $_order_id - 1 };
+         delete $_nsize{ $_order_id - 1 };
+      }
+
+      if (!$_abort_job && -s $out_file) {
+         my ($p1, $p2, $recs, $size); $found_match = 1;
+
+         if ($q_flag) {
+            unless ($_abort_all) {
+               MCE->abort(); $_abort_all = $_abort_job = 1;
+            }
+         }
+         else {
+            open my $fh, '<', $out_file;
+
+            if ($w_filename) {
+               while (<$fh>) {
+                  $p1   = index($_, ':');
+                  $recs = $_start_nrecs + substr($_, 0, $p1++);
+
+                  $p2   = index($_, ':', $p1);
+                  $size = $_start_nsize + substr($_, $p1, $p2 - $p1);
+
+                  print $file . ':' . $recs . ':' . $size . substr($_, $p2);
+                  if ($max_count && ++$_total_found == $max_count) {
+                     MCE->abort(); $_abort_job = 1;
+                     last;
+                  }
+               }
+            }
+            else {
+               while (<$fh>) {
+                  $p1   = index($_, ':');
+                  $recs = $_start_nrecs + substr($_, 0, $p1++);
+
+                  $p2   = index($_, ':', $p1);
+                  $size = $_start_nsize + substr($_, $p1, $p2 - $p1);
+
+                  print $recs . ':' . $size . substr($_, $p2);
+                  if ($max_count && ++$_total_found == $max_count) {
+                     MCE->abort(); $_abort_job = 1;
+                     last;
+                  }
+               }
+            }
+
+            close $fh;
+         }
+      }
+
+      delete $_tmp{ $_order_id };
+      unlink $out_file;
+
+   } while (exists $_tmp{ ++$_order_id });
+
+   return;
+}
+
+###############################################################################
+## ----------------------------------------------------------------------------
+## User functions.
+##
+###############################################################################
+
+sub user_begin {
+
+   my ($self) = @_;
+
+   use vars qw( $first_time );
+   our $first_time = 1;
+
+   return;
+}
+
+sub user_func {
+
+   my ($self, $chunk_ref, $chunk_id) = @_;
+
+   my ($out_fh, $err_fh, $cmd_fh); my $N_records = 0;
+   my $out_file = MCE->sess_dir() .'/'. $chunk_id;
+
+   if ($n_flag) {
+      $N_records++ while ($$chunk_ref =~ m!\n!mg);
+   }
+
+   ## Run command.
+
+   local *STDOUT_SAVE;
+   local *STDERR_SAVE;
+
+   open $out_fh, '>>', $out_file; binmode $out_fh, ':raw';
+   open STDOUT_SAVE, '>&STDOUT';
+   open STDOUT, '>&' . fileno $out_fh;
+
+   if ($first_time) {
+      open $err_fh, '>>', "$out_file.err"; binmode $err_fh, ':raw';
+      open STDERR_SAVE, '>&STDERR';
+      open STDERR, '>&' . fileno $err_fh;
+   }
+
+   open  $cmd_fh, '|-', $cmd_path, @args;
+   print $cmd_fh $$chunk_ref;
+   close $cmd_fh;
+
+   open  STDOUT, '>&STDOUT_SAVE';
+   close $out_fh;
+
+   MCE->abort()
+      if ($q_flag && -s $out_file);
+
+   ## Send error.
+
+   if ($first_time) {
+      my $err_file = "$out_file.err";
+
+      open  STDERR, '>&STDERR_SAVE';
+      close $err_fh;
+
+      if (-s $err_file) {
+         MCE->abort();
+
+         if ($chunk_id == 1) {
+            open  $err_fh, '<', $err_file;
+            local $/ = undef; MCE->do('_error', <$err_fh>);
+            close $err_fh;
+         }
+      }
+
+      unlink $err_file;
+      $first_time = 0;
+   }
+
+   ## Send output.
+
+   if ($c_flag) {
+      MCE->do('_output_cnt', $out_file);
+   }
+   elsif ($n_flag && $b_flag) {
+      my $N_size = length $$chunk_ref;
+      MCE->do('_output_n2', $chunk_id, $out_file, $N_records, $N_size);
+   }
+   elsif ($n_flag) {
+      MCE->do('_output_n1', $chunk_id, $out_file, $N_records);
+   }
+   elsif ($b_flag) {
+      my $N_size = length $$chunk_ref;
+      MCE->do('_output_n1', $chunk_id, $out_file, $N_size);
+   }
+   else {
+      MCE->do('_output_n0', $chunk_id, $out_file);
+   }
+
+   return;
+}
+
+###############################################################################
+## ----------------------------------------------------------------------------
+## Process files via MCE.
+##
+###############################################################################
+
+my $mce = MCE->new(
+   max_workers => $max_workers, chunk_size => $chunk_size, use_slurpio => 1,
+   user_begin  => \&user_begin, user_func  => \&user_func
+);
+
+## Process standard input.
+
+sub process_stdin {
+
+   $file = '(standard input)';
+
+   $_abort_job = $_start_nrecs = $_start_nsize = $_total_found = 0;
+   $_order_id  = 1;
+
+   $mce->process(\*STDIN);
+   %_nrecs = (); %_nsize = ();
+
+   if (!$q_flag && $c_flag) {
+      $_total_found = $max_count
+         if ($max_count && $_total_found > $max_count);
+
+      print "$file:" if $w_filename;
+      print "$_total_found\n";
+   }
+
+   return;
+}
+
+## Process files, otherwise read from standard input.
+
+if (@files > 0) {
+   foreach (@files) {
+      last if $_abort_all;
+
+      $file = $_;
+
+      if ($file eq '-') {
+         open(STDIN, '/dev/tty') or die $!;
+         process_stdin();
+      }
+      elsif (! -e $file) {
+         $exit_status = 2;
+
+         print STDERR "$script_name: $file: No such file or directory\n"
+            unless $no_msg;
+      }
+      elsif (-d $file) {
+         $exit_status = 2;
+
+         print STDERR "$script_name: $file: Is a directory\n"
+            unless $no_msg;
+      }
+      else {
+         $_abort_job = $_start_nrecs = $_start_nsize = $_total_found = 0;
+         $_order_id  = 1;
+
+         $mce->process($file);
+         %_nrecs = (); %_nsize = ();
+
+         if (!$q_flag && $c_flag) {
+            $_total_found = $max_count
+               if ($max_count && $_total_found > $max_count);
+
+            print "$file:" if $w_filename;
+            print "$_total_found\n";
+         }
+      }
+   }
+}
+else {
+   process_stdin();
+}
+
+## Shutdown Many-core Engine and exit.
+
+$mce->shutdown();
+
+if (!$q_flag && $exit_status) {
+   exit($exit_status);
+}
+else {
+   exit($found_match ? 0 : ($exit_status ? $exit_status : 1));
+}
+

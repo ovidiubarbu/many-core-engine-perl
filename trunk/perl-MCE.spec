@@ -26,35 +26,36 @@ have many workers run in parallel.
 
 %build
 %{__perl} Makefile.PL INSTALLDIRS=vendor
-make %{?_smp_mflags}
-
-%install
-rm -rf $RPM_BUILD_ROOT
-
-make pure_install PERL_INSTALL_ROOT=$RPM_BUILD_ROOT
-
-find $RPM_BUILD_ROOT -type f -name .packlist -exec rm -f {} \;
-find $RPM_BUILD_ROOT -depth -type d -exec rmdir {} 2>/dev/null \;
-
-for f in examples/*
-do
-    if [ ! -d $f ]
-    then
-        install -D -p -m 0755 $f $RPM_BUILD_ROOT%{_datadir}/doc/%{name}-%{version}/$f
-    fi
-done
-
-%{_fixperms} $RPM_BUILD_ROOT/*
+make
 
 %check
 make test
 
+%install
+make pure_install PERL_INSTALL_ROOT=%{buildroot}
+
+find %{buildroot} -type f -name .packlist -exec rm -f {} \;
+find %{buildroot} -depth -type d -exec rmdir {} 2>/dev/null \;
+
+mkdir -p %{buildroot}/%{_bindir}
+cp bin/* %{buildroot}/%{_bindir}
+chmod 0755 %{buildroot}/%{_bindir}/*
+
+for f in examples/*; do
+  if [ ! -d $f ]; then
+    install -D -p -m 0755 $f %{buildroot}%{_datadir}/doc/%{name}-%{version}/$f
+  fi
+done
+
+%{_fixperms} %{buildroot}/*
+
 %clean
-rm -rf $RPM_BUILD_ROOT
+rm -rf %{buildroot}
 
 %files
 %defattr(-,root,root,-)
 %doc CHANGES CREDITS LICENSE README examples
+%{_bindir}/*
 %{perl_vendorlib}/*
 %{_mandir}/man3/*
 

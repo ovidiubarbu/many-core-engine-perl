@@ -28,6 +28,8 @@ WriteMakefile(
 
    VERSION        => '1.504',
 
+   EXE_FILES      => [],
+
    (($ExtUtils::MakeMaker::VERSION lt '6.25') ?
       (PL_FILES => { }) : ()),
 
@@ -44,6 +46,9 @@ WriteMakefile(
             'directory' => [
                'examples',
                'images'
+            ],
+            'file' => [
+               'bin/mce_grep'
             ]
          },
          requires => {
