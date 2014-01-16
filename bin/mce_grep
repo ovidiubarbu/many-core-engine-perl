@@ -1,10 +1,8 @@
 #!/usr/bin/env perl
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Demo for MCE.
-##
 ## MCE driven wrapper script for the following C binaries:
-##   agrep, grep, egrep, fgrep, tre-agrep
+##   (agrep, grep, egrep, fgrep, tre-agrep)
 ##
 ## Simply copy/rename this script or create a hard-link. The prefix 'mce_' is
 ## stripped from the name for determining the actual binary to use. A trailing
@@ -36,20 +34,20 @@
 ##   -C NUM, --context=NUM
 ##
 ## ============================================================================
-## Created by Mario Roy, 2014-01-15, v1.000.
+## Created by Mario Roy, 2014-01-16, v1.001.
 ## ----------------------------------------------------------------------------
 ###############################################################################
 
 use strict;
 use warnings;
 
-use Cwd qw(abs_path);
-use lib abs_path . "/../lib";
+use Cwd qw( abs_path );
+use lib abs_path . '/../lib';
 
-use Fcntl qw(O_RDONLY);
-use Scalar::Util qw(looks_like_number);
+use Fcntl qw( O_RDONLY );
+use Scalar::Util qw( looks_like_number );
 
-use MCE::Signal qw(-use_dev_shm);
+use MCE::Signal qw( -use_dev_shm );
 use MCE 1.5;
 
 ###############################################################################
@@ -58,7 +56,7 @@ use MCE 1.5;
 ##
 ###############################################################################
 
-my ($script_name, $cmd_name, $cmd_path, %valid_names);
+my ($script_name, $cmd_name, $cmd_path);
 
 $script_name = $0;
 $script_name =~ s{^.*[\\/]}{}g;
@@ -83,12 +81,13 @@ unless (defined $cmd_path) {
    exit 1;
 }
 
-%valid_names = map { $_ => 1 } qw(
-   agrep grep egrep fgrep tre-agrep
-);
-unless (exists $valid_names{$cmd_name}) {
-   print STDERR "$script_name: $cmd_name: command not supported\n";
-   exit 1;
+{
+   my %valid_names = map { $_ => 1 } qw( agrep grep egrep fgrep tre-agrep );
+
+   unless (exists $valid_names{$cmd_name}) {
+      print STDERR "$script_name: $cmd_name: command not supported\n";
+      exit 1;
+   }
 }
 
 ###############################################################################
@@ -100,7 +99,7 @@ unless (exists $valid_names{$cmd_name}) {
 my ($h_patn, $b_flag, $c_flag, $h_flag, $H_flag, $n_flag, $q_flag) = ((0) x 7);
 my (@args, $arg, @files, $file);
 
-my $max_count = 0; my $no_msg = 0;
+my $max_count   = 0; my $no_msg = 0;
 
 my $chunk_size  = 2_097_152;  ## 2M
 my $max_workers = 'auto';
@@ -305,17 +304,17 @@ while (@ARGV) {
 push @args, shift @files
    if ($h_patn == 0 && @files > 0);
 
+$w_filename = 1
+   if ((!$h_flag && @files > 1) || $H_flag);
+
 if (@args == 0) {
    system $cmd_path;
    exit 2;
 }
 
-$w_filename = 1
-   if ((!$h_flag && @files > 1) || $H_flag);
-
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Callback functions: Miscellaneous
+## Callbacks: Error, Output with count only.
 ##
 ###############################################################################
 
@@ -353,7 +352,7 @@ sub _output_cnt {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Callback function: Output with no line-number or byte-offset
+## Callback: Output with no line-number or byte-offset
 ##
 ###############################################################################
 
@@ -419,7 +418,7 @@ sub _output_n0 {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Callback function: Output with line-number or byte-offset
+## Callback: Output with line-number or byte-offset
 ##
 ###############################################################################
 
@@ -488,7 +487,7 @@ sub _output_n1 {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Callback function: Output with both line-number and byte-offset
+## Callback: Output with both line-number and byte-offset
 ##
 ###############################################################################
 
@@ -567,99 +566,97 @@ sub _output_n2 {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## User functions.
+## MCE user functions.
 ##
 ###############################################################################
 
 sub user_begin {
 
-   my ($self) = @_;
-
-   use vars qw( $first_time );
-   our $first_time = 1;
+   $0 = $^X;
 
    return;
 }
 
-sub user_func {
+sub make_user_func {
 
-   my ($self, $chunk_ref, $chunk_id) = @_;
+   local *STDOUT_SAVE; open STDOUT_SAVE, '>&STDOUT';
+   local *STDERR_SAVE; open STDERR_SAVE, '>&STDERR';
 
-   my ($out_fh, $err_fh, $cmd_fh); my $N_records = 0;
-   my $out_file = MCE->sess_dir() .'/'. $chunk_id;
+   my $first_time = 1;
 
-   if ($n_flag) {
-      $N_records++ while ($$chunk_ref =~ m!\n!mg);
-   }
+   return sub {
 
-   ## Run command.
+      my ($self, $chunk_ref, $chunk_id) = @_;
 
-   local *STDOUT_SAVE;
-   local *STDERR_SAVE;
+      my ($out_fh, $err_fh, $cmd_fh); my $N_records = 0;
+      my $out_file = MCE->sess_dir() .'/'. $chunk_id;
 
-   open $out_fh, '>>', $out_file; binmode $out_fh, ':raw';
-   open STDOUT_SAVE, '>&STDOUT';
-   open STDOUT, '>&' . fileno $out_fh;
-
-   if ($first_time) {
-      open $err_fh, '>>', "$out_file.err"; binmode $err_fh, ':raw';
-      open STDERR_SAVE, '>&STDERR';
-      open STDERR, '>&' . fileno $err_fh;
-   }
-
-   open  $cmd_fh, '|-', $cmd_path, @args;
-   print $cmd_fh $$chunk_ref;
-   close $cmd_fh;
-
-   open  STDOUT, '>&STDOUT_SAVE';
-   close $out_fh;
-
-   MCE->abort()
-      if ($q_flag && -s $out_file);
-
-   ## Send error.
-
-   if ($first_time) {
-      my $err_file = "$out_file.err";
-
-      open  STDERR, '>&STDERR_SAVE';
-      close $err_fh;
-
-      if (-s $err_file) {
-         MCE->abort();
-
-         if ($chunk_id == 1) {
-            open  $err_fh, '<', $err_file;
-            local $/ = undef; MCE->do('_error', <$err_fh>);
-            close $err_fh;
-         }
+      if ($n_flag) {
+         $N_records++ while ($$chunk_ref =~ m!\n!mg);
       }
 
-      unlink $err_file;
-      $first_time = 0;
-   }
+      ## Run command.
 
-   ## Send output.
+      open $out_fh, '>>', $out_file; binmode $out_fh, ':raw';
+      open STDOUT, '>&' . fileno $out_fh;
 
-   if ($c_flag) {
-      MCE->do('_output_cnt', $out_file);
-   }
-   elsif ($n_flag && $b_flag) {
-      my $N_size = length $$chunk_ref;
-      MCE->do('_output_n2', $chunk_id, $out_file, $N_records, $N_size);
-   }
-   elsif ($n_flag) {
-      MCE->do('_output_n1', $chunk_id, $out_file, $N_records);
-   }
-   elsif ($b_flag) {
-      my $N_size = length $$chunk_ref;
-      MCE->do('_output_n1', $chunk_id, $out_file, $N_size);
-   }
-   else {
-      MCE->do('_output_n0', $chunk_id, $out_file);
-   }
+      if ($first_time) {
+         open $err_fh, '>>', "$out_file.err"; binmode $err_fh, ':raw';
+         open STDERR, '>&' . fileno $err_fh;
+      }
 
-   return;
+      open  $cmd_fh, '|-', $cmd_path, @args;
+      print $cmd_fh $$chunk_ref;
+      close $cmd_fh;
+
+      open  STDOUT, '>&STDOUT_SAVE';
+      close $out_fh;
+
+      MCE->abort() if ($q_flag && -s $out_file);
+
+      ## Send error.
+
+      if ($first_time) {
+         my $err_file = "$out_file.err";
+
+         open  STDERR, '>&STDERR_SAVE';
+         close $err_fh;
+
+         if (-s $err_file) {
+            MCE->abort();
+            if ($chunk_id == 1) {
+               open  $err_fh, '<', $err_file;
+               local $/ = undef; MCE->do('_error', <$err_fh>);
+               close $err_fh;
+            }
+         }
+
+         unlink $err_file;
+         $first_time = 0;
+      }
+
+      ## Gather output.
+
+      if ($c_flag) {
+         MCE->do('_output_cnt', $out_file);
+      }
+      elsif ($n_flag && $b_flag) {
+         my $N_size = length $$chunk_ref;
+         MCE->do('_output_n2', $chunk_id, $out_file, $N_records, $N_size);
+      }
+      elsif ($n_flag) {
+         MCE->do('_output_n1', $chunk_id, $out_file, $N_records);
+      }
+      elsif ($b_flag) {
+         my $N_size = length $$chunk_ref;
+         MCE->do('_output_n1', $chunk_id, $out_file, $N_size);
+      }
+      else {
+         MCE->do('_output_n0', $chunk_id, $out_file);
+      }
+
+      return;
+   };
 }
 
 ###############################################################################
@@ -670,7 +667,7 @@ sub user_func {
 
 my $mce = MCE->new(
    max_workers => $max_workers, chunk_size => $chunk_size, use_slurpio => 1,
-   user_begin  => \&user_begin, user_func  => \&user_func
+   user_begin => \&user_begin, user_func => make_user_func()
 );
 
 ## Process standard input.
