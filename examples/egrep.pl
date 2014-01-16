@@ -358,7 +358,7 @@ sub display_result {
       last unless exists $result{$order_id};
       my $r = $result{$order_id};
 
-      if ($r->{found_match}) {
+      if (!$abort_job && $r->{found_match}) {
          $found_match = 1;
 
          if ($q_flag) {
