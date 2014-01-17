@@ -68,6 +68,7 @@ MCE::Flow::init {
 ## Notice enqueue and dequeue as well.
 
 sub pinger {
+
    my ($self, $chunk_ref, $chunk_id) = @_;
 
    my $pinger = $self->{wk_pinger};
@@ -76,7 +77,7 @@ sub pinger {
 
    ## $chunk_ref points to an array containing chunk_size items
    foreach my $host ( @{ $chunk_ref } ) {
-      $pinger->ping($host, 5.500);
+      $pinger->ping($host, 3.333);
    }
 
    ## Let pinger process entire chunk all at once
@@ -102,6 +103,7 @@ sub pinger {
 }
 
 sub task2 {
+
    my ($self) = @_;
 
    while (defined (my $host = $Q->dequeue)) {
@@ -131,6 +133,8 @@ my @h = qw(
 ## max_workers and task_name support an array reference for setting each
 ## sub-task individually. Gather calls above pass a key/value pair which
 ## ends up into the hash variable %r below.
+
+print "## Please wait. This can take 3.4 seconds.\n";
 
 my %r = mce_flow {
    chunk_size  => 100,

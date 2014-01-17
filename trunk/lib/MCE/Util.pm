@@ -136,6 +136,13 @@ sub _parse_chunk_size {
 
    my ($_chunk_size, $_max_workers, $_params, $_input_data, $_array_size) = @_;
 
+   if ($_chunk_size =~ /([0-9\.]+)K\z/i) {
+      $_chunk_size = int($1 * 1024 + 0.5);
+   }
+   elsif ($_chunk_size =~ /([0-9\.]+)M\z/i) {
+      $_chunk_size = int($1 * 1024 * 1024 + 0.5);
+   }
+
    return $_chunk_size
       if (!defined $_chunk_size || !defined $_max_workers);
 

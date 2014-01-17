@@ -55,7 +55,7 @@ DESCRIPTION
    The following options are available:
 
    --chunk_size CHUNK_SIZE
-          Specify chunk size for MCE          -- default: 300000
+          Specify chunk size for MCE          -- default: 1M
 
    --max_workers MAX_WORKERS
           Specify number of workers for MCE   -- default: 8
@@ -68,12 +68,15 @@ DESCRIPTION
           Use PATTERN as the pattern; useful to protect patterns beginning
           with -.
 
+   -H     Print the filename for each match.
+
    -h     Suppress the prefixing of filenames on output when multiple files
           are searched.
 
    -i     Ignore case distinctions.
 
-   -m     Stop reading a file after NUM matching lines.
+   -m NUM
+          Stop reading a file after NUM matching lines.
 
    -n     Prefix each line of output with the line number within its input
           file.
@@ -102,11 +105,11 @@ EXIT STATUS
 my $flag = sub { 1; };
 my $isOk = sub { (@ARGV == 0 or $ARGV[0] =~ /^-/) ? usage() : shift @ARGV; };
 
-my $chunk_size  = 300000;
+my $chunk_size  = 1048576;  ## 1M
 my $max_workers = 8;
 my $skip_args   = 0;
 
-my ($c_flag, $h_flag, $i_flag, $n_flag, $q_flag, $v_flag);
+my ($c_flag, $h_flag, $H_flag, $i_flag, $n_flag, $q_flag, $v_flag);
 my ($multiple_files, $m_cnt);
 
 my @files = (); my @patterns = (); my $re;
@@ -117,15 +120,24 @@ while ( my $arg = shift @ARGV ) {
          push @files, $arg;
          next;
       }
-      if ($arg =~ m/^-[chinqv]+$/) {
+      if ($arg =~ m/^-[chHinqv]+$/) {
          while ($arg) {
             my $a = chop($arg);
+
             $c_flag = $flag->() and next if ($a eq 'c');
-            $h_flag = $flag->() and next if ($a eq 'h');
             $i_flag = $flag->() and next if ($a eq 'i');
             $n_flag = $flag->() and next if ($a eq 'n');
             $q_flag = $flag->() and next if ($a eq 'q');
             $v_flag = $flag->() and next if ($a eq 'v');
+
+            if ($a eq 'h') {
+               $h_flag = 1; $H_flag = 0;
+               next;
+            }
+            if ($a eq 'H') {
+               $h_flag = 0; $H_flag = 1;
+               next;
+            }
          }
          next;
       }
@@ -150,7 +162,7 @@ while ( my $arg = shift @ARGV ) {
 push @patterns, shift @files if (@patterns == 0 && @files > 0);
 usage() if (@patterns == 0);
 
-$multiple_files = 1 if (!$h_flag && @files > 1);
+$multiple_files = 1 if ((!$h_flag && @files > 1) || $H_flag);
 
 if (@patterns > 1) {
    $re = '(?:' . join('|', @patterns) . ')';
@@ -411,6 +423,7 @@ if (@files > 0) {
       $file = $_;
 
       if ($file eq '-') {
+         $file = "(standard input)";
          open(STDIN, ($^O eq 'MSWin32') ? 'CON' : '/dev/tty') or die $!;
          $mce->process(\*STDIN);
          display_total_matched();
@@ -430,7 +443,7 @@ if (@files > 0) {
    }
 }
 else {
-   $file = "(STDIN)";
+   $file = "(standard input)";
    $mce->process(\*STDIN);
    display_total_matched();
 }

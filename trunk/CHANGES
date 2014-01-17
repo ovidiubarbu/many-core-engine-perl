@@ -26,19 +26,23 @@ Revision history for MCE
     Btw, bin/mce_grep is optional and therefore not installed by default
     when running make install.
 
+  [ENHANCEMENTS]
+
+  * The chunk_size value can take a suffix; K (Kilobytes) or M (Megabytes).
+
   [BUG FIXES]
 
-  * Specifying chunk_size => 'auto' using the init method for all 5 models
-    caused MCE validation to croak due to 'auto' being carried over to the
+  * Reverted the logic for the RS (record separator) option from the 1.4x
+    code base. This is now working as expected.
+
+  * Specifying chunk_size => 'auto' via the 'init' method (all 5 models)
+    causes MCE validation to croak due to 'auto' being carried over to the
     core API. Note that only the 5 models are allowed 'auto' for chunk_size
     as of this time.
 
   * Update to the MCE->do method. Previously, an undef sent back from the
     callback function ended up as a blank value "". Both "" and undef are
     now properly captured and sent back to the worker process.
-
-  * Reverted the logic for the RS (record separator) option from the 1.4x
-    code base. This is now working as expected.
 
   * Added an if statement inside the abort method.
   * Removed an old unlink _store.db statement (old code left behind).

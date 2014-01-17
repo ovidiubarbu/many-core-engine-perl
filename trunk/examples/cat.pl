@@ -56,7 +56,7 @@ DESCRIPTION
    The following options are available:
 
    --chunk_size CHUNK_SIZE
-          Specify chunk size for MCE          -- default: 220000
+          Specify chunk size for MCE          -- default: 1M
 
    --max_workers MAX_WORKERS
           Specify number of workers for MCE   -- default: 3
@@ -104,7 +104,7 @@ EXAMPLES
 my $flag = sub { 1; };
 my $isOk = sub { (@ARGV == 0 or $ARGV[0] =~ /^-/) ? usage() : shift @ARGV; };
 
-my $chunk_size  = 220000;
+my $chunk_size  = 1048576;  ## 1M
 my $max_workers = 3;
 my $skip_args   = 0;
 
@@ -166,7 +166,7 @@ my $mce = MCE->new(
       undef $self->{wk_output};
    },
 
-   ## The wk_output array is re-used on subsequent calls to user_func.
+   ## The wk_output array is re-used on successive calls to user_func.
  
    user_func => sub {
       my ($self, $chunk_ref, $chunk_id) = @_;

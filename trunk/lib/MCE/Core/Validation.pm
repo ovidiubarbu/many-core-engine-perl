@@ -111,6 +111,14 @@ sub _validate_args_s {
       if (defined $_s->{max_workers} && (
          $_s->{max_workers} !~ /\A\d+\z/
       ));
+
+   if ($_s->{chunk_size} =~ /([0-9\.]+)K\z/i) {
+      $_s->{chunk_size} = int($1 * 1024 + 0.5);
+   }
+   elsif ($_s->{chunk_size} =~ /([0-9\.]+)M\z/i) {
+      $_s->{chunk_size} = int($1 * 1024 * 1024 + 0.5);
+   }
+
    _croak("$_tag: 'chunk_size' is not valid")
       if (defined $_s->{chunk_size} && (
          $_s->{chunk_size} !~ /\A\d+\z/ or $_s->{chunk_size} == 0

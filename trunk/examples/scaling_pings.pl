@@ -150,7 +150,7 @@ my $mce = MCE->new(
       ## Feed pinger the next list of $chunk_size hosts/IPs
 
       for ( @{ $chunk_ref } ) {
-         $pinger->ping($_, 5.500);
+         $pinger->ping($_, 3.333);
       }
 
       ## Let pinger process entire chunk all at once
