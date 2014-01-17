@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## MCE driven wrapper script for the following C binaries:
+## A MCE-driven wrapper script for the following C binaries:
 ##   (agrep, grep, egrep, fgrep, tre-agrep)
 ##
 ## Simply copy/rename this script or create a hard-link. The prefix 'mce_' is
@@ -34,8 +34,8 @@
 ##   -C NUM, --context=NUM
 ##
 ## ============================================================================
-## Created by Mario Roy, 2014-01-16, v1.002.
-## ----------------------------------------------------------------------------
+## Created by Mario Roy, 2014-01-17, v1.002.
+##
 ###############################################################################
 
 use strict;
@@ -50,11 +50,7 @@ use Scalar::Util qw( looks_like_number );
 use MCE::Signal qw( -use_dev_shm );
 use MCE 1.5;
 
-###############################################################################
-## ----------------------------------------------------------------------------
 ## Validation.
-##
-###############################################################################
 
 my ($script_name, $cmd_name, $cmd_path);
 
@@ -595,18 +591,20 @@ sub make_user_func {
          $N_records++ while ($$chunk_ref =~ m!\n!mg);
       }
 
-      ## Run command.
+      ## I borrowed some tidbits from IPC::Run3 for STDOUT/ERR. For STDIN,
+      ## I settled on passing STDIN via open for lesser overhead observed
+      ## behind the scene than calling system.
 
-      open $out_fh, '>>', $out_file; binmode $out_fh, ':raw';
+      open $out_fh, '>', $out_file; binmode $out_fh, ':raw';
       open STDOUT, '>&' . fileno $out_fh;
 
       if ($first_time) {
-         open $err_fh, '>>', "$out_file.err"; binmode $err_fh, ':raw';
+         open $err_fh, '>', "$out_file.err"; binmode $err_fh, ':raw';
          open STDERR, '>&' . fileno $err_fh;
       }
 
-      open  $cmd_fh, '|-', $cmd_path, @args;
-      print $cmd_fh $$chunk_ref;
+      open  $cmd_fh, '|-', $cmd_path, @args;   ## Run external command
+      print $cmd_fh $$chunk_ref;               ## Write to STDIN
       close $cmd_fh;
 
       open  STDOUT, '>&STDOUT_SAVE';
