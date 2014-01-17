@@ -282,7 +282,7 @@ sub mce_flow (@) {
 
    my $_input_data; my $_max_workers = $MAX_WORKERS; my $_r = ref $_[0];
 
-   if ($_r eq 'ARRAY' || $_r eq 'CODE' || $_r eq 'GLOB' || $_r eq 'SCALAR') {
+   if ($_r eq 'ARRAY' || $_r eq 'GLOB' || $_r eq 'SCALAR') {
       $_input_data = shift;
    }
 

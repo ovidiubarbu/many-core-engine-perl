@@ -32,6 +32,9 @@ Revision history for MCE
 
   [BUG FIXES]
 
+  * Delete $self->{input_data} inside the worker immediately during spawning
+    (if a reference and not a SCALAR reference).
+
   * Reverted the logic for the RS (record separator) option from the 1.4x
     code base. This is now working as expected.
 
