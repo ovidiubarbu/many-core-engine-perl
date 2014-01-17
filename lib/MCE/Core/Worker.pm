@@ -555,6 +555,11 @@ sub _worker_main {
    ## Commented out -- fails with the 'forks' module under FreeBSD.
    ## die "Private method called" unless (caller)[0]->isa( ref($self) );
 
+   if (exists $self->{input_data}) {
+      my $_ref = ref $self->{input_data};
+      delete $self->{input_data} if ($_ref && $_ref ne 'SCALAR');
+   }
+
    ## Define status ID.
    my $_use_threads = (defined $_task->{use_threads})
       ? $_task->{use_threads} : $self->{use_threads};

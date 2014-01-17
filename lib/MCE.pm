@@ -65,7 +65,7 @@ BEGIN {
    %_valid_fields_task = map { $_ => 1 } qw(
       max_workers chunk_size input_data interval sequence task_end task_name
       bounds_only gather user_args user_begin user_end user_func use_threads
-      RS
+      RS use_slurpio
    );
 
    $_is_cygwin  = ($^O eq 'cygwin');
@@ -891,10 +891,16 @@ sub run {
    ## scalar reference. Workers need to be restarted in order to pick up
    ## on the new code blocks and/or scalar reference.
 
-   $self->{input_data} = $self->{user_tasks}->[0]->{input_data}
-      if ($_has_user_tasks && $self->{user_tasks}->[0]->{input_data});
-   $self->{RS} = $self->{user_tasks}->[0]->{RS}
-      if ($_has_user_tasks && $self->{user_tasks}->[0]->{RS});
+   if ($_has_user_tasks) {
+      $self->{input_data} = $self->{user_tasks}->[0]->{input_data}
+         if ($self->{user_tasks}->[0]->{input_data});
+
+      $self->{use_slurpio} = $self->{user_tasks}->[0]->{use_slurpio}
+         if ($self->{user_tasks}->[0]->{use_slurpio});
+
+      $self->{RS} = $self->{user_tasks}->[0]->{RS}
+         if ($self->{user_tasks}->[0]->{RS});
+   }
 
    $self->shutdown()
       if ($_requires_shutdown || ref $self->{input_data} eq 'SCALAR');
