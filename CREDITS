@@ -12,6 +12,16 @@ David Cantrell (DrHyde on perlmonks.org)
   issue. Added writeable check and croak if tmp dir is not writeable.
   One cannot assume that /dev/shm is writeable by everyone. :)
 
+Eric Collet
+  For the inspiration to many-core the tre-agrep binary.
+  * I first learned of tre-agrep from Eric. He emailed me running times for
+    a couple scenarios utilizing a single core. Thus increasing the need to
+    have a MCE-driven wrapper script to run tre-agrep.
+  * The bin/mce_grep script was created to show folks how one could go about
+    about chunking data between Perl and an external C binary in an efficient
+    manner without invoking the shell. The script supports grep, egrep, fgrep,
+    agrep and tre-agrep.
+
 Oliver Gorwits
   For reporting on a couple issues with MCE along with a solution for each.
   * Pointed me in the right direction for improving the logic for the die
