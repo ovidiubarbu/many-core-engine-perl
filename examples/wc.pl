@@ -51,7 +51,7 @@ DESCRIPTION
    The following options are available:
 
    --chunk_size CHUNK_SIZE
-          Specify chunk size for MCE          -- default: 500000
+          Specify chunk size for MCE          -- default: 1M
 
    --max_workers MAX_WORKERS
           Specify number of workers for MCE   -- default: 8
@@ -97,7 +97,7 @@ EXAMPLES
 my $flag = sub { 1; };
 my $isOk = sub { (@ARGV == 0 or $ARGV[0] =~ /^-/) ? usage() : shift @ARGV; };
 
-my $chunk_size  = 500000;
+my $chunk_size  = 1048576;  ## 1M
 my $max_workers = 8;
 my $skip_args   = 0;
 

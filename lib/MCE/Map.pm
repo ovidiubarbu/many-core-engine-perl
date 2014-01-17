@@ -327,6 +327,8 @@ sub _validate_number {
 
    my $_n = $_[0]; my $_key = $_[1];
 
+   $_n =~ s/K\z//i; $_n =~ s/M\z//i;
+
    _croak("$_tag: '$_key' is not valid")
       if (!looks_like_number($_n) || int($_n) != $_n || $_n < 1);
 
