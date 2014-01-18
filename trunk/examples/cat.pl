@@ -56,7 +56,7 @@ DESCRIPTION
    The following options are available:
 
    --chunk_size CHUNK_SIZE
-          Specify chunk size for MCE          -- default: 1M
+          Specify chunk size for MCE          -- default: 500K
 
    --max_workers MAX_WORKERS
           Specify number of workers for MCE   -- default: 3
@@ -104,7 +104,7 @@ EXAMPLES
 my $flag = sub { 1; };
 my $isOk = sub { (@ARGV == 0 or $ARGV[0] =~ /^-/) ? usage() : shift @ARGV; };
 
-my $chunk_size  = 1048576;  ## 1M
+my $chunk_size  = '500K';
 my $max_workers = 3;
 my $skip_args   = 0;
 
@@ -148,45 +148,19 @@ my $mce = MCE->new(
 
    chunk_size   => $chunk_size,
    max_workers  => $max_workers,
-   flush_stdout => ($u_flag) ? 1 : 0,
-   use_slurpio  => ($n_flag) ? 0 : 1,
+   use_slurpio  => 1,
 
-   ## Wk_output will persist after leaving the function.
-   ## A guideline is to prefix variable names with wk_.
-
-   user_begin => sub {
-      my $self = shift;
-      $self->{wk_output} = [];
-   },
-
-   ## Undo (cleanup) afterwards.
-
-   user_end => sub {
-      my $self = shift;
-      undef $self->{wk_output};
-   },
-
-   ## The wk_output array is re-used on successive calls to user_func.
- 
    user_func => sub {
       my ($self, $chunk_ref, $chunk_id) = @_;
 
-      if ($n_flag) {
-         my $i = 0;
-         $self->{wk_output}[$i++] = $_ for ( @{ $chunk_ref } );
+      MCE->do('display_chunk', $$chunk_ref .':'. $chunk_id);
 
-         delete @{ $self->{wk_output} }[$i .. @{ $self->{wk_output} } - 1]
-            if ($i < @{ $self->{wk_output} });
-
-         $self->do('display_chunk', $self->{wk_output}, $chunk_id);
-      }
-      else {
-         $self->do('display_chunk', $chunk_ref, $chunk_id);
-      }
+      return;
    }
-);
 
-$mce->spawn();
+)->spawn;
+
+$| = 1 if $u_flag;
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -199,24 +173,35 @@ my $exit_status = 0;
 
 sub display_chunk {
 
-   my ($chunk_ref, $chunk_id) = @_;
-   $result{$chunk_id} = $chunk_ref;
+   my $chunk_id = substr($_[0], rindex($_[0], ':') + 1);
 
-   while (1) {
-      last unless exists $result{$order_id};
+   chop $_[0] for (1 .. length($chunk_id) + 1);
 
-      if ($n_flag) {
-         for ( @{ $result{$order_id} } ) {
-            printf "%6d\t%s", ++$lines, $_;
-         }
+   $result{$chunk_id} = $_[0];
+
+   if ($n_flag) {
+      while (1) {
+         last unless exists $result{$order_id};
+
+         open my $fh, '<', \$result{$order_id};
+         printf "%6d\t%s", ++$lines, $_ while (<$fh>);
+         close $fh;
+
+         delete $result{$order_id};
+         $order_id++;
       }
-      else {
-         print ${ $result{$order_id} };
-      }
-
-      delete $result{$order_id};
-      $order_id++;
    }
+   else {
+      while (1) {
+         last unless exists $result{$order_id};
+
+         print $result{$order_id};
+         delete $result{$order_id};
+         $order_id++;
+      }
+   }
+
+   return;
 }
 
 ## Process files, otherwise read from standard input.
