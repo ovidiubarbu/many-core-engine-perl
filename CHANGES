@@ -28,6 +28,9 @@ Revision history for MCE
 
   * The chunk_size value can take a suffix; K (Kilobytes) or M (Megabytes).
 
+  * IO performance for examples/cat.pl was improved. The real focus here is
+    demonstrating output order.
+
   [NEW FEATURES]
 
   * The input_data option can now receive an iterator reference. Added a
