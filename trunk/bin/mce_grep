@@ -1,24 +1,25 @@
 #!/usr/bin/env perl
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## A MCE-driven wrapper script for the following C binaries:
-##   (agrep, grep, egrep, fgrep, tre-agrep)
+## A MCE-driven wrapper script for the following C binaries.
+##   agrep.exe grep.exe egrep.exe fgrep.exe tre-agrep.exe
+##   agrep     grep     egrep     fgrep     tre-agrep
 ##
-## Simply copy/rename this script or create a hard-link. The prefix 'mce_' is
+## Simply copy/rename this script or create a link to it. The prefix 'mce_' is
 ## stripped from the name for determining the actual binary to use. A trailing
 ## '.pl' extension is optional. Please ensure the binary is installed and in
 ## your path.
 ##
-##   ln mce_grep mce_agrep      (or)  ln mce_grep mce_agrep.pl
-##   ln mce_grep mce_tre-agrep  (or)  cp mce_grep mce_tre-agrep.pl
-##   ln mce_grep mce_egrep
-##   ln mce_grep mce_fgrep
+##   ln -s mce_grep mce_agrep      (or)  ln -s mce_grep mce_agrep.pl
+##   ln -s mce_grep mce_tre-agrep  (or)  cp mce_grep mce_tre-agrep.pl
+##   ln -s mce_grep mce_egrep
+##   ln -s mce_grep mce_fgrep
 ##
 ## Options specific to this script (not passed to the binary):
 ##
 ##   --lang=LANG  e.g. --lang=C, --lang=en_US.UTF-8, --lang=en_US.ISO-8859-1
 ##
-##   --chunk-size=NUM[KM]  default:   2M  min: 200K  max: 20M
+##   --chunk-size=NUM[KM]  default:   2M  Min: 200K  Max: 20M
 ##   --max-workers=STR     default: auto  --max-workers=auto-2
 ##                                        --max-workers=4
 ##
@@ -34,7 +35,7 @@
 ##   -C NUM, --context=NUM
 ##
 ## ============================================================================
-## Created by Mario Roy, 2014-01-17, v1.002.
+## Created by Mario Roy, 2014-01-17, v1.003.
 ##
 ###############################################################################
 
@@ -52,34 +53,39 @@ use MCE 1.5;
 
 ## Validation.
 
-my ($script_name, $cmd_name, $cmd_path);
+my ($script_name, $cmd_name, $cmd_path, $is_MSWin32);
 
-$script_name = $0;
-$script_name =~ s{^.*[\\/]}{}g;
-
-if ($^O eq 'MSWin32') {
-   print STDERR "$script_name: $^O: OS not supported\n";
-   exit 1;
-}
+$script_name = $0; $script_name =~ s{^.*[\\/]}{}g;
+$is_MSWin32  = $^O eq 'MSWin32';
 
 $cmd_name = $script_name;
 $cmd_name =~ s{^mce_}{};
 $cmd_name =~ s{\.pl$}{};
 
-for (split ':', $ENV{'PATH'}) {
-   if (-x "$_/$cmd_name") {
+if ($is_MSWin32) {
+   $cmd_name .= '.exe';
+   for ( split ';', $ENV{'PATH'} . ';.' ) { if (-x "$_\\$cmd_name") {
+      $cmd_path = "$_\\$cmd_name";
+      last;
+   }}
+}
+else {
+   $cmd_name .= '.exe' if $^O eq 'cygwin';
+   for ( split ':', $ENV{'PATH'} . ':.' ) { if (-x "$_/$cmd_name") {
       $cmd_path = "$_/$cmd_name";
       last;
-   }
+   }}
 }
+
 unless (defined $cmd_path) {
    print STDERR "$script_name: $cmd_name: command not found\n";
    exit 1;
 }
-
 {
-   my %valid_names = map { $_ => 1 } qw( agrep grep egrep fgrep tre-agrep );
-
+   my %valid_names = map { $_ => 1 } qw(
+      agrep.exe grep.exe egrep.exe fgrep.exe tre-agrep.exe
+      agrep     grep     egrep     fgrep     tre-agrep
+   );
    unless (exists $valid_names{$cmd_name}) {
       print STDERR "$script_name: $cmd_name: command not supported\n";
       exit 1;
@@ -93,17 +99,12 @@ unless (defined $cmd_path) {
 ###############################################################################
 
 my ($h_patn, $b_flag, $c_flag, $h_flag, $H_flag, $n_flag, $q_flag) = ((0) x 7);
+my ($exit_status, $found_match, $skip_args, $w_filename) = (0, 0, 0, 0);
 my (@args, $arg, @files, $file);
 
 my $max_count   = 0; my $no_msg = 0;
-
 my $chunk_size  = 2_097_152;  ## 2M
 my $max_workers = 'auto';
-
-my $exit_status = 0;
-my $found_match = 0;
-my $skip_args   = 0;
-my $w_filename  = 0;
 
 while (@ARGV) {
 
@@ -327,21 +328,23 @@ sub _error {
 
 sub _output_cnt {
 
-   my $out_file = $_[1];
+   my $cnt; my $out_file = $_[1];
 
-   open my $fh, '<', $out_file;
-   my $cnt = <$fh>; chomp $cnt;
-   close $fh;
-
-   $_total_found += $cnt;
-   unlink $out_file;
-
-   if ($cnt) {
+   if (-s $out_file) {
       $found_match = 1;
+
+      open my $fh, '<', $out_file;
+      chomp($cnt = <$fh>);
+      close $fh;
+
+      $_total_found += $cnt;
+
       if ($q_flag && !$_abort_all) {
          MCE->abort(); $_abort_all = $_abort_job = 1;
       }
    }
+
+   unlink $out_file;
 
    return;
 }
@@ -584,31 +587,50 @@ sub make_user_func {
 
       my ($self, $chunk_ref, $chunk_id) = @_;
 
-      my ($out_fh, $err_fh, $cmd_fh); my $N_records = 0;
+      my ($out_fh, $err_fh, $cmd_fh, $has_err); my $N_records = 0;
       my $out_file = MCE->sess_dir() .'/'. $chunk_id;
 
       if ($n_flag) {
          $N_records++ while ($$chunk_ref =~ m!\n!mg);
       }
 
-      ## I borrowed some tidbits from IPC::Run3 for STDOUT/ERR. For STDIN,
-      ## I settled on passing STDIN via open for lesser overhead observed
-      ## behind the scene than calling system.
+      if ($is_MSWin32) {
+         $out_file =~ s{/}{\\}g;
 
-      open $out_fh, '>', $out_file; binmode $out_fh, ':raw';
-      open STDOUT, '>&' . fileno $out_fh;
+         open my $in_fh, '+>', $out_file . '.in'; binmode $in_fh, ':raw';
+         print $in_fh $$chunk_ref;
+         close $in_fh;
 
-      if ($first_time) {
-         open $err_fh, '>', "$out_file.err"; binmode $err_fh, ':raw';
-         open STDERR, '>&' . fileno $err_fh;
+         my $err_file = $first_time ? "2> $out_file.err" : '';
+         system("$cmd_path < $out_file.in @args > $out_file $err_file");
+
+         unlink "$out_file.in";
       }
+      else {
+         ## I borrowed some bits from IPC::Run3 for STDOUT/ERR. However, I
+         ## settled on passing STDIN via open for lesser overhead observed
+         ## behind the scene versus calling system.
 
-      open  $cmd_fh, '|-', $cmd_path, @args;   ## Run external command
-      print $cmd_fh $$chunk_ref;               ## Write to STDIN
-      close $cmd_fh;
+         open $out_fh, '+>', $out_file; binmode $out_fh, ':raw';
+         open STDOUT, '>&' . fileno $out_fh;
 
-      open  STDOUT, '>&STDOUT_SAVE';
-      close $out_fh;
+         if ($first_time) {
+            open $err_fh, '+>', "$out_file.err"; binmode $err_fh, ':raw';
+            open STDERR, '>&' . fileno $err_fh;
+         }
+
+         open  $cmd_fh, '|-', $cmd_path, @args;   ## Run external command
+         print $cmd_fh $$chunk_ref;               ## Write to STDIN
+         close $cmd_fh;
+
+         open  STDOUT, '>&STDOUT_SAVE';
+         close $out_fh;
+
+         if ($first_time) {
+            open  STDERR, '>&STDERR_SAVE';
+            close $err_fh;
+         }
+      }
 
       MCE->abort() if ($q_flag && -s $out_file);
 
@@ -617,11 +639,8 @@ sub make_user_func {
       if ($first_time) {
          my $err_file = "$out_file.err";
 
-         open  STDERR, '>&STDERR_SAVE';
-         close $err_fh;
-
          if (-s $err_file) {
-            MCE->abort();
+            $has_err = 1; MCE->abort();
             if ($chunk_id == 1) {
                open  $err_fh, '<', $err_file;
                local $/ = undef; MCE->do('_error', <$err_fh>);
@@ -635,7 +654,8 @@ sub make_user_func {
 
       ## Gather output.
 
-      MCE->gather($chunk_id, $out_file, $N_records, length $$chunk_ref);
+      MCE->gather($chunk_id, $out_file, $N_records, length $$chunk_ref)
+         unless $has_err;
 
       return;
    };
