@@ -17,7 +17,7 @@
 ##   Examples/egrep.pl is a pure Perl implementation, it runs rather fast.
 ##   Bin/mce_grep is a wrapper script for the equivalent binary.
 ##
-##   The perl-driven egrep.pl script is fast for -l -r due to less overhead
+##   The egrep.pl script rus fast for -l and -r due to less overhead
 ##   behind the scene. The wrapper script is good for expensive pattern
 ##   matching -- expecially for agrep and tre-agrep. The wrapper also
 ##   supports most of the options due to being passed to the binary.
