@@ -35,7 +35,10 @@ use warnings;
 use Cwd qw(abs_path);
 use lib abs_path . "/../lib";
 
-my $prog_name = $0; $prog_name =~ s{^.*[\\/]}{}g;
+my $prog_name = $0;
+   $prog_name =~ s{^.*[\\/]}{}g;
+my $prog_dir  = abs_path($0);
+   $prog_dir  =~ s{[\\/][^\\/]*$}{};
 
 sub INIT {
    ## Provide file globbing support under Windows similar to Unix.
@@ -44,6 +47,10 @@ sub INIT {
 
 use Scalar::Util qw( looks_like_number );
 use MCE;
+
+if ($^O eq 'MSWin32') {
+   $ENV{PATH} .= ';' . $prog_dir;
+}
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -84,8 +91,10 @@ Output control:
   -q, --quiet, --silent     suppress all normal output
   -R, -r, --recursive       equivalent to --directories=recurse
       --include=PATTERN     files that match PATTERN will be examined
-      --exclude=PATTERN     files that match PATTERN will be skipped.
-      --exclude-from=FILE   files that match PATTERN in FILE will be skipped.
+      --exclude=PATTERN     files that match PATTERN will be skipped
+      --exclude-from=FILE   files that match PATTERN in FILE will be skipped
+      --exclude-dir=PATTERN directories that match PATTERN will be skipped
+                            requires a recent egrep binary for --exclude-dir
   -L, --files-without-match only print FILE names containing no match
   -l, --files-with-matches  only print FILE names containing matches
   -c, --count               only print a count of matching lines per FILE
@@ -153,6 +162,10 @@ while ( @ARGV ) {
          next;
       }
       if ($arg =~ m/^--exclude-from=.+/) {
+         push @r_patn, $arg;
+         next;
+      }
+      if ($arg =~ m/^--exclude-dir=.+/) {
          push @r_patn, $arg;
          next;
       }

@@ -65,6 +65,10 @@ use Fcntl qw( O_RDONLY );
 use MCE::Signal qw( -use_dev_shm );
 use MCE 1.5;
 
+if ($^O eq 'MSWin32') {
+   $ENV{PATH} .= ';' . $prog_dir;
+}
+
 ###############################################################################
 ## ----------------------------------------------------------------------------
 ## Usage and validation.
@@ -246,6 +250,9 @@ while ( @ARGV ) {
          elsif ($arg =~ /^--exclude-from=.+/) {
             push @r_patn, $arg;
          }
+         elsif ($arg =~ /^--exclude-dir=.+/) {
+            push @r_patn, $arg;
+         }
 
          ## Pass arguments to the C binary
          push @args, $arg if (
@@ -255,6 +262,7 @@ while ( @ARGV ) {
             $arg !~ /^--include=/ &&
             $arg !~ /^--exclude=/ &&
             $arg !~ /^--exclude-from=/ &&
+            $arg !~ /^--exclude-dir=/ &&
             $arg ne '--with-filename' &&
             $arg ne '--no-filename' &&
             $arg ne '--quiet' &&
