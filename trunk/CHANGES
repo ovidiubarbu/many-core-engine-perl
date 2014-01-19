@@ -26,10 +26,13 @@ Revision history for MCE
 
   [ENHANCEMENTS]
 
-  * The chunk_size value can take a suffix; K (Kilobytes) or M (Megabytes).
+  * Enhanced egrep.pl to handle additional options including recursion.
+    This script now supports many egrep options [ceHhiLlmnqRrsv].
 
   * IO performance for examples/cat.pl was improved. The real focus here is
     demonstrating output order.
+
+  * The chunk_size option can take a suffix; K (Kilobytes) or M (Megabytes).
 
   [NEW FEATURES]
 
@@ -41,12 +44,13 @@ Revision history for MCE
   * Added a new demo script bin/mce_grep. This is a wrapper script for the
     grep binary. This script supports agrep, grep, egrep, fgrep, & tre-agrep.
     Simply create a link to mce_grep or make a copy. Both Windows and Cygwin
-    are supported as well.
+    are supported as well. Recursion works for all binaries including agrep
+    (-R, -r options).
 
-      ln -s mce_grep mce_egrep
-      ln -s mce_grep mce_fgrep
-      ln -s mce_grep mce_agrep
-      ln -s mce_grep mce_tre-agrep
+      ln mce_grep mce_agrep
+      ln mce_grep mce_egrep
+      ln mce_grep mce_fgrep
+      ln mce_grep mce_tre-agrep
 
     Try with the --lang=C option for faster execution time (-i runs faster).
     Try mce_agrep or mce_tre-agrep against very large files. The speedup is
