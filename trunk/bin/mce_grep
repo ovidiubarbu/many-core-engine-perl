@@ -39,7 +39,7 @@
 ##   Try with --chunk-size=8M or higher.
 ##
 ## ============================================================================
-## Created by Mario Roy, 2014-01-18, v1.004.
+## Created by Mario Roy, 2014-01-19, v1.005.
 ##
 ###############################################################################
 
@@ -97,7 +97,6 @@ $cmd_name =~ s{\.pl$}{};
 
 if ($is_MSWin32) {
    $cmd_name .= '.exe';
-
    for ( split ';', $ENV{'PATH'} .';'. $prog_dir .';.' ) {
       if (-x "$_\\$cmd_name") {
          $cmd_path = "$_\\$cmd_name";
@@ -107,7 +106,6 @@ if ($is_MSWin32) {
 }
 else {
    $cmd_name .= '.exe' if $^O eq 'cygwin';
-
    for ( split ':', $ENV{'PATH'} .':'. $prog_dir .':.' ) {
       if (-x "$_/$cmd_name") {
          $cmd_path = "$_/$cmd_name";
@@ -214,14 +212,14 @@ while ( @ARGV ) {
          $f_list = 1 if $arg eq '--files-with-matches';
          $r_flag = 1 if $arg eq '--recursive';
 
-         $no_msg = 1 if $arg eq '--no-messages';
-
          $b_flag = 1 if $arg eq '--byte-offset';
          $c_flag = 1 if $arg eq '--count';
          $n_flag = 1 if $arg eq '--record-number';
          $n_flag = 1 if $arg eq '--line-number';
          $q_flag = 1 if $arg eq '--silent';
          $q_flag = 1 if $arg eq '--quiet';
+
+         $no_msg = 1 if $arg eq '--no-messages';
 
          if ($arg eq '--with-filename') {
             $H_flag = 1; $h_flag = 0;
@@ -236,6 +234,9 @@ while ( @ARGV ) {
                exit 2;
             }
          }
+         elsif ($arg =~ /^--directories=(.+)/) {
+            $r_flag = 1 if ($1 eq 'recurse');
+         }
          elsif ($arg =~ /^--include=.+/) {
             push @r_patn, $arg;
          }
@@ -249,13 +250,15 @@ while ( @ARGV ) {
          ## Pass arguments to the C binary
          push @args, $arg if (
             $arg ne '--recursive' &&
-            $arg ne '--include' &&
-            $arg ne '--exclude' &&
-            $arg ne '--no-filename' &&
+            $arg !~ /^--max-count=/ &&
+            $arg !~ /^--directories=recurse/ &&
+            $arg !~ /^--include=/ &&
+            $arg !~ /^--exclude=/ &&
+            $arg !~ /^--exclude-from=/ &&
             $arg ne '--with-filename' &&
+            $arg ne '--no-filename' &&
             $arg ne '--quiet' &&
-            $arg ne '--silent' &&
-            $arg ne '--max-count'
+            $arg ne '--silent'
          );
       }
    }
@@ -317,10 +320,11 @@ while ( @ARGV ) {
       $arg =~ s/h//g; $arg =~ s/H//g;
       $arg =~ s/q//g; $arg =~ s/m\d*//g;
 
-      ## Pass arguments to the C binary
-      push @args, $arg if $arg ne '-';
+      next if $arg eq '-';
 
+      ## Pass arguments to the C binary
       if ($cmd_name =~ /agrep/) {
+         push @args, $arg;
          if (substr($arg, -1) =~ /[efDISEd]/) {
             $arg =  shift @ARGV;
             $arg =~ s/ /\\ /g;
@@ -328,10 +332,21 @@ while ( @ARGV ) {
          }
       }
       else {
-         if (substr($arg, -1) =~ /[efABCDd]/) {
+         my $a = substr($arg, -1);
+         push @args, $arg if ($arg ne '-d');
+         if ($a =~ /[efABCD]/) {
             $arg =  shift @ARGV;
             $arg =~ s/ /\\ /g;
             push @args, $arg;
+         }
+         elsif ($a eq 'd') {
+            $arg = shift @ARGV;
+            if ($arg ne 'recurse') {
+               push @args, '-d', $arg;
+            }
+            else {
+               $r_flag = 1;
+            }
          }
       }
    }
@@ -806,10 +821,10 @@ if (@files > 0) {
             unless $no_msg;
       }
       elsif (-d $file) {
-         $exit_status = 2;
+         $exit_status = 1;
 
-         print STDERR "$prog_name: $file: Is a directory\n"
-            unless $no_msg;
+       # print STDERR "$prog_name: $file: Is a directory\n"
+       #    unless $no_msg;
       }
       else {
          $_abort_job = $_start_nrecs = $_start_nsize = $_total_found = 0;
