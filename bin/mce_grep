@@ -30,7 +30,7 @@
 ##   Examples/egrep.pl is a pure Perl implementation, it runs rather fast.
 ##   Bin/mce_grep is a wrapper script for the equivalent binary.
 ##
-##   The perl-driven egrep.pl script is fast for -l -r due to less overhead
+##   The egrep.pl script rus fast for -l and -r due to less overhead
 ##   behind the scene. The wrapper script is good for expensive pattern
 ##   matching -- expecially for agrep and tre-agrep. The wrapper also 
 ##   supports most of the options due to being passed to the binary.
@@ -49,12 +49,14 @@ use warnings;
 use Cwd qw( abs_path );
 use lib abs_path . '/../lib';
 
-my $prog_name = $0; $prog_name =~ s{^.*[\\/]}{}g;
-my $is_mswin32 = $^O eq 'MSWin32';
+my $prog_name = $0;
+   $prog_name =~ s{^.*[\\/]}{}g;
+my $prog_dir  = abs_path($0);
+   $prog_dir  =~ s{[\\/][^\\/]*$}{};
 
 sub INIT {
    ## Provide file globbing support under Windows similar to Unix.
-   @ARGV = <@ARGV> if $is_mswin32;
+   @ARGV = <@ARGV> if ($^O eq 'MSWin32');
 }
 
 use Scalar::Util qw( looks_like_number );
@@ -86,25 +88,32 @@ Options for Many-core Engine:
    return;
 }
 
+my $is_MSWin32 = $^O eq 'MSWin32';
 my ($cmd_name, $cmd_path);
 
 $cmd_name = $prog_name;
 $cmd_name =~ s{^mce_}{};
 $cmd_name =~ s{\.pl$}{};
 
-if ($is_mswin32) {
+if ($is_MSWin32) {
    $cmd_name .= '.exe';
-   for ( split ';', $ENV{'PATH'} . ';.' ) { if (-x "$_\\$cmd_name") {
-      $cmd_path = "$_\\$cmd_name";
-      last;
-   }}
+
+   for ( split ';', $ENV{'PATH'} .';'. $prog_dir .';.' ) {
+      if (-x "$_\\$cmd_name") {
+         $cmd_path = "$_\\$cmd_name";
+         last;
+      }
+   }
 }
 else {
    $cmd_name .= '.exe' if $^O eq 'cygwin';
-   for ( split ':', $ENV{'PATH'} . ':.' ) { if (-x "$_/$cmd_name") {
-      $cmd_path = "$_/$cmd_name";
-      last;
-   }}
+
+   for ( split ':', $ENV{'PATH'} .':'. $prog_dir .':.' ) {
+      if (-x "$_/$cmd_name") {
+         $cmd_path = "$_/$cmd_name";
+         last;
+      }
+   }
 }
 
 unless (defined $cmd_path) {
@@ -640,7 +649,7 @@ sub make_user_func {
          $N_records++ while ($$chunk_ref =~ m!\n!mg);
       }
 
-      if ($is_mswin32) {
+      if ($is_MSWin32) {
          $out_file =~ s{/}{\\}g;
 
          open my $in_fh, '+>', $out_file . '.in'; binmode $in_fh, ':raw';
@@ -787,7 +796,7 @@ if (@files > 0) {
       $file = $_;
 
       if ($file eq '-') {
-         open(STDIN, ($is_mswin32) ? 'CON' : '/dev/tty') or die $!;
+         open(STDIN, ($is_MSWin32) ? 'CON' : '/dev/tty') or die $!;
          process_stdin();
       }
       elsif (! -e $file) {
