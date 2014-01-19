@@ -578,10 +578,10 @@ if (@files > 0) {
             unless $no_msg;
       }
       elsif (-d $file) {
-         $exit_status = 2;
+         $exit_status = 1;
 
-         print STDERR "$prog_name: $file: Is a directory\n"
-            unless $no_msg;
+       # print STDERR "$prog_name: $file: Is a directory\n"
+       #    unless $no_msg;
       }
       else {
          $mce->process($file);
