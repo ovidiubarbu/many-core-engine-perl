@@ -41,7 +41,7 @@ Revision history for MCE
     several examples listed under a new section "SYNTAX for INPUT_DATA"
     in MCE::Core.pod.
 
-  * Added a new demo script bin/mce_grep. This is a wrapper script for the
+  * Added a new demo script; bin/mce_grep. This is a wrapper script for the
     grep binary. This script supports agrep, grep, egrep, fgrep, & tre-agrep.
     Simply create a link to mce_grep or make a copy. Both Windows and Cygwin
     are supported as well. Recursion works for all binaries including agrep
@@ -56,19 +56,22 @@ Revision history for MCE
     Try mce_agrep or mce_tre-agrep against very large files. The speedup is
     linear and makes good utilization of all available cores on the box.
 
+    One may specify the chunking level via the --chunk-level option. For large
+    files, specify 'file' (chunks file). For many small files, use 'list'.
+
     I have tested against the following GnuWin32 packages found at this URL.
     http://gnuwin32.sourceforge.net/packages.html
 
       tre-0.7.5-bin.zip         ## Contains agrep.exe (also runs under Cygwin)
       grep-2.5.4-bin.zip        ## Contains egrep.exe, fgrep.exe, grep.exe
-      libiconv-1.9.2-1-bin.zip  ## These are required as well
+      libiconv-1.9.2-1-bin.zip  ## These are required for the GnuWin32 binaries.
       libintl-0.14.4-bin.zip
       pcre-7.0-bin.zip
       regex-2.7-bin.zip
 
     Btw, bin/mce_grep is optional and therefore not installed by default
     when running make install for the MCE module. Simply copy mce_grep as
-    mce_agrep.pl (with the .pl extension) under the same GnuWin32 bin.
+    mce_agrep.pl for Windows. The .pl is optional for other environments.
 
 1.504 Tue Oct 29 16:00:00 EST 2013
 

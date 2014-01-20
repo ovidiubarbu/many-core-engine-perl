@@ -8,8 +8,8 @@
 ##
 ## Caveat for grep, egrep, fgrep. MCE chunks input while running which may
 ## cause the following options to report inaccurately. It's possible that
-## the requested NUM lines may cross chunking boundaries. Specifying a
-## larger chunk size value will minimize this effect.
+## the requested NUM lines may cross chunking boundaries. Specify a larger
+## chunk size value to minimize the effect or pass --chunk-level=list.
 ##
 ##   -A NUM, --after-context=NUM
 ##   -B NUM, --before-context=NUM
@@ -27,19 +27,16 @@
 ##
 ## Which to choose (examples/egrep.pl or bin/mce_grep).
 ##
-##   Examples/egrep.pl is a pure Perl implementation, it runs rather fast.
-##   Bin/mce_grep is a wrapper script for the equivalent binary.
+##   Examples/egrep.pl is a pure Perl implementation with less options.
+##   Bin/mce_grep is a wrapper script for the relevant binary.
 ##
-##   The egrep.pl script rus fast for -l and -r due to less overhead
-##   behind the scene. The wrapper script is good for expensive pattern
-##   matching -- expecially for agrep and tre-agrep. The wrapper also 
-##   supports most of the options due to being passed to the binary.
-##
-##   The chunking of data from Perl to the binary and back is efficient.
-##   Try with --chunk-size=8M or higher.
+##   The wrapper script is good for expensive pattern matching -- especially
+##   for agrep and tre-agrep. It also supports more options due to being
+##   passed to the binary. The wrapper supports 2 levels of chunking via the
+##   --chunk-level={auto|file|list} option. For large files, choose file.
 ##
 ## ============================================================================
-## Created by Mario Roy, 2014-01-19, v1.005.
+## Created by Mario Roy, 2014-01-19, v1.006.
 ##
 ###############################################################################
 
@@ -49,10 +46,17 @@ use warnings;
 use Cwd qw( abs_path );
 use lib abs_path . '/../lib';
 
-my $prog_name = $0;
+my ($prog_name, $prog_dir);
+
+BEGIN {
+   $prog_name = $0;
    $prog_name =~ s{^.*[\\/]}{}g;
-my $prog_dir  = abs_path($0);
+
+   $prog_dir  = abs_path($0);
    $prog_dir  =~ s{[\\/][^\\/]*$}{};
+
+   $ENV{PATH} .= ($^O eq 'MSWin32' ? ';' : ':') . $prog_dir;
+}
 
 sub INIT {
    ## Provide file globbing support under Windows similar to Unix.
@@ -65,10 +69,6 @@ use Fcntl qw( O_RDONLY );
 use MCE::Signal qw( -use_dev_shm );
 use MCE 1.5;
 
-if ($^O eq 'MSWin32') {
-   $ENV{PATH} .= ';' . $prog_dir;
-}
-
 ###############################################################################
 ## ----------------------------------------------------------------------------
 ## Usage and validation.
@@ -80,11 +80,17 @@ sub usage {
    print <<"::_USAGE_BLOCK_END_::";
 
 Options for Many-core Engine:
-  --max-workers=NUM         override max workers (default   8)
-                              e.g. auto, auto-2 for automatic
-  --chunk-size=NUM[KM]      override chunk size  (default  2M)
-                              minimum: 200K  maximum: 20M
-  --lang=LANG               override locale
+  --max-workers=NUM         override max workers (default 8)
+                              e.g. auto, auto-2, 4
+
+  --chunk-level=LEVEL       override chunk level (default auto)
+                              chunk at [file] or [list] level
+
+  --chunk-size=NUM[KM]      override chunk size (set at limit if under or over)
+                              [file] default: 2M  minimum: 200K  maximum: 20M
+                              [list] default: 4   minimum: 1     maximum: 64
+
+  --lang=LOCALE             override locale
                               e.g. C, en_US.UTF-8, en_US.ISO-8859-1
 
 ::_USAGE_BLOCK_END_::
@@ -101,7 +107,7 @@ $cmd_name =~ s{\.pl$}{};
 
 if ($is_MSWin32) {
    $cmd_name .= '.exe';
-   for ( split ';', $ENV{'PATH'} .';'. $prog_dir .';.' ) {
+   for ( split ';', $ENV{'PATH'} ) {
       if (-x "$_\\$cmd_name") {
          $cmd_path = "$_\\$cmd_name";
          last;
@@ -110,7 +116,7 @@ if ($is_MSWin32) {
 }
 else {
    $cmd_name .= '.exe' if $^O eq 'cygwin';
-   for ( split ':', $ENV{'PATH'} .':'. $prog_dir .':.' ) {
+   for ( split ':', $ENV{'PATH'} ) {
       if (-x "$_/$cmd_name") {
          $cmd_path = "$_/$cmd_name";
          last;
@@ -143,7 +149,7 @@ my ($h_patn, $b_flag, $c_flag, $H_flag, $h_flag, $n_flag, $q_flag) = ((0) x 7);
 my (@r_patn, @args, $arg, @files, $file); my ($f_list, $r_flag) = (0, 0);
 my ($exit_status, $found_match, $skip_args, $w_filename) = (0, 0, 0, 0);
 
-my $max_workers = 8; my $chunk_size = '2M';
+my $max_workers = 8; my $chunk_level = 'auto'; my $chunk_size;
 my $max_count = 0; my $no_msg = 0;
 my $flag = sub { 1 };
 
@@ -179,6 +185,14 @@ while ( @ARGV ) {
             }
          }
       }
+      elsif ($arg =~ /^--chunk[-_]level=(.+)/) {
+         $chunk_level = lc $1;
+
+         unless ($chunk_level =~ /^(?:auto|file|list)$/) {
+            print STDERR "$prog_name: invalid chunk level\n";
+            exit 2;
+         }
+      }
       elsif ($arg =~ /^--chunk[-_]size=(.+)/) {
          $chunk_size = $1;
 
@@ -189,11 +203,7 @@ while ( @ARGV ) {
             $chunk_size = $1 * 1024 * 1024;
          }
 
-         if (looks_like_number($chunk_size) && $chunk_size > 0) {
-            $chunk_size = 20_971_520 if $chunk_size > 20_971_520;  ## 20M
-            $chunk_size =    204_800 if $chunk_size <    204_800;  ## 200K
-         }
-         else {
+         if (!looks_like_number($chunk_size) || $chunk_size < 1) {
             print STDERR "$prog_name: invalid chunk size\n";
             exit 2;
          }
@@ -367,6 +377,9 @@ while ( @ARGV ) {
 
 push @args, shift @files if ($h_patn == 0 && @files > 0);
 
+$w_filename = 1
+   if ((!$h_flag && @files > 1) || (!$h_flag && $r_flag) || $H_flag);
+
 if (@args == 0) {
    system $cmd_path;
    exit 2;
@@ -374,7 +387,7 @@ if (@args == 0) {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Callbacks: Error, File, and Count only.
+## MCE callback functions: Error, File, and Count.
 ##
 ###############################################################################
 
@@ -384,22 +397,18 @@ my ($_abort_all, $_abort_job, $_total_found);
 sub _error {
 
    print STDERR $_[0];
-   $exit_status = 1;
+   $exit_status = 2;
 
    return;
 }
 
-sub _output_file {
+sub _abort_job {
 
-   my $out_file = $_[1];
-
-   if (!$_abort_job && -s $out_file) {
+   if (!$_abort_job) {
       MCE->abort();
+      $_abort_job = $_total_found = $found_match = 1;
       $_abort_all = 1 if $q_flag;
-      $_abort_job = $_total_found = 1;
    }
-
-   unlink $out_file;
 
    return;
 }
@@ -427,9 +436,16 @@ sub _output_cnt {
    return;
 }
 
+sub _set_found_match {
+
+   $found_match = 1;
+
+   return;
+}
+
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Callback: Output without line-number or byte-offset
+## MCE callback function: Output without line-number or byte-offset
 ##
 ###############################################################################
 
@@ -495,7 +511,7 @@ sub _output_n0 {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Callback: Output with line-number or byte-offset
+## MCE callback function: Output with line-number or byte-offset
 ##
 ###############################################################################
 
@@ -564,7 +580,7 @@ sub _output_n1 {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Callback: Output with line-number and byte-offset
+## MCE callback function: Output with line-number and byte-offset
 ##
 ###############################################################################
 
@@ -643,21 +659,18 @@ sub _output_n2 {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## MCE user functions.
+## MCE user functions: run-mode = file.
 ##
 ###############################################################################
 
-sub user_begin {
+sub user_begin_file {
 
    $0 = $^X;
 
    return;
 }
 
-sub make_user_func {
-
-   local *STDOUT_SAVE; open STDOUT_SAVE, '>&STDOUT';
-   local *STDERR_SAVE; open STDERR_SAVE, '>&STDERR';
+sub make_user_func_file {
 
    my $first_time = 1;
 
@@ -689,16 +702,23 @@ sub make_user_func {
          ## settled on passing STDIN via open for lesser overhead observed
          ## behind the scene versus calling system.
 
+         local (*STDOUT_SAVE, *STDERR_SAVE);
+
+         open STDOUT_SAVE, '>&STDOUT';
          open $out_fh, '+>', $out_file; binmode $out_fh, ':raw';
          open STDOUT, '>&' . fileno $out_fh;
 
          if ($first_time) {
+            open STDERR_SAVE, '>&STDERR';
             open $err_fh, '+>', "$out_file.err"; binmode $err_fh, ':raw';
             open STDERR, '>&' . fileno $err_fh;
          }
 
+         ## Print isn't always 100% due to seeing "maximal count of pending
+         ## signals (NUM) exceeded". Thus the reason for using syswrite.
+
          open  $cmd_fh, '|-', $cmd_path, @args;   ## Run external command
-         print $cmd_fh $$chunk_ref;               ## Write to STDIN
+         syswrite $cmd_fh, $$chunk_ref;           ## Write to STDIN
          close $cmd_fh;
 
          open  STDOUT, '>&STDOUT_SAVE';
@@ -732,8 +752,14 @@ sub make_user_func {
 
       ## Gather output.
 
-      MCE->gather($chunk_id, $out_file, $N_records, length $$chunk_ref)
-         unless $has_err;
+      if ($f_list) {
+         MCE->do('_abort_job') if (!$has_err && -s $out_file);
+         unlink $out_file;
+      }
+      else {
+         MCE->gather($chunk_id, $out_file, $N_records, length $$chunk_ref)
+            unless $has_err;
+      }
 
       return;
    };
@@ -741,9 +767,144 @@ sub make_user_func {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Configure Many-core Engine.
+## MCE user functions: run-mode = list.
 ##
 ###############################################################################
+
+sub user_begin_list {
+
+   $0 = $^X;
+
+   use vars qw( $child_found_match );
+   our $child_found_match = 0;
+
+   return;
+}
+
+sub user_end_list {
+
+   MCE->do('_set_found_match') if $child_found_match;
+
+   return;
+}
+
+sub make_user_func_list {
+
+   my $first_time = 1;
+
+   return sub {
+
+      my ($self, $chunk_ref, $chunk_id) = @_;
+
+      my ($output, $err_fh, $has_err, $status);
+      my $err_file = MCE->sess_dir() .'/'. $chunk_id . '.err';
+
+      $$chunk_ref =~ s/\n/ /mg;
+
+      if ($is_MSWin32) {
+         $err_file =~ s{/}{\\}g;
+         my $err_str = $first_time ? "2> $err_file" : '';
+         $output = `$cmd_path @args $$chunk_ref $err_str`;
+         $status = ${^CHILD_ERROR_NATIVE} >> 8;
+      }
+      else {
+         local *STDERR_SAVE;
+
+         if ($first_time) {
+            open STDERR_SAVE, '>&STDERR';
+            open $err_fh, '+>', $err_file; binmode $err_fh, ':raw';
+            open STDERR, '>&' . fileno $err_fh;
+         }
+
+         $output = `$cmd_path @args $$chunk_ref`;
+         $status = ${^CHILD_ERROR_NATIVE} >> 8;
+
+         if ($first_time) {
+            open  STDERR, '>&STDERR_SAVE';
+            close $err_fh;
+         }
+      }
+
+      MCE->abort() if ($q_flag && length $output);
+
+      ## Send error.
+
+      if ($first_time) {
+         if (-s $err_file) {
+            $has_err = 1; MCE->abort();
+            if ($chunk_id == 1) {
+               open  $err_fh, '<', $err_file;
+               local $/ = undef; MCE->do('_error', <$err_fh>);
+               close $err_fh;
+            }
+         }
+         unlink $err_file;
+         $first_time = 0;
+      }
+
+      ## Gather output.
+
+      if ($q_flag) {
+         MCE->do('_abort_job') if (!$has_err && $status == 0);
+      }
+      else {
+         if (!$has_err && length $output) {
+            MCE->sendto('STDOUT', $output);
+            $child_found_match = 1;
+         }
+      }
+
+      return;
+   };
+}
+
+###############################################################################
+## ----------------------------------------------------------------------------
+## Process routines: run-mode = file.
+##
+###############################################################################
+
+sub process_file {
+
+   $file = $_[0];
+
+   if ($file eq '-') {
+      open(STDIN, ($is_MSWin32) ? 'CON' : '/dev/tty') or die $!;
+      process_stdin();
+   }
+   elsif (! -e $file) {
+      $exit_status = 2;
+
+      print STDERR "$prog_name: $file: No such file or directory\n"
+         unless $no_msg;
+   }
+   elsif (-d $file) {
+      $exit_status = 1;
+
+    # print STDERR "$prog_name: $file: Is a directory\n"
+    #    unless $no_msg;
+   }
+   else {
+      $_abort_job = $_start_nrecs = $_start_nsize = $_total_found = 0;
+      $_order_id  = 1;
+
+      MCE->process($file);
+      %_nrecs = (); %_nsize = ();
+
+      if (!$q_flag && $f_list) {
+         print "$file\n" if $_total_found;
+      }
+      elsif (!$q_flag && $c_flag) {
+         $_total_found = $max_count
+            if ($max_count && $_total_found > $max_count);
+
+         print "$file:" if $w_filename;
+         print "$_total_found\n";
+      }
+   }
+
+   return;
+}
 
 sub process_stdin {
 
@@ -769,98 +930,129 @@ sub process_stdin {
    return;
 }
 
+###############################################################################
+## ----------------------------------------------------------------------------
+## Configure Many-core Engine.
+##
+###############################################################################
+
 my $gather_func;
 
-if ($f_list) {
-   $gather_func = \&_output_file;
+if ($chunk_level eq 'auto') {
+   if (@files == 0 || $files[0] eq '-') {
+      $chunk_level = $is_MSWin32 ? 'file' : 'list';
+   }
+   else {
+      $chunk_level = (-s $files[0] > 20_971_520) ? 'file' : 'list';  ## 20M
+   }
 }
-elsif ($c_flag) {
-   $gather_func = \&_output_cnt;
-}
-elsif ($n_flag && $b_flag) {
-   $gather_func = \&_output_n2;
-}
-elsif ($n_flag || $b_flag) {
-   $gather_func = \&_output_n1;
+
+if ($chunk_level eq 'list') {
+   $chunk_size =  4 unless defined $chunk_size;
+   $chunk_size = 64 if $chunk_size > 64;
+   $chunk_size =  1 if $chunk_size <  1;
+
+   push @args, '-H' if (!$h_flag && ($H_flag || $r_flag || @files > 1));
+   push @args, '-h' if ($h_flag);
+   push @args, '-q' if ($q_flag);
+
+   MCE->new(
+      max_workers => $max_workers, chunk_size => $chunk_size, use_slurpio => 1,
+      user_begin => \&user_begin_list, user_func => make_user_func_list(),
+      user_end => \&user_end_list
+   );
 }
 else {
-   $gather_func = \&_output_n0;
+   $chunk_size =  2_097_152 unless defined $chunk_size;   ## 2M
+   $chunk_size = 20_971_520 if $chunk_size > 20_971_520;  ## 20M
+   $chunk_size =    204_800 if $chunk_size <    204_800;  ## 200K
+
+   if ($f_list) {
+      $gather_func = undef;
+   }
+   elsif ($c_flag) {
+      $gather_func = \&_output_cnt;
+   }
+   elsif ($n_flag && $b_flag) {
+      $gather_func = \&_output_n2;
+   }
+   elsif ($n_flag || $b_flag) {
+      $gather_func = \&_output_n1;
+   }
+   else {
+      $gather_func = \&_output_n0;
+   }
+
+   MCE->new(
+      max_workers => $max_workers, chunk_size => $chunk_size, use_slurpio => 1,
+      user_begin => \&user_begin_file, user_func => make_user_func_file(),
+      gather => $gather_func
+   );
 }
-
-my $mce = MCE->new(
-   max_workers => $max_workers, chunk_size => $chunk_size, use_slurpio => 1,
-   user_begin => \&user_begin, user_func => make_user_func(),
-   gather => $gather_func
-
-)->spawn;
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Process files, otherwise read from standard input.
+## Run.
 ##
 ###############################################################################
 
 if ($r_flag && @files > 0) {
-   my @t_files = `egrep -lsr @r_patn ^ @files`;
+   my ($list_fh, $list);
 
-   if (@t_files) {
-      @files = @t_files; undef @t_files;
-      chomp @files;
+   MCE->spawn;
+
+   unless ($is_MSWin32) {
+      open $list_fh, '-|', 'egrep', '-lsr', @r_patn, '^', @files;
    }
+   else {
+      $list = `egrep -lsr @r_patn ^ @files`;
+      open $list_fh, '<', \$list;
+   }
+
+   if ($chunk_level eq 'list') {
+      MCE->process($list_fh);
+   }
+   else {
+      while (<$list_fh>) {
+         chomp;
+         process_file($_);
+         last if $_abort_all;
+      }
+   }
+
+   close $list_fh;
 }
-
-$w_filename = 1
-   if ((!$h_flag && @files > 1) || $H_flag);
-
-if (@files > 0) {
-   foreach (@files) {
-      last if $_abort_all;
-
-      $file = $_;
-
-      if ($file eq '-') {
-         open(STDIN, ($is_MSWin32) ? 'CON' : '/dev/tty') or die $!;
-         process_stdin();
-      }
-      elsif (! -e $file) {
-         $exit_status = 2;
-
-         print STDERR "$prog_name: $file: No such file or directory\n"
-            unless $no_msg;
-      }
-      elsif (-d $file) {
-         $exit_status = 1;
-
-       # print STDERR "$prog_name: $file: Is a directory\n"
-       #    unless $no_msg;
-      }
-      else {
-         $_abort_job = $_start_nrecs = $_start_nsize = $_total_found = 0;
-         $_order_id  = 1;
-
-         $mce->process($file);
-         %_nrecs = (); %_nsize = ();
-
-         if (!$q_flag && $f_list) {
-            print "$file\n" if $_total_found;
-         }
-         elsif (!$q_flag && $c_flag) {
-            $_total_found = $max_count
-               if ($max_count && $_total_found > $max_count);
-
-            print "$file:" if $w_filename;
-            print "$_total_found\n";
-         }
+elsif (@files > 0) {
+   if ($chunk_level eq 'list') {
+      my $list = join("\n", @files) . "\n"; undef @files;
+      open my $list_fh, '<', \$list;
+      MCE->process($list_fh);
+      close $list_fh;
+   }
+   else {
+      foreach (@files) {
+         process_file($_);
+         last if $_abort_all;
       }
    }
 }
 else {
-   process_stdin();
+   if ($chunk_level eq 'list') {
+      my $status = system($cmd_path, @args);
+      exit($status >> 8);
+   }
+   else {
+      process_stdin();
+   }
 }
 
-## Shutdown Many-core Engine and exit.
+###############################################################################
+## ----------------------------------------------------------------------------
+## Finish.
+##
+###############################################################################
 
-$mce->shutdown();
+MCE->shutdown();
 
 if (!$q_flag && $exit_status) {
    exit($exit_status);

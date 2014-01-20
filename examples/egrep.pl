@@ -14,16 +14,13 @@
 ##
 ## Which to choose (examples/egrep.pl or bin/mce_grep).
 ##
-##   Examples/egrep.pl is a pure Perl implementation, it runs rather fast.
-##   Bin/mce_grep is a wrapper script for the equivalent binary.
+##   Examples/egrep.pl is a pure Perl implementation with less options.
+##   Bin/mce_grep is a wrapper script for the relevant binary.
 ##
-##   The egrep.pl script rus fast for -l and -r due to less overhead
-##   behind the scene. The wrapper script is good for expensive pattern
-##   matching -- expecially for agrep and tre-agrep. The wrapper also
-##   supports most of the options due to being passed to the binary.
-##
-##   The chunking of data from Perl to the binary and back is efficient.
-##   Try with --chunk-size=8M or higher. 
+##   The wrapper script is good for expensive pattern matching -- especially
+##   for agrep and tre-agrep. It also supports more options due to being
+##   passed to the binary. The wrapper supports 2 levels of chunking via the
+##   --chunk-level={auto|file|list} option. For large files, choose file.
 ##
 ## The usage description was largely ripped off from the egrep man page.
 ##
@@ -35,10 +32,17 @@ use warnings;
 use Cwd qw(abs_path);
 use lib abs_path . "/../lib";
 
-my $prog_name = $0;
+my ($prog_name, $prog_dir);
+
+BEGIN {
+   $prog_name = $0;
    $prog_name =~ s{^.*[\\/]}{}g;
-my $prog_dir  = abs_path($0);
+
+   $prog_dir  = abs_path($0);
    $prog_dir  =~ s{[\\/][^\\/]*$}{};
+
+   $ENV{PATH} .= ($^O eq 'MSWin32' ? ';' : ':') . $prog_dir;
+}
 
 sub INIT {
    ## Provide file globbing support under Windows similar to Unix.
@@ -47,10 +51,6 @@ sub INIT {
 
 use Scalar::Util qw( looks_like_number );
 use MCE;
-
-if ($^O eq 'MSWin32') {
-   $ENV{PATH} .= ';' . $prog_dir;
-}
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -65,10 +65,11 @@ sub usage {
    print <<"::_USAGE_BLOCK_END_::";
 
 Options for Many-core Engine:
-  --max-workers=NUM         override max workers (default  8)
-                              e.g. auto, auto-2 for automatic
-  --chunk-size=NUM[KM]      override chunk size  (default 1M)
-                              minimum: 200K  maximum: 20M
+  --max-workers=NUM         override max workers (default 8)
+                              e.g. auto, auto-2, 4
+
+  --chunk-size=NUM[KM]      override chunk size (default 1M)
+                              minimum: 200K; maximum: 20M
 
 Usage: $prog_name [OPTION]... PATTERN [FILE] ...
 Search for PATTERN in each FILE or standard input.
@@ -295,6 +296,9 @@ $f_list = ($L_flag || $l_flag);
 
 push @patterns, shift @files if (@patterns == 0 && @files > 0);
 
+$w_filename = 1
+   if ((!$h_flag && @files > 1) || (!$h_flag && $r_flag) || $H_flag);
+
 usage(2) if (@patterns == 0);
 
 if (@patterns > 1) {
@@ -306,7 +310,7 @@ else {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Callback functions for Many-core Engine.
+## MCE callback functions.
 ##
 ###############################################################################
 
@@ -383,7 +387,7 @@ sub report_match {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Launch Many-core Engine.
+## MCE user functions.
 ##
 ###############################################################################
 
@@ -532,16 +536,9 @@ sub user_func {
    return;
 }
 
-my $mce = MCE->new(
-   max_workers => $max_workers, chunk_size => $chunk_size, use_slurpio => 1,
-   user_begin => \&user_begin, user_func => \&user_func,
-   user_end => \&user_end
-
-)->spawn;
-
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Process files, otherwise read from standard input.
+## Process routines.
 ##
 ###############################################################################
 
@@ -558,59 +555,98 @@ sub display_matched {
    $total_found = $total_lines = 0;
    $abort_job = undef;
    $order_id = 1;
+
+   return;
 }
+
+sub process_file {
+
+   $file = $_[0];
+
+   if ($file eq '-') {
+      open(STDIN, ($^O eq 'MSWin32') ? 'CON' : '/dev/tty') or die $!;
+      process_stdin();
+   }
+   elsif (! -e $file) {
+      $exit_status = 2;
+
+      print STDERR "$prog_name: $file: No such file or directory\n"
+         unless $no_msg;
+   }
+   elsif (-d $file) {
+      $exit_status = 1;
+
+    # print STDERR "$prog_name: $file: Is a directory\n"
+    #    unless $no_msg;
+   }
+   else {
+      MCE->process($file);
+      display_matched();
+   }
+
+   return;
+}
+
+sub process_stdin {
+
+   $file = "(standard input)";
+
+   MCE->process(\*STDIN);
+   display_matched();
+
+   return;
+}
+
+###############################################################################
+## ----------------------------------------------------------------------------
+## Run.
+##
+###############################################################################
+
+MCE->new(
+   max_workers => $max_workers, chunk_size => $chunk_size, use_slurpio => 1,
+   user_begin => \&user_begin, user_func => \&user_func,
+   user_end => \&user_end
+);
 
 if ($r_flag && @files > 0) {
-   my @t_files = `egrep -lsr @r_patn ^ @files`;
+   my ($list_fh, $list);
 
-   if (@t_files) {
-      @files = @t_files; undef @t_files;
-      chomp @files;
+   MCE->spawn;
+
+   unless ($^O eq 'MSWin32') {
+      open $list_fh, '-|', 'egrep', '-lsr', @r_patn, '^', @files;
    }
+   else {
+      $list = `egrep -lsr @r_patn ^ @files`;
+      open $list_fh, '<', \$list;
+   }
+
+   while (<$list_fh>) {
+      chomp;
+      process_file($_);
+      last if $abort_all;
+   }
+
+   close $list_fh;
 }
-
-$w_filename = 1
-   if ((!$h_flag && @files > 1) || $H_flag);
-
-if (@files > 0) {
+elsif (@files > 0) {
    foreach (@files) {
-      last if ($abort_all);
-
-      $file = $_;
-
-      if ($file eq '-') {
-         $file = "(standard input)";
-         open(STDIN, ($^O eq 'MSWin32') ? 'CON' : '/dev/tty') or die $!;
-         $mce->process(\*STDIN);
-         display_matched();
-      }
-      elsif (! -e $file) {
-         $exit_status = 2;
-
-         print STDERR "$prog_name: $file: No such file or directory\n"
-            unless $no_msg;
-      }
-      elsif (-d $file) {
-         $exit_status = 1;
-
-       # print STDERR "$prog_name: $file: Is a directory\n"
-       #    unless $no_msg;
-      }
-      else {
-         $mce->process($file);
-         display_matched();
-      }
+      process_file($_);
+      last if $abort_all;
    }
 }
 else {
-   $file = "(standard input)";
-   $mce->process(\*STDIN);
-   display_matched();
+   process_stdin();
 }
 
-## Shutdown Many-core Engine and exit.
+###############################################################################
+## ----------------------------------------------------------------------------
+## Finish.
+##
+###############################################################################
 
-$mce->shutdown();
+MCE->shutdown();
 
 if (!$q_flag && $exit_status) {
    exit($exit_status);
