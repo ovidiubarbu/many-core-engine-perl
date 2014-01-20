@@ -80,15 +80,15 @@ sub usage {
    print <<"::_USAGE_BLOCK_END_::";
 
 Options for Many-core Engine:
-  --max-workers=NUM         override max workers (default 8)
+  --max-workers=NUM         override max workers (default 3)
                               e.g. auto, auto-2, 4
 
   --chunk-level=LEVEL       override chunk level (default auto)
                               chunk at [file] or [list] level
 
   --chunk-size=NUM[KM]      override chunk size (set at limit if under or over)
-                              [file] default: 2M  minimum: 200K  maximum: 20M
-                              [list] default: 4   minimum: 1     maximum: 64
+                              [file] default: 4M  minimum: 200K  maximum: 20M
+                              [list] default: 5   minimum: 1     maximum: 60
 
   --lang=LOCALE             override locale
                               e.g. C, en_US.UTF-8, en_US.ISO-8859-1
@@ -149,7 +149,7 @@ my ($h_patn, $b_flag, $c_flag, $H_flag, $h_flag, $n_flag, $q_flag) = ((0) x 7);
 my (@r_patn, @args, $arg, @files, $file); my ($f_list, $r_flag) = (0, 0);
 my ($exit_status, $found_match, $skip_args, $w_filename) = (0, 0, 0, 0);
 
-my $max_workers = 8; my $chunk_level = 'auto'; my $chunk_size;
+my $max_workers = 3; my $chunk_level = 'auto'; my $chunk_size;
 my $max_count = 0; my $no_msg = 0;
 my $flag = sub { 1 };
 
@@ -948,8 +948,8 @@ if ($chunk_level eq 'auto') {
 }
 
 if ($chunk_level eq 'list') {
-   $chunk_size =  4 unless defined $chunk_size;
-   $chunk_size = 64 if $chunk_size > 64;
+   $chunk_size =  5 unless defined $chunk_size;
+   $chunk_size = 60 if $chunk_size > 60;
    $chunk_size =  1 if $chunk_size <  1;
 
    push @args, '-H' if (!$h_flag && ($H_flag || $r_flag || @files > 1));
@@ -963,7 +963,7 @@ if ($chunk_level eq 'list') {
    );
 }
 else {
-   $chunk_size =  2_097_152 unless defined $chunk_size;   ## 2M
+   $chunk_size =  4_194_304 unless defined $chunk_size;   ## 4M
    $chunk_size = 20_971_520 if $chunk_size > 20_971_520;  ## 20M
    $chunk_size =    204_800 if $chunk_size <    204_800;  ## 200K
 
