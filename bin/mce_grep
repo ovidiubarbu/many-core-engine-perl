@@ -655,8 +655,8 @@ sub make_user_func_file {
       }
       else {
          ## I borrowed some bits from IPC::Run3 for STDOUT/ERR. However, I
-         ## settled on passing STDIN via open for lesser overhead behind
-         ## the scene versus calling system (from observation).
+         ## settled on passing STDIN via open for lesser overhead behind the
+         ## scene versus calling system (from observation during testing).
 
          local (*STDOUT_SAVE, *STDERR_SAVE);
 
@@ -670,8 +670,8 @@ sub make_user_func_file {
             open STDERR, '>&' . fileno $err_fh;
          }
 
-         ## Seeing "maximal count of pending signals (NUM) exceeded".
-         ## Thus the reason for using syswrite instead.
+         ## Seeing "maximal count of pending signals (NUM) exceeded" message.
+         ## Thus the reason for using syswrite instead of print below.
 
          open  $cmd_fh, '|-', $cmd_path, @args;   ## Run external command
          syswrite $cmd_fh, $$chunk_ref;           ## Write to STDIN
