@@ -36,7 +36,7 @@
 ##   --chunk-level={auto|file|list} option. For large files, choose file.
 ##
 ## ============================================================================
-## Created by Mario Roy, 2014-01-19, v1.006.
+## Created by Mario Roy, 2014-01-20, v1.007.
 ##
 ###############################################################################
 
@@ -63,6 +63,10 @@ sub INIT {
    @ARGV = <@ARGV> if ($^O eq 'MSWin32');
 }
 
+use Getopt::Long qw(
+   :config bundling pass_through no_ignore_case no_auto_abbrev
+);
+
 use Scalar::Util qw( looks_like_number );
 use Fcntl qw( O_RDONLY );
 
@@ -80,7 +84,7 @@ sub usage {
    print <<"::_USAGE_BLOCK_END_::";
 
 Options for Many-core Engine:
-  --max-workers=NUM         override max workers (default 3)
+  --max-workers=NUM         override max workers (default 6)
                               e.g. auto, auto-2, 4
 
   --chunk-level=LEVEL       override chunk level (default auto)
@@ -149,194 +153,146 @@ my ($h_patn, $b_flag, $c_flag, $H_flag, $h_flag, $n_flag, $q_flag) = ((0) x 7);
 my (@r_patn, @args, $arg, @files, $file); my ($f_list, $r_flag) = (0, 0);
 my ($exit_status, $found_match, $skip_args, $w_filename) = (0, 0, 0, 0);
 
-my $max_workers = 3; my $chunk_level = 'auto'; my $chunk_size;
-my $max_count = 0; my $no_msg = 0;
-my $flag = sub { 1 };
+my $max_workers = 6; my $chunk_level = 'auto'; my $chunk_size;
+my $max_count = 0; my $no_msg = 0; my @TMP_ARGV;
+
+## Option parsing step 1.
+
+for my $i (0 .. @ARGV - 1) {
+   if ($ARGV[$i] eq '--') {
+      @TMP_ARGV = @ARGV[$i .. @ARGV - 1]; @ARGV = @ARGV[0 .. $i - 1];
+      last;
+   }
+}
+
+{
+   local $SIG{__WARN__} = sub { };
+
+   GetOptions(
+      'max-workers|max_workers=s' => \$max_workers,
+      'chunk-level|chunk_level=s' => \$chunk_level,
+      'chunk-size|chunk_size=s'   => \$chunk_size,
+
+      'lang=s' => sub {
+         delete @ENV{ qw( LC_MESSAGES LC_COLLATE LC_CTYPE LC_ALL ) };
+         $ENV{'LANG'} = $_[1];
+      },
+      'help' => sub {
+         usage(); system $cmd_path, '--help'; exit 0;
+      },
+      'V|version' => sub {
+         system $cmd_path, '--version'; exit 0;
+      },
+      'q|quiet|silent'  => \$q_flag,
+      'H|with-filename' => sub { $H_flag = 1; $h_flag = 0; },
+      'h|no-filename'   => sub { $H_flag = 0; $h_flag = 1; },
+      'm|max-count=s'   => \$max_count,
+      'R|r|recursive'   => \$r_flag
+   );
+
+   if ($max_workers !~ /^auto/) {
+      unless (looks_like_number($max_workers) && $max_workers > 0) {
+         print STDERR "$prog_name: invalid max workers\n";
+         exit 2;
+      }
+   }
+   if ($chunk_level !~ /^(?:auto|file|list)$/) {
+      print STDERR "$prog_name: invalid chunk level\n";
+      exit 2;
+   }
+   if (defined $chunk_size) {
+      if ($chunk_size =~ /^(\d+)K/i) {
+         $chunk_size = $1 * 1024;
+      }
+      elsif ($chunk_size =~ /^(\d+)M/i) {
+         $chunk_size = $1 * 1024 * 1024;
+      }
+      if (!looks_like_number($chunk_size) || $chunk_size < 1) {
+         print STDERR "$prog_name: invalid chunk size\n";
+         exit 2;
+      }
+   }
+   if ($max_count) {
+      unless (looks_like_number($max_count) && $max_count >= 0) {
+         print STDERR "$prog_name: invalid max count\n";
+         exit 2;
+      }
+   }
+}
+
+## Option parsing step 2.
+
+if (@TMP_ARGV) {
+   @ARGV = (@ARGV, @TMP_ARGV); undef @TMP_ARGV;
+   if ($ARGV[0] eq '--') {
+      shift @ARGV; $skip_args = 1; push @args, '--';
+   }
+}
 
 while ( @ARGV ) {
-
-   $arg = shift @ARGV;
-   $arg =~ s/ /\\ /g;
+   $arg = shift @ARGV; $arg =~ s/ /\\ /g;
 
    if ($skip_args) {
       push @files, $arg;
-      next;
    }
-
-   if (substr($arg, 0, 2) eq '--') {              ## --OPTION
-      $skip_args = $flag->() and next if ($arg eq '--');
-
-      ## for script
-      if ($arg =~ /^--lang=(.+)/) {
-         delete $ENV{'LC_MESSAGES'};
-         delete $ENV{'LC_COLLATE'};
-         delete $ENV{'LC_CTYPE'};
-         delete $ENV{'LC_ALL'};
-
-         $ENV{'LANG'} = $1;
+   elsif (substr($arg, 0, 2) eq '--') {           ## --OPTION
+      if ($arg eq '--') {
+         $skip_args = 1; push @args, $arg;
+         next;
       }
-      elsif ($arg =~ /^--max[-_]workers=(.+)/) {
-         $max_workers = $1;
+      $h_patn = 1 if $arg =~ /^--regexp=/;
+      $h_patn = 1 if $arg =~ /^--file=/;
+      $b_flag = 1 if $arg eq '--byte-offset';
+      $c_flag = 1 if $arg eq '--count';
+      $f_list = 1 if $arg eq '--files-without-match';
+      $f_list = 1 if $arg eq '--files-with-matches';
+      $n_flag = 1 if $arg eq '--record-number';
+      $n_flag = 1 if $arg eq '--line-number';
+      $no_msg = 1 if $arg eq '--no-messages';
 
-         if ($max_workers !~ /^auto/) {
-            unless (looks_like_number($max_workers) && $max_workers > 0) {
-               print STDERR "$prog_name: invalid max workers\n";
-               exit 2;
-            }
+      if ($arg =~ /^--directories=(.+)/) {
+         if ($1 ne 'recurse') {
+            push @args, $arg;
+         } else {
+            $r_flag = 1;
          }
       }
-      elsif ($arg =~ /^--chunk[-_]level=(.+)/) {
-         $chunk_level = lc $1;
-
-         unless ($chunk_level =~ /^(?:auto|file|list)$/) {
-            print STDERR "$prog_name: invalid chunk level\n";
-            exit 2;
-         }
+      elsif ($arg =~ /^--include=.+/) {
+         push @r_patn, $arg;
       }
-      elsif ($arg =~ /^--chunk[-_]size=(.+)/) {
-         $chunk_size = $1;
-
-         if ($chunk_size =~ /^(\d+)K/i) {
-            $chunk_size = $1 * 1024;
-         }
-         elsif ($chunk_size =~ /^(\d+)M/i) {
-            $chunk_size = $1 * 1024 * 1024;
-         }
-
-         if (!looks_like_number($chunk_size) || $chunk_size < 1) {
-            print STDERR "$prog_name: invalid chunk size\n";
-            exit 2;
-         }
+      elsif ($arg =~ /^--exclude=.+/) {
+         push @r_patn, $arg;
       }
-
-      ## for binary
-      elsif ($arg eq '--version') {
-         system $cmd_path, $arg;
-         exit 0;
+      elsif ($arg =~ /^--exclude-from=.+/) {
+         push @r_patn, $arg;
       }
-      elsif ($arg eq '--help') {
-         usage(); system $cmd_path, $arg;
-         exit 0;
+      elsif ($arg =~ /^--exclude-dir=.+/) {
+         push @r_patn, $arg;
       }
       else {
-         $h_patn = 1 if $arg =~ /^--regexp=/;
-         $h_patn = 1 if $arg =~ /^--file=/;
-
-         $f_list = 1 if $arg eq '--files-without-match';
-         $f_list = 1 if $arg eq '--files-with-matches';
-         $r_flag = 1 if $arg eq '--recursive';
-
-         $b_flag = 1 if $arg eq '--byte-offset';
-         $c_flag = 1 if $arg eq '--count';
-         $n_flag = 1 if $arg eq '--record-number';
-         $n_flag = 1 if $arg eq '--line-number';
-         $q_flag = 1 if $arg eq '--silent';
-         $q_flag = 1 if $arg eq '--quiet';
-
-         $no_msg = 1 if $arg eq '--no-messages';
-
-         if ($arg eq '--with-filename') {
-            $H_flag = 1; $h_flag = 0;
-         }
-         elsif ($arg eq '--no-filename') {
-            $H_flag = 0; $h_flag = 1;
-         }
-         elsif ($arg =~ /^--max-count=(.+)/) {
-            $max_count = $1;
-            unless (looks_like_number($max_count) && $max_count >= 0) {
-               print STDERR "$prog_name: invalid max count\n";
-               exit 2;
-            }
-         }
-         elsif ($arg =~ /^--directories=(.+)/) {
-            $r_flag = 1 if ($1 eq 'recurse');
-         }
-         elsif ($arg =~ /^--include=.+/) {
-            push @r_patn, $arg;
-         }
-         elsif ($arg =~ /^--exclude=.+/) {
-            push @r_patn, $arg;
-         }
-         elsif ($arg =~ /^--exclude-from=.+/) {
-            push @r_patn, $arg;
-         }
-         elsif ($arg =~ /^--exclude-dir=.+/) {
-            push @r_patn, $arg;
-         }
-
          ## Pass arguments to the C binary
-         push @args, $arg if (
-            $arg ne '--recursive' &&
-            $arg !~ /^--max-count=/ &&
-            $arg !~ /^--directories=recurse/ &&
-            $arg !~ /^--include=/ &&
-            $arg !~ /^--exclude=/ &&
-            $arg !~ /^--exclude-from=/ &&
-            $arg !~ /^--exclude-dir=/ &&
-            $arg ne '--with-filename' &&
-            $arg ne '--no-filename' &&
-            $arg ne '--quiet' &&
-            $arg ne '--silent'
-         );
+         push @args, $arg;
       }
    }
-
    elsif (substr($arg, 0, 1) eq '-') {            ## -OPTION
-
       if ($arg eq '-') {
          push @files, $arg;
          next;
       }
-
       my $len = length $arg;
 
       for (my $x = 1; $x < $len; $x++) {
          my $a = substr($arg, $x, 1);
 
-         if ($a eq 'V') {
-            system $cmd_path, $arg;
-            exit 0;
-         }
-         elsif ($a eq 'H') {
-            $H_flag = 1; $h_flag = 0;
-         }
-         elsif ($a eq 'h') {
-            $H_flag = 0; $h_flag = 1;
-         }
-         elsif ($a eq 'm') {
-            if (substr($arg, -1) eq 'm') {
-               $max_count = shift @ARGV;
-               if (defined $max_count) {
-                  unless (looks_like_number($max_count) && $max_count >= 0) {
-                     print STDERR "$prog_name: invalid max count\n";
-                     exit 2;
-                  }
-               }
-            }
-            elsif ($arg =~ /m(\d+)$/) {
-               $max_count = $1;
-            }
-         }
-
-         $f_list = 1 if $a eq 'l' || $a eq 'L';
-         $r_flag = 1 if $a eq 'r' || $a eq 'R';
-
-         $h_patn = 1 if $a eq 'e';
-         $h_patn = 1 if $a eq 'f';
-
+         $f_list = 1 if $a eq 'L' || $a eq 'l';
+         $h_patn = 1 if $a eq 'e' || $a eq 'f';
          $b_flag = 1 if $a eq 'b';
          $c_flag = 1 if $a eq 'c';
          $n_flag = 1 if $a eq 'n';
-         $q_flag = 1 if $a eq 'q';
 
          $no_msg = 1
             if ($a eq 's' && $cmd_name !~ /agrep/);
       }
-
-      ## Do not pass these arguments
-      $arg =~ s/r//g; $arg =~ s/R//g;
-      $arg =~ s/h//g; $arg =~ s/H//g;
-      $arg =~ s/q//g; $arg =~ s/m\d*//g;
 
       next if $arg eq '-';
 
@@ -368,12 +324,12 @@ while ( @ARGV ) {
          }
       }
    }
-
    else {                                         ## FILE
       push @files, $arg;
-
    }
 }
+
+## Option parsing step 3.
 
 push @args, shift @files if ($h_patn == 0 && @files > 0);
 
@@ -699,8 +655,8 @@ sub make_user_func_file {
       }
       else {
          ## I borrowed some bits from IPC::Run3 for STDOUT/ERR. However, I
-         ## settled on passing STDIN via open for lesser overhead observed
-         ## behind the scene versus calling system.
+         ## settled on passing STDIN via open for lesser overhead behind
+         ## the scene versus calling system (from observation).
 
          local (*STDOUT_SAVE, *STDERR_SAVE);
 
@@ -714,8 +670,8 @@ sub make_user_func_file {
             open STDERR, '>&' . fileno $err_fh;
          }
 
-         ## Print isn't always 100% due to seeing "maximal count of pending
-         ## signals (NUM) exceeded". Thus the reason for using syswrite.
+         ## Seeing "maximal count of pending signals (NUM) exceeded".
+         ## Thus the reason for using syswrite instead.
 
          open  $cmd_fh, '|-', $cmd_path, @args;   ## Run external command
          syswrite $cmd_fh, $$chunk_ref;           ## Write to STDIN
@@ -943,7 +899,11 @@ if ($chunk_level eq 'auto') {
       $chunk_level = $is_MSWin32 ? 'file' : 'list';
    }
    else {
-      $chunk_level = (-s $files[0] > 20_971_520) ? 'file' : 'list';  ## 20M
+      if (-f $files[0]) {
+         $chunk_level = (-s $files[0] > 20_971_520) ? 'file' : 'list';  ## 20M
+      } else {
+         $chunk_level = 'list';
+      }
    }
 }
 

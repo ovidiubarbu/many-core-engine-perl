@@ -65,7 +65,7 @@ sub usage {
    print <<"::_USAGE_BLOCK_END_::";
 
 Options for Many-core Engine:
-  --max-workers=NUM         override max workers (default 3)
+  --max-workers=NUM         override max workers (default 6)
                               e.g. auto, auto-2, 4
 
   --chunk-size=NUM[KM]      override chunk size (default 2M)
@@ -119,7 +119,7 @@ my ($c_flag, $H_flag, $h_flag, $i_flag, $n_flag, $q_flag, $r_flag, $v_flag);
 my (@r_patn, $arg, @files, @patterns, $re, $skip_args, $w_filename);
 my ($L_flag, $l_flag, $f_list);
 
-my $max_workers = 3; my $chunk_size = 2_097_152;  ## 2M
+my $max_workers = 6; my $chunk_size = 2_097_152;  ## 2M
 my $max_count = 0; my $no_msg = 0;
 my $flag = sub { 1 };
 
