@@ -11,7 +11,7 @@
 
 package MCE::Core::Validation;
 
-our $VERSION = '1.504'; $VERSION = eval $VERSION;
+our $VERSION = '1.505'; $VERSION = eval $VERSION;
 
 ## Items below are folded into MCE.
 

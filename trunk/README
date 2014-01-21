@@ -3,7 +3,7 @@
  # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * #
 ###############################################################################
 
-This document describes MCE version 1.504
+This document describes MCE version 1.505
 
  Many-core Engine (MCE) for Perl helps enable a new level of performance by
  maximizing all available cores. MCE spawns a pool of workers and therefore
@@ -39,6 +39,7 @@ Use Cases for MCE.
        input_data => \$scalar,           ## Treated like a memory-based file
        input_data => \@array,            ## A reference to an array
        input_data => \*FileHandle,       ## Process a FH in parallel
+       input_data => \&iterator,         ## A reference to an iterator
 
     Think of input data as the highway. Now think of the automobile as being
     MCE. Data can be larger than physical memory on the box. The chunking

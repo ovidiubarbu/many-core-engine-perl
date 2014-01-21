@@ -1,7 +1,7 @@
 
 Revision history for MCE
 
-1.50x Thu Jan 16 21:30:00 EST 2014
+1.505 Thu Jan 21 01:30:00 EST 2014
 
   [BUG FIXES]
 
@@ -34,12 +34,15 @@ Revision history for MCE
 
   * The chunk_size option can take a suffix; K (Kilobytes) or M (Megabytes).
 
+  * The following examples except --max-workers=NUM --chunk-size=NUM options.
+    cat.pl, egrep.pl, findnull.pl, scaling_pings.pl, and wc.pl
+
   [NEW FEATURES]
 
   * The input_data option can now receive an iterator reference. Added a
     new example iterator.pl for demonstraton. In addition, there are
     several examples listed under a new section "SYNTAX for INPUT_DATA"
-    in MCE::Core.pod.
+    under MCE::Core.pod.
 
   * Added a new demo script; bin/mce_grep. This is a wrapper script for the
     grep binary. This script supports agrep, grep, egrep, fgrep, & tre-agrep.
