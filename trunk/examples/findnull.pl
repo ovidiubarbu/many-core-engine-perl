@@ -57,11 +57,11 @@ DESCRIPTION
 
    The following options are available:
 
-   --chunk_size CHUNK_SIZE
-          Specify chunk size for MCE          -- default: 1M
-
-   --max_workers MAX_WORKERS
+   --max-workers MAX_WORKERS
           Specify number of workers for MCE   -- default: 8
+
+   --chunk-size CHUNK_SIZE
+          Specify chunk size for MCE          -- default: 2M
 
    -l     Display the number of lines for the file
 
@@ -82,7 +82,7 @@ EXIT STATUS
 my $flag = sub { 1; };
 my $isOk = sub { (@ARGV == 0 or $ARGV[0] =~ /^-/) ? usage() : shift @ARGV; };
 
-my $chunk_size  = 1048576;  ## 1M
+my $chunk_size  = 2097152;  ## 2M
 my $max_workers = 8;
 my $skip_args   = 0;
 
@@ -92,9 +92,19 @@ my $file   = ();
 while ( my $arg = shift @ARGV ) {
    unless ($skip_args) {
       $l_flag      = $flag->() and next if ($arg eq '-l');
-      $chunk_size  = $isOk->() and next if ($arg eq '--chunk_size');
-      $max_workers = $isOk->() and next if ($arg eq '--max_workers');
+
       $skip_args   = $flag->() and next if ($arg eq '--');
+      $max_workers = $isOk->() and next if ($arg =~ /^--max[-_]workers$/);
+      $chunk_size  = $isOk->() and next if ($arg =~ /^--chunk[-_]size$/);
+
+      if ($arg =~ /^--max[-_]workers=(.+)/) {
+         $max_workers = $1;
+         next;
+      }
+      if ($arg =~ /^--chunk[-_]size=(.+)/) {
+         $chunk_size = $1;
+         next;
+      }
 
       usage() if ($arg =~ /^-/);
    }
@@ -202,7 +212,7 @@ sub display_result {
       if ($r->{found_match}) {
          for (@{ $r->{lines} }) {
             $e = "NULL value at line " . ($_ + $total_lines) . " in file $file";
-            print STDERR "WARNING: ", $e, "\n";
+            print STDERR "Warning: ", $e, "\n";
          }
       }
 

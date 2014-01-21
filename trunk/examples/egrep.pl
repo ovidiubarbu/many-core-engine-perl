@@ -115,18 +115,20 @@ and 2 if trouble.
 ##
 ###############################################################################
 
+my $flag = sub { 1 };
+my $isOk = sub { (@ARGV == 0 or $ARGV[0] =~ /^-/) ? usage(1) : shift @ARGV; };
+
 my ($c_flag, $H_flag, $h_flag, $i_flag, $n_flag, $q_flag, $r_flag, $v_flag);
 my (@r_patn, $arg, @files, @patterns, $re, $skip_args, $w_filename);
 my ($L_flag, $l_flag, $f_list);
 
-my $max_workers = 6; my $chunk_size = 2_097_152;  ## 2M
+my $max_workers = 6; my $chunk_size = 2097152;  ## 2M
 my $max_count = 0; my $no_msg = 0;
-my $flag = sub { 1 };
+
+## Option parsing step 1.
 
 while ( @ARGV ) {
-
-   $arg = shift @ARGV;
-   $arg =~ s/ /\\ /g;
+   $arg = shift @ARGV; $arg =~ s/ /\\ /g;
 
    if ($skip_args) {
       push @files, $arg;
@@ -179,48 +181,20 @@ while ( @ARGV ) {
          next;
       }
 
+      $max_count   = $isOk->() and next if ($arg =~ /^--max-count$/);
+      $max_workers = $isOk->() and next if ($arg =~ /^--max[-_]workers$/);
+      $chunk_size  = $isOk->() and next if ($arg =~ /^--chunk[-_]size$/);
+
       if ($arg =~ /^--max-count=(.+)/) {
          $max_count = $1;
-
-         unless (looks_like_number($max_count) && $max_count >= 0) {
-            print STDERR "$prog_name: invalid max count\n";
-            exit 2;
-         }
-
          next;
       }
-
       if ($arg =~ /^--max[-_]workers=(.+)/) {
          $max_workers = $1;
-
-         if ($max_workers !~ /^auto/) {
-            unless (looks_like_number($max_workers) && $max_workers > 0) {
-               print STDERR "$prog_name: invalid max workers\n";
-               exit 2;
-            }
-         }
-
          next;
       }
       if ($arg =~ /^--chunk[-_]size=(.+)/) {
          $chunk_size = $1;
-
-         if ($chunk_size =~ /^(\d+)K/i) {
-            $chunk_size = $1 * 1024;
-         }
-         elsif ($chunk_size =~ /^(\d+)M/i) {
-            $chunk_size = $1 * 1024 * 1024;
-         }
-
-         if (looks_like_number($chunk_size) && $chunk_size > 0) {
-            $chunk_size = 20_971_520 if $chunk_size > 20_971_520;  ## 20M
-            $chunk_size =    204_800 if $chunk_size <    204_800;  ## 200K
-         }
-         else {
-            print STDERR "$prog_name: invalid chunk size\n";
-            exit 2;
-         }
-
          next;
       }
 
@@ -264,12 +238,6 @@ while ( @ARGV ) {
             elsif ($a eq 'm') {
                if (substr($arg, -1) eq 'm') {
                   $max_count = shift @ARGV;
-                  if (defined $max_count) {
-                     unless (looks_like_number($max_count) && $max_count >= 0) {
-                        print STDERR "$prog_name: invalid max count\n";
-                        exit 2;
-                     }
-                  }
                }
                elsif ($arg =~ /m(\d+)$/) {
                   $max_count = $1;
@@ -291,6 +259,41 @@ while ( @ARGV ) {
 
    push @files, $arg;                             ## FILE
 }
+
+## Option parsing step 2.
+
+{
+   if (defined $max_count) {
+      unless (looks_like_number($max_count) && $max_count >= 0) {
+         print STDERR "$prog_name: invalid max count\n";
+         exit 2;
+      }
+   }
+   if ($max_workers !~ /^auto/) {
+      unless (looks_like_number($max_workers) && $max_workers > 0) {
+         print STDERR "$prog_name: invalid max workers\n";
+         exit 2;
+      }
+   }
+
+   if ($chunk_size =~ /^(\d+)K/i) {
+      $chunk_size = $1 * 1024;
+   }
+   elsif ($chunk_size =~ /^(\d+)M/i) {
+      $chunk_size = $1 * 1024 * 1024;
+   }
+
+   if (looks_like_number($chunk_size) && $chunk_size > 0) {
+      $chunk_size = 20_971_520 if $chunk_size > 20_971_520;  ## 20M
+      $chunk_size =    204_800 if $chunk_size <    204_800;  ## 200K
+   }
+   else {
+      print STDERR "$prog_name: invalid chunk size\n";
+      exit 2;
+   }
+}
+
+## Option parsing step 3.
 
 $f_list = ($L_flag || $l_flag);
 
