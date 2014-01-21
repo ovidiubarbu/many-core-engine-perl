@@ -44,15 +44,15 @@ DESCRIPTION
 
    The following options are available:
 
-   --chunk_size CHUNK_SIZE
-          Specify chunk size for MCE             Default: 100
-
-   --max_workers MAX_WORKERS
+   --max-workers MAX_WORKERS
           Specify number of workers for MCE      Default: 4
+
+   --chunk-size CHUNK_SIZE
+          Specify chunk size for MCE             Default: 100
 
 EXAMPLES
 
-   $prog_name --chunk_size 150 --max_workers 6 ip_list_file
+   $prog_name --chunk-size 150 --max-workers 6 ip_list_file
 
 ::_USAGE_BLOCK_END_::
 
@@ -76,9 +76,18 @@ my $listfile;
 
 while ( my $arg = shift @ARGV ) {
    unless ($skip_args) {
-      $chunk_size  = $isOk->() and next if ($arg eq '--chunk_size');
-      $max_workers = $isOk->() and next if ($arg eq '--max_workers');
       $skip_args   = $flag->() and next if ($arg eq '--');
+      $max_workers = $isOk->() and next if ($arg =~ /^--max[-_]workers$/);
+      $chunk_size  = $isOk->() and next if ($arg =~ /^--chunk[-_]size$/);
+
+      if ($arg =~ /^--max[-_]workers=(.+)/) {
+         $max_workers = $1;
+         next;
+      }
+      if ($arg =~ /^--chunk[-_]size=(.+)/) {
+         $chunk_size = $1;
+         next;
+      }
 
       usage() if ($arg =~ /^-/);
    }

@@ -55,11 +55,11 @@ DESCRIPTION
 
    The following options are available:
 
-   --chunk_size CHUNK_SIZE
-          Specify chunk size for MCE          -- default: 500K
-
-   --max_workers MAX_WORKERS
+   --max-workers MAX_WORKERS
           Specify number of workers for MCE   -- default: 3
+
+   --chunk-size CHUNK_SIZE
+          Specify chunk size for MCE          -- default: 500K
 
    -n     Number the output lines, starting at 1
    -u     Disable output buffering
@@ -128,9 +128,18 @@ while ( my $arg = shift @ARGV ) {
          next;
       }
 
-      $chunk_size  = $isOk->() and next if ($arg eq '--chunk_size');
-      $max_workers = $isOk->() and next if ($arg eq '--max_workers');
       $skip_args   = $flag->() and next if ($arg eq '--');
+      $max_workers = $isOk->() and next if ($arg =~ /^--max[-_]workers$/);
+      $chunk_size  = $isOk->() and next if ($arg =~ /^--chunk[-_]size$/);
+
+      if ($arg =~ /^--max[-_]workers=(.+)/) {
+         $max_workers = $1;
+         next;
+      }
+      if ($arg =~ /^--chunk[-_]size=(.+)/) {
+         $chunk_size = $1;
+         next;
+      }
 
       usage() if ($arg =~ /^-/);
    }
