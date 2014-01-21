@@ -578,9 +578,6 @@ sub process_file {
    }
    elsif (-d $file) {
       $exit_status = 1;
-
-    # print STDERR "$prog_name: $file: Is a directory\n"
-    #    unless $no_msg;
    }
    else {
       MCE->process($file);
