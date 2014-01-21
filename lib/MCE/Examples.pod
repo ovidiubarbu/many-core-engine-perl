@@ -15,6 +15,17 @@ patterns and word count aggregation.
 
 =head1 INCLUDED with DISTRIBUTION
 
+   bin/mce_grep
+             A wrapper script with support for the following C binaries.
+                agrep, grep, egrep, fgrep, and tre-agrep
+
+             Chunking may be applied either at the [file] level, for
+             large file(s), or at the [list] level when parsing many
+             files recursively.
+
+             The gain in performance is noticeable for expensive
+             patterns, especially with agrep and tre-agrep.
+
    barrier_sync.pl
              A barrier sync demonstration.
 
