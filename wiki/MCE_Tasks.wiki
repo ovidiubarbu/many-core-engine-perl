@@ -3,10 +3,6 @@
 
 Update Jan 21, 2014
 
-MCE 1.505 includes a dual chunk-level {file, list} wrapper script for grep binaries.
-
-https://metacpan.org/source/MARIOROY/MCE-1.505/bin/mce_grep
-
 Here's an example demonstrating MCE::Flow, MCE::Queue, and MCE->gather.
 
 https://metacpan.org/source/MARIOROY/MCE-1.505/examples/flow_model.pl
