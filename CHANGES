@@ -9,6 +9,11 @@ Revision history for MCE
     This has been broken since the 1.502 release. Methods impacted were:
        mce_flow_f, mce_grep_f, mce_loop_f, mce_map_f, and mce_stream_f
 
+  * Updated _parse_chunk_size in MCE::Util to compute chunk_size correctly
+    for new edge cases. One may call either mce_grep or mce_grep_f for a
+    GLOB or scalar reference as input data. The same also applies for the
+    other models; mce_flow, mce_loop, mce_map and mce_stream.
+
 1.505 Thu Jan 21 01:30:00 EST 2014
 
   [BUG FIXES]
