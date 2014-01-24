@@ -1,7 +1,7 @@
 
 Revision history for MCE
 
-1.50x Fri Jan 24 01:30:00 EST 2014
+1.50x Fri Jan 24 18:20:00 EST 2014
 
   [BUG FIXES]
 
@@ -13,6 +13,16 @@ Revision history for MCE
     for new edge cases. One may call either mce_grep or mce_grep_f for a
     GLOB or scalar reference as input data. The same also applies for the
     other models; mce_flow, mce_loop, mce_map and mce_stream.
+
+  [ENHANCEMENTS]
+
+  * The interval option can take a decimal number. Previously, this
+    wanted a hash reference with up to 3 key/value pairs. Most often, all
+    one wants is specify a value for delay and not max_nodes or node_id.
+       interval => { delay => 0.05 }
+       interval => 0.05                ## Now allowed in 1.506 and above.
+                                       ## Changed to { delay => 0.05 }
+                                       ## automatically.
 
 1.505 Thu Jan 21 01:30:00 EST 2014
 
