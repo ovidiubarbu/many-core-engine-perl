@@ -322,6 +322,7 @@ sub mce_flow (@) {
          my $_p = $_params;
 
          foreach (keys %{ $_p }) {
+            next if ($_ eq '_file');
             next if ($_ eq 'max_workers' && ref $_p->{max_workers} eq 'ARRAY');
             next if ($_ eq 'task_name' && ref $_p->{task_name} eq 'ARRAY');
             next if ($_ eq 'input_data');

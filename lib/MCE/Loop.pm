@@ -247,6 +247,7 @@ sub mce_loop (&@) {
 
       if (defined $_params) {
          foreach (keys %{ $_params }) {
+            next if ($_ eq '_file');
             next if ($_ eq 'input_data');
             next if ($_ eq 'chunk_size');
 
