@@ -183,6 +183,9 @@ sub _validate_args_s {
    }
 
    if (defined $_s->{interval}) {
+      $_s->{interval} = { delay => $_s->{interval} }
+         if (ref $_s->{interval} eq '');
+
       my $_i = $_s->{interval};
 
       _croak("$_tag: 'interval' is not a HASH reference")
