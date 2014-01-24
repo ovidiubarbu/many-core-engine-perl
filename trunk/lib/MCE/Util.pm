@@ -153,6 +153,8 @@ sub _parse_chunk_size {
       my $_size = (defined $_input_data && ref $_input_data eq 'ARRAY')
          ? scalar @{ $_input_data } : $_array_size;
 
+      my $_is_file;
+
       if (defined $_params && exists $_params->{sequence}) {
          my ($_begin, $_end, $_step);
 
@@ -170,8 +172,7 @@ sub _parse_chunk_size {
          $_size = abs($_end - $_begin) / $_step + 1
             if (!defined $_input_data && !$_array_size);
       }
-      
-      if (defined $_params && exists $_params->{_file}) {
+      elsif (defined $_params && exists $_params->{_file}) {
          my $_ref = ref $_params->{_file};
 
          if ($_ref eq 'SCALAR') {
@@ -182,6 +183,18 @@ sub _parse_chunk_size {
             $_size = 0; $_chunk_size = 245760;
          }
 
+         $_is_file = 1;
+      }
+      elsif (defined $_input_data) {
+         if (ref $_input_data eq 'GLOB') {
+            $_is_file = 1; $_size = 0; $_chunk_size = 245760;
+         }
+         elsif (ref $_input_data eq 'SCALAR') {
+            $_is_file = 1; $_size = length $$_input_data;
+         }
+      }
+
+      if (defined $_is_file) {
          if ($_size) {
             $_chunk_size = int($_size / $_max_workers / 24 + 0.5);
             $_chunk_size = 245760 if $_chunk_size > 245760;
