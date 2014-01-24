@@ -1,6 +1,14 @@
 
 Revision history for MCE
 
+1.50x Fri Jan 24 01:30:00 EST 2014
+
+  [BUG FIXES]
+
+  * Fixed issue with all 5 models croaking for an internal '_file' option.
+    This has been broken since the 1.502 release. Methods impacted were:
+       mce_flow_f, mce_grep_f, mce_loop_f, mce_map_f, and mce_stream_f
+
 1.505 Thu Jan 21 01:30:00 EST 2014
 
   [BUG FIXES]
