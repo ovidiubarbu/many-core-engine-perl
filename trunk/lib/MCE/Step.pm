@@ -596,10 +596,93 @@ array for specifying the values individually for each sub-task.
 
    print "@a\n";
 
+=head1 GATHER AND STEP DEMO
+
+One may call gather or step any number of times although calling step is not
+allowed from the very last sub-block. There's a lot going on below. For one,
+STDOUT output is serialized back to the main process. We see that chunk_size
+is specified when loading the module and set to 1 for the demonstration.
+
+Data is gathered to @arr which may likely be out of order. Gathering data is
+optional and not a requirement to use MCE::Step. Note that all sub-tasks
+receive the $mce instance as the very first argument.
+
+The tasks below run in parallel, and each with multiple workers as well.
+One may copy this code snippet and add MCE->task_wid or MCE->wid to the
+output. Remember that max_workers can take an anonymous array for specifing
+max_workers individually per each task block, similarly to task_name in the
+previous section.
+
+   use MCE::Step chunk_size => 1;
+
+   my @arr = mce_step
+
+   sub {
+      my ($mce, $chunk_ref, $chunk_id) = @_;
+
+      if ($_ % 2 == 0) {
+         MCE->gather($_);
+       # MCE->gather($_ * 4);     ## Ok to gather multiple times
+      }
+      else {
+         MCE->print("a step: $_, $_ * $_\n");
+         MCE->step($_, $_ * $_);
+       # MCE->step($_, $_ * 4 );  ## Ok to step multiple times
+      }
+   },
+
+   sub {
+      my ($mce, $arg1, $arg2) = @_;
+
+      MCE->print("b args: $arg1, $arg2\n");
+
+      if ($_ % 3 == 0) {          ## $_ is the same as $arg1
+         MCE->gather($_);
+      }
+      else {
+         MCE->print("b step: $_ * $_\n");
+         MCE->step($_ * $_);
+      }
+   },
+
+   sub {
+      my ($mce, $arg1) = @_;
+
+      MCE->print("c: $_\n");
+      MCE->gather($_);
+   },
+
+   1..10;
+
+   @arr = sort { $a <=> $b } @arr;
+
+   print "\n@arr\n\n";
+
+   -- Output
+
+   a step: 1, 1 * 1
+   a step: 3, 3 * 3
+   a step: 5, 5 * 5
+   a step: 7, 7 * 7
+   a step: 9, 9 * 9
+   b args: 1, 1
+   b step: 1 * 1
+   b args: 3, 9
+   b args: 7, 49
+   b step: 7 * 7
+   b args: 5, 25
+   b step: 5 * 5
+   b args: 9, 81
+   c: 1
+   c: 49
+   c: 25
+
+   1 2 3 4 6 8 9 10 25 49
+
 =head1 SYNOPSIS when CHUNK_SIZE EQUALS 1
 
 Although L<MCE::Loop> may be preferred for running using a single code block,
-the text below also applies to this module.
+the text below also applies to this module, particularly for the first block.
 
 All models in MCE default to 'auto' for chunk_size. The arguments for the block
 are the same as writing a user_func block for the core API.
@@ -620,7 +703,7 @@ when using $_. One can call MCE->chunk_id to obtain the current chunk id.
    line 9:  }
 
 Follow this synopsis when chunk_size equals one. Looping is not required from
-within the block. The block is called once per each item.
+inside the first block. Hence, the block is called once per each item.
 
    ## Exports mce_step, mce_step_f, and mce_step_s
    use MCE::Step;
@@ -649,7 +732,7 @@ within the block. The block is called once per each item.
 =head1 SYNOPSIS when CHUNK_SIZE is GREATER THAN 1
 
 Follow this synopsis when chunk_size equals 'auto' or is greater than 1.
-This means having to loop through the chunk from within the block.
+This means having to loop through the chunk from inside the first block.
 
    use MCE::Step;
 
