@@ -261,7 +261,7 @@ sub mce_map (&@) {
 
       my %_options = (
          use_threads => 0, max_workers => $_max_workers, task_name => $_tag,
-         use_slurpio => 1, user_func => sub {
+         user_func => sub {
 
             my ($_mce, $_chunk_ref, $_chunk_id) = @_;
             my $_wantarray = $_mce->{user_args}[0];
@@ -336,6 +336,7 @@ sub mce_map (&@) {
 
    my $_cnt = 0; my $_wantarray = wantarray;
 
+   $_MCE->{use_slurpio} = ($_chunk_size > MCE::MAX_RECS_SIZE) ? 1 : 0;
    $_MCE->{user_args} = [ $_wantarray ];
 
    $_MCE->{gather} = $_wantarray
