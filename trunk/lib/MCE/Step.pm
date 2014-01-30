@@ -446,35 +446,17 @@ sub _gen_user_func {
    my $_q_in  = $_queue_ref->[$_pos - 1];
    my $_c_ref = $_code_ref->[$_pos];
 
-   if ($_chunk_size == 1 && defined $_params->{sequence} || $_chunk_size > 1) {
-      return sub {
-         my ($_mce) = @_;
+   return sub {
+      my ($_mce) = @_;
 
-         while (defined (my $_chunk = $_q_in->dequeue())) {
-            $_chunk  = $_mce->thaw($_chunk);
-            local $_ = $_chunk->[0];
-            $_c_ref->($_mce, @$_chunk);
-         }
+      while (defined (my $_chunk = $_q_in->dequeue())) {
+         $_chunk  = $_mce->thaw($_chunk);
+         local $_ = $_chunk->[0];
+         $_c_ref->($_mce, @$_chunk);
+      }
 
-         return;
-      };
-   }
-   else {
-      return sub {
-         my ($_mce) = @_;
-
-         while (defined (my $_chunk = $_q_in->dequeue())) {
-            $_chunk  = $_mce->thaw($_chunk);
-
-            local $_ = (ref $_chunk->[0] eq 'ARRAY')
-               ? $_chunk->[0][0] : $_chunk->[0];
-
-            $_c_ref->($_mce, @$_chunk);
-         }
-
-         return;
-      };
-   }
+      return;
+   };
 }
 
 sub _gen_user_tasks {
