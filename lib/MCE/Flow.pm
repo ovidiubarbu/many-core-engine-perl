@@ -581,7 +581,7 @@ time. Therefore, we must double the number of undefs into the queue.
 =head1 SYNOPSIS when CHUNK_SIZE EQUALS 1
 
 Although L<MCE::Loop> may be preferred for running using a single code block,
-the text below also applies to this module.
+the text below also applies to this module, particularly for the first block.
 
 All models in MCE default to 'auto' for chunk_size. The arguments for the block
 are the same as writing a user_func block for the core API.
@@ -602,7 +602,7 @@ when using $_. One can call MCE->chunk_id to obtain the current chunk id.
    line 9:  }
 
 Follow this synopsis when chunk_size equals one. Looping is not required from
-within the block. The block is called once per each item.
+inside the first block. Hence, the block is called once per each item.
 
    ## Exports mce_flow, mce_flow_f, and mce_flow_s
    use MCE::Flow;
@@ -631,7 +631,7 @@ within the block. The block is called once per each item.
 =head1 SYNOPSIS when CHUNK_SIZE is GREATER THAN 1
 
 Follow this synopsis when chunk_size equals 'auto' or is greater than 1.
-This means having to loop through the chunk from within the block.
+This means having to loop through the chunk from inside the first block.
 
    use MCE::Flow;
 
