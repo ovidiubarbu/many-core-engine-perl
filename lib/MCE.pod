@@ -61,7 +61,7 @@ allows 3 options, e.g. :manager, :worker, :getter.
 
 =head1 MCE MODELS
 
-MCE 1.5 introduces 5 models for automation behind the scene in generating the
+MCE 1.5 includes 6 models for automation behind the scene in generating the
 MCE instance and auto-tuning chunk_size and max_workers. The models configure
 MCE, spawn plus shutdown workers when the script terminates.
 
@@ -87,6 +87,13 @@ Provides a parallel grep implementation similar to the native grep function.
 =item L<MCE::Map>
 
 Provides a parallel map model similar to the native map function.
+
+=item L<MCE::Step>
+
+Provides a parallel step implementation utilizing MCE::Queue between user
+tasks. MCE::Step is a spin off from MCE::Flow with a touch of MCE::Stream.
+This model, introduced in 1.506, allows one to pass data from one sub-task
+into the next in a transparent fashion.
 
 =item L<MCE::Stream>
 

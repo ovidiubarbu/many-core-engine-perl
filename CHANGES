@@ -1,13 +1,17 @@
 
 Revision history for MCE
 
-1.50x Fri Jan 24 18:20:00 EST 2014
+1.50x Fri Jan 29 20:00:00 EST 2014
 
   [BUG FIXES]
 
   * Fixed issue with all 5 models croaking for an internal '_file' option.
     This has been broken since the 1.502 release. Methods impacted were:
        mce_flow_f, mce_grep_f, mce_loop_f, mce_map_f, and mce_stream_f
+
+  * Specifying a different value for gather on subsequent runs is now taking
+    effect for when workers persist after running. The models impacted are
+    MCE::Flow and MCE::Loop.
 
   * Updated _parse_chunk_size in MCE::Util to compute chunk_size correctly
     for new edge cases. One may call either mce_grep or mce_grep_f for a
@@ -16,13 +20,30 @@ Revision history for MCE
 
   [ENHANCEMENTS]
 
+  * Updates to MCE::Grep and MCE::Map. The logic is now aware of wantarray
+    for faster processing when saving to a scalar value. In addition, the
+    use_slurpio option is enabled for efficient IO when processing files.
+
+  * The task_end option can now be specified for MCE::Stream, although being
+    used internally.
+
   * The interval option can take a decimal number. Previously, this
     wanted a hash reference with up to 3 key/value pairs. Most often, all
     one wants is specify a value for delay and not max_nodes or node_id.
        interval => { delay => 0.05 }
-       interval => 0.05                ## Now allowed in 1.506 and above.
+       interval => 0.05                ## Is allowed in 1.506 and above.
                                        ## Changed to { delay => 0.05 }
                                        ## automatically.
+
+  * Slight optimization to get_ncpu in MCE::Util.
+
+  * Tweak to _parse_chunk_size in MCE::Util.
+
+  [NEW FEATURES]
+
+  * Added a new model MCE::Step for transparent use of MCE::Queue when passing
+    data among sub-tasks. MCE::Step is basically a spin off from MCE::Flow
+    with a touch of MCE::Stream.
 
 1.505 Thu Jan 21 01:30:00 EST 2014
 
