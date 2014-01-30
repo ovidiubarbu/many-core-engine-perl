@@ -206,7 +206,7 @@ Below, a new instance is configured with all available options.
       stderr_file  => 'err_file',        ## Default STDERR
       stdout_file  => 'out_file',        ## Default STDOUT
 
-          ## Or to file. User_error/user_output take precedence.
+          ## Or to file; user_error/output take precedence if set.
 
       flush_file   => 1,                 ## Default 0
       flush_stderr => 1,                 ## Default 0
@@ -221,6 +221,8 @@ Below, a new instance is configured with all available options.
           ## For use with the yield method introduced in MCE 1.5.
           ## Both max_nodes & node_id are optional and default to 1.
           ## Delay is the amount of time between intervals.
+
+          ## interval => 0.005           ## Allowed in MCE 1.506
 
       bounds_only  => 1,                 ## Default undef
       sequence     => {                  ## Default undef

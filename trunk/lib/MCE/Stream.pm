@@ -28,7 +28,7 @@ our $DEFAULT_MODE = 'map';
 our $MAX_WORKERS  = 'auto';
 our $CHUNK_SIZE   = 'auto';
 
-my ($_params, @_prev_c, @_prev_m, @_prev_n, @_prev_w, @_queue, @_user_tasks);
+my ($_params, @_prev_c, @_prev_m, @_prev_n, @_prev_w, @_user_tasks, @_queue);
 my ($_MCE, $_loaded); my $_tag = 'MCE::Stream';
 
 sub import {
@@ -122,6 +122,9 @@ sub _task_end {
 
       $_queue[$_queue_id]->enqueue((undef) x $N_workers);
    }
+
+   $_params->{task_end}->($_mce, $_task_id, $_task_name)
+      if (exists $_params->{task_end} && ref $_params->{task_end} eq 'CODE');
 
    return;
 }
@@ -224,20 +227,20 @@ sub mce_stream_s (@) {
    for ($_start_pos .. @_ - 1) {
       my $_ref = ref $_[$_];
 
-      if ($_ref eq "" || $_ref eq 'ARRAY' || $_ref eq 'HASH') {
+      if ($_ref eq "" || $_ref eq 'HASH' || $_ref eq 'ARRAY') {
          $_pos = $_;
 
-         if (ref $_[$_pos] eq "") {
+         if ($_ref eq "") {
             $_begin = $_[$_pos]; $_end = $_[$_pos + 1];
             $_params->{sequence} = [
                $_[$_pos], $_[$_pos + 1], $_[$_pos + 2], $_[$_pos + 3]
             ];
          }
-         elsif (ref $_[$_pos] eq 'HASH') {
+         elsif ($_ref eq 'HASH') {
             $_begin = $_[$_pos]->{begin}; $_end = $_[$_pos]->{end};
             $_params->{sequence} = $_[$_pos];
          }
-         elsif (ref $_[$_pos] eq 'ARRAY') {
+         elsif ($_ref eq 'ARRAY') {
             $_begin = $_[$_pos]->[0]; $_end = $_[$_pos]->[1];
             $_params->{sequence} = $_[$_pos];
          }
@@ -369,7 +372,7 @@ sub mce_stream (@) {
 
       delete $_p->{user_func}   if (exists $_p->{user_func});
       delete $_p->{user_tasks}  if (exists $_p->{user_tasks});
-      delete $_p->{task_end}    if (exists $_p->{task_end});
+      delete $_p->{use_slurpio} if (exists $_p->{use_slurpio});
       delete $_p->{bounds_only} if (exists $_p->{bounds_only});
       delete $_p->{gather}      if (exists $_p->{gather});
    }
@@ -385,9 +388,9 @@ sub mce_stream (@) {
       $_input_data = $_params->{_file} if (exists $_params->{_file});
    }
 
-   ## -------------------------------------------------------------------------
-
    MCE::_save_state;
+
+   ## -------------------------------------------------------------------------
 
    if ($_init_mce) {
       $_MCE->shutdown() if (defined $_MCE);
@@ -399,7 +402,8 @@ sub mce_stream (@) {
 
       my %_options = (
          use_threads => 0, max_workers => $_max_workers, task_name => $_tag,
-         user_tasks => \@_user_tasks, task_end => \&_task_end
+         user_tasks => \@_user_tasks, task_end => \&_task_end,
+         use_slurpio => 0
       );
 
       if (defined $_params) {
@@ -411,6 +415,7 @@ sub mce_stream (@) {
             next if ($_ eq 'task_name' && ref $_p->{task_name} eq 'ARRAY');
             next if ($_ eq 'input_data');
             next if ($_ eq 'chunk_size');
+            next if ($_ eq 'task_end');
 
             _croak("MCE::Stream: '$_' is not a valid constructor argument")
                unless (exists $MCE::_valid_fields_new{$_});
@@ -421,6 +426,17 @@ sub mce_stream (@) {
 
       $_MCE = MCE->new(%_options);
    }
+   else {
+      for (qw(
+         RS interval stderr_file stdout_file user_error user_output
+         job_delay submit_delay on_post_exit on_post_run user_args
+         flush_file flush_stderr flush_stdout
+      )) {
+         $_MCE->{$_} = $_params->{$_} if (exists $_params->{$_});
+      }
+   }
+
+   ## -------------------------------------------------------------------------
 
    if (defined $_input_data) {
       @_ = (); $_MCE->process({ chunk_size => $_chunk_size }, $_input_data);
@@ -710,9 +726,9 @@ Storable for serialization.
 
 =item init
 
-The init function accepts a hash of MCE options. The gather and task_end
+The init function accepts a hash of MCE options. The gather and bounds_only
 options, if specified, will be ignored due to being used internally by the
-module.
+module (not shown below).
 
    use MCE::Stream;
 
@@ -754,7 +770,7 @@ module.
 
 =back
 
-Like with MCE::Stream::init above, MCE options can also be specified using an
+Like with MCE::Stream::init above, MCE options can also be specified via an
 anonymous hash as the first argument. Both max_workers and task_name can take
 an anonymous array for setting values individually for each code block.
 
@@ -766,6 +782,11 @@ an anonymous array for setting values individually for each code block.
       user_end => sub {
          my ($task_id, $task_name) = (MCE->task_id, MCE->task_name);
          print "$task_id - $task_name completed\n";
+      },
+
+      task_end => sub {
+         my ($mce, $task_id, $task_name) = @_;
+         MCE->print("$task_id - $task_name ended\n");
       }
    },
    sub { $_ * 4 },             ## 2 workers, named c
@@ -777,15 +798,18 @@ an anonymous array for setting values individually for each code block.
    0 - a completed
    0 - a completed
    0 - a completed
+   0 - a ended
    1 - b completed
    1 - b completed
    1 - b completed
    1 - b completed
+   1 - b ended
    2 - c completed
    2 - c completed
+   2 - c ended
 
-The anonymous hash, for specifying options, also comes first when passing the
-array reference.
+Note that the anonymous hash, for specifying options, also comes first when
+passing the array reference.
 
    my @a; mce_stream {
       ...
