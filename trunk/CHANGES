@@ -1,7 +1,7 @@
 
 Revision history for MCE
 
-1.50x Fri Jan 30 01:00:00 EST 2014
+1.506 Fri Jan 30 03:00:00 EST 2014
 
   [BUG FIXES]
 
@@ -21,8 +21,9 @@ Revision history for MCE
   [ENHANCEMENTS]
 
   * Updates to MCE::Grep and MCE::Map. The logic is now aware of wantarray
-    for faster processing when saving to a scalar value. In addition, the
-    use_slurpio option is enabled for efficient IO when processing files.
+    for faster processing when storing to a scalar value. In addition, the
+    use_slurpio option is enabled for efficient IO when processing large
+    files.
 
   * The task_end option can now be specified for MCE::Stream, although being
     used internally.
@@ -36,15 +37,17 @@ Revision history for MCE
                                        ## translate 0.05 to { delay => 0.05 }
                                        ## automatically.
 
-  * Slight optimization to public method get_ncpu in MCE::Util.
+  * Slight optimization to get_ncpu (public method) in MCE::Util.
 
-  * Tweak to private method _parse_chunk_size in MCE::Util.
+  * Tweak to _parse_chunk_size (private method) in MCE::Util.
 
   [NEW FEATURES]
 
   * Added a new model MCE::Step for transparent use of MCE::Queue when passing
     data among sub-tasks. MCE::Step is basically a spin off from MCE::Flow
     with a touch of MCE::Stream.
+
+    This new model is crazy :)
 
 1.505 Thu Jan 21 01:30:00 EST 2014
 
