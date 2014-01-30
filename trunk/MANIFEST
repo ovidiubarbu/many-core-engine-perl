@@ -24,6 +24,7 @@ lib/MCE/Loop.pm
 lib/MCE/Map.pm
 lib/MCE/Queue.pm
 lib/MCE/Signal.pm
+lib/MCE/Step.pm
 lib/MCE/Stream.pm
 lib/MCE/Subs.pm
 lib/MCE/Util.pm

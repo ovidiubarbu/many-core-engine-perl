@@ -121,6 +121,10 @@ WriteMakefile(
                'file'    => 'lib/MCE/Signal.pm',
                'version' => '1.505'
             },
+            'MCE::Step' => {
+               'file'    => 'lib/MCE/Step.pm',
+               'version' => '1.505'
+            },
             'MCE::Stream' => {
                'file'    => 'lib/MCE/Stream.pm',
                'version' => '1.505'
