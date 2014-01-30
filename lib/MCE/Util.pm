@@ -136,18 +136,18 @@ sub _parse_chunk_size {
 
    my ($_chunk_size, $_max_workers, $_params, $_input_data, $_array_size) = @_;
 
+   return $_chunk_size
+      if (!defined $_chunk_size || !defined $_max_workers);
+
+   $_chunk_size = $_params->{chunk_size}
+      if (defined $_params && exists $_params->{chunk_size});
+
    if ($_chunk_size =~ /([0-9\.]+)K\z/i) {
       $_chunk_size = int($1 * 1024 + 0.5);
    }
    elsif ($_chunk_size =~ /([0-9\.]+)M\z/i) {
       $_chunk_size = int($1 * 1024 * 1024 + 0.5);
    }
-
-   return $_chunk_size
-      if (!defined $_chunk_size || !defined $_max_workers);
-
-   $_chunk_size = $_params->{chunk_size}
-      if (defined $_params && exists $_params->{chunk_size});
 
    if ($_chunk_size eq 'auto') {
       my $_size = (defined $_input_data && ref $_input_data eq 'ARRAY')
@@ -197,7 +197,7 @@ sub _parse_chunk_size {
       if (defined $_is_file) {
          if ($_size) {
             $_chunk_size = int($_size / $_max_workers / 24 + 0.5);
-            $_chunk_size = 245760 if $_chunk_size > 245760;
+            $_chunk_size = 4194304 if $_chunk_size > 4194304;  ## 4M
             $_chunk_size = 2 if $_chunk_size <= 8192;
          }
       }
