@@ -40,12 +40,12 @@ sub get_ncpu {
       local $_ = $^O;
 
       /linux/i && do {
-         my @output; local *PROC;
+         my $count; local *PROC;
          if ( open PROC, "< /proc/stat" ) {
-             @output = grep /^cpu\d/ => <PROC>;
+             $count = grep /^cpu\d/ => <PROC>;
              close PROC;
          }
-         $cpus = scalar @output if @output;
+         $cpus = $count if $count;
          last OS_CHECK;
       };
 
@@ -62,8 +62,8 @@ sub get_ncpu {
       };
 
       /hp-?ux/i && do {
-         my @output = grep /^processor/ => `ioscan -fnkC processor 2>/dev/null`;
-         $cpus = scalar @output if @output;
+         my $count = grep /^processor/ => `ioscan -fnkC processor 2>/dev/null`;
+         $cpus = $count if $count;
          last OS_CHECK;
       };
 
@@ -74,8 +74,8 @@ sub get_ncpu {
       };
 
       /solaris|sunos|osf/i && do {
-         my @output = grep /on-line/ => `psrinfo 2>/dev/null`;
-         $cpus = scalar @output if @output;
+         my $count = grep /on-line/ => `psrinfo 2>/dev/null`;
+         $cpus = $count if $count;
          last OS_CHECK;
       };
 
