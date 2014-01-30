@@ -1,7 +1,7 @@
 
 Revision history for MCE
 
-1.50x Fri Jan 29 20:00:00 EST 2014
+1.50x Fri Jan 30 01:00:00 EST 2014
 
   [BUG FIXES]
 
@@ -29,15 +29,16 @@ Revision history for MCE
 
   * The interval option can take a decimal number. Previously, this
     wanted a hash reference with up to 3 key/value pairs. Most often, all
-    one wants is specify a value for delay and not max_nodes or node_id.
-       interval => { delay => 0.05 }
-       interval => 0.05                ## Is allowed in 1.506 and above.
-                                       ## Changed to { delay => 0.05 }
+    one needed was delay and not max_nodes or node_id.
+
+       interval => { delay => 0.05 }   ## Choose either format for specifying
+       interval => 0.05                ## delay in 1.506 and above. MCE will
+                                       ## translate 0.05 to { delay => 0.05 }
                                        ## automatically.
 
-  * Slight optimization to get_ncpu in MCE::Util.
+  * Slight optimization to public method get_ncpu in MCE::Util.
 
-  * Tweak to _parse_chunk_size in MCE::Util.
+  * Tweak to private method _parse_chunk_size in MCE::Util.
 
   [NEW FEATURES]
 
