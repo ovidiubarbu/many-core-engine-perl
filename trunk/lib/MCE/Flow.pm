@@ -338,6 +338,10 @@ sub mce_flow (@) {
       $_MCE = MCE->new(%_options);
    }
    else {
+      ## Workers may persist after running. MCE::Flow allows options
+      ## to be passed using an anonymous hash. Therefore, lets update
+      ## the MCE instance. These options do not require respawning.
+
       for (qw(
          RS interval stderr_file stdout_file user_error user_output
          job_delay submit_delay on_post_exit on_post_run user_args
@@ -737,12 +741,13 @@ both the gather and bounds_only options may be specified when calling init
 
 =back
 
-Like with MCE::Flow::init above, MCE options can also be specified via an
-anonymous hash as the first argument. Both max_workers and task_name can take
-an anonymous array for setting values individually for each code block.
+Like with MCE::Flow::init above, MCE options may be specified using an
+anonymous hash for the first argument. Notice how both max_workers and
+task_name can take an anonymous array for setting values individually
+for each code block.
 
-Unlike MCE::Stream which processes from right-to-left, MCE::Flow begins with
-the first code block, thus processing from left-to-right.
+Unlike MCE::Stream which processes from right-to-left, MCE::Flow begins
+with the first code block, thus processing from left-to-right.
 
    use MCE::Flow;
 
@@ -992,46 +997,52 @@ becomes. Hence the reason for the demonstration below.
 
    use MCE::Flow chunk_size => 'auto', max_workers => 'auto';
 
-   sub output_iterator {
-      my %tmp; my $order_id = 1; my $gather_ref = $_[0];
+   my (%_tmp, $_gather_ref, $_order_id);
 
-      @{ $gather_ref } = ();     ## Optional: clear the array
+   sub preserve_order {
+      $_tmp{ (shift) } = \@_;
 
-      return sub {
-         $tmp{ (shift) } = \@_;
+      while (1) {
+         last unless exists $_tmp{$_order_id};
+         push @{ $_gather_ref }, @{ $_tmp{$_order_id} };
+         delete $_tmp{$_order_id++};
+      }
 
-         while (1) {
-            last unless exists $tmp{$order_id};
-            push @{ $gather_ref }, @{ $tmp{$order_id} };
-            delete $tmp{$order_id++};
-         }
-
-         return;
-      };
+      return;
    }
 
-   my @m2;
+   ## Workers persist after running. Therefore, not recommended to
+   ## use a closure for gather unless calling MCE::Flow::init each
+   ## time inside the loop. Use this demonstration when wanting
+   ## MCE::Flow to maintain output order.
 
-   MCE::Flow::init { gather => output_iterator(\@m2) };
+   MCE::Flow::init { gather => \&preserve_order };
 
-   mce_flow sub {
-      my @a; my ($mce, $chunk_ref, $chunk_id) = @_;
+   for (1..2) {
+      my @m2;
 
-      ## Compute the entire chunk data at once.
-      push @a, map { $_ * 2 } @{ $chunk_ref };
+      ## Remember to set $_order_id back to 1 prior to running.
+      $_gather_ref = \@m2; $_order_id = 1;
 
-      ## Afterwards, invoke the gather feature, which
-      ## will direct the data to the callback function.
-      MCE->gather(MCE->chunk_id, @a);
+      mce_flow sub {
+         my @a; my ($mce, $chunk_ref, $chunk_id) = @_;
 
-   }, 1..100000;
+         ## Compute the entire chunk data at once.
+         push @a, map { $_ * 2 } @{ $chunk_ref };
 
-   print scalar @m2, "\n";
+         ## Afterwards, invoke the gather feature, which
+         ## will direct the data to the callback function.
+         MCE->gather(MCE->chunk_id, @a);
 
-That was fast and fun. All 6 models support 'auto' for chunk_size whereas the
-core API doesn't. Think of the models as the basis for providing JIT for MCE.
-They create the instance and tune max_workers plus chunk_size automatically
-irregardless of the hardware being run on.
+      }, 1..100000;
+
+      print scalar @m2, "\n";
+   }
+
+All 6 models support 'auto' for chunk_size whereas the core API doesn't. Think
+of the models as the basis for providing JIT for MCE. They create the instance
+and tune max_workers plus chunk_size automatically irregardless of the
+hardware being run on.
 
 The following does the same thing using the core API.
 

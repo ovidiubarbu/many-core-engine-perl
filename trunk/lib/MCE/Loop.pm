@@ -260,15 +260,6 @@ sub mce_loop (&@) {
 
       $_MCE = MCE->new(%_options);
    }
-   else {
-      for (qw(
-         RS interval stderr_file stdout_file user_error user_output
-         job_delay submit_delay on_post_exit on_post_run user_args
-         flush_file flush_stderr flush_stdout gather
-      )) {
-         $_MCE->{$_} = $_params->{$_} if (exists $_params->{$_});
-      }
-   }
 
    ## -------------------------------------------------------------------------
 
@@ -705,46 +696,52 @@ becomes. Hence the reason for the demonstration below.
 
    use MCE::Loop chunk_size => 'auto', max_workers => 'auto';
 
-   sub output_iterator {
-      my %tmp; my $order_id = 1; my $gather_ref = $_[0];
+   my (%_tmp, $_gather_ref, $_order_id);
 
-      @{ $gather_ref } = ();     ## Optional: clear the array
+   sub preserve_order {
+      $_tmp{ (shift) } = \@_;
 
-      return sub {
-         $tmp{ (shift) } = \@_;
+      while (1) {
+         last unless exists $_tmp{$_order_id};
+         push @{ $_gather_ref }, @{ $_tmp{$_order_id} };
+         delete $_tmp{$_order_id++};
+      }
 
-         while (1) {
-            last unless exists $tmp{$order_id};
-            push @{ $gather_ref }, @{ $tmp{$order_id} };
-            delete $tmp{$order_id++};
-         }
-
-         return;
-      };
+      return;
    }
 
-   my @m2;
+   ## Workers persist after running. Therefore, not recommended to
+   ## use a closure for gather unless calling MCE::Loop::init each
+   ## time inside the loop. Use this demonstration when wanting
+   ## MCE::Loop to maintain output order.
 
-   MCE::Loop::init { gather => output_iterator(\@m2) };
+   MCE::Loop::init { gather => \&preserve_order };
 
-   mce_loop {
-      my @a; my ($mce, $chunk_ref, $chunk_id) = @_;
+   for (1..2) {
+      my @m2;
 
-      ## Compute the entire chunk data at once.
-      push @a, map { $_ * 2 } @{ $chunk_ref };
+      ## Remember to set $_order_id back to 1 prior to running.
+      $_gather_ref = \@m2; $_order_id = 1;
 
-      ## Afterwards, invoke the gather feature, which
-      ## will direct the data to the callback function.
-      MCE->gather(MCE->chunk_id, @a);
+      mce_loop {
+         my @a; my ($mce, $chunk_ref, $chunk_id) = @_;
 
-   } 1..100000;
+         ## Compute the entire chunk data at once.
+         push @a, map { $_ * 2 } @{ $chunk_ref };
 
-   print scalar @m2, "\n";
+         ## Afterwards, invoke the gather feature, which
+         ## will direct the data to the callback function.
+         MCE->gather(MCE->chunk_id, @a);
 
-That was fast and fun. All 6 models support 'auto' for chunk_size whereas the
-core API doesn't. Think of the models as the basis for providing JIT for MCE.
-They create the instance and tune max_workers plus chunk_size automatically
-irregardless of the hardware being run on.
+      } 1..100000;
+
+      print scalar @m2, "\n";
+   }
+
+All 6 models support 'auto' for chunk_size whereas the core API doesn't. Think
+of the models as the basis for providing JIT for MCE. They create the instance
+and tune max_workers plus chunk_size automatically irregardless of the
+hardware being run on.
 
 The following does the same thing using the core API.
 

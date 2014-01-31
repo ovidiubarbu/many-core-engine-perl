@@ -322,15 +322,6 @@ sub mce_map (&@) {
 
       $_MCE = MCE->new(%_options);
    }
-   else {
-      for (qw(
-         RS interval stderr_file stdout_file user_error user_output
-         job_delay submit_delay on_post_exit on_post_run user_args
-         flush_file flush_stderr flush_stdout
-      )) {
-         $_MCE->{$_} = $_params->{$_} if (exists $_params->{$_});
-      }
-   }
 
    ## -------------------------------------------------------------------------
 
