@@ -17,7 +17,7 @@ use Storable qw( );
 use Time::HiRes qw( time );
 use MCE::Signal;
 
-our $VERSION = '1.506'; $VERSION = eval $VERSION;
+our $VERSION = '1.507'; $VERSION = eval $VERSION;
 
 our (%_valid_fields_new, %_params_allowed_args, %_valid_fields_task);
 our ($_is_cygwin, $_is_MSWin32, $_is_WinEnv);
