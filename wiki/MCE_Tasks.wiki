@@ -5,7 +5,7 @@ Update Jan 30, 2014
 
 This example demonstrates MCE::Flow, MCE::Queue, and MCE->gather.
 
-https://metacpan.org/source/MARIOROY/MCE-1.506/examples/flow_model.pl
+https://metacpan.org/source/MARIOROY/MCE-1.507/examples/flow_model.pl
 
 Regards,
 
