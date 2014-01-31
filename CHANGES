@@ -1,6 +1,28 @@
 
 Revision history for MCE
 
+1.507 Fri Jan 30 23:00:00 EST 2014
+
+  [ENHANCEMENTS]
+
+   * First of all, I apologize for releasing 1.506 without double-checking
+     the docs one last time. Thus not a good idea on making a release at
+     3:00 a.m. Anyway, I want to make this right by releasing 1.507.
+
+   * Added clarity around preserving output order for several Models;
+     MCE::Flow, MCE::Loop, and MCE::Step.
+
+   * Inlined comments in the code for overriding MCE options when using
+     an anonymous hash for the first argument; MCE::Flow, MCE::Step, and
+     MCE::Stream.
+
+   * Removed unnecessary code due to one not able to pass MCE options other
+     than through the init method for MCE::Loop, MCE::Grep, and MCE::Map.
+
+   * Added to doc a use-case example searching a large file with mce_grep_f.
+     The emphasis is comparing the memory consumption against the native
+     grep function as well as time to complete.
+
 1.506 Fri Jan 30 03:00:00 EST 2014
 
   [BUG FIXES]
