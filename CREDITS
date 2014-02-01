@@ -28,6 +28,9 @@ Oliver Gorwits
     handler. Basically, eval { die 'this should not cause MCE to die' };
   * Changed INIT { ... } to sub import { ... } inside MCE.pm.
 
+Philip Mabon
+  For reporting on a couple issues with MCE in particular bug RT#92627.
+
 David Mertens
   * I am thankful for the tip on making PDL + MCE a possiblity. Workers were
     crashing during exiting. Adding "sub PDL::CLONE_SKIP { 1 }" inside MCE.pm
