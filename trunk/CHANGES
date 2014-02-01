@@ -1,13 +1,20 @@
 
 Revision history for MCE
 
+1.508 Sat Feb 01 04:00:00 EST 2014
+
+  [BUG FIXES]
+
+  * Applied fix for bug #92627 submitted by Philip Mabon. MCE scripts may
+    exit with a non zero error code due to leaving workers up thereby
+    having MCE performing the shutdown in it's END block.
+
+    For folks running on an older release, the workaround is to shutdown
+    workers prior to exiting.
+
 1.507 Fri Jan 30 23:00:00 EST 2014
 
   [ENHANCEMENTS]
-
-   * First of all, I apologize for releasing 1.506 without double-checking
-     the docs one last time. Thus not a good idea on making a release at
-     3:00 a.m. Anyway, I want to make this right by releasing 1.507.
 
    * Added clarity around preserving output order for several Models;
      MCE::Flow, MCE::Loop, and MCE::Step.

@@ -14,7 +14,7 @@ use Scalar::Util qw( looks_like_number );
 use MCE;
 use MCE::Util;
 
-our $VERSION = '1.507'; $VERSION = eval $VERSION;
+our $VERSION = '1.508'; $VERSION = eval $VERSION;
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -327,7 +327,7 @@ MCE::Loop - Parallel loop model for building creative loops
 
 =head1 VERSION
 
-This document describes MCE::Loop version 1.507
+This document describes MCE::Loop version 1.508
 
 =head1 DESCRIPTION
 
