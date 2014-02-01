@@ -1,6 +1,13 @@
 
 Revision history for MCE
 
+1.50x Sat Feb 01 12:30:00 EST 2014
+
+  [ENHANCEMENTS]
+
+  * Updated fix for bug #92627. It required only minor code changes from
+    the 1.507 release.
+
 1.508 Sat Feb 01 04:00:00 EST 2014
 
   [BUG FIXES]
