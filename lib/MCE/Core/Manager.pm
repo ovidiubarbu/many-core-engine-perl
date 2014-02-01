@@ -731,24 +731,22 @@ sub _output_loop {
    $_->($self, \$_DAU_R_SOCK) for (@{ $_plugin_loop_begin });
 
    ## Call on hash function. Exit loop when workers have completed.
-   {
-      local $!;
+   local $!;
 
-      while (1) {
-         $_func = <$_DAT_R_SOCK>;
-         next unless (defined $_func);
+   while (1) {
+      $_func = <$_DAT_R_SOCK>;
+      next unless (defined $_func);
 
-         $_DAU_R_SOCK = $_channels->[ <$_DAT_R_SOCK> ];
+      $_DAU_R_SOCK = $_channels->[ <$_DAT_R_SOCK> ];
 
-         if (exists $_core_output_function{$_func}) {
-            $_core_output_function{$_func}();
-         }
-         elsif (exists $_plugin_function->{$_func}) {
-            $_plugin_function->{$_func}();
-         }
-
-         last unless ($self->{_total_running});
+      if (exists $_core_output_function{$_func}) {
+         $_core_output_function{$_func}();
       }
+      elsif (exists $_plugin_function->{$_func}) {
+         $_plugin_function->{$_func}();
+      }
+
+      last unless ($self->{_total_running});
    }
 
    ## Call module's loop_end routine for modules plugged into MCE.
