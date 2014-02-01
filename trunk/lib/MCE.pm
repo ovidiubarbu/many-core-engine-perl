@@ -653,8 +653,9 @@ sub spawn {
 
    ## Await reply from the last worker spawned.
    if ($self->{_total_workers} > 0) {
+      local $/ = $LF; local $!;
       my $_COM_R_SOCK = $self->{_com_r_sock};
-      local $/ = $LF; <$_COM_R_SOCK>;
+      <$_COM_R_SOCK>;
    }
 
    ## Release lock.
@@ -1229,65 +1230,72 @@ sub shutdown {
    my $_mce_sid        = $self->{_mce_sid};
    my $_sess_dir       = $self->{_sess_dir};
    my $_total_workers  = $self->{_total_workers};
+   my $_lock_chn       = $self->{_lock_chn};
 
    ## Delete entry.
    delete $_mce_spawned{$_mce_sid};
 
    ## Notify workers to exit loop.
-   local $\ = undef; local $/ = $LF;
+   {
+      local $\ = undef; local $/ = $LF; local $!; local $?;
 
-   for (1 .. $_total_workers) {
-      print $_COM_R_SOCK '_exit' . $LF;
-      <$_COM_R_SOCK>;
-   }
-
-   CORE::shutdown $self->{_bse_w_sock}, 1;        ## Barrier end channels
-   CORE::shutdown $self->{_bse_r_sock}, 0;
-
-   ## Reap children/threads.
-   if ( $self->{_pids} && @{ $self->{_pids} } > 0 ) {
-      my $_list = $self->{_pids};
-      for my $i (0 .. @$_list) {
-         waitpid $_list->[$i], 0 if ($_list->[$i]);
+      for (1 .. $_total_workers) {
+         print $_COM_R_SOCK '_exit' . $LF;
+         <$_COM_R_SOCK>;
       }
-   }
-   elsif ( $self->{_thrs} && @{ $self->{_thrs} } > 0 ) {
-      my $_list = $self->{_thrs};
-      for my $i (0 .. @$_list) {
-         ${ $_list->[$i] }->join() if ($_list->[$i]);
-      }
-   }
 
-   close $self->{_com_lock}; undef $self->{_com_lock};
+      CORE::shutdown $self->{_bse_w_sock}, 1;     ## Barrier end channels
+      CORE::shutdown $self->{_bse_r_sock}, 0;
+
+      ## Reap children/threads.
+      if ( $self->{_pids} && @{ $self->{_pids} } > 0 ) {
+         my $_list = $self->{_pids};
+         for my $i (0 .. @$_list) {
+            waitpid $_list->[$i], 0 if ($_list->[$i]);
+         }
+      }
+      elsif ( $self->{_thrs} && @{ $self->{_thrs} } > 0 ) {
+         my $_list = $self->{_thrs};
+         for my $i (0 .. @$_list) {
+            ${ $_list->[$i] }->join() if ($_list->[$i]);
+         }
+      }
+
+      close $self->{_com_lock}; undef $self->{_com_lock};
+   }
 
    ## -------------------------------------------------------------------------
 
    ## Close sockets.
-   CORE::shutdown $self->{_bsb_w_sock}, 1;        ## Barrier begin channels
-   CORE::shutdown $self->{_bsb_r_sock}, 0;
-   CORE::shutdown $self->{_com_w_sock}, 2;        ## Communication channels
-   CORE::shutdown $self->{_com_r_sock}, 2;
-   CORE::shutdown $self->{_que_w_sock}, 1;        ## Queue channels
-   CORE::shutdown $self->{_que_r_sock}, 0;
+   {
+      local $!;
 
-   CORE::shutdown $self->{_dat_w_sock}->[0], 1;   ## Data channels
-   CORE::shutdown $self->{_dat_r_sock}->[0], 0;
+      CORE::shutdown $self->{_bsb_w_sock}, 1;     ## Barrier begin channels
+      CORE::shutdown $self->{_bsb_r_sock}, 0;
+      CORE::shutdown $self->{_com_w_sock}, 2;     ## Communication channels
+      CORE::shutdown $self->{_com_r_sock}, 2;
+      CORE::shutdown $self->{_que_w_sock}, 1;     ## Queue channels
+      CORE::shutdown $self->{_que_r_sock}, 0;
 
-   for (1 .. $_data_channels) {
-      CORE::shutdown $self->{_dat_w_sock}->[$_], 2;
-      CORE::shutdown $self->{_dat_r_sock}->[$_], 2;
-   }
+      CORE::shutdown $self->{_dat_w_sock}->[0], 1;   ## Data channels
+      CORE::shutdown $self->{_dat_r_sock}->[0], 0;
 
-   for (
-      qw( _bsb_w_sock _bsb_r_sock _bse_w_sock _bse_r_sock _com_w_sock
-          _com_r_sock _que_w_sock _que_r_sock _dat_w_sock _dat_r_sock )
-   ) {
-      if (ref $self->{$_} eq 'ARRAY') {
-         for my $_s (@{ $self->{$_} }) {
-            close $_s; undef $_s;
+      for (1 .. $_data_channels) {
+         CORE::shutdown $self->{_dat_w_sock}->[$_], 2;
+         CORE::shutdown $self->{_dat_r_sock}->[$_], 2;
+      }
+
+      for (
+         qw( _bsb_w_sock _bsb_r_sock _bse_w_sock _bse_r_sock _com_w_sock
+             _com_r_sock _que_w_sock _que_r_sock _dat_w_sock _dat_r_sock )
+      ) {
+         if (ref $self->{$_} eq 'ARRAY') {
+            for my $_s (@{ $self->{$_} }) {
+               close $_s; undef $_s;
+            }
+         } else {
+            close $self->{$_}; undef $self->{$_};
          }
-      } else {
-         close $self->{$_}; undef $self->{$_};
       }
    }
 
@@ -1295,7 +1303,11 @@ sub shutdown {
 
    ## Remove the session directory.
    if (defined $_sess_dir) {
-      unlink "$_sess_dir/_dat.lock.$_" for (1 .. $_data_channels);
+      local $!; unlink "$_sess_dir/_dat.lock.1";
+
+      if ($_lock_chn) {
+         unlink "$_sess_dir/_dat.lock.$_" for (2 .. $_data_channels);
+      }
       unlink "$_sess_dir/_com.lock";
       rmdir  "$_sess_dir";
 
@@ -1783,7 +1795,7 @@ sub _create_socket_pair {
    my MCE $self  = $_[0]; my $_r_sock = $_[1]; my $_w_sock = $_[2];
    my $_shutdown = $_[3]; my $_i      = $_[4];
 
-   @_ = ();
+   @_ = (); local $!;
 
    die "Private method called" unless (caller)[0]->isa( ref($self) );
 
