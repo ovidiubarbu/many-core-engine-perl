@@ -8,7 +8,12 @@ URL:            http://search.cpan.org/dist/MCE/
 Source0:        http://search.cpan.org/CPAN/authors/id/M/MA/MARIOROY/MCE-%{version}.tar.gz
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildArch:      noarch
+BuildRequires:  perl(ExtUtils::MakeMaker)
+BuildRequires:  perl(Storable) >= 2.04
+BuildRequires:  perl(Test::More) >= 0.45
+Requires:       perl(Storable) >= 2.04
 Requires:       perl(:MODULE_COMPAT_%(eval "`%{__perl} -V:version`"; echo $version))
+Autoreq:        no
 
 %description
 Many-core Engine (MCE) for Perl helps enable a new level of performance by
@@ -18,15 +23,12 @@ a bank queuing model. Imagine the line being the data and bank-tellers the
 parallel workers. MCE enhances that model by adding the ability to chunk
 the next n elements from the input stream to the next available worker.
 
-Both chunking and input are optional in MCE. One can simply use MCE to
-have many workers run in parallel.
-
 %prep
 %setup -q -n MCE-%{version}
 
 %build
 %{__perl} Makefile.PL INSTALLDIRS=vendor
-make
+make %{?_smp_mflags}
 
 %check
 make test
