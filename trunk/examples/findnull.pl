@@ -189,7 +189,7 @@ sub user_func {
 ##
 ###############################################################################
 
-## Make output iterator for gather. Output order is preserved.
+## Make an output iterator for gather. Output order is preserved.
 
 my $total_lines = 0;
 

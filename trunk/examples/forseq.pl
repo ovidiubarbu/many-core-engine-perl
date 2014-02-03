@@ -54,7 +54,7 @@ unless (defined $s_end) {
 ##
 ###############################################################################
 
-## Make output iterator for gather. Output order is preserved.
+## Make an output iterator for gather. Output order is preserved.
 
 sub output_iterator {
    my (%result_n, %result); my $order_id = 1;
