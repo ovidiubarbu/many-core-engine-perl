@@ -1,5 +1,5 @@
 Name:           perl-MCE
-Version:        1.508
+Version:        1.509
 Release:        1%{?dist}
 Summary:        Many-core Engine for Perl. Provides parallel processing capabilities.
 License:        CHECK(Distributable)
@@ -62,5 +62,5 @@ rm -rf %{buildroot}
 %{_mandir}/man3/*
 
 %changelog
-* Sat Feb 01 2014 Mario Roy 1.508-1
-- 1.508 Release.
+* Sat Feb 03 2014 Mario Roy 1.509-1
+- 1.509 Release.
