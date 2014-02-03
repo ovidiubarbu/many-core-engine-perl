@@ -11,7 +11,7 @@
 
 package MCE::Core::Worker;
 
-our $VERSION = '1.508'; $VERSION = eval $VERSION;
+our $VERSION = '1.509'; $VERSION = eval $VERSION;
 
 ## Items below are folded into MCE.
 

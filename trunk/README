@@ -3,7 +3,7 @@
  # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * #
 ###############################################################################
 
-This document describes MCE version 1.508
+This document describes MCE version 1.509
 
  Many-core Engine (MCE) for Perl helps enable a new level of performance by
  maximizing all available cores. MCE spawns a pool of workers and therefore
@@ -12,7 +12,7 @@ This document describes MCE version 1.508
  parallel workers. MCE enhances that model by adding the ability to chunk
  the next n elements from the input stream to the next available worker.
 
- Both chunking and input data are optional in MCE. One can simply use MCE to
+ Both chunking and input data are optional in MCE. One may simply use MCE to
  have many workers run in parallel.
 
  MCE uses domain sockets for IPC versus pipes. One day, a physical box will

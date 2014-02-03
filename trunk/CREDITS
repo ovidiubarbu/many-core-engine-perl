@@ -40,7 +40,7 @@ David Mertens
     https://gist.github.com/run4flat/4942132.
 
 Joseph Ogulin
-  For providing me the perl-MCE.spec file.
+  For providing me the initial perl-MCE.spec file.
 
 Adam Sjøgren
   For reporting on running /usr/bin/time mce_script.pl and pressing Ctrl-C
