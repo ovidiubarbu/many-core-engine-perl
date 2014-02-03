@@ -36,55 +36,52 @@ unless ($size =~ /\A\d+\z/) {
    exit;
 }
 
+my @input_data = (0 .. $size - 1);
+
 ###############################################################################
 ## ----------------------------------------------------------------------------
 ## Parallelize via MCE's foreach method.
 ##
 ###############################################################################
 
-my @input_data = (0 .. $size - 1);
-my (%result, $start, $end);
+## Make output iterator for gather. Output order is preserved.
 
-my $max_workers = 3;
-my $order_id    = 1;
+sub output_iterator {
+   my %tmp; my $order_id = 1;
 
-## Callback function for displaying results. Output order is preserved.
+   return sub {
+      $tmp{$_[1]} = $_[0];
 
-sub display_result {
+      while (1) {
+         last unless exists $tmp{$order_id};
 
-   $result{$_[1]} = $_[0];
+         printf "n: %d sqrt(n): %f\n",
+            $input_data[$order_id - 1], $tmp{$order_id};
 
-   while (1) {
-      last unless exists $result{$order_id};
+         delete $tmp{$order_id++};
+      }
 
-      printf "n: %d sqrt(n): %f\n",
-         $input_data[$order_id - 1], $result{$order_id};
-
-      delete $result{$order_id++};
-   }
-
-   return;
+      return;
+   };
 }
 
-## Compute via MCE.
+## Configure MCE.
 
 my $mce = MCE->new(
-   max_workers => $max_workers,
-   gather => \&display_result
+   max_workers => 3, gather => output_iterator()
 );
 
-$start = time();
+## Use $chunk_ref->[0] or $_ to retrieve the single element.
 
-## Worker calls code block passing a reference to an array containing
-## one item. Use $chunk_ref->[0] to retrieve the single element.
+my $start = time();
 
-$mce->foreach(\@input_data, sub {
-   my ($self, $chunk_ref, $chunk_id) = @_;
+$mce->foreach( \@input_data, sub {
+   my ($mce, $chunk_ref, $chunk_id) = @_;
    my $result = sqrt($chunk_ref->[0]);
    MCE->gather($result, $chunk_id);
 });
 
-$end = time();
+my $end = time();
 
-printf STDERR "\n## Compute time: %0.03f\n\n",  $end - $start;
+printf STDERR "\n## Compute time: %0.03f\n\n", $end - $start;
 

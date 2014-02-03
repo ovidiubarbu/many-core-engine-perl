@@ -161,7 +161,7 @@ if (defined $wc_cmd && ($l_flag || $w_flag)) {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Launch Many-core Engine.
+## Configure Many-core Engine.
 ##
 ###############################################################################
 
@@ -169,11 +169,11 @@ if (defined $wc_cmd && ($l_flag || $w_flag)) {
 
 sub user_begin {
 
-   my $self = shift;
+   my ($mce) = @_;
 
-   $self->{wk_lines} = 0;
-   $self->{wk_words} = 0;
-   $self->{wk_bytes} = 0;
+   $mce->{wk_lines} = 0;
+   $mce->{wk_words} = 0;
+   $mce->{wk_bytes} = 0;
 
    use vars qw($wc_pid $wc_out $wc_in);
    our ($wc_pid, $wc_out, $wc_in);
@@ -189,7 +189,7 @@ sub user_begin {
 
 sub user_func {
 
-   my ($self, $chunk_ref, $chunk_id) = @_;
+   my ($mce, $chunk_ref, $chunk_id) = @_;
    my $line_count;
 
    if ($l_flag || $w_flag) {
@@ -203,21 +203,21 @@ sub user_func {
          $line_count = $.;
          close $_MEM_FH;
 
-         $self->{wk_lines} += $line_count;
+         $mce->{wk_lines} += $line_count;
 
          if ($w_flag) {
             if (index($$chunk_ref, ' ') >= 0 || index($$chunk_ref, "\t") >= 0) {
                my $words = 0; $words++ while ($$chunk_ref =~ m!\S+!mg);
-               $self->{wk_words} += $words;
+               $mce->{wk_words} += $words;
             }
             else {
-               $self->{wk_words} += $line_count;
+               $mce->{wk_words} += $line_count;
             }
          }
       }
    }
 
-   $self->{wk_bytes} += length($$chunk_ref) if ($c_flag);
+   $mce->{wk_bytes} += length($$chunk_ref) if ($c_flag);
 
    return;
 }
@@ -226,7 +226,7 @@ sub user_func {
 
 sub user_end {
 
-   my $self = shift;
+   my ($mce) = @_;
 
    if (defined $wc_cmd && ($l_flag || $w_flag)) {
       close $wc_in;
@@ -236,15 +236,15 @@ sub user_end {
       if ($result) {
          if ($l_flag && $w_flag) {
             if ($result =~ m/(\d+)\s+(\d+)/) {
-               $self->{wk_lines} = $1;
-               $self->{wk_words} = $2;
+               $mce->{wk_lines} = $1;
+               $mce->{wk_words} = $2;
             }
          }
          elsif ($l_flag) {
-            $self->{wk_lines} = $result;
+            $mce->{wk_lines} = $result;
          }
          else {
-            $self->{wk_words} = $result;
+            $mce->{wk_words} = $result;
          }
       }
 
@@ -252,12 +252,12 @@ sub user_end {
    }
 
    my %subtotal = (
-      'lines' => $self->{wk_lines},
-      'words' => $self->{wk_words},
-      'bytes' => $self->{wk_bytes}
+      'lines' => $mce->{wk_lines},
+      'words' => $mce->{wk_words},
+      'bytes' => $mce->{wk_bytes}
    );
 
-   $self->do('main::aggregate_result', \%subtotal);
+   $mce->do('main::aggregate_result', \%subtotal);
 
    return;
 }

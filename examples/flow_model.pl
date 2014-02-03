@@ -28,31 +28,31 @@ my $Q = MCE::Queue->new();
 MCE::Flow::init {
 
    user_begin => sub {
-      my $self = shift;
+      my ($mce) = @_;
 
       if (MCE->task_name eq 'pinger') {
-         $self->{wk_pinger} = Net::Ping->new('syn');
-         $self->{wk_pinger}->hires();
+         $mce->{pinger} = Net::Ping->new('syn');
+         $mce->{pinger}->hires();
       }
 
       return;
    },
 
    user_end => sub {
-      my $self = shift;
+      my ($mce) = @_;
 
       if (MCE->task_name eq 'pinger') {
-         $self->{wk_pinger}->close();
+         $mce->{pinger}->close();
       }
 
       return;
    },
 
    task_end => sub {
-      my ($self, $task_id, $task_name) = @_;
+      my ($mce, $task_id, $task_name) = @_;
 
       if ($task_name eq 'pinger') {
-         my $N_workers = $self->{user_tasks}->[$task_id + 1]->{max_workers};
+         my $N_workers = $mce->{user_tasks}->[$task_id + 1]->{max_workers};
          $Q->enqueue((undef) x $N_workers);
       }
 
@@ -69,9 +69,9 @@ MCE::Flow::init {
 
 sub pinger {
 
-   my ($self, $chunk_ref, $chunk_id) = @_;
+   my ($mce, $chunk_ref, $chunk_id) = @_;
 
-   my $pinger = $self->{wk_pinger};
+   my $pinger = $mce->{pinger};
    my %pass   = ();
    my @fail   = ();
 
@@ -104,14 +104,14 @@ sub pinger {
 
 sub task2 {
 
-   my ($self) = @_;
+   my ($mce) = @_;
 
    while (defined (my $host = $Q->dequeue)) {
       ## Do something with $host ...
       my %h = ();
 
       $h{raw} = "task2 data";
-      $h{fun} = "fun fun fun";
+      $h{fun} = "other data";
 
       MCE->gather("$host.status", "Successful");
       MCE->gather("$host.data", \%h);

@@ -111,7 +111,7 @@ my $mce = MCE->new(
    chunk_size => 1, max_workers => 3, gather => output_iterator(),
 
    user_func => sub {
-      my ($self, $chunk_ref, $chunk_id) = @_;
+      my ($mce, $chunk_ref, $chunk_id) = @_;
 
       if (defined $s_format) {
          my $n = sprintf "%${s_format}", $_;

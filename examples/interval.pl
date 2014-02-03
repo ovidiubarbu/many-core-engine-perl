@@ -46,7 +46,7 @@ sub create_task {
 
 sub user_begin {
 
-   my ($self) = @_;
+   my ($mce) = @_;
 
    ## The yield method causes this worker to wait for its next
    ## time interval slot before running. Yield has no effect
@@ -71,7 +71,7 @@ sub user_begin {
 
    sub user_func {
 
-      my ($self, $seq_n, $chunk_id) = @_;
+      my ($mce, $seq_n, $chunk_id) = @_;
 
       ## Yield simply waits for the next time interval.
       MCE->yield;

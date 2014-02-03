@@ -125,7 +125,7 @@ if (-d $file) {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Configure regex variables and define user function for MCE.
+## Configure regex variables and define user_func for MCE.
 ##
 ###############################################################################
 
@@ -139,7 +139,7 @@ $re = qr/$re/;
 
 sub user_func {
 
-   my ($self, $chunk_ref, $chunk_id) = @_;
+   my ($mce, $chunk_ref, $chunk_id) = @_;
    my ($found_match, $line_count, @lines);
 
    ## Check each one individually -- it's faster than doing (?:...|...|...)
@@ -175,15 +175,12 @@ sub user_func {
    $line_count = $.;
    close $_MEM_FH;
 
-   my %wk_result = (
-      'found_match' => $found_match,
-      'line_count' => $line_count,
+   my %result = (
+      'found_match' => $found_match, 'line_count' => $line_count,
       'lines' => \@lines
    );
 
-   $self->do('display_result', \%wk_result, $chunk_id);
-
-   return;
+   MCE->gather(\%result, $chunk_id);
 }
 
 ###############################################################################
@@ -192,45 +189,40 @@ sub user_func {
 ##
 ###############################################################################
 
+## Make output iterator for gather. Output order is preserved.
+
 my $total_lines = 0;
-my $order_id = 1;
-my %result;
 
-## Callback function for displaying results. Output order is preserved.
+sub output_iterator {
+   my %tmp; my $order_id = 1;
 
-sub display_result {
+   return sub {
+      my ($result, $chunk_id) = @_;
+      $tmp{$chunk_id} = $result;
 
-   my ($wk_result, $chunk_id) = @_;
-   $result{$chunk_id} = $wk_result;
+      while (1) {
+         last unless exists $tmp{$order_id};
+         my $r = $tmp{$order_id}; my $e;
 
-   while (1) {
-      last unless exists $result{$order_id};
-
-      my $r = $result{$order_id};
-      my $e;
-
-      if ($r->{found_match}) {
-         for (@{ $r->{lines} }) {
-            $e = "NULL value at line " . ($_ + $total_lines) . " in file $file";
-            print STDERR "Warning: ", $e, "\n";
+         if ($r->{found_match}) {
+            for (@{ $r->{lines} }) {
+               $e = "NULL value at line " . ($_ + $total_lines) . " in $file";
+               print STDERR "Warning: ", $e, "\n";
+            }
          }
+
+         $total_lines += $r->{line_count};
+         delete $tmp{$order_id++};
       }
-
-      $total_lines += $r->{line_count};
-
-      delete $result{$order_id};
-      $order_id++;
-   }
+   };
 }
 
-## Initiate MCE and run. Display total lines read if specified.
+## Configure MCE and run. Display total lines read if specified.
 
 my $mce = MCE->new(
-   input_data  => $file,
-   chunk_size  => $chunk_size,
-   max_workers => $max_workers,
-   user_func   => \&user_func,
-   use_slurpio => 1
+   chunk_size => $chunk_size, max_workers => $max_workers,
+   input_data => $file, gather => output_iterator(),
+   user_func => \&user_func, use_slurpio => 1
 );
 
 $mce->run();
