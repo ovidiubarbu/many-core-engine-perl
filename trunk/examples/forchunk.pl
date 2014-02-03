@@ -36,55 +36,52 @@ unless ($size =~ /\A\d+\z/) {
    exit;
 }
 
+my @input_data = (0 .. $size - 1);
+
 ###############################################################################
 ## ----------------------------------------------------------------------------
 ## Parallelize via MCE's foreach method.
 ##
 ###############################################################################
 
-my @input_data = (0 .. $size - 1);
-my (%result, $start, $end);
+## Make output iterator for gather. Output order is preserved.
 
-my $max_workers = 3;
-my $chunk_size  = 2500;
-my $order_id    = 1;
+my $chunk_size = 2500;
 
-## Callback function for displaying results. Output order is preserved.
+sub output_iterator {
+   my %tmp; my $order_id = 1;
 
-sub display_result {
+   return sub {
+      $tmp{$_[1]} = $_[0];
 
-   $result{$_[1]} = $_[0];
+      while (1) {
+         last unless exists $tmp{$order_id};
+         my $i = ($order_id - 1) * $chunk_size;
 
-   while (1) {
-      last unless exists $result{$order_id};
-      my $i = ($order_id - 1) * $chunk_size;
+         for ( @{ $tmp{$order_id} } ) {
+            printf "n: %d sqrt(n): %f\n", $input_data[$i++], $_;
+         }
 
-      for ( @{ $result{$order_id} } ) {
-         printf "n: %d sqrt(n): %f\n", $input_data[$i++], $_;
+         delete $tmp{$order_id++};
       }
 
-      delete $result{$order_id++};
-   }
-
-   return;
+      return;
+   };
 }
 
-## Compute via MCE.
+## Configure MCE.
 
 my $mce = MCE->new(
-   max_workers => $max_workers,
-   chunk_size  => $chunk_size,
-   gather      => \&display_result
+   max_workers => 3, chunk_size => $chunk_size, gather => output_iterator()
 );
-
-$start = time();
 
 ## Below, $chunk_ref is a reference to an array containing the next
 ## $chunk_size items from @input_data.
 
-$mce->forchunk(\@input_data, sub {
+my $start = time();
 
-   my ($self, $chunk_ref, $chunk_id) = @_;
+$mce->forchunk( \@input_data, sub {
+   my ($mce, $chunk_ref, $chunk_id) = @_;
    my @result;
 
    for ( @{ $chunk_ref } ) {
@@ -94,7 +91,7 @@ $mce->forchunk(\@input_data, sub {
    MCE->gather(\@result, $chunk_id);
 });
 
-$end = time();
+my $end = time();
 
-printf STDERR "\n## Compute time: %0.03f\n\n",  $end - $start;
+printf STDERR "\n## Compute time: %0.03f\n\n", $end - $start;
 

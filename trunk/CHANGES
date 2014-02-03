@@ -1,7 +1,7 @@
 
 Revision history for MCE
 
-1.50x Sat Feb 02 19:30:00 EST 2014
+1.50x Sat Feb 02 21:50:00 EST 2014
 
   [BUG FIXES]
 
@@ -12,6 +12,8 @@ Revision history for MCE
   [ENHANCEMENTS]
 
   * Refactored the fix applied in 1.508 for addressing bug #92627.
+
+  * Small updates to several examples.
 
 1.508 Sat Feb 01 04:00:00 EST 2014
 

@@ -54,36 +54,35 @@ unless (defined $s_end) {
 ##
 ###############################################################################
 
-my (%result_n, %result, $start, $end);
+## Make output iterator for gather. Output order is preserved.
 
-my $max_workers = 3;
-my $order_id    = 1;
+sub output_iterator {
+   my (%result_n, %result); my $order_id = 1;
 
-## Callback function for displaying results. Output order is preserved.
+   return sub {
+      $result_n{$_[2]} = $_[0];
+      $result{  $_[2]} = $_[1];
 
-sub display_result {
+      while (1) {
+         last unless exists $result{$order_id};
 
-   $result_n{$_[2]} = $_[0];
-   $result{$_[2]}   = $_[1];
+         printf "n: %s sqrt(n): %f\n",
+            $result_n{$order_id}, $result{$order_id};
 
-   while (1) {
-      last unless exists $result{$order_id};
+         delete $result_n{$order_id};
+         delete $result{$order_id};
 
-      printf "n: %s sqrt(n): %f\n",
-         $result_n{$order_id}, $result{$order_id};
+         $order_id++;
+      }
 
-      delete $result_n{$order_id};
-      delete $result{$order_id++};
-   }
-
-   return;
+      return;
+   };
 }
 
-## Compute via MCE.
+## Configure MCE.
 
 my $mce = MCE->new(
-   max_workers => $max_workers,
-   gather => \&display_result
+   max_workers => 3, gather => output_iterator()
 );
 
 my $seq = {
@@ -91,15 +90,15 @@ my $seq = {
    format => $s_format
 };
 
-$start = time();
+my $start = time();
 
-$mce->forseq($seq, sub {
-   my ($self, $n, $chunk_id) = @_;
+$mce->forseq( $seq, sub {
+   my ($mce, $n, $chunk_id) = @_;
    my $result = sqrt($n);
    MCE->gather($n, $result, $chunk_id);
 });
 
-$end = time();
+my $end = time();
 
-printf STDERR "\n## Compute time: %0.03f\n\n",  $end - $start;
+printf STDERR "\n## Compute time: %0.03f\n\n", $end - $start;
 

@@ -14,25 +14,25 @@ use MCE;
 ## Run with seq_demo.pl | sort
 
 sub user_func {
-   my ($self, $seq_n, $chunk_id) = @_;
+   my ($mce, $seq_n, $chunk_id) = @_;
 
-   my $wid      = $self->wid();
-   my $task_id  = $self->task_id();
-   my $task_wid = $self->task_wid();
+   my $wid      = $mce->wid();
+   my $task_id  = $mce->task_id();
+   my $task_wid = $mce->task_wid();
 
    if (ref $seq_n eq 'ARRAY') {
       ## Received the next "chunked" sequence of numbers
       ## e.g. when chunk_size > 1, $seq_n will be an array ref above
 
       foreach (@{ $seq_n }) {
-         $self->sendto('stdout', sprintf(
+         $mce->sendto('STDOUT', sprintf(
             "task_id %d: seq_n %s: chunk_id %d: wid %d: task_wid %d\n",
             $task_id,    $_,       $chunk_id,   $wid,   $task_wid
          ));
       }
    }
    else {
-      $self->sendto('stdout', sprintf(
+      $mce->sendto('STDOUT', sprintf(
          "task_id %d: seq_n %s: chunk_id %d: wid %d: task_wid %d\n",
          $task_id,    $seq_n,   $chunk_id,   $wid,   $task_wid
       ));

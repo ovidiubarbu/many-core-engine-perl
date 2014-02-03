@@ -128,26 +128,25 @@ sub failed_callback {
 }
 
 my $mce = MCE->new(
-
    input_data  => $listfile,
    chunk_size  => $chunk_size,
    max_workers => $max_workers,
 
    user_begin => sub {
-      my $self = shift;
-      $self->{wk_pinger} = Net::Ping->new('syn');
-      $self->{wk_pinger}->hires();
+      my ($mce) = @_;
+      $mce->{pinger} = Net::Ping->new('syn');
+      $mce->{pinger}->hires();
    },
 
    user_end => sub {
-      my $self = shift;
-      $self->{wk_pinger}->close();
+      my ($mce) = @_;
+      $mce->{pinger}->close();
    },
 
    user_func => sub {
-      my ($self, $chunk_ref, $chunk_id) = @_;
+      my ($mce, $chunk_ref, $chunk_id) = @_;
 
-      my $pinger = $self->{wk_pinger};
+      my $pinger = $mce->{pinger};
       my %pass   = ();
       my @fail   = ();
 
@@ -177,8 +176,8 @@ my $mce = MCE->new(
       ## Display failed result to STDOUT
 
       if (@fail > 0) {
-         $self->do('failed_callback');
-         $self->sendto('stdout', @fail);
+         $mce->do('failed_callback');
+         $mce->sendto('STDOUT', @fail);
       }
    }
 );

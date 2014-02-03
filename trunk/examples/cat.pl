@@ -155,12 +155,11 @@ while ( my $arg = shift @ARGV ) {
 
 my $mce = MCE->new(
 
-   chunk_size   => $chunk_size,
-   max_workers  => $max_workers,
-   use_slurpio  => 1,
+   chunk_size  => $chunk_size, max_workers => $max_workers,
+   use_slurpio => 1,
 
    user_func => sub {
-      my ($self, $chunk_ref, $chunk_id) = @_;
+      my ($mce, $chunk_ref, $chunk_id) = @_;
 
       MCE->do('display_chunk', $$chunk_ref .':'. $chunk_id);
 

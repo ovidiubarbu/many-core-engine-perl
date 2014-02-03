@@ -396,7 +396,7 @@ sub report_match {
 
 sub user_begin {
 
-   my ($self) = @_;
+   my ($mce) = @_;
 
    if ($c_flag) {
       use vars qw($match_re $eol_re $count);
@@ -410,7 +410,7 @@ sub user_begin {
 
 sub user_end {
 
-   my ($self) = @_;
+   my ($mce) = @_;
 
    if ($c_flag) {
       MCE->do('aggregate_count', $count) if ($count);
@@ -421,7 +421,7 @@ sub user_end {
 
 sub user_func {
 
-   my ($self, $chunk_ref, $chunk_id) = @_;
+   my ($mce, $chunk_ref, $chunk_id) = @_;
    my ($found_match, @matches, $line_count, @lines);
 
    ## Count and return immediately if -c was specified.
