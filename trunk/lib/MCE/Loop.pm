@@ -219,6 +219,7 @@ sub mce_loop (&@) {
       $_max_workers = MCE::Util::_parse_max_workers($_p->{max_workers})
          if (exists $_p->{max_workers});
 
+      delete $_p->{sequence}   if (defined $_input_data || scalar @_);
       delete $_p->{user_func}  if (exists $_p->{user_func});
       delete $_p->{user_tasks} if (exists $_p->{user_tasks});
    }
@@ -229,7 +230,10 @@ sub mce_loop (&@) {
 
    if (defined $_params) {
       $_input_data = $_params->{input_data} if (exists $_params->{input_data});
-      $_input_data = $_params->{_file} if (exists $_params->{_file});
+
+      if (exists $_params->{_file}) {
+         $_input_data = $_params->{_file}; delete $_params->{_file};
+      }
    }
 
    MCE::_save_state;
@@ -247,7 +251,6 @@ sub mce_loop (&@) {
 
       if (defined $_params) {
          foreach (keys %{ $_params }) {
-            next if ($_ eq '_file');
             next if ($_ eq 'input_data');
             next if ($_ eq 'chunk_size');
 
@@ -274,11 +277,6 @@ sub mce_loop (&@) {
    else {
       $_MCE->run({ chunk_size => $_chunk_size }, 0)
          if (defined $_params && exists $_params->{sequence});
-   }
-
-   if (defined $_params) {
-      delete $_params->{input_data}; delete $_params->{_file};
-      delete $_params->{sequence};
    }
 
    delete $_MCE->{gather} if (defined $_wa);
