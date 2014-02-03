@@ -44,7 +44,7 @@ my @input_data = (0 .. $size - 1);
 ##
 ###############################################################################
 
-## Make output iterator for gather. Output order is preserved.
+## Make an output iterator for gather. Output order is preserved.
 
 my $chunk_size = 2500;
 

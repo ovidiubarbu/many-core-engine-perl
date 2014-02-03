@@ -1,19 +1,27 @@
 
 Revision history for MCE
 
-1.50x Sat Feb 02 21:50:00 EST 2014
+1.50x Sat Feb 03 05:00:00 EST 2014
 
   [BUG FIXES]
 
-  * Fixed issue with all models (Flow, Grep, Loop, Map, Step, and Stream)
-    ending immediately on subsequent runs when input_data is specified
-    through the init method.
+  * Fixed an issue with all the models (Flow, Grep, Loop, Map, Step, and
+    Stream) ending immediately on subsequent runs when input_data is
+    specified through the init method.
+
+  * Things have finally settled down with all the models.
 
   [ENHANCEMENTS]
 
   * Refactored the fix applied in 1.508 for addressing bug #92627.
 
-  * Small updates to several examples.
+  * MCE, for the most part, has been completed. This release touches up on
+    many examples under the examples directory.
+
+  * Brought the MCE::Examples Perl documentation up to date.
+    Inlined  MCE::Loop snippets under the chunking sections.
+    Added a new section GLOBALLY SCOPED VARIABLES AND MCE MODELS.
+    Added a new section MONTE CARLO SIMULATION.
 
 1.508 Sat Feb 01 04:00:00 EST 2014
 
