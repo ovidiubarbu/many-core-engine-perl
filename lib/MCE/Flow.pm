@@ -290,9 +290,11 @@ sub mce_flow (@) {
       $_max_workers = MCE::Util::_parse_max_workers($_p->{max_workers})
          if (exists $_p->{max_workers} && ref $_p->{max_workers} ne 'ARRAY');
 
+      delete $_p->{sequence}   if (defined $_input_data || scalar @_);
       delete $_p->{user_func}  if (exists $_p->{user_func});
       delete $_p->{user_tasks} if (exists $_p->{user_tasks});
    }
+
    $_max_workers = int($_max_workers / @_code + 0.5) + 1
       if (@_code > 1);
 
@@ -302,7 +304,10 @@ sub mce_flow (@) {
 
    if (defined $_params) {
       $_input_data = $_params->{input_data} if (exists $_params->{input_data});
-      $_input_data = $_params->{_file} if (exists $_params->{_file});
+
+      if (exists $_params->{_file}) {
+         $_input_data = $_params->{_file}; delete $_params->{_file};
+      }
    }
 
    MCE::_save_state;
@@ -322,7 +327,6 @@ sub mce_flow (@) {
          my $_p = $_params;
 
          foreach (keys %{ $_p }) {
-            next if ($_ eq '_file');
             next if ($_ eq 'max_workers' && ref $_p->{max_workers} eq 'ARRAY');
             next if ($_ eq 'task_name' && ref $_p->{task_name} eq 'ARRAY');
             next if ($_ eq 'input_data');
@@ -363,11 +367,6 @@ sub mce_flow (@) {
    }
    else {
       $_MCE->run({ chunk_size => $_chunk_size }, 0);
-   }
-
-   if (defined $_params) {
-      delete $_params->{input_data}; delete $_params->{_file};
-      delete $_params->{sequence};
    }
 
    delete $_MCE->{gather} if (defined $_wa);
