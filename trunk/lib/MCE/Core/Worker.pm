@@ -353,6 +353,7 @@ sub _worker_do {
    my $_lock_chn   = $self->{_lock_chn};
    my $_run_mode   = $self->{_run_mode};
    my $_task_id    = $self->{_task_id};
+   my $_task_name  = $self->{task_name};
 
    ## Do not override params if defined in user_tasks during instantiation.
    for (qw(bounds_only chunk_size interval sequence user_args)) {
@@ -380,7 +381,7 @@ sub _worker_do {
    }
 
    ## Call user_begin if defined.
-   $self->{user_begin}($self)
+   $self->{user_begin}($self, $_task_id, $_task_name)
       if (defined $self->{user_begin});
 
    ## Call worker function.
@@ -429,7 +430,7 @@ sub _worker_do {
    undef $self->{user_data} if (defined $self->{user_data});
 
    ## Call user_end if defined.
-   $self->{user_end}($self)
+   $self->{user_end}($self, $_task_id, $_task_name)
       if (defined $self->{user_end});
 
    $_die_msg = undef;
