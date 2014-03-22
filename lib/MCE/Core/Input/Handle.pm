@@ -49,6 +49,7 @@ sub _worker_read_handle {
    my $_QUE_W_SOCK  = $self->{_que_w_sock};
    my $_chunk_size  = $self->{chunk_size};
    my $_use_slurpio = $self->{use_slurpio};
+   my $_parallel_io = $self->{parallel_io};
    my $_RS          = $self->{RS} || $/;
    my $_RS_FLG      = (!$_RS || $_RS ne $LF);
    my $_wuf         = $self->{_wuf};
@@ -78,7 +79,7 @@ sub _worker_read_handle {
       ## Don't declare $_buffer with other vars above, instead it's done here.
       ## Doing so will fail with Perl 5.8.0 under Solaris 5.10 on large files.
 
-      my $_buffer;
+      my $_buffer; my $_tmp;
 
       ## Obtain the next chunk_id and offset position.
       sysread $_QUE_R_SOCK, $_next, $_que_read_size;
@@ -96,6 +97,7 @@ sub _worker_read_handle {
       if ($_chunk_size <= MAX_RECS_SIZE) {        ## One or many records.
          local $/ = $_RS if ($_RS_FLG);
          seek $_IN_FILE, $_offset_pos, 0;
+
          if ($_chunk_size == 1) {
             $_buffer = <$_IN_FILE>;
          }
@@ -113,29 +115,61 @@ sub _worker_read_handle {
                }
             }
          }
+
+         syswrite $_QUE_W_SOCK,
+            pack($_que_template, $_chunk_id, tell $_IN_FILE);
       }
       else {                                      ## Large chunk.
          local $/ = $_RS if ($_RS_FLG);
+
          if ($_proc_type == READ_MEMORY) {
             seek $_IN_FILE, $_offset_pos, 0;
+
             if (read($_IN_FILE, $_buffer, $_chunk_size) == $_chunk_size) {
                $_buffer .= <$_IN_FILE>;
             }
+
+            syswrite $_QUE_W_SOCK,
+               pack($_que_template, $_chunk_id, tell $_IN_FILE);
          }
          else {
-            sysseek $_IN_FILE, $_offset_pos, 0;
-            if (sysread($_IN_FILE, $_buffer, $_chunk_size) == $_chunk_size) {
-               seek $_IN_FILE, sysseek($_IN_FILE, 0, 1), 0;
-               $_buffer .= <$_IN_FILE>;
+            if ($_parallel_io) {
+               if ($_offset_pos + $_chunk_size < $_data_size) {
+                  seek $_IN_FILE, $_offset_pos + $_chunk_size, 0;
+                  $_tmp = <$_IN_FILE>;
+
+                  syswrite $_QUE_W_SOCK,
+                     pack($_que_template, $_chunk_id, tell $_IN_FILE);
+
+                  sysseek $_IN_FILE, $_offset_pos, 0;
+                  sysread $_IN_FILE, $_buffer, $_chunk_size;
+
+                  $_buffer .= $_tmp;
+               }
+               else {
+                  syswrite $_QUE_W_SOCK,
+                     pack($_que_template, $_chunk_id, $_data_size);
+
+                  sysseek $_IN_FILE, $_offset_pos, 0;
+                  sysread $_IN_FILE, $_buffer, $_chunk_size;
+               }
             }
             else {
-               seek $_IN_FILE, sysseek($_IN_FILE, 0, 1), 0;
+               sysseek $_IN_FILE, $_offset_pos, 0;
+
+               if (sysread($_IN_FILE, $_buffer, $_chunk_size) == $_chunk_size) {
+                  seek $_IN_FILE, sysseek($_IN_FILE, 0, 1), 0;
+                  $_buffer .= <$_IN_FILE>;
+               }
+               else {
+                  seek $_IN_FILE, sysseek($_IN_FILE, 0, 1), 0;
+               }
+
+               syswrite $_QUE_W_SOCK,
+                  pack($_que_template, $_chunk_id, tell $_IN_FILE);
             }
          }
       }
-
-      ## Append the next offset position into the queue.
-      syswrite $_QUE_W_SOCK, pack($_que_template, $_chunk_id, tell $_IN_FILE);
 
       ## Call user function.
       if ($_use_slurpio) {

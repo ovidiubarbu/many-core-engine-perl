@@ -52,20 +52,20 @@ BEGIN {
       chunk_size input_data sequence job_delay spawn_delay submit_delay RS
       flush_file flush_stderr flush_stdout stderr_file stdout_file use_slurpio
       interval user_args user_begin user_end user_func user_error user_output
-      bounds_only gather on_post_exit on_post_run
+      bounds_only gather on_post_exit on_post_run parallel_io
    );
 
    %_params_allowed_args = map { $_ => 1 } qw(
       chunk_size input_data sequence job_delay spawn_delay submit_delay RS
       flush_file flush_stderr flush_stdout stderr_file stdout_file use_slurpio
       interval user_args user_begin user_end user_func user_error user_output
-      bounds_only gather on_post_exit on_post_run
+      bounds_only gather on_post_exit on_post_run parallel_io
    );
 
    %_valid_fields_task = map { $_ => 1 } qw(
       max_workers chunk_size input_data interval sequence task_end task_name
       bounds_only gather user_args user_begin user_end user_func use_threads
-      RS use_slurpio
+      RS use_slurpio parallel_io
    );
 
    $_is_cygwin  = ($^O eq 'cygwin');
@@ -385,6 +385,7 @@ sub new {
    $self->{flush_stderr} = $argv{flush_stderr} || 0;
    $self->{flush_stdout} = $argv{flush_stdout} || 0;
    $self->{use_slurpio}  = $argv{use_slurpio}  || 0;
+   $self->{parallel_io}  = $argv{parallel_io}  || 0;
 
    ## -------------------------------------------------------------------------
    ## Validation.
@@ -899,6 +900,9 @@ sub run {
       $self->{use_slurpio} = $self->{user_tasks}->[0]->{use_slurpio}
          if ($self->{user_tasks}->[0]->{use_slurpio});
 
+      $self->{parallel_io} = $self->{user_tasks}->[0]->{parallel_io}
+         if ($self->{user_tasks}->[0]->{parallel_io});
+
       $self->{RS} = $self->{user_tasks}->[0]->{RS}
          if ($self->{user_tasks}->[0]->{RS});
    }
@@ -999,6 +1003,7 @@ sub run {
    my $_sequence      = $self->{sequence};
    my $_user_args     = $self->{user_args};
    my $_use_slurpio   = $self->{use_slurpio};
+   my $_parallel_io   = $self->{parallel_io};
    my $_sess_dir      = $self->{_sess_dir};
    my $_total_workers = $self->{_total_workers};
    my $_send_cnt      = $self->{_send_cnt};
@@ -1012,16 +1017,16 @@ sub run {
          '_chunk_size'  => $_chunk_size,   '_single_dim'  => $_single_dim,
          '_input_file'  => $_input_file,   '_interval'    => $_interval,
          '_sequence'    => $_sequence,     '_bounds_only' => $_bounds_only,
-         '_use_slurpio' => $_use_slurpio,  '_user_args'   => $_user_args,
-         '_RS'          => $_RS
+         '_use_slurpio' => $_use_slurpio,  '_parallel_io' => $_parallel_io,
+         '_user_args'   => $_user_args,    '_RS'          => $_RS
       );
       my %_params_nodata = (
          '_abort_msg'   => undef,          '_run_mode'    => 'nodata',
          '_chunk_size'  => $_chunk_size,   '_single_dim'  => $_single_dim,
          '_input_file'  => $_input_file,   '_interval'    => $_interval,
          '_sequence'    => $_sequence,     '_bounds_only' => $_bounds_only,
-         '_use_slurpio' => $_use_slurpio,  '_user_args'   => $_user_args,
-         '_RS'          => $_RS
+         '_use_slurpio' => $_use_slurpio,  '_parallel_io' => $_parallel_io,
+         '_user_args'   => $_user_args,    '_RS'          => $_RS
       );
 
       local $\ = undef; local $/ = $LF;
