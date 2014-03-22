@@ -797,8 +797,10 @@ The user_begin and user_end options, if specified, behave similarly to
 awk 'BEGIN { ... } { ... } END { ... }'. These are called once per each
 worker during a run.
 
+MCE 1.510 passes 2 additional parameters ($task_id and $task_name).
+
    sub user_begin {                   ## Called once at the beginning
-      my $self = shift;
+      my ($self, $task_id, $task_name) = @_;
       $self->{wk_total_rows} = 0;
    }
 
@@ -808,7 +810,7 @@ worker during a run.
    }
 
    sub user_end {                     ## Called once at the end
-      my $self = shift;
+      my ($self, $task_id, $task_name) = @_;
       printf "## %d: Processed %d rows\n",
          MCE->wid(), $self->{wk_total_rows};
    }
