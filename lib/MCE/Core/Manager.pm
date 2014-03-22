@@ -292,7 +292,7 @@ sub _output_loop {
             return;
          }
 
-         if (my @_ret_a = $_input_data->()) {
+         if (my @_ret_a = $_input_data->($_chunk_size)) {
             if (@_ret_a > 1 || ref $_ret_a[0]) {
                $_buffer = $self->{freeze}( [ @_ret_a ] );
                local $\ = undef if (defined $\); $_len = length $_buffer;
