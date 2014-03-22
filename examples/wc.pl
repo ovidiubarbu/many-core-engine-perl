@@ -34,7 +34,7 @@ use MCE;
 
 sub usage {
 
-   print <<"::_USAGE_BLOCK_END_::";
+   print STDERR <<"::_USAGE_BLOCK_END_::";
 
 NAME
    $prog_name -- word, line, and character count
