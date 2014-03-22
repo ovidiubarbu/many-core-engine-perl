@@ -77,9 +77,8 @@ sub _output_loop {
    my ($_callback, $_chunk_id, $_chunk_size, $_fd, $_file, $_flush_file);
    my (@_is_c_ref, @_is_h_ref, @_is_q_ref, $_on_post_exit, $_on_post_run);
    my ($_has_user_tasks, $_sess_dir, $_task_id, $_user_error, $_user_output);
-   my ($_input_size, $_len, $_offset_pos, $_single_dim, $_use_slurpio);
+   my ($_input_size, $_len, $_offset_pos, $_single_dim, @_gather);
    my ($_exit_id, $_exit_pid, $_exit_status, $_exit_wid, $_sync_cnt);
-   my (@_gather);
 
    my ($_BSB_W_SOCK, $_BSE_W_SOCK, $_DAT_R_SOCK, $_DAU_R_SOCK, $_MCE_STDERR);
    my ($_I_FLG, $_O_FLG, $_I_SEP, $_O_SEP, $_RS, $_RS_FLG, $_MCE_STDOUT);
@@ -642,7 +641,6 @@ sub _output_loop {
    $_on_post_run  = $self->{on_post_run};
    $_chunk_size   = $self->{chunk_size};
    $_flush_file   = $self->{flush_file};
-   $_use_slurpio  = $self->{use_slurpio};
    $_user_output  = $self->{user_output};
    $_user_error   = $self->{user_error};
    $_single_dim   = $self->{_single_dim};

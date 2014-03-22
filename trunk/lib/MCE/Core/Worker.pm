@@ -340,6 +340,7 @@ sub _worker_do {
    $self->{_run_mode}   = $_params_ref->{_run_mode};
    $self->{_single_dim} = $_params_ref->{_single_dim};
    $self->{use_slurpio} = $_params_ref->{_use_slurpio};
+   $self->{parallel_io} = $_params_ref->{_parallel_io};
    $self->{RS}          = $_params_ref->{_RS};
 
    _do_user_func_init($self);

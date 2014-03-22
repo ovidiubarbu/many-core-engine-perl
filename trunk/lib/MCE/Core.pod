@@ -139,14 +139,21 @@ Below, a new instance is configured with all available options.
           ## Support for iterators was added in 1.505.
 
       use_slurpio  => 1,                 ## Default 0
-      use_threads  => 1,                 ## Default 0 or 1
+      parallel_io  => 1,                 ## Default 0
 
           ## Whether or not to enable slurpio when reading files
-          ## (passes raw chunk to user function).
+          ## Passes raw chunk (scalar ref) to user function.
+
+          ## The parallel_io option enables parallel reads during
+          ## large slurpio. Useful when reading from fast storage.
+          ## Do not enable parallel_io when running MCE on many
+          ## blades and reading input from a shared storage unit.
+
+      use_threads  => 1,                 ## Default 0 or 1
 
           ## By default MCE does forking (spawns child processes).
           ## MCE also supports threads via 2 threading libraries.
-          ##
+
           ## The use of threads in MCE requires that you include
           ## threads support prior to loading MCE. The use_threads
           ## option defaults to 1 when a thread library is present.
