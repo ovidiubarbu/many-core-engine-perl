@@ -43,7 +43,7 @@ use MCE;
 
 sub usage {
 
-   print STDERR <<"::_USAGE_BLOCK_END_::";
+   print <<"::_USAGE_BLOCK_END_::";
 
 NAME
    $prog_name -- report line numbers containing null values

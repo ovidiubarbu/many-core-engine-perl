@@ -62,7 +62,7 @@ sub usage {
 
    my $exit_status = $_[0] || 0;
 
-   print STDERR <<"::_USAGE_BLOCK_END_::";
+   print <<"::_USAGE_BLOCK_END_::";
 
 Options for Many-core Engine:
   --max-workers=NUM         override max workers (default 6)
