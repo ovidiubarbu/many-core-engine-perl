@@ -25,7 +25,7 @@ use MCE;
 
 sub usage {
 
-   print STDERR <<"::_USAGE_BLOCK_END_::";
+   print <<"::_USAGE_BLOCK_END_::";
 
 NAME
    $prog_name -- Perform ping test and report back failing IPs
