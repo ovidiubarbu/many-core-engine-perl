@@ -42,6 +42,7 @@ BEGIN {
    ## _chunk_id _mce_sid _mce_tid _pids _run_mode _single_dim _thrs _tids _wid
    ## _exiting _exit_pid _total_exited _total_running _total_workers _task_wid
    ## _send_cnt _sess_dir _spawned _state _status _task _task_id _wrk_status
+   ## _last_sref
    ##
    ## _bsb_r_sock _bsb_w_sock _bse_r_sock _bse_w_sock _com_r_sock _com_w_sock
    ## _dat_r_sock _dat_w_sock _que_r_sock _que_w_sock _data_channels _lock_chn
@@ -459,6 +460,9 @@ sub new {
    else {
       $_total_workers = $self->{max_workers};
    }
+
+   $self->{_last_sref} = (ref $self->{input_data} eq 'SCALAR')
+      ? $self->{input_data} : 0;
 
    $self->{_data_channels} = ($_total_workers < DATA_CHANNELS)
       ? $_total_workers : DATA_CHANNELS;
@@ -907,8 +911,14 @@ sub run {
          if ($self->{user_tasks}->[0]->{RS});
    }
 
-   $self->shutdown()
-      if ($_requires_shutdown || ref $self->{input_data} eq 'SCALAR');
+   $self->shutdown() if ($_requires_shutdown);
+
+   if (ref $self->{input_data} eq 'SCALAR') {
+      $self->shutdown()
+         unless $self->{_last_sref} == $self->{input_data};
+
+      $self->{_last_sref} = $self->{input_data};
+   }
 
    ## -------------------------------------------------------------------------
 
@@ -1324,7 +1334,7 @@ sub shutdown {
       if ($_is_mce_thr);
 
    $self->{_total_running} = $self->{_total_workers} = 0;
-   $self->{_total_exited}  = 0;
+   $self->{_total_exited}  = $self->{_last_sref}     = 0;
 
    return;
 }
