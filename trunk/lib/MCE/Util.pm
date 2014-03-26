@@ -26,15 +26,16 @@ our %EXPORT_TAGS = ( all => \@EXPORT_OK );
 ##
 ###############################################################################
 
-my $g_cpus;
+my $g_ncpu;
+my $g_npkg;
 
 sub get_ncpu {
 
-   return $g_cpus if (defined $g_cpus);
+   return $g_ncpu if (defined $g_ncpu);
 
    local $ENV{PATH} = "/usr/sbin:/sbin:/usr/bin:/bin:$ENV{PATH}";
 
-   my $cpus = 1;
+   my $ncpu = 1;
 
    OS_CHECK: {
       local $_ = $^O;
@@ -45,52 +46,127 @@ sub get_ncpu {
              $count = grep /^cpu\d/ => <PROC>;
              close PROC;
          }
-         $cpus = $count if $count;
+         $ncpu = $count if $count;
          last OS_CHECK;
       };
 
       /(?:darwin|.*bsd)/i && do {
          chomp( my @output = `sysctl -n hw.ncpu 2>/dev/null` );
-         $cpus = $output[0] if @output;
+         $ncpu = $output[0] if @output;
          last OS_CHECK;
       };
 
       /aix/i && do {
          my @output = `lsdev -C -c processor -S Available 2>/dev/null`;
-         $cpus = scalar @output if @output;
+         $ncpu = scalar @output if @output;
          last OS_CHECK;
       };
 
       /hp-?ux/i && do {
          my $count = grep /^processor/ => `ioscan -fnkC processor 2>/dev/null`;
-         $cpus = $count if $count;
+         $ncpu = $count if $count;
          last OS_CHECK;
       };
 
       /irix/i && do {
          my @output = grep /\s+processors?$/i => `hinv -c processor 2>/dev/null`;
-         $cpus = (split " ", $output[0])[0] if @output;
+         $ncpu = (split " ", $output[0])[0] if @output;
          last OS_CHECK;
       };
 
       /solaris|sunos|osf/i && do {
          my $count = grep /on-line/ => `psrinfo 2>/dev/null`;
-         $cpus = $count if $count;
+         $ncpu = $count if $count;
          last OS_CHECK;
       };
 
-      /mswin32|cygwin/i && do {
-         $cpus = $ENV{NUMBER_OF_PROCESSORS}
+      /mswin32|mingw|cygwin/i && do {
+         $ncpu = $ENV{NUMBER_OF_PROCESSORS}
             if exists $ENV{NUMBER_OF_PROCESSORS};
          last OS_CHECK;
       };
 
       _croak(
-         "MCE::Util: command failed or unknown operating system\n"
+         "MCE::Util::get_ncpu: command failed or unknown operating system\n"
       );
    }
 
-   return $g_cpus = $cpus;
+   return $g_ncpu = $ncpu;
+}
+
+###############################################################################
+## ----------------------------------------------------------------------------
+## The get_npkg subroutine returns the number of available CPU packages.
+##
+## Defaults to 1. A warning is emitted to STDERR when it cannot recognize
+## your operating system or the external command failed.
+##
+###############################################################################
+
+sub get_npkg {
+
+   return $g_npkg if (defined $g_npkg);
+
+   local $ENV{PATH} = "/usr/sbin:/sbin:/usr/bin:/bin:$ENV{PATH}";
+
+   my $npkg = 1;
+
+   OS_CHECK: {
+      local $_ = $^O;
+
+      /linux/i && do {
+         my %count; local *PROC;
+         if ( open PROC, "< /proc/cpuinfo" ) {
+             for (grep /^physical id/ => <PROC>) {
+                $count{$1} = 1 if /(\d+)$/;
+             }
+             close PROC;
+         }
+         $npkg = scalar(keys %count) if %count;
+         last OS_CHECK;
+      };
+
+      /(?:darwin|.*bsd)/i && do {
+         my @output = `sysctl -n hw.packages 2>/dev/null`;
+         $npkg = $output[0] if @output;
+         last OS_CHECK;
+      };
+
+      /aix/i && do {
+         my @output = grep /WAY/ => `lscfg -vp 2>/dev/null`;
+         $npkg = scalar @output if @output;
+         last OS_CHECK;
+      };
+
+      /hp-?ux/i && do {
+         chomp( my @output = grep /\d+ logical processors \(\d+ per socket\)/ => `machinfo 2>/dev/null` );
+         if (@output) {
+            $output[0] =~ /(\d+) logical processors \((\d+) per socket\)/;
+            $npkg = $1 / $2;
+         }
+         last OS_CHECK;
+      };
+
+      /solaris|sunos|osf/i && do {
+         chomp( my $count = `psrinfo -p 2>/dev/null` );
+         $npkg = $count if $count;
+         last OS_CHECK;
+      };
+
+      /mswin32|mingw|cygwin/i && do {
+         if (exists $ENV{NUMBER_OF_PROCESSORS}) {
+            my $count = grep /Status=OK/ => `WMIC CPU Get Status /Format:List`;
+            $npkg = $count if $count;
+         }
+         last OS_CHECK;
+      };
+
+      _croak(
+         "MCE::Util::get_npkg: command failed or unknown operating system\n"
+      );
+   }
+
+   return $g_npkg = $npkg;
 }
 
 ###############################################################################
@@ -236,13 +312,13 @@ This document describes MCE::Util version 1.509
 =head1 DESCRIPTION
 
 This is a utility module for MCE. Nothing is exported by default. Exportable
-is get_ncpu.
+are get_ncpu and get_npkg.
 
 =head2 get_ncpu()
 
 Returns the number of available (online/active/enabled) CPUs.
 
- my $cpus = MCE::Util::get_ncpu();
+ my $ncpu = MCE::Util::get_ncpu();
 
 Specifying 'auto' for max_workers calls MCE::Util::get_ncpu automatically.
 
@@ -253,6 +329,12 @@ Specifying 'auto' for max_workers calls MCE::Util::get_ncpu automatically.
    max_workers => 'auto+3',        ## MCE::Util::get_ncpu() + 3
    max_workers => 'auto',          ## MCE::Util::get_ncpu()
  );
+
+=head2 get_npkg()
+
+Returns the number of available CPU packages (sockets).
+
+ my $npkg = MCE::Util::get_npkg();
 
 =head1 ACKNOWLEDGEMENTS
 
