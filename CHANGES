@@ -1,6 +1,30 @@
 
 Revision history for MCE
 
+1.510 Thu Mar 27 10:00:00 EST 2014
+
+  [ENHANCEMENTS]
+
+  * Pass the chunk_size value when calling the iterator function. Added a
+    DBI example under "SYNTAX for INPUT_DATA" in MCE::Core.pod.
+
+  * Store the last scalar reference to not have workers re-spawn
+    unnecessarily when input_data => \$same_scalar_ref.
+
+  [NEW FEATURES]
+
+  * New parallel_io option to further enhance slurp IO when specifying
+    use_slurpio => 1 and chunk_size is greater than 8192. Try with
+    chunk_size => '300k' or chunk_size => '2m'.
+
+    The parallel_io option is beneficial when reading from fast storage.
+    However, possibly not recommended if running MCE on many compute nodes
+    and having workers read various input_data from shared storage.
+
+    Enable parallel_io only if it makes sence and without impacting the
+    environment such as nfsd. Because use_slurpio => 1, parallel_io => 1,
+    and chunk_size => '2560k' is truly parallel.
+
 1.509 Sat Feb 03 05:30:00 EST 2014
 
   [BUG FIXES]
