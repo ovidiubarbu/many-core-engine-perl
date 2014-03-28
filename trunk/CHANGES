@@ -5,6 +5,9 @@ Revision history for MCE
 
   [ENHANCEMENTS]
 
+  * The user_begin and user_end functions now receive 3 arguments.
+    my ($mce, $task_id, $task_name) = @_;
+
   * Pass the chunk_size value when calling the iterator function. Added a
     DBI example under "SYNTAX for INPUT_DATA" in MCE::Core.pod.
 
