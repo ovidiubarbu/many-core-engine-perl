@@ -1,6 +1,20 @@
 
 Revision history for MCE
 
+1.511 Fri Apr 04 22:30:00 EST 2014
+
+  [BUG FIXES]
+
+  * Added "use bytes;" in several files to have length() return physical
+    bytes, not logical characters. MCE is now UTF-8 safe when passing scalar
+    data between workers and the manager process.
+
+    Added Marcus Smith to the CREDITS file for reporting this bug.
+
+  [ENHANCEMENTS]
+
+  * Added examples/utf8.pl
+
 1.510 Thu Mar 27 10:00:00 EST 2014
 
   [ENHANCEMENTS]

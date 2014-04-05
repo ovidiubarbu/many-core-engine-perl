@@ -59,6 +59,7 @@ examples/tbray/wf_mce1.pl
 examples/tbray/wf_mce2.pl
 examples/tbray/wf_mce3.pl
 examples/tbray/wf_mmap.pl
+examples/utf8.pl
 examples/wc.pl
 images/01_Bank_Queuing_Model.gif
 images/02_Bank_Model_Chunking.gif

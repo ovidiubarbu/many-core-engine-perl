@@ -52,6 +52,11 @@ Adam Sjøgren
     use MCE::Signal qw(-no_setpgrp);
     use MCE;
 
+Marcus Smith
+  For reporting a problem with MCE including a sample script demonstrating
+  MCE not 100% UTF-8 safe. All this time, totally overlooked the fact that
+  the length function deals in logical characters, not physical bytes. :)
+
 Jeffrey Ryan Thalhammer
   For submitting a feature request on support for lazy arrays.
   * Although a lazy array cannot be used directly for input_data, support for
