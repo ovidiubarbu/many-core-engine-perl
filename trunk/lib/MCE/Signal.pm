@@ -491,8 +491,11 @@ The following are available arguments and their meanings.
 
  -setpgrp          - Calls setpgrp to set the process group for the process
 
-                     Specify this option to ensure all workers terminate
-                     when reading STDIN for MCE releases 1.511 and below.
+                     Do not specify this option if your MCE script calls
+                     external commands via system() or sys_cmd().
+
+                     This option ensures all workers terminate when reading
+                     STDIN for MCE releases 1.511 and below.
 
                         cat big_input_file | ./mce_script.pl | head -10
 
