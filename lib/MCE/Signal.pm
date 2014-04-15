@@ -82,7 +82,7 @@ sub import {
  # setpgrp(0,0) if ($_no_setpgrp == 0 && $^O ne 'MSWin32');
 
    ## Sets the current process group for the current process.
-   setpgrp(0,0) if ($_setpgrp == 1 && $^O ne 'MSWin32');
+   setpgrp($main_proc_id, 0) if ($_setpgrp == 1 && $^O ne 'MSWin32');
 
    my ($_tmp_dir_base, $_count);
 
@@ -181,9 +181,9 @@ sub sys_cmd {
    my $_exit_status = $_status >> 8;
 
    ## Kill process group if command caught SIGPIPE, SIGINT or SIGQUIT.
-   kill('PIPE', $_is_MSWin32 ? -$$ : -getpgrp(0)) if $_is_sigpipe;
-   kill('INT',  $_is_MSWin32 ? -$$ : -getpgrp(0)) if $_sig_no == 2;
-   kill('QUIT', $_is_MSWin32 ? -$$ : -getpgrp(0)) if $_sig_no == 3;
+   kill('PIPE', $_is_MSWin32 ? -$$ : -getpgrp()) if $_is_sigpipe;
+   kill('INT',  $_is_MSWin32 ? -$$ : -getpgrp()) if $_sig_no == 2;
+   kill('QUIT', $_is_MSWin32 ? -$$ : -getpgrp()) if $_sig_no == 3;
 
    return $_exit_status;
 }
@@ -229,9 +229,7 @@ sub sys_cmd {
       ## For main thread / parent process.
       if ($$ == $main_proc_id) {
 
-         $_handler_cnt += 1;
-
-         if ($_handler_cnt == 1 && ! -e "$tmp_dir/stopped") {
+         if (++$_handler_cnt == 1 && ! -e "$tmp_dir/stopped") {
             open my $_FH, "> $tmp_dir/stopped"; close $_FH;
 
             local $\ = undef;
@@ -263,11 +261,13 @@ sub sys_cmd {
                open my $_FH, "> $tmp_dir/killed"; close $_FH;
 
                ## Signal process group to terminate.
-               kill('TERM', $_is_MSWin32 ? -$$ : -getpgrp(0));
+               kill('TERM', $_is_MSWin32 ? -$$ : -getpgrp());
 
                ## Pause a bit.
                if ($_sig_name ne 'PIPE') {
                   select(undef, undef, undef, 0.066) for (1..3);
+               } else {
+                  select(undef, undef, undef, 0.008);
                }
             }
 
@@ -295,10 +295,9 @@ sub sys_cmd {
 
             ## Signal process group to die.
             if ($_is_sig == 1) {
-               print STDERR "\n"
-                  if ($_sig_name ne 'PIPE' && $_no_sigmsg == 0);
+               print STDERR "\n" if ($_sig_name ne 'PIPE' && $_no_sigmsg == 0);
 
-               kill('KILL', $_is_MSWin32 ? -$$ : -getpgrp(0))
+               kill('KILL', $_is_MSWin32 ? -$$ : -getpgrp())
                   if ($_sig_name eq 'PIPE' || $_no_kill9 == 0);
             }
          }
@@ -309,30 +308,32 @@ sub sys_cmd {
       ## For child processes.
       if ($$ != $main_proc_id && $_is_sig == 1 && -d $tmp_dir) {
 
-         ## Obtain lock.
-         open my $CHILD_LOCK, '+>>', "$tmp_dir/child.lock";
-         flock $CHILD_LOCK, LOCK_EX;
-
-         $_handler_cnt += 1;
-
          ## Signal process group to terminate.
-         if ($_handler_cnt == 1) {
+         if (++$_handler_cnt == 1) {
+
+            ## Obtain lock.
+            open my $CHILD_LOCK, '+>>', "$tmp_dir/child.lock";
+            flock $CHILD_LOCK, LOCK_EX;
 
             ## Notify the main process that I've died.
             if ($_sig_name eq '__DIE__' && ! -f "$tmp_dir/died") {
-               open my $_FH, "> $tmp_dir/died"; close $_FH;
+               local $@; eval '
+                  open my $_FH, "> $tmp_dir/died"; close $_FH;
+               ';
             }
 
             ## Signal process group to terminate.
             if (! -f "$tmp_dir/killed" && ! -f "$tmp_dir/stopped") {
-               open my $_FH, "> $tmp_dir/killed"; close $_FH;
+               local $@; eval '
+                  open my $_FH, "> $tmp_dir/killed"; close $_FH;
+               ';
                kill('TERM', -$$, $main_proc_id);
             }
-         }
 
-         ## Release lock.
-         flock $CHILD_LOCK, LOCK_UN;
-         close $CHILD_LOCK;
+            ## Release lock.
+            flock $CHILD_LOCK, LOCK_UN;
+            close $CHILD_LOCK;
+         }
       }
 
       ## ----------------------------------------------------------------------
@@ -474,9 +475,10 @@ Windows.
 As of MCE 1.405, MCE::Signal no longer calls setpgrp by default. Pass the
 -setpgrp option to MCE::Signal to call setpgrp.
 
- ## Running MCE through Daemon::Control requires setpgrp to be called.
+ ## Running MCE through Daemon::Control requires setpgrp to be called
+ ## for MCE releases 1.511 and below.
 
- use MCE::Signal qw(-setpgrp);
+ use MCE::Signal qw(-setpgrp);   ## Not necessary for MCE 1.512 and above
  use MCE;
 
 The following are available arguments and their meanings.
@@ -490,9 +492,6 @@ The following are available arguments and their meanings.
  -no_kill9         - Do not kill -9 after receiving a signal to terminate
 
  -setpgrp          - Calls setpgrp to set the process group for the process
-
-                     Do not specify this option if your MCE script calls
-                     external commands via system() or sys_cmd().
 
                      This option ensures all workers terminate when reading
                      STDIN for MCE releases 1.511 and below.
