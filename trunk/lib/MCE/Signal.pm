@@ -181,9 +181,15 @@ sub sys_cmd {
    my $_exit_status = $_status >> 8;
 
    ## Kill process group if command caught SIGPIPE, SIGINT or SIGQUIT.
-   kill('PIPE', $_is_MSWin32 ? -$$ : -getpgrp()) if $_is_sigpipe;
-   kill('INT',  $_is_MSWin32 ? -$$ : -getpgrp()) if $_sig_no == 2;
-   kill('QUIT', $_is_MSWin32 ? -$$ : -getpgrp()) if $_sig_no == 3;
+
+   kill('PIPE', ($_is_MSWin32 ? -$$ : -getpgrp()), $main_proc_id)
+      if $_is_sigpipe;
+
+   kill('INT',  ($_is_MSWin32 ? -$$ : -getpgrp()), $main_proc_id)
+      if $_sig_no == 2;
+
+   kill('QUIT', ($_is_MSWin32 ? -$$ : -getpgrp()), $main_proc_id)
+      if $_sig_no == 3;
 
    return $_exit_status;
 }
