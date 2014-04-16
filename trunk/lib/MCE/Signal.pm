@@ -224,7 +224,7 @@ sub sys_cmd {
       ## ----------------------------------------------------------------------
 
       ## For the main thread / manager process.
-      if ($$ == $main_proc_id || (! $_is_MSWin32 && $$ == getpgrp())) {
+      if ($$ == $main_proc_id) {
 
          if (++$_handler_cnt == 1 && ! -e "$tmp_dir/stopped") {
             open my $_FH, "> $tmp_dir/stopped"; close $_FH;
