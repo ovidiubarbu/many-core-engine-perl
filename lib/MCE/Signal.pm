@@ -170,20 +170,11 @@ sub sys_cmd {
    shift @_ if (defined $_[0] && $_[0] eq 'MCE::Signal');
    _croak("MCE::Signal::sys_cmd: no arguments were specified") if (@_ == 0);
 
-   my $_is_sigpipe = 0; my $_status;
-
-   {
-      local $SIG{PIPE} = sub { $_is_sigpipe = 1 };
-      $_status = system(@_);
-   }
-
+   my $_status = system(@_);
    my $_sig_no = $_status & 127;
    my $_exit_status = $_status >> 8;
 
-   ## Kill process group if command caught SIGPIPE, SIGINT or SIGQUIT.
-
-   kill('PIPE', ($_is_MSWin32 ? -$$ : -getpgrp()), $main_proc_id)
-      if $_is_sigpipe;
+   ## Kill the process group if command caught SIGINT or SIGQUIT.
 
    kill('INT',  ($_is_MSWin32 ? -$$ : -getpgrp()), $main_proc_id)
       if $_sig_no == 2;
@@ -232,8 +223,8 @@ sub sys_cmd {
 
       ## ----------------------------------------------------------------------
 
-      ## For main thread / parent process.
-      if ($$ == $main_proc_id) {
+      ## For the main thread / manager process.
+      if ($$ == $main_proc_id || (! $_is_MSWin32 && $$ == getpgrp())) {
 
          if (++$_handler_cnt == 1 && ! -e "$tmp_dir/stopped") {
             open my $_FH, "> $tmp_dir/stopped"; close $_FH;
