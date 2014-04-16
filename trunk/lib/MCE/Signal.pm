@@ -133,7 +133,7 @@ $SIG{TERM} = \&stop_and_exit;                          ## UNIX SIG 15
 ## the reaping of it's children, especially when running multiple MCEs
 ## simultaneously.
 ##
-$SIG{CHLD} = 'DEFAULT' if ($_is_MSWin32);
+$SIG{CHLD} = 'DEFAULT' unless ($_is_MSWin32);
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -273,7 +273,7 @@ sub sys_cmd {
                if ($_sig_name ne 'PIPE') {
                   select(undef, undef, undef, 0.066) for (1..3);
                } else {
-                  select(undef, undef, undef, 0.008);
+                  select(undef, undef, undef, 0.009) for (1..2);
                }
             }
 
@@ -527,7 +527,7 @@ Nothing is exported by default. Exportable are 1 variable and 2 subroutines.
 
 The system function in Perl ignores SIGNINT and SIGQUIT. These 2 signals are
 sent to the command being executed via system() but not back to the underlying
-Perl script. For this very reason, sys_cmd was added to MCE::Signal.
+Perl script. For this reason, sys_cmd was added to MCE::Signal.
 
  ## Execute command and return the actual exit status. The perl script
  ## is also signaled if command caught SIGINT or SIGQUIT.
