@@ -176,10 +176,10 @@ sub sys_cmd {
 
    ## Kill the process group if command caught SIGINT or SIGQUIT.
 
-   kill('INT',  ($_is_MSWin32 ? -$$ : -getpgrp()), $main_proc_id)
+   kill('INT',  $main_proc_id, ($_is_MSWin32 ? -$$ : -getpgrp()))
       if $_sig_no == 2;
 
-   kill('QUIT', ($_is_MSWin32 ? -$$ : -getpgrp()), $main_proc_id)
+   kill('QUIT', $main_proc_id, ($_is_MSWin32 ? -$$ : -getpgrp()))
       if $_sig_no == 3;
 
    return $_exit_status;
@@ -264,7 +264,7 @@ sub sys_cmd {
                if ($_sig_name ne 'PIPE') {
                   select(undef, undef, undef, 0.066) for (1..3);
                } else {
-                  select(undef, undef, undef, 0.009) for (1..2);
+                  select(undef, undef, undef, 0.011) for (1..2);
                }
             }
 
@@ -324,7 +324,7 @@ sub sys_cmd {
                local $@; eval '
                   open my $_FH, "> $tmp_dir/killed"; close $_FH;
                ';
-               kill('TERM', -$$, $main_proc_id);
+               kill('TERM', $main_proc_id, -$$);
             }
 
             ## Release lock.
