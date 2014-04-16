@@ -28,7 +28,9 @@ use open qw(:utf8 :std);
 ## - Once after fetching results from MCE->gather()
 
 ## Some Unicode characters from Basic Latin, Latin-1, and beyond.
-my @list = (qw(U Ö Å Ǣ Ȝ), "\N{INTERROBANG}");
+## my @list = (qw(U Ö Å Ǣ Ȝ), "\N{INTERROBANG}");
+
+my @list = qw(U Ö Å Ǣ Ȝ);
 
 print "0: for-loop: $_\n" for (@list);
 print "\n";
