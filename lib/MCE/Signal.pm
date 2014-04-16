@@ -303,7 +303,7 @@ sub sys_cmd {
             if ($_is_sig == 1) {
                print STDERR "\n" if ($_sig_name ne 'PIPE' && $_no_sigmsg == 0);
 
-               kill('KILL', $_is_MSWin32 ? -$$ : -getpgrp())
+               kill('KILL', ($_is_MSWin32 ? -$$ : -getpgrp()), $main_proc_id)
                   if ($_sig_name eq 'PIPE' || $_no_kill9 == 0);
             }
          }
