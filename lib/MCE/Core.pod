@@ -1325,23 +1325,26 @@ Below is shown with overriding the default for max_workers.
 
    MCE->shutdown();
 
-=item ->restart_worker ( $wid )
+=item ->restart_worker ( void )
 
 One can restart a worker who has died or exited. The job never ends below due
-to restarting each time. The same wid from the worker, which has exited, is
-used (recommended).
+to restarting each time. Recommended is to call $mce->exit() or MCE->exit()
+instead of the native exit() function for better handling, especially under
+the Windows environment.
+
+The $e->{wid} argument is no longer necessary starting with the 1.5 release.
 
    my $mce = MCE->new(
 
       on_post_exit => sub {
-         my ($self, $e) = @_;
+         my ($mce, $e) = @_;
          print "$e->{wid}: $e->{pid}: status $e->{status}: $e->{msg}";
-
-         MCE->restart_worker($e->{wid});
+       # MCE->restart_worker($e->{wid});  ## MCE-1.415 and below
+         MCE->restart_worker();           ## MCE-1.5 and above
       },
 
       user_begin => sub {
-         my $self = $_[0];
+         my ($mce, $task_id, $task_name) = @_;
          ## Not interested in die messages going to STDERR.
          ## The die handler calls MCE->exit(255, $_[0]).
          close STDERR;
@@ -1349,14 +1352,14 @@ used (recommended).
 
       user_tasks => [{
          max_workers => 5,
-         user_func   => sub {
-            my $self = $_[0]; sleep MCE->wid();
+         user_func => sub {
+            my $mce = $_[0]; sleep MCE->wid();
             MCE->exit(3, "exited from " . MCE->wid() . "\n");
          }
       },{
          max_workers => 4,
-         user_func   => sub {
-            my $self = $_[0]; sleep MCE->wid();
+         user_func => sub {
+            my $mce = $_[0]; sleep MCE->wid();
             die("died from " . MCE->wid() . "\n");
          }
       }]
