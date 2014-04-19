@@ -50,6 +50,8 @@ examples/matmult/strassen_07_t.pl
 examples/matmult/strassen_49_f.pl
 examples/matmult/strassen_49_t.pl
 examples/matmult/strassen_perl.pl
+examples/pipe1.pl
+examples/pipe2.pl
 examples/scaling_pings.pl
 examples/seq_demo.pl
 examples/tbray/README

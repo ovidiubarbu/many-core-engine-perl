@@ -1,6 +1,6 @@
 
 All the people reporting problems and fixes or additions. More specifically in
-alphabetical order by last name:
+alphabetical order by last name.
 
 ###############################################################################
  # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * #
@@ -27,6 +27,10 @@ Oliver Gorwits
   * Pointed me in the right direction for improving the logic for the die
     handler. Basically, eval { die 'this should not cause MCE to die' };
   * Changed INIT { ... } to sub import { ... } inside MCE.pm.
+
+Shawn Halpenny
+  For reporting an issue (bug RT#94706) with signal handling in MCE::Signal.
+  Also, thank you for tip on getpgrp().
 
 Philip Mabon
   For reporting on a couple issues with MCE in particular bug RT#92627.
