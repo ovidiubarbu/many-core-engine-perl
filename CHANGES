@@ -1,6 +1,29 @@
 
 Revision history for MCE
 
+1.512 Fri Apr 18 21:00:00 EST 2014
+
+  [BUG FIXES]
+
+  * Signal-handling update for MCE::Signal. Passing the -setpgrp option is not
+    necessary, even with Daemon::Control. Piping data into and out is better
+    supported with this release (\*STDIN). This resolves bug RT#94706.
+
+       cat infile | mce_script | head
+       mce_script < infile | head
+
+    Added Shawn Halpenny to the CREDITS file.
+
+  * The utf8.pl example now runs under the BSD 9.0 environment. This was
+    failing due to $^H{charnames} is not defined error. Removed the constant
+    from the list of unicode characters inside the script.
+
+  [ENHANCEMENTS]
+
+  * Added examples/pipe1.pl and pipe2.pl. These process STDIN or FILE in
+    parallel. Processing is via Perl for pipe1.pl, whereas an external
+    command for pipe2.pl.
+
 1.511 Fri Apr 04 22:30:00 EST 2014
 
   [BUG FIXES]
