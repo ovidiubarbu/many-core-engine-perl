@@ -57,10 +57,10 @@ DESCRIPTION
 
    The following options are available:
 
-   --RS=RECORD_SEPARATOR
+   --RS RECORD_SEPARATOR
           Input record separator              -- default: newline
 
-   --chunk-size=CHUNK_SIZE
+   --chunk-size CHUNK_SIZE
           Specify chunk size for MCE          -- default: auto
           Can also take a suffix; K/k (kilobytes) or M/m (megabytes).
 
@@ -68,7 +68,7 @@ DESCRIPTION
           Greater than 8192 is the number of bytes. The maximum
           is 24m by MCE internally.
 
-   --max-workers=MAX_WORKERS
+   --max-workers MAX_WORKERS
           Specify number of workers for MCE   -- default: 8
 
    --parallel-io
