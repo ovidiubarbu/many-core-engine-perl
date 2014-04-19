@@ -183,11 +183,11 @@ $cmd_name = shift @ARGV;
    }
 }
 
-if (!defined $cmd_path) {
+if (! defined $cmd_path) {
    print STDERR "$prog_name: $cmd_name: command not found\n";
    exit 2;
 }
-if (-e $cmd_path && ! -x $cmd_path) {
+if (! $is_MSWin32 && ! -x $cmd_path) {
    print STDERR "$prog_name: $cmd_name: command is not executable\n";
    exit 2;
 }
