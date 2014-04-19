@@ -848,7 +848,7 @@ sub restart_worker {
       _dispatch_child($self, $_wid, $_task, $_task_id, $_task_wid, $_params);
    }
 
-   select(undef, undef, undef, 0.002);
+   select(undef, undef, undef, 0.002) if ($_is_WinEnv);
 
    return;
 }
@@ -1479,15 +1479,6 @@ sub exit {
    my $_task_id    = $self->{_task_id};
    my $_sess_dir   = $self->{_sess_dir};
 
-   if (!$_lock_chn || $_chn != 1) {
-      if (defined $_DAT_LOCK) {
-         close $_DAT_LOCK; undef $_DAT_LOCK;
-         select(undef, undef, undef, 0.002);
-      }
-      open $_DAT_LOCK, '+>>:raw:stdio', "$_sess_dir/_dat.lock.1"
-         or die "(W) open error $_sess_dir/_dat.lock.1: $!\n";
-   }
-
    unless ($self->{_exiting}) {
       $self->{_exiting} = 1;
 
@@ -1496,7 +1487,7 @@ sub exit {
 
       $_exit_id =~ s/[\r\n][\r\n]*/ /mg;
 
-      flock $_DAT_LOCK, LOCK_EX;
+      flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
       select(undef, undef, undef, 0.02) if ($_is_cygwin);
 
       print $_DAT_W_SOCK OUTPUT_W_EXT . $LF . $_chn . $LF;
@@ -1505,13 +1496,16 @@ sub exit {
          $_exit_status . $LF . $_exit_id . $LF . $_len . $LF . $_exit_msg
       ;
 
-      flock $_DAT_LOCK, LOCK_UN;
+      flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
    }
 
    ## Exit thread/child process.
    $SIG{__DIE__} = $SIG{__WARN__} = sub { };
 
-   close $_DAT_LOCK; undef $_DAT_LOCK;
+   if ($_lock_chn) {
+      close $_DAT_LOCK; undef $_DAT_LOCK;
+   }
+
    close $_COM_LOCK; undef $_COM_LOCK;
 
    select STDERR; $| = 1;
