@@ -848,7 +848,7 @@ sub restart_worker {
       _dispatch_child($self, $_wid, $_task, $_task_id, $_task_wid, $_params);
    }
 
-   select(undef, undef, undef, 0.002) if ($_is_WinEnv);
+   select(undef, undef, undef, 0.001);
 
    return;
 }
@@ -1482,13 +1482,18 @@ sub exit {
    unless ($self->{_exiting}) {
       $self->{_exiting} = 1;
 
+      local $\ = undef if (defined $\);
       my $_len = length $_exit_msg;
-      local $\ = undef;
 
       $_exit_id =~ s/[\r\n][\r\n]*/ /mg;
 
+      open my $_DAE_LOCK, '+>>:raw:stdio', "$_sess_dir/_dat.lock.e"
+         or die "(W) open error $_sess_dir/_dat.lock.e: $!\n";
+
+      flock $_DAE_LOCK, LOCK_EX;
+      select(undef, undef, undef, 0.05) if ($_is_WinEnv);
+
       flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
-      select(undef, undef, undef, 0.02) if ($_is_cygwin);
 
       print $_DAT_W_SOCK OUTPUT_W_EXT . $LF . $_chn . $LF;
       print $_DAU_W_SOCK
@@ -1497,6 +1502,9 @@ sub exit {
       ;
 
       flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
+      flock $_DAE_LOCK, LOCK_UN;
+
+      close $_DAE_LOCK; undef $_DAE_LOCK;
    }
 
    ## Exit thread/child process.
