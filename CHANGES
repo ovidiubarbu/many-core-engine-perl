@@ -1,6 +1,18 @@
 
 Revision history for MCE
 
+1.513 Sat Apr 19 20:30:00 EST 2014
+
+  [BUG FIXES]
+
+  * Added fix for bug RT#94869 -- crash when restarting workers with 9+
+    workers. Updated the perldoc for restart_worker in MCE::Core.pod.
+
+  [ENHANCEMENTS]
+
+  * Replaced $self with $mce in MCE::/Core.pod to be consistent with
+    examples described in MCE::Examples.pod.
+
 1.512 Fri Apr 18 21:00:00 EST 2014
 
   [BUG FIXES]

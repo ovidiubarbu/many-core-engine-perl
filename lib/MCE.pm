@@ -18,7 +18,7 @@ use Time::HiRes qw( time );
 use MCE::Signal;
 use bytes;
 
-our $VERSION = '1.512'; $VERSION = eval $VERSION;
+our $VERSION = '1.513'; $VERSION = eval $VERSION;
 
 our (%_valid_fields_new, %_params_allowed_args, %_valid_fields_task);
 our ($_is_cygwin, $_is_MSWin32, $_is_WinEnv);
@@ -1313,10 +1313,11 @@ sub shutdown {
 
    ## Remove the session directory.
    if (defined $_sess_dir) {
-      unlink "$_sess_dir/_dat.lock.1";
+      unlink "$_sess_dir/_dat.lock.e"
+         if (-e "$_sess_dir/_dat.lock.e");
 
       if ($_lock_chn) {
-         unlink "$_sess_dir/_dat.lock.$_" for (2 .. $_data_channels);
+         unlink "$_sess_dir/_dat.lock.$_" for (1 .. $_data_channels);
       }
       unlink "$_sess_dir/_com.lock";
       rmdir  "$_sess_dir";

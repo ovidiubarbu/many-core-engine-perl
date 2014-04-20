@@ -137,6 +137,8 @@ my $parallel_io  = 0;
    }
 }
 
+usage() if (@ARGV > 1);
+
 my $input = (defined $ARGV[0]) ? $ARGV[0] : \*STDIN;
 
 if (ref $input eq '') {
