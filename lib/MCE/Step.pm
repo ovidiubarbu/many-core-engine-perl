@@ -612,7 +612,7 @@ receive the $mce instance as the very first argument.
 
 The tasks below run in parallel, and each with multiple workers as well.
 One may copy this code snippet and add MCE->task_wid or MCE->wid to the
-output. Remember that max_workers can take an anonymous array for specifing
+output. Remember that max_workers can take an anonymous array for specifying
 max_workers individually per each task block, similarly to task_name in the
 previous section.
 
