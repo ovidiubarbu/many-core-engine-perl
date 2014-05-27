@@ -34,7 +34,7 @@ WriteMakefile(
    (($ExtUtils::MakeMaker::VERSION lt '6.25') ?
       (PL_FILES => { }) : ()),
 
-   (($ExtUtils::MakeMaker::VERSION ge '6.30') ?
+   (($ExtUtils::MakeMaker::VERSION ge '6.31') ?
       (LICENSE => 'perl') : ()),
 
    (($ExtUtils::MakeMaker::VERSION ge '6.46') ?
@@ -51,9 +51,6 @@ WriteMakefile(
             'file' => [
                'bin/mce_grep'
             ]
-         },
-         requires => {
-            'perl' => 5.008
          },
          resources => {
             'homepage'   => 'http://code.google.com/p/many-core-engine-perl/',
@@ -139,6 +136,9 @@ WriteMakefile(
             }
          }
       }) : ()),
+
+   (($ExtUtils::MakeMaker::VERSION ge '6.48') ?
+      (MIN_PERL_VERSION => 5.008) : ()),
 
    INSTALLDIRS => (($] < 5.011) ? 'perl' : 'site')
 );
