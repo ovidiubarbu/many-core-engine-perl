@@ -9,6 +9,16 @@ package MCE;
 use strict;
 use warnings;
 
+BEGIN {
+   ## Forking is emulated under the Windows enviornment (excluding Cygwin).
+   ## MCE 1.514+ will load the threads modules by default for Windows only.
+   ## Folks may specify use_threads => 0 if threads are not desired.
+   if ($^O eq 'MSWin32' && not defined $threads::VERSION) {
+      local $@; local $SIG{__DIE__} = \&_NOOP;
+      eval 'use threads';
+   }
+}
+
 use Fcntl qw( :flock O_RDONLY );
 use Socket qw( :crlf PF_UNIX PF_UNSPEC SOCK_STREAM );
 use Symbol qw( qualify_to_ref );
@@ -164,9 +174,9 @@ sub import {
       _croak("MCE::import: '$_arg' is not a valid module argument");
    }
 
-   ## This module does not load the threads module. Please include your
-   ## threading library of choice prir to including MCE library. This is
-   ## only a requirement if you're wanting to use threads versus forking.
+   ## Please include your threading library of choice prior to including
+   ## the MCE library. This is only a requirement if wanting to use threads
+   ## versus forking.
 
    unless (defined $_has_threads) {
       if (defined $threads::VERSION) {
