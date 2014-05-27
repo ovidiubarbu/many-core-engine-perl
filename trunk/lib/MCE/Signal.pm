@@ -294,8 +294,12 @@ sub sys_cmd {
             if ($_is_sig == 1) {
                print STDERR "\n" if ($_sig_name ne 'PIPE' && $_no_sigmsg == 0);
 
-               kill('KILL', ($_is_MSWin32 ? -$$ : -getpgrp()), $main_proc_id)
-                  if ($_sig_name eq 'PIPE' || $_no_kill9 == 0);
+               if ($_no_kill9 == 1 || $_sig_name eq 'PIPE') {
+                  kill('TERM', $_is_MSWin32 ? -$$ : -getpgrp(), $main_proc_id);
+               }
+               else {
+                  kill('KILL', $_is_MSWin32 ? -$$ : -getpgrp(), $main_proc_id);
+               }
             }
          }
       }
@@ -340,7 +344,9 @@ sub sys_cmd {
          select(undef, undef, undef, 0.066) for (1..6);
       }
 
-      threads->exit($_exit_status) if ($has_threads && threads->can('exit'));
+      threads->exit($_exit_status)
+         if ($has_threads && threads->can('exit'));
+
       CORE::exit($_exit_status);
    }
 }
