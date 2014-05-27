@@ -58,9 +58,9 @@ sub get_ncpu {
 
       /aix/i && do {
        # my @output = `lsdev -Cc processor -S Available 2>/dev/null`;
-       # $ncpu = scalar @output if @output;
          my $output = `bindprocessor -q 2>/dev/null`; $output =~ s/^.*:\s+//;
-         $ncpu = scalar split(/ /, $output) if $output =~ /^\d/;
+         my @output = split(/ /, $output) if $output =~ /^\d/;
+         $ncpu = scalar @output if @output;
          last OS_CHECK;
       };
 
