@@ -14,6 +14,7 @@ use Socket qw( :crlf PF_UNIX PF_UNSPEC SOCK_STREAM );
 use Symbol qw( qualify_to_ref );
 use Storable qw( );
 
+use Scalar::Util qw( looks_like_number );
 use Time::HiRes qw( time );
 use MCE::Signal;
 use bytes;
