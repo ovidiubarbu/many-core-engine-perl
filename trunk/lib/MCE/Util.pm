@@ -58,7 +58,12 @@ sub get_ncpu {
 
       /aix/i && do {
          my @output = `pmcycles -m 2>/dev/null`;
-         $ncpu = scalar @output if @output;
+         if (@output) {
+            $ncpu = scalar @output;
+         } else {
+            @output = `lsdev -Cc processor -S Available 2>/dev/null`;
+            $ncpu = scalar @output if @output;
+         }
          last OS_CHECK;
       };
 
