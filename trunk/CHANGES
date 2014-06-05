@@ -1,6 +1,39 @@
 
 Revision history for MCE
 
+1.514 Thu Jun 05 09:00:00 EST 2014
+
+  [BUG FIXES]
+
+  * Fixed typo in MCE::Step POD (RT#95250) (Florian Schlich).
+  * Updated MCE::Util's get_ncpu function for AIX (Dana Jacobsen).
+  * Do not send a KILL signal after receiving a SIGPIPE.
+  * Fixed issue with Makefile.PL on defining the minimum Perl version.
+
+  * Use Scalar::Util (looks_like_number) for validation logic. The regex
+    previously were insufficient for large numbers containing scientific
+    notation. This impacted the sequence option in MCE.
+
+  [ENHANCEMENTS]
+
+  * The mce-sandbox demo has been released on Github demonstrating
+    Perl + MCE + Inline::C. The theme is Prime Numbers. This journey
+    which began 2 years ago has been completed. There is also the
+    mce-sort exercise demonstrating Perl + MCE + External C.
+
+       https://github.com/marioroy/mce-sandbox (is thread-safe)
+       https://github.com/marioroy/mce-sort (not thread-safe)
+
+  * A hard decision had to made for MCE, particularly Perl under Windows
+    excluding Cygwin. MCE will now load the threads module automatically
+    for Windows only. Folks may specify use_threads => 0 if threads is
+    not desired.
+
+    The reason for this is from seeing Math::Prime::Util crashing once
+    workers exit. The same is true without MCE and forking a child process.
+    Threads does not exhibit this behavior. It is a hard problem to solve.
+    Why not default to threads for Windows since forking is emulated.
+
 1.513 Sat Apr 19 20:30:00 EST 2014
 
   [BUG FIXES]
