@@ -752,11 +752,12 @@ sub user_func_list {
    my $err_file = MCE->sess_dir() .'/'. $chunk_id . '.err';
 
    $$chunk_ref =~ s/\n/ /mg;
+   local $?;
 
    if ($is_MSWin32) {
       $err_file =~ s{/}{\\\\}g;
       $output = `$cmd_path @args $$chunk_ref 2> $err_file`;
-      $status = ${^CHILD_ERROR_NATIVE} >> 8;
+      $status = $? >> 8;
    }
    else {
       local *STDERR_SAVE;
@@ -766,7 +767,7 @@ sub user_func_list {
       open STDERR, '>&' . fileno $err_fh;
 
       $output = `$cmd_path @args $$chunk_ref`;
-      $status = ${^CHILD_ERROR_NATIVE} >> 8;
+      $status = $? >> 8;
 
       open  STDERR, '>&STDERR_SAVE';
       close $err_fh;
