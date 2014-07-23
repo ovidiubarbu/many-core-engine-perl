@@ -36,7 +36,12 @@
 ##   --chunk-level={auto|file|list} option. For large files, choose file.
 ##
 ## ============================================================================
-## Created by Mario Roy, 2014-01-21, v1.008.
+## 2014-01-21  v1.008
+##   Created by Mario Roy.
+## 2014-07-23  v1.009
+##   ${^CHILD_ERROR_NATIVE} is not defined in Perl 5.8.x. Use $? instead.
+##   Compute chunk_level => 'auto' to use 'file' when reading STDIN.
+##   Set chunk_size to 8M when not specified (from 4M previously).
 ##
 ###############################################################################
 
@@ -91,7 +96,7 @@ Options for Many-core Engine:
                               chunk at [file] or [list] level
 
   --chunk-size=NUM[KM]      override chunk size (set at limit if under or over)
-                              [file] default: 4M  minimum: 200K  maximum: 20M
+                              [file] default: 8M  minimum: 200K  maximum: 20M
                               [list] default: 12  minimum: 1     maximum: 60
 
   --lang=LOCALE             override locale
@@ -879,7 +884,7 @@ my $gather_func;
 
 if ($chunk_level eq 'auto') {
    if (@files == 0 || $files[0] eq '-') {
-      $chunk_level = $is_MSWin32 ? 'file' : 'list';
+      $chunk_level = 'file';
    }
    else {
       if (-f $files[0]) {
@@ -906,7 +911,7 @@ if ($chunk_level eq 'list') {
    );
 }
 else {
-   $chunk_size =  4_194_304 unless defined $chunk_size;   ## 4M
+   $chunk_size =  8_388_608 unless defined $chunk_size;   ## 8M
    $chunk_size = 20_971_520 if $chunk_size > 20_971_520;  ## 20M
    $chunk_size =    204_800 if $chunk_size <    204_800;  ## 200K
 
