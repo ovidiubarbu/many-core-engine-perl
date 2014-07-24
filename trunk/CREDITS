@@ -36,11 +36,19 @@ Dana Jacobsen
   For reporting an issue with get_ncpu on AIX. In addition, suggesting
   various solutions.
 
+Stephan Kulow
+  For making an OpenSUSE package for MCE.
+  https://build.opensuse.org/package/show/devel:languages:perl:CPAN-M/perl-MCE
+
+Henry Lu
+  For listening during our walks on numerous occasions while I chatted away
+  about the work done to MCE during my off-time hours including vacations.
+
 Philip Mabon
   For reporting on a couple issues with MCE in particular bug RT#92627.
 
 David Mertens
-  * I am thankful for the tip on making PDL + MCE a possiblity. Workers were
+  * I am thankful for the tip on making PDL + MCE a possibility. Workers were
     crashing during exiting. Adding "sub PDL::CLONE_SKIP { 1 }" inside MCE.pm
     solved this issue entirely.
   * In addition, for pointers on how to effectively use PDL from his example
@@ -48,17 +56,31 @@ David Mertens
     https://gist.github.com/run4flat/4942132.
 
 Joseph Ogulin
-  For providing me the initial perl-MCE.spec file.
+  For providing the initial perl-MCE.spec file.
+
+Jillian Rowe
+  For reporting on IO::???? file handles not working with MCE. Fixed in 1.515.
+
+Sylvia Roy
+  For driving on long trips while I worked in the passenger seat further
+  developing and testing MCE. Not to forget, locally around town as well.
+
+Tom Sasser
+  For reporting bin/mce_grep failing with Perl 5.8.x.
 
 Adam Sjøgren
   For reporting on running /usr/bin/time mce_script.pl and pressing Ctrl-C
-  failing. The default behaviour in MCE::Signal is to call setpgrp. MCE 1.403
+  failing. The default behavior in MCE::Signal is to call setpgrp. MCE 1.403
   adds a new option to MCE::Signal to not call setpgrp. This also gives the
   developer finer control as to where setpgrp should be called, if ever needed,
   such as in the child process and not the manager process.
   
     use MCE::Signal qw(-no_setpgrp);
     use MCE;
+
+Florian Schlichting
+  For making a Debian package for MCE.
+  http://pkgs.org/search/libmce-perl
 
 Marcus Smith
   For reporting a problem with MCE including a sample script demonstrating
@@ -81,6 +103,6 @@ Jeffrey Ryan Thalhammer
 
 Thank you.
 
-Regards,
+Warm regards,
 Mario
 
