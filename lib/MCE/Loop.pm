@@ -134,7 +134,7 @@ sub mce_loop_f (&@) {
       _croak("$_tag: '$_file' is not a plain file") unless (-f $_file);
       $_params->{_file} = $_file;
    }
-   elsif (ref $_file eq 'GLOB' || ref $_file eq 'SCALAR') {
+   elsif (ref $_file eq 'GLOB' || ref $_file eq 'SCALAR' || ref($_file) =~ /^IO::/) {
       $_params->{_file} = $_file;
    }
    else {
@@ -211,7 +211,7 @@ sub mce_loop (&@) {
 
    my $_input_data; my $_max_workers = $MAX_WORKERS; my $_r = ref $_[0];
 
-   if ($_r eq 'ARRAY' || $_r eq 'CODE' || $_r eq 'GLOB' || $_r eq 'SCALAR') {
+   if ($_r eq 'ARRAY' || $_r eq 'CODE' || $_r eq 'GLOB' || $_r eq 'SCALAR' || $_r =~ /^IO::/) {
       $_input_data = shift;
    }
 
