@@ -192,7 +192,7 @@ sub _parse_chunk_size {
          $_is_file = 1;
       }
       elsif (defined $_input_data) {
-         if (ref $_input_data eq 'GLOB') {
+         if (ref $_input_data eq 'GLOB' || ref($_input_data) =~ /^IO::/) {
             $_is_file = 1; $_size = 0; $_chunk_size = 245760;
          }
          elsif (ref $_input_data eq 'SCALAR') {
