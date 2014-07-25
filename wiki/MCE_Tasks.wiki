@@ -1,7 +1,7 @@
 #labels Featured
 = MCE Tasks =
 
-Update June 5, 2014
+Update July 25, 2014
 
 This example demonstrates MCE::Flow, MCE::Queue, and MCE->gather.
 
