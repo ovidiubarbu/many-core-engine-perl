@@ -1,11 +1,42 @@
 
 Revision history for MCE
 
+1.515 Thu Jul 24 23:30:00 EST 2014
+
+  [BUG FIXES]
+
+  * bin/mce_grep: ${^CHILD_ERROR_NATIVE} is not defined in Perl 5.8.x.
+    Changed to $?.
+
+  [ENHANCEMENTS]
+
+  * Tweaked bin/mce_grep. Compute chunk_level => 'auto' to use 'file' when
+    reading STDIN. Set chunk_size to 8M when not specified (4M previously).
+
+  * Added the following names to CREDITS.
+
+       Stephan Kulow       ; for making the OpenSUSE MCE package
+       Henry Lu            ; for listening while I chatted away about MCE
+       Jillian Rowe        ; for reporting IO::???? failing as input_data
+       Sylvia Roy          ; for driving while I worked in the passenger seat
+       Tom Sasser          ; for reporting bin/mce_grep failing with Perl 5.8.x
+       Florian Schlichting ; for making the Debian MCE package
+
+  [NEW FEATURES]
+
+  * Added support for IO::???? file handles as valid input_data such as
+    IO::File, IO:Uncompress:Gunzip, etc.
+
+    Modified SYNTAX section for INPUT_DATA in MCE::Core.pod.
+
+       input_data => $fh,   ## new IO::File "file", "r"
+       input_data => $fh,   ## new IO::Uncompress::Gunzip "file.gz"
+
 1.514 Thu Jun 05 09:00:00 EST 2014
 
   [BUG FIXES]
 
-  * Fixed typo in MCE::Step POD (RT#95250) (Florian Schlich).
+  * Fixed typo in MCE::Step POD (RT#95250) (Florian Schlichting).
   * Updated MCE::Util's get_ncpu function for AIX (Dana Jacobsen).
   * Do not send a KILL signal after receiving a SIGPIPE.
   * Fixed issue with Makefile.PL on defining the minimum Perl version.
