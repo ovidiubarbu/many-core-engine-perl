@@ -27,7 +27,7 @@
 ##
 ## Which to choose (examples/egrep.pl or bin/mce_grep).
 ##
-##   Examples/egrep.pl is a pure Perl implementation with less options.
+##   Examples/egrep.pl is a pure Perl implementation with fewer options.
 ##   Bin/mce_grep is a wrapper script for the relevant binary.
 ##
 ##   The wrapper script is good for expensive pattern matching -- especially

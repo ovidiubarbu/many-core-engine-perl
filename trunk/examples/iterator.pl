@@ -72,7 +72,7 @@ sub input_iterator {
 
 ## Preserves output order. The external variables (%result_n, %result_d) are
 ## used for temporary storage for out-of-order results. The external variable
-## ($order_id) is incremented after printing to STDOUT in an orderly fashion.
+## ($order_id) is incremented after printing to STDOUT in orderly fashion.
 ##
 ## The external variables keep their state across successive calls to the
 ## closure.

@@ -130,7 +130,7 @@ $SIG{QUIT} = \&stop_and_exit;                          ## UNIX SIG  3
 $SIG{TERM} = \&stop_and_exit;                          ## UNIX SIG 15
 
 ## For a more reliable MCE, $SIG{CHLD} is set to 'DEFAULT'. MCE handles
-## the reaping of it's children, especially when running multiple MCEs
+## the reaping of its children, especially when running multiple MCEs
 ## simultaneously.
 ##
 $SIG{CHLD} = 'DEFAULT' unless ($_is_MSWin32);

@@ -53,8 +53,8 @@ sub user_begin {
    ## without the "interval" option.
 
    ## Yielding is beneficial inside a user_begin block. A use case
-   ## is wanting to stagger database connections among workers in
-   ## order to not impact the DB server.
+   ## is staggering database connections among workers in order
+   ## to not impact the DB server.
 
    MCE->yield;
 

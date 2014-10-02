@@ -453,7 +453,7 @@ It's trivial to parallelize with mce_stream as shown below.
         sub { $_ * 4 }, sub { $_ * 3 }, sub { $_ * 2 }, 1..10000;
 
 However, let's have MCE::Flow compute the same in parallel. MCE::Queue will be
-used for data flow among the sub-tasks. Also take a look at L<MCE::Step> for
+used for data flow among the sub-tasks. Also, take a look at L<MCE::Step> for
 transparent use of MCE::Queue.
 
    use MCE::Flow;
@@ -837,7 +837,7 @@ Iterators are described under "SYNTAX for INPUT_DATA" at L<MCE::Core>.
 
 =back
 
-The sequence engine can compute the begin and end items only, for the chunk,
+The sequence engine can compute the 'begin' and 'end' items only, for the chunk,
 leaving out the items in between with the bounds_only option (boundaries only).
 This option applies to sequence and has no effect when chunk_size equals 1.
 
@@ -992,7 +992,7 @@ control. And here we go... but this time around in chunking style... :)
 The two options passed to MCE::Flow are optional as they default to 'auto'. The
 beauty of chunking data is that IPC occurs once per chunk versus once per item.
 Although IPC is quite fast, chunking becomes beneficial the larger the data
-becomes. Hence the reason for the demonstration below.
+becomes. Hence, the reason for the demonstration below.
 
    use MCE::Flow chunk_size => 'auto', max_workers => 'auto';
 

@@ -71,7 +71,7 @@ parallelize {
 my $end = time();
  
 #########################
-# Print out the results #
+# Print results #
 #########################
  
 printf "\n## $prog_name $tam: compute time: %0.03f secs\n\n", $end - $start;

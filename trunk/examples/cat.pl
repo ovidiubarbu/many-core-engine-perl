@@ -3,7 +3,7 @@
 ## ----------------------------------------------------------------------------
 ## Cat script similar to the cat binary.
 ##
-## The logic below only supports -n -u options. The main focus is demonstrating
+## The logic below only supports -n -u options. The focus is demonstrating
 ## Many-core Engine for Perl.
 ##
 ## This script was created to show how order can be preserved even though there

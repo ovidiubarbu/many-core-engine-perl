@@ -37,7 +37,7 @@ my $start = time();
 my $c = $a x $b;                         ## Performs matrix multiplication
 my $end = time();
 
-## Print out the results -- use same pairs to match David Mertens' output.
+## Print results -- use same pairs to match David Mertens' output.
 printf "\n## $prog_name $tam: compute time: %0.03f secs\n\n", $end - $start;
 
 for my $pair ([0, 0], [324, 5], [42, 172], [$rows-1, $rows-1]) {

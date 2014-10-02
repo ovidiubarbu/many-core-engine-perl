@@ -20,7 +20,7 @@
     Examples will attempt to use /dev/shm under Linux for the raw MMAP
     files. Try the thread variant if /dev/shm is not writable for you.
 
-    It's not recommended to run the *_[df].pl examples on an Oracle server
+    Not recommended is to run the *_[df].pl examples on an Oracle server
     making use of /dev/shm. Check the available size of /dev/shm before
     running.
 
@@ -248,8 +248,8 @@
     faster processing time. This is my favorite of the bunch. The same can
     be seen on the 32-way box.
 
-    Notice the compute time with script time. There's a larger gap when
-    using threads (*_t) versus forking (*_f).
+    Compare compute time with script time. There's a larger gap when using
+    threads (*_t) versus forking (*_f).
 
 
 ###############################################################################
@@ -259,8 +259,8 @@
  :: This system contains 2x Intel E5-2660 processors with 128GB 1600 MHz RAM.
     The OS is CentOS 6.3, Perl 5.10.1, perl-PDL-2.4.7-1 installed via yum.
 
- :: Performance mode was enabled prior to testing on this box. This has little
-    effect on larger matrix sizes though, but is helpful for 1024x1024 results.
+ :: Performance mode was enabled prior to testing. This has little effect on
+    larger matrix sizes though, but is helpful for 1024x1024 results.
     The following was run as root to disable CPU frequency scaling.
 
        # /etc/init.d/cpuspeed stop
@@ -350,8 +350,8 @@
     (0,0) 1.50092500906803e+15  (8191,8191) 1.84482444489628e+19
 
  Observation
-    The strassen results are quite fast on this box and breaking 30 seconds
-    for compute time -- even with strassen_49_f.
+    The strassen results are quite fast and breaking 30 seconds for compute
+    time -- even with strassen_49_f.
 
     However, something seems wrong when processing a matrix size of 8192 using
     PDL::IO::FastRaw. Both matmult_mce_d and matmult_mce_f are seen taking
@@ -364,7 +364,7 @@
 
        $self->{r} = mapfraw("$tmp_dir/b")->copy;
 
-    Readfraw also solves the problem. However that wants a whopping 50.4 GB
+    Readfraw also solves the problem. Although, that wants a whopping 50.4 GB
     of additional memory which seems quite high.
 
        $self->{r} = readfraw("$tmp_dir/b");

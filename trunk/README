@@ -81,7 +81,7 @@ DEPENDENCIES
 
  This module requires Perl 5.8.0 or later.
 
-    By default MCE does forking (spawns child processes).
+    By default, MCE does forking (spawns child processes).
     MCE also supports threads via 2 threading libraries.
 
     The use of threads in MCE requires that you include threads support

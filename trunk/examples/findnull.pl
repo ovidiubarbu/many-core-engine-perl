@@ -12,7 +12,7 @@
 ## MCE does very well and runs much faster than the binary egrep can.
 ## Slurp IO with MCE is extremely fast. So, no matter how many workers
 ## you give to the problem, only a single worker slurps the next chunk
-## at an given time. You get "sustained" sequential IO plus the workers
+## at a given time. You get "sustained" sequential IO plus the workers
 ## for parallel processing.
 ##
 ## usage: findnull.pl [-l] datafile
@@ -167,9 +167,9 @@ sub user_func {
       1 while (<$_MEM_FH>);
    }
 
-   ## All workers have to report the last line count read irregardless 
-   ## on whether or not matching lines were found. The reason is that
-   ## other workers may find matching lines and the callback function
+   ## All workers report the last line count read irregardless on
+   ## whether matching lines were found. The reason is that other
+   ## workers may find matching lines and the callback function
    ## needs to accurately report line numbers.
 
    $line_count = $.;

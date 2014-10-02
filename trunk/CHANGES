@@ -17,14 +17,14 @@ Revision history for MCE
 
        Stephan Kulow       ; for making the OpenSUSE MCE package
        Henry Lu            ; for listening while I chatted away about MCE
-       Jillian Rowe        ; for reporting IO::???? failing as input_data
+       Jillian Rowe        ; for reporting IO::File failing as input_data
        Sylvia Roy          ; for driving while I worked in the passenger seat
        Tom Sasser          ; for reporting bin/mce_grep failing with Perl 5.8.x
        Florian Schlichting ; for making the Debian MCE package
 
   [NEW FEATURES]
 
-  * Added support for IO::???? file handles as valid input_data such as
+  * Added support for IO::File handles as valid input_data such as
     IO::File, IO:Uncompress:Gunzip, etc.
 
     Modified SYNTAX section for INPUT_DATA in MCE::Core.pod.
@@ -56,7 +56,7 @@ Revision history for MCE
        https://github.com/marioroy/mce-sort (not thread-safe)
 
   * A hard decision had to made for MCE, particularly Perl under Windows
-    excluding Cygwin. MCE will now load the threads module automatically
+    excluding Cygwin. MCE will now load the 'threads' module automatically
     for Windows only. Folks may specify use_threads => 0 if threads is
     not desired.
 
@@ -156,7 +156,7 @@ Revision history for MCE
   * Refactored the fix applied in 1.508 for addressing bug #92627.
 
   * MCE, for the most part, has been completed. This release touches up on
-    many examples under the examples directory.
+    many examples under the 'examples' directory.
 
   * Brought the MCE::Examples Perl documentation up to date.
     Inlined  MCE::Loop snippets under the chunking sections.
@@ -169,9 +169,9 @@ Revision history for MCE
 
   * Applied fix for bug #92627 submitted by Philip Mabon. MCE scripts may
     exit with a non zero error code due to leaving workers up thereby
-    having MCE performing the shutdown in it's END block.
+    having MCE performing the shut down in its END block.
 
-    For folks running on an older release, the workaround is to shutdown
+    For folks running on an older release, the workaround is to shut down
     workers prior to exiting.
 
 1.507 Fri Jan 30 23:00:00 EST 2014
@@ -259,7 +259,7 @@ Revision history for MCE
     callback function ended up as a blank value "". Both "" and undef are
     now properly captured and sent back to the worker process.
 
-  * Added an if statement inside the abort method.
+  * Added an if statement inside the 'abort' method.
   * Removed an old unlink _store.db statement (old code left behind).
   * Removed an unused _next variable inside Request.pm.
 
@@ -313,7 +313,8 @@ Revision history for MCE
 
     Btw, bin/mce_grep is optional and therefore not installed by default
     when running make install for the MCE module. Simply copy mce_grep as
-    mce_agrep.pl for Windows. The .pl is optional for other environments.
+    mce_agrep.pl for Windows. The '.pl' suffix is optional for other
+    environments.
 
 1.504 Tue Oct 29 16:00:00 EST 2013
 
@@ -334,7 +335,7 @@ Revision history for MCE
     STDERR and STDOUT prior to workers exiting. The proper fix intended
     is to flush (not close) the handles. Closing them was not the thing
     to do in the first place due to possibly needed by the END block or
-    the WARN/DIE handlers initiated from inside the END block.
+    WARN/DIE handlers initiated from inside the END block.
 
   [ENHANCEMENTS]
 
@@ -562,8 +563,7 @@ Revision history for MCE
     take the upstream bug fixes and apply them to the 1.4 base.
 
     Re-factored documentation by making use of the full 78 character
-    width per line. In addition tidbits on the new features mentioned
-    above.
+    width per line.
 
   * Updated the main README file under the top level dir.
 
@@ -623,7 +623,7 @@ Revision history for MCE
 
   * Added strassen_pdl_t.pl in the event folks cannot make use of /dev/shm
     used by the strassen_pdl_s.pl example.
-  * Optimized the send method -- workers process immediately after receiving
+  * Optimized the 'send' method -- workers process immediately after receiving
     data. Updated run times in README for the strassen examples.
   * MCE no longer calls setpgrp by default as of MCE 1.405. There is only
     one reason to call setpgrp, but many reasons not to. The sole reason
@@ -656,7 +656,7 @@ Revision history for MCE
     Ctrl-C does not respond when running /usr/bin/time mce_script.pl
   * Added undef $buffer in a couple of places within MCE.pm
   * Added David Mertens and Adam Sjøgren to CREDITS
-  * The send method now checks if sending > total workers after spawning
+  * The 'send' method now checks if sending > total workers after spawning
     not before
 
 1.402 Thr Feb 14 07:30:00 EST 2013
@@ -669,7 +669,7 @@ Revision history for MCE
   * Added sub PDL::CLONE_SKIP { 1 } to MCE.pm. Running PDL + MCE threads no
     longer crashes during exiting.
   * Updated matrix multiplication examples. All examples now work under the
-    windows environment no matter if threading or forking. Unix is stable as
+    Windows environment no matter if threading or forking. Unix is stable as
     well if wanting to use PDL + MCE and use_threads => 1 or 0.
   * Added benchmark results for 2048x2048, 4096x4096, and 8192x8192 to the
     README file under examples/matmult/
@@ -731,8 +731,8 @@ Revision history for MCE
 1.301 Mon Dec 31 15:00:00 EST 2012
 
   * Emphasis on documentation -- better flow plus additional clarity
-  * Minor update to sequence option validation
-  * Minor update to included examples
+  * Minor updates to sequence option validation
+  * Minor updates to included examples
 
 1.300 Mon Dec 31 06:00:00 EST 2012
 
@@ -743,7 +743,7 @@ Revision history for MCE
     Workers can exit or die without impacting the manager process
   * Enabled executable bit for test files
   * Removed localtime output in die and warn handlers
-  * All 3 delay options are consistent whether or not user_tasks is specified
+  * All 3 delay options are consistent whether user_tasks is specified
   * Removed logic around total_ended count -- replaced with new exit logic
   * Code refactoring plus documentation updates
   * Added LICENSE file
@@ -806,7 +806,7 @@ Revision history for MCE
 
 1.008 Sat Nov 17 23:00:00 EST 2012
 
-  * Update on __DIE__ and __WARN__ handling in MCE. This addresses the 
+  * Updates to __DIE__ and __WARN__ handling in MCE. These address the 
     unreferenced scalars seen in packaging logs at activestate.com for
     Perl under Windows: http://code.activestate.com/ppm/MCE/
   * Update t/01_load_signal_arg.t -- added check for $ENV{TEMP}
@@ -848,7 +848,7 @@ Revision history for MCE
   * Updated images/06_Shared_Sockets.gif
   * Updated images/10_Scaling_Pings.gif
   * Added   images/11_SNMP_Collection.gif
-  * Small update to MCE::Signal
+  * Minor updates to MCE::Signal
 
 1.002 Thu Nov 08 01:13:10 EST 2012
 
