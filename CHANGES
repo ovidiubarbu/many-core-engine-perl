@@ -24,8 +24,8 @@ Revision history for MCE
 
   [NEW FEATURES]
 
-  * Added support for IO::File handles as valid input_data such as
-    IO::File, IO:Uncompress:Gunzip, etc.
+  * Added support for IO::File handles as valid input_data including
+    IO:Uncompress:Gunzip.
 
     Modified SYNTAX section for INPUT_DATA in MCE::Core.pod.
 
