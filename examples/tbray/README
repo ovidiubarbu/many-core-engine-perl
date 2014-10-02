@@ -76,7 +76,7 @@ input data.
 ##
 
 The main reason was for maximizing on all available cores from start to end.
-In essence, a core should only go idle at the very end of the compute job such
+In essence, a core should begin to go idle towards the end of the job such
 as reaching the EOF. A worker requiring 1.5x the time to process a given chunk
 should not impact other workers processing other chunks.
 

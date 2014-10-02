@@ -23,7 +23,7 @@ our %EXPORT_TAGS = ( all => \@EXPORT_OK );
 ## returns the number of available (online/active/enabled) CPUs.
 ##
 ## Defaults to 1. A warning is emitted to STDERR when it cannot recognize
-## your operating system or the external command failed.
+## the operating system or the external command failed.
 ##
 ###############################################################################
 

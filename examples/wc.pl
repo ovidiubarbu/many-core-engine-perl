@@ -3,8 +3,9 @@
 ## ----------------------------------------------------------------------------
 ## Word count script similar to the wc binary.
 ##
-## The logic below does not support multi-byte characters. The main focus is
-## demonstrating Many-core Engine for Perl. Use this script for large file(s).
+## The logic below does not support multi-byte characters. The focus is
+## demonstrating Many-core Engine for Perl. Use this script for large
+## file(s).
 ##
 ## The usage description was largely ripped off from the wc man page.
 ##

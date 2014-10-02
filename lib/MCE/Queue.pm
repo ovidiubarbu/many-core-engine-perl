@@ -1911,8 +1911,8 @@ numbers, not the data.
 The main reason for writing MCE::Queue was to have a Thread::Queue-like module
 for workers spawned as children. I was pleasantly surprised at the number of
 modules on CPAN for queuing. What stood out immediately were all the priority
-queues, heap queues, and whether or not (FIFO/LIFO) or (highest/lowest first)
-options were available. Hence the reason for MCE::Queue supporting both normal
+queues, heap queues, and whether (FIFO/LIFO) or (highest/lowest first) options
+are available. Hence, the reason for MCE::Queue supporting both normal
 and priority queues.
 
 The following provides a list of resources I've read in helping me create
@@ -1939,7 +1939,7 @@ choose LIFO/LILO, and highest/lowest order for the queue. The data structure
 in MCE::Queue is described above.
 
 MCE workers also benefit from being able to create local queues not available
-to other workers including the manager process. Hence the reason for the 3
+to other workers including the manager process. Hence, the reason for the 3
 run modes described at the beginning of this document.
 
 =item L<Thread::Queue>

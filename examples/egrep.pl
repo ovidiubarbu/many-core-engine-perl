@@ -4,7 +4,7 @@
 ## Egrep script (Perl implementation) similar to the egrep binary.
 ## Look at bin/mce_grep for a wrapper script around the grep binary.
 ##
-## This script supports egrep's options [ceHhiLlmnqRrsv]. The main focus is
+## This script supports egrep's options [ceHhiLlmnqRrsv]. The focus is
 ## demonstrating Many-core Engine for Perl. Use this script against large
 ## file(s).
 ##
@@ -14,7 +14,7 @@
 ##
 ## Which to choose (examples/egrep.pl or bin/mce_grep).
 ##
-##   Examples/egrep.pl is a pure Perl implementation with less options.
+##   Examples/egrep.pl is a pure Perl implementation with fewer options.
 ##   Bin/mce_grep is a wrapper script for the relevant binary.
 ##
 ##   The wrapper script is good for expensive pattern matching -- especially
