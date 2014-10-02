@@ -130,6 +130,11 @@ sub DESTROY {
    return if (defined $MCE::MCE && $MCE::MCE->wid);
 
    if (defined $_queue->{_qr_sock}) {
+      local $!; local $?;
+
+      CORE::shutdown $_queue->{_qw_sock}, 2;
+      CORE::shutdown $_queue->{_qr_sock}, 2;
+
       close $_queue->{_qw_sock}; undef $_queue->{_qw_sock};
       close $_queue->{_qr_sock}; undef $_queue->{_qr_sock};
    }
@@ -202,9 +207,6 @@ sub new {
 
          binmode $_queue->{_qr_sock};
          binmode $_queue->{_qw_sock};
-
-         CORE::shutdown $_queue->{_qr_sock}, 1;      ## No more writing
-         CORE::shutdown $_queue->{_qw_sock}, 0;      ## No more reading
 
          my $_old_hndl = select $_queue->{_qr_sock}; $| = 1;
                          select $_queue->{_qw_sock}; $| = 1;
