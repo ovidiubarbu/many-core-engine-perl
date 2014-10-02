@@ -17,10 +17,10 @@ Eric Collet
   * I first learned of tre-agrep from Eric. He emailed me running times for
     a couple scenarios utilizing a single core. Thus increasing the need to
     have a MCE-driven wrapper script to run tre-agrep.
-  * The bin/mce_grep script was created to show folks how one could go about
-    about chunking data between Perl and an external C binary in an efficient
-    manner without invoking the shell. The script supports grep, egrep, fgrep,
-    agrep and tre-agrep.
+  * The bin/mce_grep script was created to show folks how one may go about
+    chunking data between Perl and an external C binary efficiently without
+    invoking the shell. The script supports grep, egrep, fgrep, agrep and
+    tre-agrep.
 
 Oliver Gorwits
   For reporting on a couple issues with MCE along with a solution for each.
@@ -59,7 +59,7 @@ Joseph Ogulin
   For providing the initial perl-MCE.spec file.
 
 Jillian Rowe
-  For reporting on IO::???? file handles not working with MCE. Fixed in 1.515.
+  For reporting on IO::File handles not working with MCE. Fixed in 1.515.
 
 Sylvia Roy
   For driving on long trips while I worked in the passenger seat further
