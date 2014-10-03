@@ -1090,6 +1090,8 @@ sub run {
 
          <$_COM_R_SOCK>;
 
+         select(undef, undef, undef, 0.003) if ($_is_WinEnv);
+
          select(undef, undef, undef, $_submit_delay)
             if (defined $_submit_delay && $_submit_delay > 0.0);
       }
