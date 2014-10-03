@@ -1,6 +1,27 @@
 
 Revision history for MCE
 
+1.516 Fri Oct 03 02:00:00 EST 2014
+
+  [BUG FIXES]
+
+  * Updated IPC for better stability across multiple environments. The fix
+    addresses an issue on Windows where sockets fail to respond after a
+    period of inactivity; i.e. 4 minutes. Added George Bouras to CREDITS
+    for reporting the issue.
+
+  * Note for folks developing on Windows. Open an explorer window and goto
+    C:\Users\<user>\AppData\Local\Temp. Right-click on the 'mce' folder and
+    create a shortcut on the desktop. MCE removes its temp files automatically
+    when the app completes successfully. It is possible that files remain
+    during the development and testing cycle due to the app dying prematurely.
+    Go inside the 'mce' folder and press ctrl-a to select all the files.
+    Then press shift-delete (macbook[pro] folks: fn-shift-delete).
+
+  [ENHANCEMENTS]
+
+  * Corrections to documentation.
+
 1.515 Thu Jul 24 23:30:00 EST 2014
 
   [BUG FIXES]

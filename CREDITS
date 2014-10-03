@@ -6,6 +6,12 @@ alphabetical order by last name.
  # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * #
 ###############################################################################
 
+George Bouras
+  For reporting sockets failing under the Windows enviroment due to a
+  period of inactivity. An example is when workers execute an external
+  command taking beyond 4 minutes to complete. On returning, the sockets
+  have gone stale with a CPU core going 100% at this point.
+
 David Cantrell (DrHyde on perlmonks.org)
   For reporting on MCE hanging with cpan -t MCE under his environment. Also,
   thank you for providing me a guest account. I was able to reproduce the
@@ -68,6 +74,10 @@ Sylvia Roy
 Tom Sasser
   For reporting bin/mce_grep failing with Perl 5.8.x.
 
+Florian Schlichting
+  For making a Debian package for MCE.
+  http://pkgs.org/search/libmce-perl
+
 Adam Sjøgren
   For reporting on running /usr/bin/time mce_script.pl and pressing Ctrl-C
   failing. The default behavior in MCE::Signal is to call setpgrp. MCE 1.403
@@ -77,10 +87,6 @@ Adam Sjøgren
   
     use MCE::Signal qw(-no_setpgrp);
     use MCE;
-
-Florian Schlichting
-  For making a Debian package for MCE.
-  http://pkgs.org/search/libmce-perl
 
 Marcus Smith
   For reporting a problem with MCE including a sample script demonstrating
