@@ -1,0 +1,127 @@
+
+###############################################################################
+ # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * #
+###############################################################################
+
+This document describes MCE version 1.517
+
+ Many-core Engine (MCE) for Perl helps enable a new level of performance by
+ maximizing all available cores. MCE spawns a pool of workers and therefore
+ does not fork a new process per each element of data. Instead, MCE follows
+ a bank queuing model. Imagine the line being the data and bank-tellers the
+ parallel workers. MCE enhances that model by adding the ability to chunk
+ the next n elements from the input stream to the next available worker.
+
+ Both chunking and input data are optional in MCE. One may simply use MCE to
+ have many workers run in parallel.
+
+ MCE uses domain sockets for IPC versus pipes. One day, a physical box will
+ have hundreds of cores. MCE can spawn 960 workers (via fork) for ulimit re-
+ porting 1024 allowed for max user processes. Other parallel implementations
+ using pipes cannot do this (only about half of ulimit -u).
+
+Use Cases for MCE.
+
+ 1. Both forking and threading are supported. Workers are children by default
+    (via fork). Including threads in your script will have workers spawn as
+    threads unless use_threads => 0 is specified.
+
+ 2. MCE can be used to process a single "large" file or process many "small"
+    files in parallel. Performance against a single file is as fast as MMAP
+    IO when specifying use_slurpio => 1.
+
+ 3. MCE iterates over input data in chunks. Workers can be spawned prior to
+    creating or obtaining data. MCE is a chunking engine. It does not divide
+    the input equally by the number of workers. Instead, it chunks from start
+    till end.
+
+       input_data => '/path/to/file',    ## Scalar is treated as a file
+       input_data => \$scalar,           ## Treated like a memory-based file
+       input_data => \@array,            ## A reference to an array
+       input_data => \*FileHandle,       ## Process a FH in parallel
+       input_data => \&iterator,         ## A reference to an iterator
+
+    Think of input data as the highway. Now think of the automobile as being
+    MCE. Data can be larger than physical memory on the box. The chunking
+    nature makes this possible.
+
+ 4. If all you need is a numeric iterator, MCE can iterate over a sequence
+    of numbers mathematically. This too can be chunked by specifying chunk
+    size.
+
+       sequence => { begin => 1, end => 100, step => 2 },
+       chunk_size => 20,      ## Worker receives the next 20 sequences
+
+    Look at the examples included with MCE. The foreach.pl example is very
+    communication intensive whereas forchunk.pl requires much less overhead.
+
+       foreach.pl, forchunk.pl, and forseq.pl
+
+ 5. For another example, a worker receives up to 600 host names or IPs per
+    chunk. The worker uses SNMP and an AnyEvent library. Imagine having
+    millions of hosts to process. One simply cannot create millions of
+    connections all at once. Chunking makes this trivial to do.
+
+Take MCE for a spin.
+
+###############################################################################
+ # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * #
+###############################################################################
+
+INSTALLATION
+
+ To install this module type the following:
+
+    perl Makefile.PL
+    make
+    make test
+    make install
+
+DEPENDENCIES
+
+ This module requires Perl 5.8.0 or later.
+
+    By default, MCE does forking (spawns child processes).
+    MCE also supports threads via 2 threading libraries.
+
+    The use of threads in MCE requires that you include threads support
+    prior to loading MCE.
+
+       use threads;                  use forks;
+       use threads::shared;   (or)   use forks::shared;
+
+       use MCE;                      use MCE;
+
+ This module requires these other modules and libraries:
+
+    Fcntl
+    Socket
+    Storable 2.04 or later
+    File::Path
+    Test::More 0.45 or later (for testing)
+
+COPYRIGHT AND LICENCE
+
+ Copyright (C) 2012-2014 by Mario E. Roy <marioeroy AT gmail DOT com>
+
+ This program is free software; you can redistribute it and/or modify it
+ under the terms of either: the GNU General Public License as published
+ by the Free Software Foundation; or the Artistic License.
+
+ See L<http://dev.perl.org/licenses/> for more information.
+
+USAGE
+
+ The source is hosted at http://code.google.com/p/many-core-engine-perl/
+
+ https://metacpan.org/module/MCE::Signal
+ https://metacpan.org/module/MCE
+
+###############################################################################
+ # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * #
+###############################################################################
+
+Enjoy MCE !!!
+
+ - Mario
+
