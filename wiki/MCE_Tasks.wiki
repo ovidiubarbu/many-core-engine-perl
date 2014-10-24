@@ -1,11 +1,11 @@
 #labels Featured
 = MCE Tasks =
 
-Update October 3, 2014
+Update October 23, 2014
 
 This example demonstrates MCE::Flow, MCE::Queue, and MCE->gather.
 
-https://metacpan.org/source/MARIOROY/MCE-1.516/examples/flow_model.pl
+https://metacpan.org/source/MARIOROY/MCE-1.517/examples/flow_model.pl
 
 If interested, take a look at mce-sandbox (a journey with Perl + MCE + Inline::C).
 
