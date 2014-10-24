@@ -322,7 +322,7 @@ mce_loop_f {
       open STDERR, '>&STDERR_SAVE'; close $err_fh;
    }
 
-   MCE->gather($chunk_id, $path, ${^CHILD_ERROR_NATIVE} >> 8);
+   MCE->gather($chunk_id, $path, $? >> 8);
 
 } $input;
 

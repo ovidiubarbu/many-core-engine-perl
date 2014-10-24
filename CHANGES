@@ -1,6 +1,24 @@
 
 Revision history for MCE
 
+1.517 Thu Oct 23 10:00:00 EST 2014
+
+  [BUG FIXES]
+
+  * Correction applied to MCE::Util::get_ncpu for Tru64 UNIX. This method
+    will emit a warning (not croak) whenever the OS is unknown.
+
+  * Changed ${^CHILD_ERROR_NATIVE} to $? in examples/pipe2.pl. This was
+    missed in the previous release.
+
+  [ENHANCEMENTS]
+
+  * Added support for DragonFly BSD, SCO OpenServer 5, SCO OpenServer 6 and
+    SCO UnixWare 7 to MCE::Util::get_ncpu.
+
+  * Also, validated MCE on FreeBSD, NetBSD, OpenBSD, PC-BSD and JabirOS.
+    No further changes needed to MCE::Util::get_ncpu.
+
 1.516 Fri Oct 03 02:00:00 EST 2014
 
   [BUG FIXES]
@@ -10,13 +28,13 @@ Revision history for MCE
     period of inactivity; i.e. 4 minutes. Added George Bouras to CREDITS
     for reporting the issue.
 
-  * Note for folks developing on Windows. Open an explorer window and goto
-    C:\Users\<user>\AppData\Local\Temp. Right-click on the 'mce' folder and
-    create a shortcut on the desktop. MCE removes its temp files automatically
-    when the app completes successfully. It is possible that files remain
-    during the development and testing cycle due to the app dying prematurely.
-    Go inside the 'mce' folder and press ctrl-a to select all the files.
-    Then press shift-delete (macbook[pro] folks: fn-shift-delete).
+  * Tip for folks developing on Windows:
+    Open an explorer window and go to C:\Users\<user>\AppData\Local\Temp.
+    Right-click on the 'mce' folder and create a shortcut on the desktop.
+    Although MCE removes its temp files automatically, it is possible for
+    files to remain from a failing app. Go inside the 'mce' folder and
+    press ctrl-a to select all files. Then press shift-delete;
+    (macbook[pro] folks: fn-shift-delete).
 
   [ENHANCEMENTS]
 
