@@ -82,7 +82,7 @@ sub import {
  # setpgrp(0,0) if ($_no_setpgrp == 0 && $^O ne 'MSWin32');
 
    ## Sets the current process group for the current process.
-   setpgrp($main_proc_id, 0) if ($_setpgrp == 1 && $^O ne 'MSWin32');
+   setpgrp(0,0) if ($_setpgrp == 1 && $^O ne 'MSWin32');
 
    my ($_tmp_dir_base, $_count);
 
