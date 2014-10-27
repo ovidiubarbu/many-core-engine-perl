@@ -4,6 +4,7 @@ use strict; use warnings;
 
 use Cwd qw(abs_path);
 use lib abs_path . "/../lib";
+use Time::HiRes "sleep";
 
 ## usage: ./files_thr.pl [ startdir ]
 
@@ -13,7 +14,12 @@ use threads::shared;
 use MCE;
 use Thread::Queue;
 
+my $D = Thread::Queue->new($ARGV[0] || '.');
 my $F = Thread::Queue->new();
+
+## Glob() is not thread-safe in Perl 5.16.x; okay < 5.16; fixed in 5.18.2.
+## Run with perl5.12 on Mavericks. Not all OS vendors have patched 5.16.x.
+my $providers = ($] < 5.016000 || $] >= 5.018002) ? 3 : 1;
 my $consumers = 8;
 
 my $mce = MCE->new(
@@ -26,10 +32,12 @@ my $mce = MCE->new(
    },
 
    user_tasks => [{
-      max_workers => 1, task_name => 'dir',
+      max_workers => $providers, task_name => 'dir',
 
       user_func => sub {
-         my $D = Thread::Queue->new(MCE->user_args->[0]);
+         ## Allow time for wid 1 to enqueue any dir entries.
+         ## Otherwise, workers (wid 2+) may terminate early.
+         sleep 0.1 if MCE->task_wid > 1;
 
          while (defined (my $dir = $D->dequeue_nb)) {
             my (@files, @dirs); foreach (glob("$dir/*")) {
@@ -50,5 +58,5 @@ my $mce = MCE->new(
       }
    }]
 
-)->run({ user_args => [ $ARGV[0] || '.' ] });
+)->run;
 
