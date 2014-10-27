@@ -33,6 +33,10 @@ count aggregation.
    egrep.pl  Egrep script, similar to the egrep binary.
    wc.pl     Word count script, similar to the wc binary.
 
+   files_flow.pl, files_mce.pl, files_thr.pl
+             Demonstrates MCE::Flow, MCE::Queue, and Thread::Queue.
+             See the MCE::Queue synopsis for another variation.
+
    findnull.pl
              A parallel script for reporting lines containing null
              fields. It is many times faster than the egrep binary.
