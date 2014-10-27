@@ -31,6 +31,9 @@ lib/MCE/Util.pm
 examples/barrier_sync.pl
 examples/cat.pl
 examples/egrep.pl
+examples/files_flow.pl
+examples/files_mce.pl
+examples/files_thr.pl
 examples/findnull.pl
 examples/flow_model.pl
 examples/forchunk.pl
