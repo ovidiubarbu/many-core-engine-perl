@@ -1,6 +1,24 @@
 
 Revision history for MCE
 
+1.519 Mon Oct 27 19:00:00 EST 2014
+
+  [ENHANCEMENTS]
+
+  * This completes the 1.5 branch for a very solid Perl MCE distribution.
+    Below, one final optimization which I had forgotten to add to the
+    1.518 release. Thus, the reason for this release.
+
+  * Unset the need for channel locking if only worker riding the channel.
+    There are 8 data channels in MCE. Basically, a worker will obtain a
+    lock only when sharing the data channel with another worker.
+
+  * Updated files_flow.pl, files_mce.pl and files_thr.pl to allow for
+    many workers for the first task. Updated the synopsis in MCE::Queue.
+    Synced example listing in Examples.pod with the examples folder.
+
+  * Remove period from summary line.
+
 1.518 Mon Oct 27 10:00:00 EST 2014
 
   [BUG FIXES]
@@ -10,7 +28,7 @@ Revision history for MCE
     one were to copy/patse the code and use threads. The glob() function
     is not thread-safe in Perl 5.16.x; fixed in 5.18.2, okay in 5.8 - 14.
 
-  * Use portable syntax for setpgrp in MCE::Signal. This closes issue #1
+  * Use portable syntax for setpgrp in MCE::Signal. This closes issue 1
     at https://code.google.com/p/many-core-engine-perl.
 
   [NEW FEATURES]
