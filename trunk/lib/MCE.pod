@@ -1,7 +1,7 @@
 
 =head1 NAME
 
-MCE - Many-core Engine for Perl providing parallel processing capabilities.
+MCE - Many-core Engine for Perl providing parallel processing capabilities
 
 =head1 VERSION
 
