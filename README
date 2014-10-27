@@ -3,7 +3,7 @@
  # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * #
 ###############################################################################
 
-This document describes MCE version 1.517
+This document describes MCE version 1.518
 
  Many-core Engine (MCE) for Perl helps enable a new level of performance by
  maximizing all available cores. MCE spawns a pool of workers and therefore

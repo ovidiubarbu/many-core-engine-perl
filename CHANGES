@@ -1,6 +1,28 @@
 
 Revision history for MCE
 
+1.518 Mon Oct 27 10:00:00 EST 2014
+
+  [BUG FIXES]
+
+  * Corrected MCE::Queue's synopsis due to missing List::MoreUtils line.
+    Changed the synopsis to use 1 worker for the 'dir' task in the event
+    one were to copy/patse the code and use threads. The glob() function
+    is not thread-safe in Perl 5.16.x; fixed in 5.18.2, okay in 5.8 - 14.
+
+  * Use portable syntax for setpgrp in MCE::Signal. This closes issue #1
+    at https://code.google.com/p/many-core-engine-perl.
+
+  [NEW FEATURES]
+
+  * New 'fast' option for MCE::Queue. The 'fast' option speeds up ->dequeue
+    ops and not enabled by default. It is beneficial for queues not needing
+    ->clear or ->dequeue_nb and not altering the optional count value
+    while running; e.g. ->dequeue( [ $count ] ).
+
+  * Added three examples: files_flow.pl, files_mce.pl, and files_thr.pl.
+  * Benchmarked on several OSes and appended results to MCE::Queue synopsis.
+
 1.517 Thu Oct 23 10:00:00 EST 2014
 
   [BUG FIXES]
@@ -17,7 +39,7 @@ Revision history for MCE
     SCO UnixWare 7 to MCE::Util::get_ncpu.
 
   * Also, validated MCE on FreeBSD, NetBSD, OpenBSD, PC-BSD and JabirOS.
-    No further changes needed to MCE::Util::get_ncpu.
+    No further changes to MCE::Util::get_ncpu.
 
 1.516 Fri Oct 03 02:00:00 EST 2014
 

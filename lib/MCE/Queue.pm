@@ -1150,6 +1150,7 @@ sub _mce_m_dequeue_nb {
 
    if ($_queue->{_fast}) {
       warn "MCE::Queue: 'dequeue_nb' not allowed for 'fast => 1' option\n";
+      return;
    }
    else {
       $_queue->{_nb_flag} = 1;
