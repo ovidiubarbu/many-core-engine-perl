@@ -68,6 +68,12 @@ sub get_ncpu {
          last OS_CHECK;
       };
 
+      /gnu/i && do {
+         chomp( my @output = `nproc 2>/dev/null` );
+         $ncpu = $output[0] if @output;
+         last OS_CHECK;
+      };
+
       /hp-?ux/i && do {
          my $count = grep /^processor/ => `ioscan -fkC processor 2>/dev/null`;
          $ncpu = $count if $count;
