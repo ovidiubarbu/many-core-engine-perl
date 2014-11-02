@@ -432,15 +432,6 @@ sub _worker_do {
    $self->{user_end}($self, $_task_id, $_task_name)
       if (defined $self->{user_end});
 
-   ## Flush output handles.
-   local $@; eval '
-      my $_flush_st = $|;
-      my $_old_hndl = select STDOUT; $| = 1;
-                      select STDERR; $| = 1;
-
-      select $_old_hndl; $| = $_flush_st;
-   ';
-
    $_die_msg = undef;
 
    ## Notify the main process a worker has completed.
