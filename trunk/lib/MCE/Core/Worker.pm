@@ -191,8 +191,7 @@ END {
 
    sub _do_gather {
 
-      my $self = $_[0]; my $_data_ref = $_[1];
-      my $_buffer;
+      my $_buffer; my $self = $_[0]; my $_data_ref = $_[1];
 
       return unless (scalar @{ $_data_ref });
 
@@ -231,8 +230,7 @@ END {
 
    sub _do_send {
 
-      my $self = shift; $_dest = shift; $_value = shift;
-      my $_buffer;
+      my $_buffer; my $self = shift; $_dest = shift; $_value = shift;
 
       if (@_ > 1) {
          $_buffer = join('', @_);
@@ -676,6 +674,9 @@ sub _worker_main {
    ## Wait until MCE completes exit notification.
    $SIG{__DIE__} = $SIG{__WARN__} = sub { };
 
+   select STDERR; $| = 1;
+   select STDOUT; $| = 1;
+
    eval {
       my $_c; sysread $self->{_bse_r_sock}, $_c, 1;
    };
@@ -687,9 +688,6 @@ sub _worker_main {
    }
 
    close $_COM_LOCK; undef $_COM_LOCK;
-
-   select STDERR; $| = 1;
-   select STDOUT; $| = 1;
 
    return;
 }
