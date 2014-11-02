@@ -33,7 +33,7 @@ no warnings 'threads'; no warnings 'uninitialized';
 
 sub _worker_user_iterator {
 
-   my MCE $self = $_[0];
+   my $self = $_[0];
 
    @_ = ();
 

@@ -107,7 +107,7 @@ sub _task_end {
 
    sub MCE::step {
 
-      my $x = shift; my MCE $self = ref($x) ? $x : $_MCE;
+      my $x = shift; my $self = ref($x) ? $x : $_MCE;
 
       _croak("MCE::step: method cannot be called by the manager process")
          unless ($self->{_wid});
