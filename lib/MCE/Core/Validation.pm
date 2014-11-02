@@ -33,7 +33,7 @@ no warnings 'threads'; no warnings 'uninitialized';
 
 sub _validate_args {
 
-   my MCE $_s = $_[0];
+   my $_s = $_[0];
 
    die "Private method called" unless (caller)[0]->isa( ref($_s) );
 

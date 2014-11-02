@@ -1528,14 +1528,14 @@ sub exit {
    ## Exit thread/child process.
    $SIG{__DIE__} = $SIG{__WARN__} = sub { };
 
+   select STDERR; $| = 1;
+   select STDOUT; $| = 1;
+
    if ($_lock_chn) {
       close $_DAT_LOCK; undef $_DAT_LOCK;
    }
 
    close $_COM_LOCK; undef $_COM_LOCK;
-
-   select STDERR; $| = 1;
-   select STDOUT; $| = 1;
 
    threads->exit($_exit_status)
       if ($_has_threads && threads->can('exit'));
