@@ -34,7 +34,7 @@ no warnings 'threads'; no warnings 'uninitialized';
 
 sub _worker_sequence_generator {
 
-   my MCE $self = $_[0];
+   my $self = $_[0];
 
    @_ = ();
 

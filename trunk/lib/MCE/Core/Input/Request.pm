@@ -33,7 +33,7 @@ no warnings 'threads'; no warnings 'uninitialized';
 
 sub _worker_request_chunk {
 
-   my MCE $self = $_[0]; my $_proc_type = $_[1];
+   my $self = $_[0]; my $_proc_type = $_[1];
 
    @_ = ();
 

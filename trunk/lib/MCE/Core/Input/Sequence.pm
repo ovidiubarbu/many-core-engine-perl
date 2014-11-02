@@ -36,7 +36,7 @@ my $_que_template  = $MCE::_que_template;
 
 sub _worker_sequence_queue {
 
-   my MCE $self = $_[0];
+   my $self = $_[0];
 
    @_ = ();
 
