@@ -26,6 +26,7 @@ our $VERSION = '1.519'; $VERSION = eval $VERSION;
 
 our $MAX_WORKERS  = 'auto';
 our $CHUNK_SIZE   = 'auto';
+our $FAST         = 0;
 
 my ($_params, @_prev_c, @_prev_n, @_prev_w, @_user_tasks, @_queue);
 my ($_MCE, $_loaded, $_last_task_id); my $_tag = 'MCE::Step';
@@ -42,6 +43,7 @@ sub import {
       $MCE::TMP_DIR = shift and next if ( $_arg =~ /^tmp_dir$/i );
       $MCE::FREEZE  = shift and next if ( $_arg =~ /^freeze$/i );
       $MCE::THAW    = shift and next if ( $_arg =~ /^thaw$/i );
+      $FAST         = shift and next if ( $_arg =~ /^fast$/i );
 
       if ( $_arg =~ /^sereal$/i ) {
          if (shift eq '1') {
@@ -56,6 +58,8 @@ sub import {
 
       _croak("$_tag::import: '$_arg' is not a valid module argument");
    }
+
+   _croak("$_tag: 'FAST' must be 1 or 0") if ($FAST ne '1' && $FAST ne '0');
 
    $MAX_WORKERS = MCE::Util::_parse_max_workers($MAX_WORKERS);
    _validate_number($MAX_WORKERS, 'MAX_WORKERS');
@@ -367,7 +371,9 @@ sub mce_step (@) {
       $_MCE->shutdown() if (defined $_MCE);
 
       pop( @_queue )->DESTROY for (@_code .. @_queue);
-      push @_queue, MCE::Queue->new for (@_queue .. @_code - 2);
+
+      push @_queue, MCE::Queue->new(fast => $FAST)
+         for (@_queue .. @_code - 2);
 
       _gen_user_tasks(\@_queue, \@_code, \@_name, \@_wrks, $_chunk_size);
       $_last_task_id = @_code - 1;
@@ -771,11 +777,12 @@ The following list 5 options which may be overridden when loading the module.
    use Sereal qw(encode_sereal decode_sereal);
 
    use MCE::Step
-         max_workers => 8,                    ## Default 'auto'
-         chunk_size  => 500,                  ## Default 'auto'
-         tmp_dir     => "/path/to/app/tmp",   ## $MCE::Signal::tmp_dir
-         freeze      => \&encode_sereal,      ## \&Storable::freeze
-         thaw        => \&decode_sereal       ## \&Storable::thaw
+         max_workers => 8,                   ## Default 'auto'
+         chunk_size  => 500,                 ## Default 'auto'
+         fast        => 1,                   ## Default 0 (fast queue?)
+         tmp_dir     => "/path/to/app/tmp",  ## $MCE::Signal::tmp_dir
+         freeze      => \&encode_sereal,     ## \&Storable::freeze
+         thaw        => \&decode_sereal      ## \&Storable::thaw
    ;
 
 There is a simpler way to enable Sereal with MCE 1.5. The following will
