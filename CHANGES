@@ -1,13 +1,20 @@
 
 Revision history for MCE
 
-1.519 Mon Oct 27 19:00:00 EST 2014
+1.520 Wed Nov 05 03:00:00 EST 2014
 
   [ENHANCEMENTS]
 
-  * This completes the 1.5 branch for a very solid Perl MCE distribution.
-    Below, one final optimization which I had forgotten to add to the
-    1.518 release. Thus, the reason for this release.
+  * MCE::Step and MCE::Stream can take the 'fast' option when including
+    the module. The 'fast' option was introduced in 1.518.
+
+  * Removed the type declaration for self (feedback from Sri).
+  * Removed -s from files_flow.pl (was left behind).
+  * Added support for GNU Hurd OS in get_ncpu.
+
+1.519 Mon Oct 27 19:00:00 EST 2014
+
+  [ENHANCEMENTS]
 
   * Unset the need for channel locking if only worker riding the channel.
     There are 8 data channels in MCE. Basically, a worker will obtain a
