@@ -43,8 +43,11 @@ sub import {
       $MCE::TMP_DIR = shift and next if ( $_arg =~ /^tmp_dir$/i );
       $MCE::FREEZE  = shift and next if ( $_arg =~ /^freeze$/i );
       $MCE::THAW    = shift and next if ( $_arg =~ /^thaw$/i );
-      $FAST         = shift and next if ( $_arg =~ /^fast$/i );
 
+      if ( $_arg =~ /^fast$/i ) {
+         $FAST = 1 if (shift eq '1');
+         next;
+      }
       if ( $_arg =~ /^sereal$/i ) {
          if (shift eq '1') {
             local $@; eval 'use Sereal qw(encode_sereal decode_sereal)';
@@ -58,8 +61,6 @@ sub import {
 
       _croak("$_tag::import: '$_arg' is not a valid module argument");
    }
-
-   _croak("$_tag: 'FAST' must be 1 or 0") if ($FAST ne '1' && $FAST ne '0');
 
    $MAX_WORKERS = MCE::Util::_parse_max_workers($MAX_WORKERS);
    _validate_number($MAX_WORKERS, 'MAX_WORKERS');
