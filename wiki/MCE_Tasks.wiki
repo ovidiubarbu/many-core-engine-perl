@@ -1,17 +1,17 @@
 #labels Featured
 = MCE Tasks =
 
-Update October 27, 2014
+November 5, 2014
 
-This example demonstrates MCE::Flow, MCE::Queue, and MCE->gather.
+This example demonstrates MCE::Flow, MCE::Queue and MCE->gather.
 
-https://metacpan.org/source/MARIOROY/MCE-1.519/examples/flow_model.pl
+https://metacpan.org/source/MARIOROY/MCE-1.520/examples/flow_model.pl
 
-This demonstrates MCE::Flow and MCE::Queue.
+The following example demonstrates MCE::Flow and MCE::Queue.
 
-https://metacpan.org/source/MARIOROY/MCE-1.519/examples/files_flow.pl
+https://metacpan.org/source/MARIOROY/MCE-1.520/examples/files_flow.pl
 
-If interested, take a look at mce-sandbox (a journey with Perl + MCE + Inline::C).
+A journey with Perl + MCE + Inline::C.
 
 https://github.com/marioroy/mce-sandbox
 
@@ -19,13 +19,13 @@ Regards,
 
 - mario
 
-The 1.2 release provides support for multiple tasks. Workers can be configured based on tasking.
+Workers can be configured based on tasking (roles).
 
 http://many-core-engine-perl.googlecode.com/svn/wiki/img/MCE_Tasks.png
 
 = Instantiation =
 
-Setting it up is straight forward. A new option "user_tasks" takes an array of tasks. Each task allows for 5 options: max_workers, use_threads, user_begin, user_func, and user_end. Forking and threading can be inter-mixed among tasks.
+Setting up is straight forward. A new option "user_tasks" takes an array of tasks. Each task allows for 5 options: max_workers, use_threads, user_begin, user_func and user_end. Forking and threading can be inter-mixed among tasks.
 
 {{{
 use threads;
