@@ -35,6 +35,7 @@ examples/files_flow.pl
 examples/files_mce.pl
 examples/files_thr.pl
 examples/findnull.pl
+examples/flow_demo.pl
 examples/flow_model.pl
 examples/forchunk.pl
 examples/foreach.pl
