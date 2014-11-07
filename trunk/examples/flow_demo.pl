@@ -3,6 +3,7 @@
 use strict; use warnings;
 
 # flow_demo.pl
+# https://gist.github.com/marioroy/37817977b4e101f3e880
 
 use MCE::Flow Sereal => 1;        # Use Sereal for serialization if available
 use MCE::Queue  fast => 1;        # MCE 1.520 (compare with => 0, also Sereal)
