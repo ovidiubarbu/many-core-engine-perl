@@ -11,9 +11,9 @@ The following example demonstrates MCE::Flow and MCE::Queue.
 
 https://metacpan.org/source/MARIOROY/MCE-1.520/examples/files_flow.pl
 
-A journey with Perl + MCE + Inline::C.
+Another MCE::Flow and MCE::Queue demo.
 
-https://github.com/marioroy/mce-sandbox
+https://gist.github.com/marioroy/37817977b4e101f3e880
 
 Regards,
 
