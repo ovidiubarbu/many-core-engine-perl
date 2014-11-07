@@ -10,8 +10,8 @@ use MCE::Queue  fast => 1;        # MCE 1.520 (compare with => 0, also Sereal)
 # Results from CentOS 7 VM (4 cores): time flow_demo.pl | wc -l
 #
 # Sereal 0, fast 0:   4.703s      # Serialization via Storable 
-# Serial 1, fast 0:   3.926s      # Serialization via Sereal
-# Serial 1, fast 1:   2.092s      # Enable fast optimization; crazy :)
+# Sereal 1, fast 0:   3.926s      # Serialization via Sereal
+# Sereal 1, fast 1:   2.092s      # Enable fast optimization; crazy :)
 
 my $setter_q = MCE::Queue->new;
 my $pinger_q = MCE::Queue->new;
