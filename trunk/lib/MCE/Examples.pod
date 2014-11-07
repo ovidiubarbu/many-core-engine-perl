@@ -42,7 +42,7 @@ count aggregation.
              fields. It is many times faster than the egrep binary.
              Try this against a large file containing very long lines.
 
-   flow_model.pl
+   flow_demo.pl, flow_model.pl
              Demonstrates MCE::Flow, MCE::Queue, and MCE->gather.
 
    foreach.pl, forseq.pl, forchunk.pl
