@@ -2,6 +2,9 @@
 
 use strict; use warnings;
 
+use Cwd qw(abs_path);
+use lib abs_path . "/../lib";
+
 # flow_demo.pl
 # https://gist.github.com/marioroy/37817977b4e101f3e880
 
