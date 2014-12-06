@@ -112,8 +112,6 @@ sub mce_wid         ( ) { return $MCE::MCE->wid(); }
 sub _croak {
 
    goto &MCE::_croak;
-
-   return;
 }
 
 sub _export_subs {

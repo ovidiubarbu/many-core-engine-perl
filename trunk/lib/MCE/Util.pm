@@ -44,7 +44,7 @@ sub get_ncpu {
 
       /linux/i && do {
          my $count; local *PROC;
-         if ( open PROC, "< /proc/stat" ) {
+         if ( open PROC, '<', '/proc/stat' ) {
              $count = grep /^cpu\d/ => <PROC>;
              close PROC;
          }

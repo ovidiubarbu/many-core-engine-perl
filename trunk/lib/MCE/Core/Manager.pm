@@ -75,7 +75,7 @@ sub _output_loop {
 
    die "Private method called" unless (caller)[0]->isa( ref($self) );
 
-   my ($_aborted, $_eof_flag, $_syn_flag, %_sendto_fhs, $_value, $_want_id);
+   my ($_aborted, $_eof_flag, $_syn_flag, %_sendto_fhs, $_want_id);
    my ($_callback, $_chunk_id, $_chunk_size, $_fd, $_file, $_flush_file);
    my (@_is_c_ref, @_is_h_ref, @_is_q_ref, $_on_post_exit, $_on_post_run);
    my ($_has_user_tasks, $_sess_dir, $_task_id, $_user_error, $_user_output);
@@ -717,7 +717,7 @@ sub _output_loop {
    ## -------------------------------------------------------------------------
    ## Output event loop.
 
-   my ($_func, $_chn); my $_channels = $self->{_dat_r_sock};
+   my $_func; my $_channels = $self->{_dat_r_sock};
 
    $_BSB_W_SOCK = $self->{_bsb_w_sock};        ## For IPC
    $_BSE_W_SOCK = $self->{_bse_w_sock};
