@@ -11,14 +11,14 @@
 
 package MCE::Core::Worker;
 
-our $VERSION = '1.520'; $VERSION = eval $VERSION;
+use strict;
+use warnings;
+
+our $VERSION = '1.520';
 
 ## Items below are folded into MCE.
 
 package MCE;
-
-use strict;
-use warnings;
 
 use Time::HiRes qw( sleep time );
 use bytes;

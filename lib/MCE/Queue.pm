@@ -14,7 +14,7 @@ use Socket qw( :crlf PF_UNIX PF_UNSPEC SOCK_STREAM );
 use Scalar::Util qw( looks_like_number );
 use bytes;
 
-our $VERSION = '1.520'; $VERSION = eval $VERSION;
+our $VERSION = '1.520';
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -32,26 +32,28 @@ my $_loaded;
 
 sub import {
 
+   ## no critic (ControlStructures::ProhibitPostfixControls)
    my $class = shift; return if ($_loaded++);
 
    ## Process module arguments.
-   while (my $_arg = shift) {
+   while (my $_argument = shift) {
+      my $_arg = lc $_argument;
 
-      if ( $_arg =~ /^porder$/i ) {
+      if ( $_arg eq 'porder' ) {
          _croak("MCE::Queue::import: 'PORDER' must be 1 or 0")
             if (!defined $_[0] || ($_[0] ne '1' && $_[0] ne '0'));
 
          $MCE::Queue::PORDER = shift;
          next;
       }
-      if ( $_arg =~ /^type$/i ) {
+      if ( $_arg eq 'type' ) {
          _croak("MCE::Queue::import: 'TYPE' must be 1 or 0")
             if (!defined $_[0] || ($_[0] ne '1' && $_[0] ne '0'));
 
          $MCE::Queue::TYPE = shift;
          next;
       }
-      if ( $_arg =~ /^fast$/i ) {
+      if ( $_arg eq 'fast' ) {
          _croak("MCE::Queue::import: 'FAST' must be 1 or 0")
             if (!defined $_[0] || ($_[0] ne '1' && $_[0] ne '0'));
 
@@ -59,7 +61,7 @@ sub import {
          next;
       }
 
-      _croak("MCE::Queue::import: '$_arg' is not a valid module argument");
+      _croak("MCE::Queue::import: '$_argument' is not a valid module argument");
    }
 
    ## Define public methods to internal methods.

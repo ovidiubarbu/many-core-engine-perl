@@ -13,7 +13,7 @@ use Time::HiRes qw( sleep time );
 use Fcntl qw( :flock O_RDONLY );
 use base qw( Exporter );
 
-our $VERSION = '1.520'; $VERSION = eval $VERSION;
+our $VERSION = '1.520';
 
 our ($has_threads, $main_proc_id, $prog_name);
 our ($display_die_with_localtime, $display_warn_with_localtime);

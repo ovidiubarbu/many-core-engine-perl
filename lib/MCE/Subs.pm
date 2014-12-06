@@ -11,7 +11,7 @@ use warnings;
 
 use MCE;
 
-our $VERSION = '1.520'; $VERSION = eval $VERSION;
+our $VERSION = '1.520';
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -23,6 +23,7 @@ my $_loaded;
 
 sub import {
 
+   ## no critic (ControlStructures::ProhibitPostfixControls)
    my $class = shift;
    return if ($_loaded++);
 
@@ -30,12 +31,14 @@ sub import {
    my $_flag = sub { 1 }; my $_package = caller();
 
    ## Process module arguments.
-   while (my $_arg = shift) {
-      $_g_flg = $_flag->() and next if ( $_arg =~ /^:getter$/i );
-      $_m_flg = $_flag->() and next if ( $_arg =~ /^:manager$/i );
-      $_w_flg = $_flag->() and next if ( $_arg =~ /^:worker$/i );
+   while (my $_argument = shift) {
+      my $_arg = lc $_argument;
 
-      _croak("MCE::Subs::import: '$_arg' is not a valid module argument");
+      $_g_flg = $_flag->() and next if ( $_arg eq ':getter' );
+      $_m_flg = $_flag->() and next if ( $_arg eq ':manager' );
+      $_w_flg = $_flag->() and next if ( $_arg eq ':worker' );
+
+      _croak("MCE::Subs::import: '$_argument' is not a valid module argument");
    }
 
    $_m_flg = $_w_flg = 1 if ($_m_flg + $_w_flg == 0);

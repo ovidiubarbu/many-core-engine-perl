@@ -29,7 +29,7 @@ use Time::HiRes qw( sleep time );
 use MCE::Signal;
 use bytes;
 
-our $VERSION = '1.520'; $VERSION = eval $VERSION;
+our $VERSION = '1.520';
 
 our (%_valid_fields_new, %_params_allowed_args, %_valid_fields_task);
 our ($_is_cygwin, $_is_MSWin32, $_is_WinEnv);
@@ -138,18 +138,20 @@ my $_loaded;
 
 sub import {
 
+   ## no critic (ControlStructures::ProhibitPostfixControls)
    my $class = shift; return if ($_loaded++);
 
    ## Process module arguments.
-   while (my $_arg = shift) {
+   while (my $_argument = shift) {
+      my $_arg = lc $_argument;
 
-      $MCE::MAX_WORKERS = shift and next if ( $_arg =~ /^max_workers$/i );
-      $MCE::CHUNK_SIZE  = shift and next if ( $_arg =~ /^chunk_size$/i );
-      $MCE::TMP_DIR     = shift and next if ( $_arg =~ /^tmp_dir$/i );
-      $MCE::FREEZE      = shift and next if ( $_arg =~ /^freeze$/i );
-      $MCE::THAW        = shift and next if ( $_arg =~ /^thaw$/i );
+      $MAX_WORKERS = shift and next if ( $_arg eq 'max_workers' );
+      $CHUNK_SIZE  = shift and next if ( $_arg eq 'chunk_size' );
+      $TMP_DIR     = shift and next if ( $_arg eq 'tmp_dir' );
+      $FREEZE      = shift and next if ( $_arg eq 'freeze' );
+      $THAW        = shift and next if ( $_arg eq 'thaw' );
 
-      if ( $_arg =~ /^sereal$/i ) {
+      if ( $_arg eq 'sereal' ) {
          if (shift eq '1') {
             local $@; eval 'use Sereal qw(encode_sereal decode_sereal)';
             unless ($@) {
@@ -160,7 +162,7 @@ sub import {
          next;
       }
 
-      if ( $_arg =~ /^(?:export_const|const)$/i ) {
+      if ( $_arg eq 'export_const' || $_arg eq 'const' ) {
          if (shift eq '1') {
             no strict 'refs'; no warnings 'redefine';
             my $_package = caller();
@@ -171,7 +173,7 @@ sub import {
          next;
       }
 
-      _croak("MCE::import: '$_arg' is not a valid module argument");
+      _croak("MCE::import: '$_argument' is not a valid module argument");
    }
 
    ## Please include your threading library of choice prior to including
