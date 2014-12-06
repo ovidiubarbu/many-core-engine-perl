@@ -2,9 +2,9 @@
 
 use strict; use warnings;
 
-use Cwd qw(abs_path);
-use lib abs_path . "/../lib";
-use Time::HiRes "sleep";
+use Cwd 'abs_path';  ## Remove taintedness from path
+use lib ($_) = (abs_path().'/../lib') =~ /(.*)/;
+use Time::HiRes 'sleep';
 
 ## usage: ./files_mce.pl [ startdir [0|1] ]
 
