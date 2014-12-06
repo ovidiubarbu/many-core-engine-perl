@@ -25,7 +25,7 @@ use Symbol qw( qualify_to_ref );
 use Storable qw( );
 
 use Scalar::Util qw( looks_like_number );
-use Time::HiRes qw( time );
+use Time::HiRes qw( sleep time );
 use MCE::Signal;
 use bytes;
 
@@ -862,7 +862,7 @@ sub restart_worker {
       _dispatch_child($self, $_wid, $_task, $_task_id, $_task_wid, $_params);
    }
 
-   select(undef, undef, undef, 0.001);
+   sleep(0.001);
 
    return;
 }
@@ -1093,20 +1093,20 @@ sub run {
 
          <$_COM_R_SOCK>;
 
-         select(undef, undef, undef, 0.003) if ($_is_WinEnv);
+         sleep(0.003) if ($_is_WinEnv);
 
-         select(undef, undef, undef, $_submit_delay)
+         sleep($_submit_delay)
             if (defined $_submit_delay && $_submit_delay > 0.0);
       }
 
-      select(undef, undef, undef, 0.005) if ($_is_WinEnv);
+      sleep(0.005) if ($_is_WinEnv);
 
       ## Obtain lock.
       flock $_COM_LOCK, LOCK_EX;
 
       syswrite $_BSE_W_SOCK, $LF for (1 .. $_total_workers);
 
-      select(undef, undef, undef, 0.002)
+      sleep(0.002)
          if (($self->{_mce_tid} ne '' && $self->{_mce_tid} ne '0') ||
              $_is_WinEnv );
    }
@@ -1221,10 +1221,10 @@ sub send {
       print $_COM_R_SOCK length($_frozen_data) . $LF . $_frozen_data;
       <$_COM_R_SOCK>;
 
-      select(undef, undef, undef, $_submit_delay)
+      sleep($_submit_delay)
          if (defined $_submit_delay && $_submit_delay > 0.0);
 
-      select(undef, undef, undef, 0.002) if ($_is_cygwin);
+      sleep(0.002) if ($_is_cygwin);
    }
 
    $self->{_send_cnt} += 1;
@@ -1349,7 +1349,7 @@ sub shutdown {
    $self->{_mce_sid}  = $self->{_mce_tid}  = $self->{_sess_dir} = undef;
    $self->{_chunk_id} = $self->{_send_cnt} = $self->{_spawned}  = 0;
 
-   select(undef, undef, undef, ($_is_WinEnv) ? 0.082 : 0.008)
+   sleep($_is_WinEnv ? 0.082 : 0.008)
       if ($_is_mce_thr);
 
    $self->{_total_running} = $self->{_total_workers} = 0;
@@ -1426,7 +1426,7 @@ sub yield {
       $_delay += $self->{_i_app_tb} * $_count;
    }
 
-   select(undef, undef, undef, $_delay) if ($_delay > 0.0);
+   sleep($_delay) if ($_delay > 0.0);
    $self->{_i_wrk_st} = time() if ($_count && $_count > 2000000000);
 
    return;
@@ -1509,7 +1509,7 @@ sub exit {
          or die "(W) open error $_sess_dir/_dat.lock.e: $!\n";
 
       flock $_DAE_LOCK, LOCK_EX;
-      select(undef, undef, undef, 0.05) if ($_is_WinEnv);
+      sleep(0.05) if ($_is_WinEnv);
 
       flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
 
@@ -1957,7 +1957,7 @@ sub _dispatch_thread {
       push @{ $self->{_tids} }, $_thr->tid();
    }
 
-   select(undef, undef, undef, $self->{spawn_delay})
+   sleep($self->{spawn_delay})
       if (defined $self->{spawn_delay} && $self->{spawn_delay} > 0.0);
 
    return;
@@ -2001,7 +2001,7 @@ sub _dispatch_child {
       push @{ $self->{_pids} }, $_pid;
    }
 
-   select(undef, undef, undef, $self->{spawn_delay})
+   sleep($self->{spawn_delay})
       if (defined $self->{spawn_delay} && $self->{spawn_delay} > 0.0);
 
    return;

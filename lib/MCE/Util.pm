@@ -35,6 +35,7 @@ sub get_ncpu {
    return $g_ncpu if (defined $g_ncpu);
 
    local $ENV{PATH} = "/usr/sbin:/sbin:/usr/bin:/bin:$ENV{PATH}";
+   $ENV{PATH} =~ /(.*)/; $ENV{PATH} = $1;   ## Remove taintedness
 
    my $ncpu = 1;
 

@@ -20,6 +20,7 @@ package MCE;
 use strict;
 use warnings;
 
+use Time::HiRes qw( sleep time );
 use bytes;
 
 ## Warnings are disabled to minimize bits of noise when user or OS signals
@@ -491,7 +492,7 @@ sub _worker_loop {
             $self->{user_data} = $self->{thaw}($_buffer);
             undef $_buffer;
 
-            select(undef, undef, undef, $_job_delay * $_wid)
+            sleep($_job_delay * $_wid)
                if (defined $_job_delay && $_job_delay > 0.0);
 
             _worker_do($self, { });
@@ -521,7 +522,7 @@ sub _worker_loop {
       ## Wait until MCE completes params submission to all workers.
       my $_c; sysread $self->{_bse_r_sock}, $_c, 1;
 
-      select(undef, undef, undef, $_job_delay * $_wid)
+      sleep($_job_delay * $_wid)
          if (defined $_job_delay && $_job_delay > 0.0);
 
       _worker_do($self, $_params_ref); undef $_params_ref;
@@ -657,7 +658,7 @@ sub _worker_main {
    ## Begin processing if worker was added during processing. Otherwise,
    ## respond back to the main process if the last worker spawned.
    if (defined $_params) {
-      select(undef, undef, undef, 0.002);
+      sleep(0.002);
       _worker_do($self, $_params); undef $_params;
    }
    elsif ($self->{_wid} == $self->{_total_workers}) {
@@ -681,7 +682,7 @@ sub _worker_main {
       my $_c; sysread $self->{_bse_r_sock}, $_c, 1;
    };
 
-   select(undef, undef, undef, 0.005) if ($MCE::_is_WinEnv);
+   sleep(0.005) if ($MCE::_is_WinEnv);
 
    if ($_lock_chn) {
       close $_DAT_LOCK; undef $_DAT_LOCK;

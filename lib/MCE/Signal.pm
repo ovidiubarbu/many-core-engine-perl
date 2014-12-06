@@ -9,6 +9,7 @@ package MCE::Signal;
 use strict;
 use warnings;
 
+use Time::HiRes qw( sleep time );
 use Fcntl qw( :flock O_RDONLY );
 use base qw( Exporter );
 
@@ -84,7 +85,7 @@ sub import {
    ## Sets the current process group for the current process.
    setpgrp(0,0) if ($_setpgrp == 1 && $^O ne 'MSWin32');
 
-   my ($_tmp_dir_base, $_count);
+   my ($_tmp_dir_base, $_count); $_count = 0;
 
    if (exists $ENV{TEMP}) {
       if ($_is_MSWin32) {
@@ -103,11 +104,11 @@ sub import {
    _croak("MCE::Signal::import: '$_tmp_dir_base' is not writeable")
       unless (-w $_tmp_dir_base);
 
-   $_count  = 0;
-   $tmp_dir = "$_tmp_dir_base/$prog_name.$$.$_count";
+   ## Remove taintedness from $tmp_dir.
+   ($tmp_dir) = "$_tmp_dir_base/$prog_name.$$.$_count" =~ /(.*)/;
 
-   while ( !(mkdir "$tmp_dir", 0770) ) {
-      $tmp_dir = "$_tmp_dir_base/$prog_name.$$." . (++$_count);
+   while ( !(mkdir $tmp_dir, 0770) ) {
+      ($tmp_dir) = ("$_tmp_dir_base/$prog_name.$$.".(++$_count)) =~ /(.*)/;
    }
 }
 
@@ -262,9 +263,9 @@ sub sys_cmd {
 
                ## Pause a bit.
                if ($_sig_name ne 'PIPE') {
-                  select(undef, undef, undef, 0.066) for (1..3);
+                  sleep(0.066) for (1..3);
                } else {
-                  select(undef, undef, undef, 0.011) for (1..2);
+                  sleep(0.011) for (1..2);
                }
             }
 
@@ -341,7 +342,7 @@ sub sys_cmd {
 
       ## Exit thread/process with status.
       if ($_is_sig == 1 && $_no_kill9 == 0) {
-         select(undef, undef, undef, 0.066) for (1..6);
+         sleep(0.066) for (1..6);
       }
 
       threads->exit($_exit_status)
