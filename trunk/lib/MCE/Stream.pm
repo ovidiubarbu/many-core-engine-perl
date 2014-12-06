@@ -13,10 +13,9 @@ use Scalar::Util qw( looks_like_number );
 
 use MCE;
 use MCE::Util;
-
 use MCE::Queue;
 
-our $VERSION = '1.520'; $VERSION = eval $VERSION;
+our $VERSION = '1.520';
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -34,23 +33,21 @@ my ($_MCE, $_loaded); my $_tag = 'MCE::Stream';
 
 sub import {
 
+   ## no critic (ControlStructures::ProhibitPostfixControls)
    my $_class = shift; return if ($_loaded++);
 
    ## Process module arguments.
-   while (my $_arg = shift) {
+   while (my $_argument = shift) {
+      my $_arg = lc $_argument;
 
-      $DEFAULT_MODE = shift and next if ( $_arg =~ /^default_mode$/i );
-      $MAX_WORKERS  = shift and next if ( $_arg =~ /^max_workers$/i );
-      $CHUNK_SIZE   = shift and next if ( $_arg =~ /^chunk_size$/i );
-      $MCE::TMP_DIR = shift and next if ( $_arg =~ /^tmp_dir$/i );
-      $MCE::FREEZE  = shift and next if ( $_arg =~ /^freeze$/i );
-      $MCE::THAW    = shift and next if ( $_arg =~ /^thaw$/i );
+      $DEFAULT_MODE = shift and next if ( $_arg eq 'default_mode' );
+      $MAX_WORKERS  = shift and next if ( $_arg eq 'max_workers' );
+      $CHUNK_SIZE   = shift and next if ( $_arg eq 'chunk_size' );
+      $MCE::TMP_DIR = shift and next if ( $_arg eq 'tmp_dir' );
+      $MCE::FREEZE  = shift and next if ( $_arg eq 'freeze' );
+      $MCE::THAW    = shift and next if ( $_arg eq 'thaw' );
 
-      if ( $_arg =~ /^fast$/i ) {
-         $FAST = 1 if (shift eq '1');
-         next;
-      }
-      if ( $_arg =~ /^sereal$/i ) {
+      if ( $_arg eq 'sereal' ) {
          if (shift eq '1') {
             local $@; eval 'use Sereal qw(encode_sereal decode_sereal)';
             unless ($@) {
@@ -60,8 +57,12 @@ sub import {
          }
          next;
       }
+      if ( $_arg eq 'fast' ) {
+         $FAST = 1 if (shift eq '1');
+         next;
+      }
 
-      _croak("$_tag::import: '$_arg' is not a valid module argument");
+      _croak("$_tag::import: '$_argument' is not a valid module argument");
    }
 
    _croak("$_tag: 'DEFAULT_MODE' is not valid")
@@ -372,6 +373,7 @@ sub mce_stream (@) {
    }
 
    if (defined $_params) { my $_p = $_params;
+      ## no critic (ControlStructures::ProhibitPostfixControls)
       $_max_workers = MCE::Util::_parse_max_workers($_p->{max_workers})
          if (exists $_p->{max_workers} && ref $_p->{max_workers} ne 'ARRAY');
 
