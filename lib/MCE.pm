@@ -112,7 +112,7 @@ BEGIN {
    ## The same fix is also needed here in order for PDL + MCE threads to not
    ## crash during exiting.
 
-   sub PDL::CLONE_SKIP { 1 };
+   sub PDL::CLONE_SKIP { return 1; }
 
    return;
 }
@@ -1800,17 +1800,17 @@ sub say {
    }
 }
 
-sub _die  { MCE::Signal->_die_handler(@_);  }
-sub _warn { MCE::Signal->_warn_handler(@_); }
+sub _die  { return MCE::Signal->_die_handler(@_);  }
+sub _warn { return MCE::Signal->_warn_handler(@_); }
 
 sub _croak {
 
    $SIG{__DIE__}  = \&MCE::_die;
    $SIG{__WARN__} = \&MCE::_warn;
 
-   $\ = undef; require Carp; goto &Carp::croak;
+   $\ = undef; require Carp;
 
-   return;
+   goto &Carp::croak;
 }
 
 sub _NOOP { }

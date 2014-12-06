@@ -42,7 +42,7 @@ our %EXPORT_TAGS = (
 
 sub _croak { require Carp; goto &Carp::croak; }
 sub _usage { _croak "MCE::Signal error: $_[0] is not a valid option"; }
-sub _flag  { 1; }
+sub _flag  { return 1; }
 
 my $_is_MSWin32   = ($^O eq 'MSWin32');
 my $_keep_tmp_dir = 0;
@@ -110,6 +110,8 @@ sub import {
    while ( !(mkdir $tmp_dir, 0770) ) {
       ($tmp_dir) = ("$_tmp_dir_base/$prog_name.$$.".(++$_count)) =~ /(.*)/;
    }
+
+   return;
 }
 
 ###############################################################################
@@ -228,7 +230,7 @@ sub sys_cmd {
       if ($$ == $main_proc_id) {
 
          if (++$_handler_cnt == 1 && ! -e "$tmp_dir/stopped") {
-            open my $_FH, "> $tmp_dir/stopped"; close $_FH;
+            open my $_FH, ">", "$tmp_dir/stopped"; close $_FH;
 
             local $\ = undef;
 
@@ -256,7 +258,7 @@ sub sys_cmd {
                print STDERR "\n## $prog_name: $_err_msg\n"
                   if ($_err_msg && $_no_sigmsg == 0);
 
-               open my $_FH, "> $tmp_dir/killed"; close $_FH;
+               open my $_FH, ">", "$tmp_dir/killed"; close $_FH;
 
                ## Signal process group to terminate.
                kill('TERM', $_is_MSWin32 ? -$$ : -getpgrp());
@@ -379,6 +381,8 @@ sub _shutdown_mce {
          delete $mce_spawned_ref->{$_mce_sid};
       }
    }
+
+   return;
 }
 
 ###############################################################################
@@ -435,6 +439,8 @@ sub _warn_handler {
    else {
       print STDERR $_[0];
    }
+
+   return;
 }
 
 1;

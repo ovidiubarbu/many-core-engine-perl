@@ -449,7 +449,7 @@ sub _peekp {
    _croak("MCE::Queue::peekp: 'index' is not an integer")
       if (!looks_like_number($_i) || int($_i) != $_i);
 
-   return undef unless (exists $_queue->{_datp}->{$_p});
+   return unless (exists $_queue->{_datp}->{$_p});
    return $_queue->{_datp}->{$_p}->[$_i];
 }
 
@@ -1386,7 +1386,7 @@ sub _mce_m_insertp {
 
          if ($_len < 0) {
             flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
-            return undef;
+            return;
          }
 
          read  $_DAU_W_SOCK, $_buffer, $_len;
@@ -1433,7 +1433,7 @@ sub _mce_m_insertp {
 
          if ($_len < 0) {
             flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
-            return undef;
+            return;
          }
 
          read  $_DAU_W_SOCK, $_buffer, $_len;
@@ -1556,7 +1556,7 @@ sub _mce_m_insertp {
 
          if ($_len < 0) {
             flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
-            return undef;
+            return;
          }
 
          read  $_DAU_W_SOCK, $_buffer, $_len;
@@ -1591,7 +1591,7 @@ sub _mce_m_insertp {
 
          if ($_len < 0) {
             flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
-            return undef;
+            return;
          }
 
          read  $_DAU_W_SOCK, $_buffer, $_len;
@@ -1623,7 +1623,7 @@ sub _mce_m_insertp {
 
          if ($_len < 0) {
             flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
-            return undef;
+            return;
          }
 
          read  $_DAU_W_SOCK, $_buffer, $_len;
@@ -1955,7 +1955,7 @@ which will block until the requested number of items are available.
 
 Returns the requested number of items (default is 1) from the queue. Like with
 dequeue, priority data will always dequeue first. This method is non-blocking
-and will return undef in the absence of data from the queue.
+and will return in the absence of data from the queue.
 
 =item ->insert ( $index, $item [, $item, ... ] )
 

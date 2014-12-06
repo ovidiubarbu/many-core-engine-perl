@@ -532,9 +532,8 @@ sub _worker_loop {
    ## when an invalid reply was received above (not likely to occur).
 
    flock $_COM_LOCK, LOCK_UN;
-   die "worker $self->{_wid} has ended prematurely";
 
-   return 1;
+   die "worker $self->{_wid} has ended prematurely";
 }
 
 ###############################################################################
