@@ -38,7 +38,9 @@ print "\n";
 MCE::Loop::init { gather => sub { print shift() } };
 
 sub callback {
-   print $_[0];
+   my ($msg) = @_;
+   print $msg;
+   return;
 }
 
 mce_loop {

@@ -125,6 +125,7 @@ my $exit_status = 0;
 
 sub failed_callback {
    $exit_status = 1;
+   return;
 }
 
 my $mce = MCE->new(

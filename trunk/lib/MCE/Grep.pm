@@ -9,6 +9,20 @@ package MCE::Grep;
 use strict;
 use warnings;
 
+## no critic (BuiltinFunctions::ProhibitStringyEval)
+## no critic (Subroutines::ProhibitSubroutinePrototypes)
+## no critic (TestingAndDebugging::ProhibitNoStrict)
+
+## no critic (ControlStructures::ProhibitPostfixControls)
+## no critic (RegularExpressions::RequireDotMatchAnything)
+## no critic (RegularExpressions::RequireExtendedFormatting)
+## no critic (RegularExpressions::RequireLineBoundaryMatching)
+## no critic (Subroutines::ProhibitExcessComplexity)
+## no critic (Subroutines::RequireArgUnpacking)
+## no critic (TestingAndDebugging::ProhibitNoWarnings)
+## no critic (TestingAndDebugging::ProhibitProlongedStrictureOverride)
+## no critic (Variables::ProhibitPunctuationVars)
+
 use Scalar::Util qw( looks_like_number );
 
 use MCE;
@@ -29,7 +43,6 @@ my ($_MCE, $_loaded); my ($_params, $_prev_c); my $_tag = 'MCE::Grep';
 
 sub import {
 
-   ## no critic (ControlStructures::ProhibitPostfixControls)
    my $_class = shift; return if ($_loaded++);
 
    ## Process module arguments.
@@ -53,7 +66,7 @@ sub import {
          next;
       }
 
-      _croak("$_tag::import: '$_argument' is not a valid module argument");
+      _croak("$_tag::import: ($_argument) is not a valid module argument");
    }
 
    $MAX_WORKERS = MCE::Util::_parse_max_workers($MAX_WORKERS);
@@ -64,7 +77,7 @@ sub import {
 
    ## Import functions.
    no strict 'refs'; no warnings 'redefine';
-   my $_package = caller();
+   my $_package = caller;
 
    *{ $_package . '::mce_grep_f' } = \&mce_grep_f;
    *{ $_package . '::mce_grep_s' } = \&mce_grep_s;
@@ -89,7 +102,9 @@ my ($_total_chunks, %_tmp);
 
 sub _gather {
 
-   $_tmp{$_[1]} = $_[0];
+   my ($_data_ref, $_chunk_id) = @_;
+
+   $_tmp{$_chunk_id} = $_data_ref;
    $_total_chunks++;
 
    return;
@@ -109,7 +124,7 @@ sub init (@) {
       );
    }
 
-   _croak("$_tag: 'argument' is not a HASH reference")
+   _croak("$_tag: (argument) is not a HASH reference")
       unless (ref $_[0] eq 'HASH');
 
    MCE::Grep::finish(); $_params = shift;
@@ -146,17 +161,17 @@ sub mce_grep_f (&@) {
       $_params = {};
    }
 
-   if (defined $_file && ref $_file eq "" && $_file ne "") {
-      _croak("$_tag: '$_file' does not exist") unless (-e $_file);
-      _croak("$_tag: '$_file' is not readable") unless (-r $_file);
-      _croak("$_tag: '$_file' is not a plain file") unless (-f $_file);
+   if (defined $_file && ref $_file eq '' && $_file ne '') {
+      _croak("$_tag: ($_file) does not exist") unless (-e $_file);
+      _croak("$_tag: ($_file) is not readable") unless (-r $_file);
+      _croak("$_tag: ($_file) is not a plain file") unless (-f $_file);
       $_params->{_file} = $_file;
    }
    elsif (ref $_file eq 'GLOB' || ref $_file eq 'SCALAR' || ref($_file) =~ /^IO::/) {
       $_params->{_file} = $_file;
    }
    else {
-      _croak("$_tag: 'file' is not specified or valid");
+      _croak("$_tag: (file) is not specified or valid");
    }
 
    @_ = ();
@@ -192,18 +207,18 @@ sub mce_grep_s (&@) {
       $_begin = $_[0]->[0]; $_end = $_[0]->[1];
       $_params->{sequence} = $_[0];
    }
-   elsif (ref $_[0] eq "") {
+   elsif (ref $_[0] eq '') {
       $_begin = $_[0]; $_end = $_[1];
       $_params->{sequence} = [ @_ ];
    }
    else {
-      _croak("$_tag: 'sequence' is not specified or valid");
+      _croak("$_tag: (sequence) is not specified or valid");
    }
 
-   _croak("$_tag: 'begin' is not specified for sequence")
+   _croak("$_tag: (begin) is not specified for sequence")
       unless (defined $_begin);
 
-   _croak("$_tag: 'end' is not specified for sequence")
+   _croak("$_tag: (end) is not specified for sequence")
       unless (defined $_end);
 
    @_ = ();
@@ -234,7 +249,6 @@ sub mce_grep (&@) {
    }
 
    if (defined $_params) { my $_p = $_params;
-      ## no critic (ControlStructures::ProhibitPostfixControls)
       $_max_workers = MCE::Util::_parse_max_workers($_p->{max_workers})
          if (exists $_p->{max_workers});
 
@@ -279,14 +293,14 @@ sub mce_grep (&@) {
                if (ref $_chunk_ref eq 'SCALAR') {
                   local $/ = $_mce->{RS} if defined $_mce->{RS};
                   open my  $_MEM_FH, '<', $_chunk_ref;
-                  while ( <$_MEM_FH> ) { push (@_a, $_) if &$_code; }
+                  while ( <$_MEM_FH> ) { push @_a, $_ if &{ $_code }; }
                   close    $_MEM_FH;
                }
                else {
                   if (ref $_chunk_ref) {
-                     push @_a, grep { &$_code } @$_chunk_ref;
+                     push @_a, grep { &{ $_code } } @{ $_chunk_ref };
                   } else {
-                     push @_a, grep { &$_code } $_chunk_ref;
+                     push @_a, grep { &{ $_code } } $_chunk_ref;
                   }
                }
 
@@ -298,20 +312,20 @@ sub mce_grep (&@) {
                if (ref $_chunk_ref eq 'SCALAR') {
                   local $/ = $_mce->{RS} if defined $_mce->{RS};
                   open my  $_MEM_FH, '<', $_chunk_ref;
-                  while ( <$_MEM_FH> ) { $_cnt++ if &$_code; }
+                  while ( <$_MEM_FH> ) { $_cnt++ if &{ $_code }; }
                   close    $_MEM_FH;
                }
                else {
                   if (ref $_chunk_ref) {
-                     $_cnt += grep { &$_code } @$_chunk_ref;
+                     $_cnt += grep { &{ $_code } } @{ $_chunk_ref };
                   } else {
-                     $_cnt += grep { &$_code } $_chunk_ref;
+                     $_cnt += grep { &{ $_code } } $_chunk_ref;
                   }
                }
 
                MCE->gather($_cnt) if defined $_wantarray;
             }
-         }
+         },
       );
 
       if (defined $_params) {
@@ -319,7 +333,7 @@ sub mce_grep (&@) {
             next if ($_ eq 'input_data');
             next if ($_ eq 'chunk_size');
 
-            _croak("MCE::Grep: '$_' is not a valid constructor argument")
+            _croak("MCE::Grep: ($_) is not a valid constructor argument")
                unless (exists $MCE::_valid_fields_new{$_});
 
             $_options{$_} = $_params->{$_};
@@ -375,17 +389,20 @@ sub _croak {
 
 sub _validate_number {
 
-   my $_n = $_[0]; my $_key = $_[1];
+   my ($_n, $_key) = @_;
 
    $_n =~ s/K\z//i; $_n =~ s/M\z//i;
 
-   _croak("$_tag: '$_key' is not valid")
-      if (!looks_like_number($_n) || int($_n) != $_n || $_n < 1);
+   if (!looks_like_number($_n) || int($_n) != $_n || $_n < 1) {
+      _croak("$_tag: ($_key) is not valid");
+   }
 
    return;
 }
 
 1;
+
+## no critic (RequirePodSections)
 
 __END__
 
@@ -451,9 +468,10 @@ than end, otherwise -1.
 
    my @m3 = mce_grep_s { /[2357][1468][9]/ } 1, 1000000;  ## 0.271 secs
 
-Although this document is about MCE::Grep, the L<MCE::Stream> module can write
-results immediately without waiting for all chunks to complete. This is made
-possible by passing the reference of the array (in this case @m4 and @m5).
+Although this document is about MCE::Grep, the L<MCE::Stream|MCE::Stream>
+module can write results immediately without waiting for all chunks to
+complete. This is made possible by passing the reference of the array
+(in this case @m4 and @m5).
 
    use MCE::Stream default_mode => 'grep';
 
@@ -609,7 +627,7 @@ optional. The format is passed to sprintf (% may be omitted below).
 =item mce_grep { code } iterator
 
 An iterator reference can by specified for input data. Iterators are described
-under "SYNTAX for INPUT_DATA" at L<MCE::Core>.
+under "SYNTAX for INPUT_DATA" at L<MCE::Core|MCE::Core>.
 
    my @a = mce_grep { $_ % 3 == 0 } make_iterator(10, 30, 2);
 
@@ -639,7 +657,7 @@ finish after running. This resets the MCE instance.
 
 =head1 INDEX
 
-L<MCE>
+L<MCE|MCE>
 
 =head1 AUTHOR
 

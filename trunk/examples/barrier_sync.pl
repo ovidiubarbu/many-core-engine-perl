@@ -27,6 +27,8 @@ sub user_func {
 
    MCE->sendto("STDOUT", "c: $wid\n");
    MCE->sync;
+
+   return;
 }
 
 my $mce = MCE->new(

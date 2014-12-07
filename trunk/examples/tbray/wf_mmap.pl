@@ -7,15 +7,20 @@
 ##
 ## This code depends on Sys::Mmap, which is available on CPAN.
 
-use Sys::Mmap;
-use Time::HiRes qw(time);
 use strict qw(subs refs);
+use warnings;
+
+use Time::HiRes qw(time);
+use Sys::Mmap;
+
+## no critic (InputOutput::ProhibitBarewordFileHandles)
+## no critic (InputOutput::RequireBriefOpen)
 
 $J ||= 8;
 
 my $file = shift;
 
-open IN, $file or die $!;
+open IN, '<', $file or die $!;
 my $str;
 
 mmap $str, 0, PROT_READ, MAP_SHARED, IN;
@@ -23,13 +28,13 @@ mmap $str, 0, PROT_READ, MAP_SHARED, IN;
 my %h;
 my $n = 0;
 
-my $start = time();
+my $start = time;
 
 unless ($J) {
     ## serial
     $h{$1}++ while $str =~ m{GET /ongoing/When/\d\d\dx/(\d\d\d\d/\d\d/\d\d/[^ .]+) }g;
 } else {
-    $|=1;
+    local $|=1;
     ## parallel -- ugh.
     my $size = -s IN;
     my $nperj = int(($size + $J - 1) / $J);
@@ -58,7 +63,7 @@ unless ($J) {
     }
 }
 
-my $end = time();
+my $end = time;
 
 for (sort { $h{$b} <=> $h{$a} } keys %h) {
     print "$h{$_}\t$_\n";

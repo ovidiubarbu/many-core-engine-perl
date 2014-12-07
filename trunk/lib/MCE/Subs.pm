@@ -9,6 +9,15 @@ package MCE::Subs;
 use strict;
 use warnings;
 
+## no critic (Subroutines::ProhibitSubroutinePrototypes)
+## no critic (TestingAndDebugging::ProhibitNoStrict)
+
+## no critic (ControlStructures::ProhibitPostfixControls)
+## no critic (Subroutines::RequireArgUnpacking)
+## no critic (Subroutines::RequireFinalReturn)
+## no critic (TestingAndDebugging::ProhibitNoWarnings)
+## no critic (TestingAndDebugging::ProhibitProlongedStrictureOverride)
+
 use MCE;
 
 our $VERSION = '1.520';
@@ -23,12 +32,10 @@ my $_loaded;
 
 sub import {
 
-   ## no critic (ControlStructures::ProhibitPostfixControls)
-   my $class = shift;
-   return if ($_loaded++);
+   my $_class = shift; return if ($_loaded++);
 
    my $_g_flg = 0; my $_m_flg = 0; my $_w_flg = 0;
-   my $_flag = sub { 1 }; my $_package = caller();
+   my $_flag = sub { 1 }; my $_package = caller;
 
    ## Process module arguments.
    while (my $_argument = shift) {
@@ -38,7 +45,7 @@ sub import {
       $_m_flg = $_flag->() and next if ( $_arg eq ':manager' );
       $_w_flg = $_flag->() and next if ( $_arg eq ':worker' );
 
-      _croak("MCE::Subs::import: '$_argument' is not a valid module argument");
+      _croak("MCE::Subs::import: ($_argument) is not a valid module argument");
    }
 
    $_m_flg = $_w_flg = 1 if ($_m_flg + $_w_flg == 0);
@@ -61,7 +68,7 @@ sub mce_restart_worker (@) {
 }
 
 sub mce_forchunk    (@) { return $MCE::MCE->forchunk(@_); }
-sub mce_foreach     (@) { return $MCE::MCE->foreach(@_);  }
+sub mce_foreach     (@) { return $MCE::MCE->foreach(@_); }
 sub mce_forseq      (@) { return $MCE::MCE->forseq(@_); }
 sub mce_process     (@) { return $MCE::MCE->process(@_); }
 sub mce_run         (@) { return $MCE::MCE->run(@_); }
@@ -180,6 +187,8 @@ sub _export_subs {
 
 1;
 
+## no critic (RequirePodSections)
+
 __END__
 
 ###############################################################################
@@ -263,7 +272,7 @@ comma after the file handle.
 
 =head1 FUNCTIONS for the MANAGER PROCESS via ( :manager )
 
-MCE methods are described in L<MCE::Core>.
+MCE methods are described in L<MCE::Core|MCE::Core>.
 
 =over 3
 
@@ -303,7 +312,7 @@ MCE methods are described in L<MCE::Core>.
 
 =head1 FUNCTIONS for MCE WORKERS via ( :worker )
 
-MCE methods are described in L<MCE::Core>.
+MCE methods are described in L<MCE::Core|MCE::Core>.
 
 =over 3
 
@@ -339,7 +348,7 @@ MCE methods are described in L<MCE::Core>.
 
 =head1 GETTERS for MCE ATTRIBUTES via ( :getter )
 
-MCE methods are described in L<MCE::Core>.
+MCE methods are described in L<MCE::Core|MCE::Core>.
 
 =over 3
 
@@ -367,7 +376,7 @@ MCE methods are described in L<MCE::Core>.
 
 =head1 INDEX
 
-L<MCE>
+L<MCE|MCE>
 
 =head1 AUTHOR
 

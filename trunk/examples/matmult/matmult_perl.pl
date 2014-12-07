@@ -9,6 +9,8 @@
 use strict;
 use warnings;
 
+## no critic (InputOutput::RequireBriefOpen)
+
 use Cwd 'abs_path';  ## Remove taintedness from path
 use lib ($_) = (abs_path().'/../../lib') =~ /(.*)/;
 
@@ -82,11 +84,13 @@ print "\n";
 ###############################################################################
 
 sub get_row_a {
-   return $a->[ $_[0] ];
+   my ($i) = @_;
+   return $a->[ $i ];
 }
 
 sub insert_row {
-   $c->[ $_[0] ] = $_[1];
+   my ($i, $result) = @_;
+   $c->[ $i ] = $result;
    return;
 }
 

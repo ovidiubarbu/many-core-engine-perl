@@ -9,6 +9,16 @@ package MCE::Util;
 use strict;
 use warnings;
 
+## no critic (BuiltinFunctions::ProhibitStringyEval)
+
+## no critic (ControlStructures::ProhibitPostfixControls)
+## no critic (RegularExpressions::RequireDotMatchAnything)
+## no critic (RegularExpressions::RequireExtendedFormatting)
+## no critic (RegularExpressions::RequireLineBoundaryMatching)
+## no critic (Subroutines::ProhibitExcessComplexity)
+## no critic (Variables::ProhibitPunctuationVars)
+## no critic (Variables::RequireLocalizedPunctuationVars)
+
 use base qw( Exporter );
 use bytes;
 
@@ -40,25 +50,25 @@ sub get_ncpu {
    my $ncpu = 1;
 
    OS_CHECK: {
-      local $_ = $^O;
+      local $_ = lc $^O;
 
-      /linux/i && do {
-         my $count; local *PROC;
-         if ( open PROC, '<', '/proc/stat' ) {
-             $count = grep /^cpu\d/ => <PROC>;
-             close PROC;
+      /linux/ && do {
+         my ($count, $fh);
+         if ( open $fh, '<', '/proc/stat' ) {
+             $count = grep { /^cpu\d/ } <$fh>;
+             close $fh;
          }
          $ncpu = $count if $count;
          last OS_CHECK;
       };
 
-      /bsd|darwin|dragonfly/i && do {
+      /bsd|darwin|dragonfly/ && do {
          chomp( my @output = `sysctl -n hw.ncpu 2>/dev/null` );
          $ncpu = $output[0] if @output;
          last OS_CHECK;
       };
 
-      /aix/i && do {
+      /aix/ && do {
          my @output = `pmcycles -m 2>/dev/null`;
          if (@output) {
             $ncpu = scalar @output;
@@ -69,39 +79,40 @@ sub get_ncpu {
          last OS_CHECK;
       };
 
-      /gnu/i && do {
+      /gnu/ && do {
          chomp( my @output = `nproc 2>/dev/null` );
          $ncpu = $output[0] if @output;
          last OS_CHECK;
       };
 
-      /hp-?ux/i && do {
-         my $count = grep /^processor/ => `ioscan -fkC processor 2>/dev/null`;
+      /hp-?ux/ && do {
+         my $count = grep { /^processor/ } `ioscan -fkC processor 2>/dev/null`;
          $ncpu = $count if $count;
          last OS_CHECK;
       };
 
-      /irix/i && do {
-         my @output = grep /\s+processors?$/i => `hinv -c processor 2>/dev/null`;
-         $ncpu = (split " ", $output[0])[0] if @output;
+      /irix/ && do {
+         my @out = grep { /\s+processors?$/i } `hinv -c processor 2>/dev/null`;
+         $ncpu = (split ' ', $out[0])[0] if @out;
          last OS_CHECK;
       };
 
-      /osf|solaris|sunos|svr5|sco/i && do {
+      /osf|solaris|sunos|svr5|sco/ && do {
          if (-x '/usr/sbin/psrinfo') {
-            my $count = grep /on-?line/ => `psrinfo 2>/dev/null`;
+            my $count = grep { /on-?line/ } `psrinfo 2>/dev/null`;
             $ncpu = $count if $count;
          }
          else {
-            my @output = grep /^NumCPU = \d+/ => `uname -X 2>/dev/null`;
-            $ncpu = (split " ", $output[0])[2] if @output;
+            my @output = grep { /^NumCPU = \d+/ } `uname -X 2>/dev/null`;
+            $ncpu = (split ' ', $output[0])[2] if @output;
          }
          last OS_CHECK;
       };
 
-      /mswin|mingw|cygwin/i && do {
-         $ncpu = $ENV{NUMBER_OF_PROCESSORS}
-            if exists $ENV{NUMBER_OF_PROCESSORS};
+      /mswin|mingw|cygwin/ && do {
+         if (exists $ENV{NUMBER_OF_PROCESSORS}) {
+            $ncpu = $ENV{NUMBER_OF_PROCESSORS};
+         }
          last OS_CHECK;
       };
 
@@ -121,8 +132,7 @@ sub _parse_max_workers {
 
    my ($_max_workers) = @_;
 
-   return $_max_workers
-      unless (defined $_max_workers);
+   return $_max_workers unless (defined $_max_workers);
 
    if ($_max_workers =~ /^auto(?:$|\s*([\-\+\/\*])\s*(.+)$)/i) {
       my $_ncpu = get_ncpu();
@@ -143,11 +153,11 @@ sub _parse_chunk_size {
 
    my ($_chunk_size, $_max_workers, $_params, $_input_data, $_array_size) = @_;
 
-   return $_chunk_size
-      if (!defined $_chunk_size || !defined $_max_workers);
+   return $_chunk_size if (!defined $_chunk_size || !defined $_max_workers);
 
-   $_chunk_size = $_params->{chunk_size}
-      if (defined $_params && exists $_params->{chunk_size});
+   if (defined $_params && exists $_params->{chunk_size}) {
+      $_chunk_size = $_params->{chunk_size};
+   }
 
    if ($_chunk_size =~ /([0-9\.]+)K\z/i) {
       $_chunk_size = int($1 * 1024 + 0.5);
@@ -176,8 +186,9 @@ sub _parse_chunk_size {
             $_step  = $_params->{sequence}->[2] || 1;
          }
 
-         $_size = abs($_end - $_begin) / $_step + 1
-            if (!defined $_input_data && !$_array_size);
+         if (!defined $_input_data && !$_array_size) {
+            $_size = abs($_end - $_begin) / $_step + 1;
+         }
       }
       elsif (defined $_params && exists $_params->{_file}) {
          my $_ref = ref $_params->{_file};
@@ -187,24 +198,24 @@ sub _parse_chunk_size {
          } elsif ($_ref eq '') {
             $_size = -s $_params->{_file};
          } else {
-            $_size = 0; $_chunk_size = 245760;
+            $_size = 0; $_chunk_size = 245_760;
          }
 
          $_is_file = 1;
       }
       elsif (defined $_input_data) {
          if (ref $_input_data eq 'GLOB' || ref($_input_data) =~ /^IO::/) {
-            $_is_file = 1; $_size = 0; $_chunk_size = 245760;
+            $_is_file = 1; $_size = 0; $_chunk_size = 245_760;
          }
          elsif (ref $_input_data eq 'SCALAR') {
-            $_is_file = 1; $_size = length $$_input_data;
+            $_is_file = 1; $_size = length ${ $_input_data };
          }
       }
 
       if (defined $_is_file) {
          if ($_size) {
             $_chunk_size = int($_size / $_max_workers / 24 + 0.5);
-            $_chunk_size = 4194304 if $_chunk_size > 4194304;  ## 4M
+            $_chunk_size = 4_194_304 if $_chunk_size > 4_194_304;  ## 4M
             $_chunk_size = 2 if $_chunk_size <= 8192;
          }
       }
@@ -219,6 +230,8 @@ sub _parse_chunk_size {
 }
 
 1;
+
+## no critic (RequirePodSections)
 
 __END__
 
@@ -265,11 +278,11 @@ Specifying 'auto' for max_workers calls MCE::Util::get_ncpu automatically.
 =head1 ACKNOWLEDGEMENTS
 
 The portable code for detecting the number of processors was adopted from
-L<Test::Smoke::SysInfo>.
+L<Test::Smoke::SysInfo|Test::Smoke::SysInfo>.
 
 =head1 INDEX
 
-L<MCE>
+L<MCE|MCE>
 
 =head1 AUTHOR
 

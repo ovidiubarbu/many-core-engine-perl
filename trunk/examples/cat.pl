@@ -19,6 +19,9 @@
 use strict;
 use warnings;
 
+## no critic (Subroutines::RequireArgUnpacking)
+## no critic (Variables::RequireLocalizedPunctuationVars)
+
 use Cwd 'abs_path';  ## Remove taintedness from path
 use lib ($_) = (abs_path().'/../lib') =~ /(.*)/;
 
@@ -168,7 +171,7 @@ my $mce = MCE->new(
 
 )->spawn;
 
-$| = 1 if $u_flag;
+local $| = 1 if $u_flag;
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -218,7 +221,7 @@ if (@files > 0) {
    foreach my $file (@files) {
       $order_id = 1; $lines = 0;
       if ($file eq '-') {
-         open(STDIN, ($^O eq 'MSWin32') ? 'CON' : '/dev/tty') or die $!;
+         open(STDIN, '<', ($^O eq 'MSWin32') ? 'CON' : '/dev/tty') or die $!;
          $mce->process(\*STDIN);
       }
       elsif (! -e $file) {

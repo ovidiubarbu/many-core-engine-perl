@@ -5,11 +5,10 @@ use warnings;
 
 use Test::More;
 
-if ($^O ne 'MSWin32') {
-   plan 'tests' => 6;
-}
-else {
+if ($^O eq 'MSWin32') {
    plan 'tests' => 5;
+} else {
+   plan 'tests' => 6;
 }
 
 ## Optional signals detected by MCE::Signal and not tested here are

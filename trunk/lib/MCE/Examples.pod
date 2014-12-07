@@ -157,7 +157,8 @@ This does the same thing using the foreach "sugar" method.
    });
 
 The two examples described above were done using the core API. MCE 1.5 comes
-with various models. The L<MCE::Loop> model is used for the next demonstration.
+with various models. The L<MCE::Loop|MCE::Loop> model is used for the next
+demonstration.
 
    use MCE::Loop;
 
@@ -244,8 +245,8 @@ This does the same thing using the forchunk "sugar" method.
       MCE->gather(\@result, $chunk_id);
    });
 
-The L<MCE::Loop> model is shown next. Looping is required inside the code
-block, just like above.
+The L<MCE::Loop|MCE::Loop> model is shown next. Looping is required inside the
+code block, just like above.
 
    use MCE::Loop;
 
@@ -693,7 +694,7 @@ process on a first come, first serve basis.
 
 =head1 INDEX
 
-L<MCE>
+L<MCE|MCE>
 
 =head1 AUTHOR
 

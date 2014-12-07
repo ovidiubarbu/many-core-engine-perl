@@ -1545,7 +1545,8 @@ on_post_run options for callback support.
 =item ->gather ( $arg1, [, $arg2, ... ] )
 
 A worker can submit data to the location specified via the gather option by
-calling this method. See L<MCE::Flow> and L<MCE::Loop> for additional use-case.
+calling this method. See L<MCE::Flow|MCE::Flow> and L<MCE::Loop|MCE::Loop>
+for additional use-case.
 
    my @hosts = qw(
       hosta hostb hostc hostd hoste
@@ -1996,7 +1997,7 @@ The interval.pl example is included with MCE.
 
 =head1 INDEX
 
-L<MCE>
+L<MCE|MCE>
 
 =head1 AUTHOR
 
