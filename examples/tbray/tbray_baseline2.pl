@@ -7,9 +7,12 @@
 ## whereas not the case in baseline1.
 ##
 
+use strict;
+use warnings;
+
 use Time::HiRes qw(time);
 
-my $start = time();
+my $start = time;
 
 my $rx = qr|GET /ongoing/When/\d\d\dx/(\d\d\d\d/\d\d/\d\d/[^ .]+) |;
 my %count;
@@ -18,7 +21,7 @@ while (<>) {
     $count{$1}++;
 }
 
-my $end = time();
+my $end = time;
 
 print "$count{$_}\t$_\n"
   for ( sort { $count{$b} <=> $count{$a} } keys %count )[ 0 .. 9 ];

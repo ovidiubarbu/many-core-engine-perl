@@ -38,15 +38,25 @@
 ## ============================================================================
 ## 2014-01-21  v1.008
 ##   Created by Mario Roy.
+##
 ## 2014-07-23  v1.009
 ##   ${^CHILD_ERROR_NATIVE} is not defined in Perl 5.8.x. Use $? instead.
 ##   Compute chunk_level => 'auto' to use 'file' when reading STDIN.
 ##   Set chunk_size to 8M when not specified (from 4M previously).
 ##
+## 2014-12-06  v1.010
+##   Update: Passes perlcritic --severity 4.
+##
 ###############################################################################
 
 use strict;
 use warnings;
+
+## no critic (InputOutput::ProhibitBarewordFileHandles)
+## no critic (InputOutput::ProhibitTwoArgOpen)
+
+## no critic (InputOutput::RequireBriefOpen)
+## no critic (Variables::RequireLocalizedPunctuationVars)
 
 use Cwd qw( abs_path );
 use lib abs_path . '/../lib';
@@ -88,7 +98,7 @@ sub usage {
 
    print <<"::_USAGE_BLOCK_END_::";
 
-Options for Many-core Engine:
+Options for Script:
   --max-workers=NUM         override max workers (default 6)
                               e.g. auto, auto-2, 4
 
@@ -102,6 +112,7 @@ Options for Many-core Engine:
   --lang=LOCALE             override locale
                               e.g. C, en_US.UTF-8, en_US.ISO-8859-1
 
+Options for Binary:
 ::_USAGE_BLOCK_END_::
 
    return;
@@ -134,7 +145,7 @@ else {
 }
 
 unless (defined $cmd_path) {
-   print STDERR "$prog_name: $cmd_name: command not found\n";
+   print {*STDERR} "$prog_name: $cmd_name: command not found\n";
    exit 2;
 }
 {
@@ -143,7 +154,7 @@ unless (defined $cmd_path) {
       agrep     grep     egrep     fgrep     tre-agrep
    );
    unless (exists $valid_names{$cmd_name}) {
-      print STDERR "$prog_name: $cmd_name: command not supported\n";
+      print {*STDERR} "$prog_name: $cmd_name: command not supported\n";
       exit 2;
    }
 }
@@ -179,11 +190,13 @@ for my $i (0 .. @ARGV - 1) {
       'chunk-size|chunk_size=s'   => \$chunk_size,
 
       'lang=s' => sub {
+         my ($self, $lang) = @_;
          delete @ENV{ qw( LC_MESSAGES LC_COLLATE LC_CTYPE LC_ALL ) };
-         $ENV{'LANG'} = $_[1];
+         $ENV{'LANG'} = $lang;
       },
       'help' => sub {
-         usage(); system $cmd_path, '--help'; exit 0;
+         usage(); system $cmd_path, '--help'; print "\n";
+         exit 0;
       },
       'V|version' => sub {
          system $cmd_path, '--version'; exit 0;
@@ -197,12 +210,12 @@ for my $i (0 .. @ARGV - 1) {
 
    if ($max_workers !~ /^auto/) {
       unless (looks_like_number($max_workers) && $max_workers > 0) {
-         print STDERR "$prog_name: invalid max workers\n";
+         print {*STDERR} "$prog_name: invalid max workers\n";
          exit 2;
       }
    }
    if ($chunk_level !~ /^(?:auto|file|list)$/) {
-      print STDERR "$prog_name: invalid chunk level\n";
+      print {*STDERR} "$prog_name: invalid chunk level\n";
       exit 2;
    }
    if (defined $chunk_size) {
@@ -213,13 +226,13 @@ for my $i (0 .. @ARGV - 1) {
          $chunk_size = $1 * 1024 * 1024;
       }
       if (!looks_like_number($chunk_size) || $chunk_size < 1) {
-         print STDERR "$prog_name: invalid chunk size\n";
+         print {*STDERR} "$prog_name: invalid chunk size\n";
          exit 2;
       }
    }
    if ($max_count) {
       unless (looks_like_number($max_count) && $max_count >= 0) {
-         print STDERR "$prog_name: invalid max count\n";
+         print {*STDERR} "$prog_name: invalid max count\n";
          exit 2;
       }
    }
@@ -338,8 +351,9 @@ while ( @ARGV ) {
 
 push @args, shift @files if ($h_patn == 0 && @files > 0);
 
-$w_filename = 1
-   if ((!$h_flag && @files > 1) || (!$h_flag && $r_flag) || $H_flag);
+if ((!$h_flag && @files > 1) || (!$h_flag && $r_flag) || $H_flag) {
+   $w_filename = 1;
+}
 
 if (@args == 0) {
    system $cmd_path;
@@ -357,7 +371,9 @@ my ($_abort_all, $_abort_job, $_total_found);
 
 sub _error {
 
-   print STDERR $_[0];
+   my ($msg) = @_;
+
+   print {*STDERR} $msg;
    $exit_status = 2;
 
    return;
@@ -376,7 +392,8 @@ sub _abort_job {
 
 sub _output_cnt {
 
-   my $cnt; my $out_file = $_[1];
+   my ($chunk_id, $out_file, @_rest) = @_;
+   my $cnt;
 
    if (-s $out_file) {
       $found_match = 1;
@@ -412,7 +429,9 @@ sub _set_found_match {
 
 sub _output_n0 {
 
-   $_tmp{ $_[0] } = $_[1];
+   my ($chunk_id, $out_file, @_rest) = @_;
+
+   $_tmp{ $chunk_id } = $out_file;
 
    return unless exists $_tmp{ $_order_id };
 
@@ -478,8 +497,10 @@ sub _output_n0 {
 
 sub _output_n1 {
 
-   $_tmp{   $_[0] } = $_[1];
-   $_nsize{ $_[0] } = $n_flag ? $_[2] : $_[3];
+   my ($chunk_id, $out_file, $n_records, $size) = @_;
+
+   $_tmp{   $chunk_id } = $out_file;
+   $_nsize{ $chunk_id } = $n_flag ? $n_records : $size;
 
    return unless exists $_tmp{ $_order_id };
 
@@ -547,9 +568,11 @@ sub _output_n1 {
 
 sub _output_n2 {
 
-   $_tmp{   $_[0] } = $_[1];
-   $_nrecs{ $_[0] } = $_[2];
-   $_nsize{ $_[0] } = $_[3];
+   my ($chunk_id, $out_file, $n_records, $size) = @_;
+
+   $_tmp{   $chunk_id } = $out_file;
+   $_nrecs{ $chunk_id } = $n_records;
+   $_nsize{ $chunk_id } = $size;
 
    return unless exists $_tmp{ $_order_id };
 
@@ -639,18 +662,18 @@ sub make_user_func_file {
 
       my ($self, $chunk_ref, $chunk_id) = @_;
 
-      my ($out_fh, $err_fh, $cmd_fh, $has_err); my $N_records = 0;
+      my ($out_fh, $err_fh, $cmd_fh, $has_err); my $n_records = 0;
       my $out_file = MCE->sess_dir() .'/'. $chunk_id;
 
       if ($n_flag) {
-         $N_records++ while ($$chunk_ref =~ m!\n!mg);
+         $n_records++ while ($$chunk_ref =~ m!\n!mg);
       }
 
       if ($is_MSWin32) {
          $out_file =~ s{/}{\\\\}g;
 
          open my $in_fh, '+>', $out_file . '.in'; binmode $in_fh, ':raw';
-         print $in_fh $$chunk_ref;
+         print {$in_fh} $$chunk_ref;
          close $in_fh;
 
          my $err_file = $first_time ? "2> $out_file.err" : '';
@@ -718,7 +741,7 @@ sub make_user_func_file {
          unlink $out_file;
       }
       else {
-         MCE->gather($chunk_id, $out_file, $N_records, length $$chunk_ref)
+         MCE->gather($chunk_id, $out_file, $n_records, length $$chunk_ref)
             unless $has_err;
       }
 
@@ -813,16 +836,16 @@ sub user_func_list {
 
 sub process_file {
 
-   $file = $_[0];
+   ($file) = @_;
 
    if ($file eq '-') {
-      open(STDIN, ($is_MSWin32) ? 'CON' : '/dev/tty') or die $!;
+      open(STDIN, '<', ($is_MSWin32) ? 'CON' : '/dev/tty') or die $!;
       process_stdin();
    }
    elsif (! -e $file) {
       $exit_status = 2;
 
-      print STDERR "$prog_name: $file: No such file or directory\n"
+      print {*STDERR} "$prog_name: $file: No such file or directory\n"
          unless $no_msg;
    }
    elsif (-d $file) {

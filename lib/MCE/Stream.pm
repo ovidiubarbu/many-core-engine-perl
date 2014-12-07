@@ -9,6 +9,20 @@ package MCE::Stream;
 use strict;
 use warnings;
 
+## no critic (BuiltinFunctions::ProhibitStringyEval)
+## no critic (Subroutines::ProhibitSubroutinePrototypes)
+## no critic (TestingAndDebugging::ProhibitNoStrict)
+
+## no critic (ControlStructures::ProhibitPostfixControls)
+## no critic (RegularExpressions::RequireDotMatchAnything)
+## no critic (RegularExpressions::RequireExtendedFormatting)
+## no critic (RegularExpressions::RequireLineBoundaryMatching)
+## no critic (Subroutines::ProhibitExcessComplexity)
+## no critic (Subroutines::RequireArgUnpacking)
+## no critic (TestingAndDebugging::ProhibitNoWarnings)
+## no critic (TestingAndDebugging::ProhibitProlongedStrictureOverride)
+## no critic (Variables::ProhibitPunctuationVars)
+
 use Scalar::Util qw( looks_like_number );
 
 use MCE;
@@ -33,7 +47,6 @@ my ($_MCE, $_loaded); my $_tag = 'MCE::Stream';
 
 sub import {
 
-   ## no critic (ControlStructures::ProhibitPostfixControls)
    my $_class = shift; return if ($_loaded++);
 
    ## Process module arguments.
@@ -62,10 +75,10 @@ sub import {
          next;
       }
 
-      _croak("$_tag::import: '$_argument' is not a valid module argument");
+      _croak("$_tag::import: ($_argument) is not a valid module argument");
    }
 
-   _croak("$_tag: 'DEFAULT_MODE' is not valid")
+   _croak("$_tag: (DEFAULT_MODE) is not valid")
       if ($DEFAULT_MODE ne 'grep' && $DEFAULT_MODE ne 'map');
 
    $MAX_WORKERS = MCE::Util::_parse_max_workers($MAX_WORKERS);
@@ -76,7 +89,7 @@ sub import {
 
    ## Import functions.
    no strict 'refs'; no warnings 'redefine';
-   my $_package = caller();
+   my $_package = caller;
 
    *{ $_package . '::mce_stream_f' } = \&mce_stream_f;
    *{ $_package . '::mce_stream_s' } = \&mce_stream_s;
@@ -123,10 +136,10 @@ sub _task_end {
    my ($_mce, $_task_id, $_task_name) = @_;
 
    if (defined $_mce->{user_tasks}->[$_task_id + 1]) {
-      my $N_workers = $_mce->{user_tasks}->[$_task_id + 1]->{max_workers};
+      my $n_workers = $_mce->{user_tasks}->[$_task_id + 1]->{max_workers};
       my $_queue_id = @_queue - $_task_id - 1;
 
-      $_queue[$_queue_id]->enqueue((undef) x $N_workers);
+      $_queue[$_queue_id]->enqueue((undef) x $n_workers);
    }
 
    $_params->{task_end}->($_mce, $_task_id, $_task_name)
@@ -149,7 +162,7 @@ sub init (@) {
       );
    }
 
-   _croak("$_tag: 'argument' is not a HASH reference")
+   _croak("$_tag: (argument) is not a HASH reference")
       unless (ref $_[0] eq 'HASH');
 
    MCE::Stream::finish(); $_params = shift;
@@ -183,7 +196,7 @@ sub mce_stream_f (@) {
 
    for ($_start_pos .. @_ - 1) {
       my $_r = ref $_[$_];
-      if ($_r eq "" || $_r eq 'GLOB' || $_r eq 'SCALAR' || $_r =~ /^IO::/) {
+      if ($_r eq '' || $_r eq 'GLOB' || $_r eq 'SCALAR' || $_r =~ /^IO::/) {
          $_file = $_[$_]; $_pos = $_;
          last;
       }
@@ -197,17 +210,17 @@ sub mce_stream_f (@) {
       $_params = {};
    }
 
-   if (defined $_file && ref $_file eq "" && $_file ne "") {
-      _croak("$_tag: '$_file' does not exist") unless (-e $_file);
-      _croak("$_tag: '$_file' is not readable") unless (-r $_file);
-      _croak("$_tag: '$_file' is not a plain file") unless (-f $_file);
+   if (defined $_file && ref $_file eq '' && $_file ne '') {
+      _croak("$_tag: ($_file) does not exist") unless (-e $_file);
+      _croak("$_tag: ($_file) is not readable") unless (-r $_file);
+      _croak("$_tag: ($_file) is not a plain file") unless (-f $_file);
       $_params->{_file} = $_file;
    }
    elsif (ref $_file eq 'GLOB' || ref $_file eq 'SCALAR' || ref($_file) =~ /^IO::/) {
       $_params->{_file} = $_file;
    }
    else {
-      _croak("$_tag: 'file' is not specified or valid");
+      _croak("$_tag: (file) is not specified or valid");
    }
 
    if (defined $_pos) {
@@ -233,10 +246,10 @@ sub mce_stream_s (@) {
    for ($_start_pos .. @_ - 1) {
       my $_ref = ref $_[$_];
 
-      if ($_ref eq "" || $_ref eq 'HASH' || $_ref eq 'ARRAY') {
+      if ($_ref eq '' || $_ref eq 'HASH' || $_ref eq 'ARRAY') {
          $_pos = $_;
 
-         if ($_ref eq "") {
+         if ($_ref eq '') {
             $_begin = $_[$_pos]; $_end = $_[$_pos + 1];
             $_params->{sequence} = [
                $_[$_pos], $_[$_pos + 1], $_[$_pos + 2], $_[$_pos + 3]
@@ -263,13 +276,13 @@ sub mce_stream_s (@) {
       $_params = {};
    }
 
-   _croak("$_tag: 'sequence' is not specified or valid")
+   _croak("$_tag: (sequence) is not specified or valid")
       unless (exists $_params->{sequence});
 
-   _croak("$_tag: 'begin' is not specified for sequence")
+   _croak("$_tag: (begin) is not specified for sequence")
       unless (defined $_begin);
 
-   _croak("$_tag: 'end' is not specified for sequence")
+   _croak("$_tag: (end) is not specified for sequence")
       unless (defined $_end);
 
    if (defined $_pos) {
@@ -300,12 +313,12 @@ sub mce_stream (@) {
       shift;
    }
 
-   my $_aref = shift if (ref $_[0] eq 'ARRAY');
+   my $_aref; $_aref = shift if (ref $_[0] eq 'ARRAY');
 
    $_order_id = 1; undef %_tmp;
 
    if (defined $_aref) {
-      $_gather_ref = $_aref; @$_aref = ();
+      $_gather_ref = $_aref; @{ $_aref } = ();
    }
 
    ## -------------------------------------------------------------------------
@@ -322,10 +335,10 @@ sub mce_stream (@) {
          push @_mode, exists $_[0]->{mode} ? $_[0]->{mode} : $DEFAULT_MODE;
 
          unless (ref $_code[-1] eq 'CODE') {
-            @_ = (); _croak("$_tag: 'code' is not valid");
+            @_ = (); _croak("$_tag: (code) is not valid");
          }
          if ($_mode[-1] ne 'grep' && $_mode[-1] ne 'map') {
-            @_ = (); _croak("$_tag: 'mode' is not valid");
+            @_ = (); _croak("$_tag: (mode) is not valid");
          }
       }
 
@@ -373,7 +386,6 @@ sub mce_stream (@) {
    }
 
    if (defined $_params) { my $_p = $_params;
-      ## no critic (ControlStructures::ProhibitPostfixControls)
       $_max_workers = MCE::Util::_parse_max_workers($_p->{max_workers})
          if (exists $_p->{max_workers} && ref $_p->{max_workers} ne 'ARRAY');
 
@@ -385,8 +397,9 @@ sub mce_stream (@) {
       delete $_p->{gather}      if (exists $_p->{gather});
    }
 
-   $_max_workers = int($_max_workers / @_code + 0.5) + 1
-      if (@_code > 1);
+   if (@_code > 1) {
+      $_max_workers = int($_max_workers / @_code + 0.5) + 1;
+   }
 
    my $_chunk_size = MCE::Util::_parse_chunk_size(
       $CHUNK_SIZE, $_max_workers, $_params, $_input_data, scalar @_
@@ -417,7 +430,7 @@ sub mce_stream (@) {
       my %_options = (
          use_threads => 0, max_workers => $_max_workers, task_name => $_tag,
          user_tasks => \@_user_tasks, task_end => \&_task_end,
-         use_slurpio => 0
+         use_slurpio => 0,
       );
 
       if (defined $_params) {
@@ -430,7 +443,7 @@ sub mce_stream (@) {
             next if ($_ eq 'chunk_size');
             next if ($_ eq 'task_end');
 
-            _croak("MCE::Stream: '$_' is not a valid constructor argument")
+            _croak("MCE::Stream: ($_) is not a valid constructor argument")
                unless (exists $MCE::_valid_fields_new{$_});
 
             $_options{$_} = $_p->{$_};
@@ -508,13 +521,13 @@ sub _gen_user_tasks {
 
          if (ref $_chunk_ref) {
             push @_a, ($_mode_ref->[-1] eq 'map')
-               ?  map { &$_code } @{ $_chunk_ref }
-               : grep { &$_code } @{ $_chunk_ref };
+               ?  map { &{ $_code } } @{ $_chunk_ref }
+               : grep { &{ $_code } } @{ $_chunk_ref };
          }
          else {
             push @_a, ($_mode_ref->[-1] eq 'map')
-               ?  map { &$_code } $_chunk_ref
-               : grep { &$_code } $_chunk_ref;
+               ?  map { &{ $_code } } $_chunk_ref
+               : grep { &{ $_code } } $_chunk_ref;
          }
 
          MCE->gather( (@{ $_code_ref } > 1)
@@ -545,8 +558,8 @@ sub _gen_user_tasks {
                $_chunk = MCE->thaw($_chunk);
 
                push @_a, ($_mode_ref->[$_pos] eq 'map')
-                  ?  map { &$_code } @{ $_chunk->[0] }
-                  : grep { &$_code } @{ $_chunk->[0] };
+                  ?  map { &{ $_code } } @{ $_chunk->[0] }
+                  : grep { &{ $_code } } @{ $_chunk->[0] };
 
                MCE->gather(MCE->freeze([ \@_a, $_chunk->[1] ]));
             }
@@ -576,8 +589,8 @@ sub _gen_user_tasks {
                $_chunk = MCE->thaw($_chunk);
 
                push @_a, ($_mode_ref->[0] eq 'map')
-                  ?  map { &$_code } @{ $_chunk->[0] }
-                  : grep { &$_code } @{ $_chunk->[0] };
+                  ?  map { &{ $_code } } @{ $_chunk->[0] }
+                  : grep { &{ $_code } } @{ $_chunk->[0] };
 
                MCE->gather(\@_a, $_chunk->[1]);
             }
@@ -592,17 +605,20 @@ sub _gen_user_tasks {
 
 sub _validate_number {
 
-   my $_n = $_[0]; my $_key = $_[1];
+   my ($_n, $_key) = @_;
 
    $_n =~ s/K\z//i; $_n =~ s/M\z//i;
 
-   _croak("$_tag: '$_key' is not valid")
-      if (!looks_like_number($_n) || int($_n) != $_n || $_n < 1);
+   if (!looks_like_number($_n) || int($_n) != $_n || $_n < 1) {
+      _croak("$_tag: ($_key) is not valid");
+   }
 
    return;
 }
 
 1;
+
+## no critic (RequirePodSections)
 
 __END__
 
@@ -894,7 +910,7 @@ hash as the first argument to mce_stream. The only other way is to specify
 input_data via MCE::Stream::init. This prevents MCE::Stream from configuring
 the iterator reference as another user task which will not work.
 
-Iterators are described under "SYNTAX for INPUT_DATA" at L<MCE::Core>.
+Iterators are described under "SYNTAX for INPUT_DATA" at L<MCE::Core|MCE::Core>.
 
    MCE::Stream::init {
       input_data => iterator
@@ -928,7 +944,7 @@ finish after running. This resets the MCE instance.
 
 =head1 INDEX
 
-L<MCE>
+L<MCE|MCE>
 
 =head1 AUTHOR
 

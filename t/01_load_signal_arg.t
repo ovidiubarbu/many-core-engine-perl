@@ -21,10 +21,10 @@ BEGIN {
    use_ok('MCE::Signal', qw( $tmp_dir -use_dev_shm ));
 
    if (! exists $ENV{TEMP} && -d '/dev/shm' && -w '/dev/shm') {
-      ok($tmp_dir =~ m!^/dev/shm/!, 'Check tmp_dir matches ^/dev/shm/');
+      ok($tmp_dir =~ m{^/dev/shm/}x, 'Check tmp_dir matches ^/dev/shm/');
    }
    else {
-      ok($tmp_dir !~ m!^/dev/shm/!, 'Check tmp_dir does not match ^/dev/shm/');
+      ok($tmp_dir !~ m{^/dev/shm/}x, 'Check tmp_dir does not match ^/dev/shm/');
    }
 
    use_ok('MCE');

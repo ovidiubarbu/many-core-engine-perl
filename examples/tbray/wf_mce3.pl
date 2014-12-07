@@ -12,6 +12,11 @@
 ##    defaults: -J=8 -C=2000000
 ##
 
+use strict;
+use warnings;
+
+## no critic (Variables::ProhibitAugmentedAssignmentInDeclaration)
+
 use Time::HiRes qw(time);
 use MCE;
 
@@ -26,11 +31,12 @@ my %count = ();
 sub store_result {
    my $count_ref = shift;
    $count{$_} += $count_ref->{$_} for (keys %$count_ref);
+   return;
 }
 
 ## Parallelize via MCE.
 
-my $start = time();
+my $start = time;
 
 my $mce = MCE->new(
    chunk_size  => $C,
@@ -57,7 +63,7 @@ my $mce = MCE->new(
 
 $mce->run();
 
-my $end = time();
+my $end = time;
 
 ## Display the top 10 hits.
 

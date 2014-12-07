@@ -83,7 +83,7 @@ print "\n";
 
 sub get_rows_a {
 
-   my $start = $_[0];
+   my ($start) = @_;
    my $stop  = $start + $step_size - 1;
 
    $stop = $rows - 1 if ($stop >= $rows);
@@ -93,7 +93,9 @@ sub get_rows_a {
 
 sub insert_rows {
 
-   ins(inplace($c), $_[1], 0, $_[0]);
+   my ($seq_n, $result_chunk) = @_;
+
+   ins(inplace($c), $result_chunk, 0, $seq_n);
 
    return;
 }

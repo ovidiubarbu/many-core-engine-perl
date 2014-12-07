@@ -3,12 +3,7 @@
 use strict;
 use warnings;
 
-BEGIN {
-   eval 'use threads; use threads::shared;' if $^O eq 'MSWin32';
-}
-
 use Test::More tests => 3;
-
 use MCE;
 
 my @ans;
@@ -20,19 +15,18 @@ sub callback {
 }
 
 my $mce = MCE->new(
-   use_threads => ($^O eq 'MSWin32') ? 1 : 0,
-   spawn_delay => 0.2,
-   max_workers => 4,
+   max_workers => 4, spawn_delay => 0.2,
 
    user_func => sub {
       my ($self, $chunk_ref, $chunk_id) = @_;
 
       for ( @{ $chunk_ref } ) {
-         $self->do('callback', $_);
+         MCE->do('callback', $_);
       }
+
+      return;
    }
 );
-
 
 @ans = ();
 $mce->process([ 0 .. 3 ], { chunk_size => 1 });

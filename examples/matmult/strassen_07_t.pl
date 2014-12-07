@@ -31,7 +31,7 @@ unless (is_power_of_two($tam)) {
    die "error: $tam must be a power of 2 integer.\n";
 }
 
-my $mce = configure_and_spawn_mce() if ($tam > 128);
+my $mce; $mce = configure_and_spawn_mce() if ($tam > 128);
 
 my $a = sequence $tam,$tam;
 my $b = sequence $tam,$tam;
@@ -84,7 +84,7 @@ sub configure_and_spawn_mce {
 
 sub is_power_of_two {
 
-   my $n = $_[0];
+   my ($n) = @_;
 
    return 0 if ($n !~ /^\d+$/); 
    return ($n != 0 && (($n & $n - 1) == 0));
@@ -96,8 +96,7 @@ sub is_power_of_two {
 
 sub strassen {
 
-   my $a   = $_[0]; my $b = $_[1]; my $c = $_[2]; my $tam = $_[3];
-   my $mce = $_[4];
+   my ($a, $b, $c, $tam, $mce) = @_;
 
    if ($tam <= 128) {
       ins(inplace($c), $a x $b);
@@ -172,7 +171,7 @@ sub strassen {
 
 sub strassen_r {
 
-   my $a = $_[0]; my $b = $_[1]; my $c = $_[2]; my $tam = $_[3];
+   my ($a, $b, $c, $tam) = @_;
 
    ## Perform the classic multiplication when matrix is <= 128 X 128
 
@@ -257,7 +256,7 @@ sub strassen_r {
 
 sub divide_m {
 
-   my $m = $_[0]; my $tam = $_[1];
+   my ($m, $tam) = @_;
 
    my $n1 = $tam - 1;
    my $n2 = $tam + $n1;
@@ -272,11 +271,7 @@ sub divide_m {
 
 sub calc_m {
 
-   my $p1  = $_[0]; my $p2 = $_[1]; my $p3 = $_[2]; my $p4 = $_[3];
-   my $p5  = $_[4]; my $p6 = $_[5]; my $p7 = $_[6]; my $c  = $_[7];
-   my $tam = $_[8];
-
-   my $t1  = $_[9]; my $t2 = $_[10];
+   my ($p1, $p2, $p3, $p4, $p5, $p6, $p7, $c, $tam, $t1, $t2) = @_;
 
    sum_m($p1, $p4, $t1, $tam);
    sum_m($t1, $p7, $t2, $tam);
@@ -299,7 +294,7 @@ sub calc_m {
 
 sub sum_m {
 
-   my $a = $_[0]; my $b = $_[1]; my $r = $_[2]; my $tam = $_[3];
+   my ($a, $b, $r, $tam) = @_;
 
    ins(inplace($r), $a + $b);
 
@@ -308,7 +303,7 @@ sub sum_m {
 
 sub subtract_m {
 
-   my $a = $_[0]; my $b = $_[1]; my $r = $_[2]; my $tam = $_[3];
+   my ($a, $b, $r, $tam) = @_;
 
    ins(inplace($r), $a - $b);
 

@@ -37,6 +37,8 @@ sub user_func {
          $task_id,    $seq_n,   $chunk_id,   $wid,   $task_wid
       ));
    }
+
+   return;
 }
 
 ## Each task can be configured independently.

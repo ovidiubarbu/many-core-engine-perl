@@ -14,6 +14,16 @@ package MCE::Core::Input::Sequence;
 use strict;
 use warnings;
 
+## no critic (CodeLayout::ProhibitParensWithBuiltins)
+## no critic (ControlStructures::ProhibitPostfixControls)
+## no critic (Modules::ProhibitMultiplePackages)
+## no critic (RegularExpressions::RequireDotMatchAnything)
+## no critic (RegularExpressions::RequireExtendedFormatting)
+## no critic (RegularExpressions::RequireLineBoundaryMatching)
+## no critic (Subroutines::ProhibitExcessComplexity)
+## no critic (Subroutines::RequireArgUnpacking)
+## no critic (TestingAndDebugging::ProhibitNoWarnings)
+
 our $VERSION = '1.520';
 
 ## Items below are folded into MCE.
@@ -40,9 +50,9 @@ sub _worker_sequence_queue {
 
    @_ = ();
 
-   die "Private method called" unless (caller)[0]->isa( ref($self) );
+   die 'Private method called' unless (caller)[0]->isa( ref($self) );
 
-   _croak("MCE::_worker_sequence_queue: 'user_func' is not specified")
+   _croak('MCE::_worker_sequence_queue: (user_func) is not specified')
       unless (defined $self->{user_func});
 
    my $_QUE_R_SOCK  = $self->{_que_r_sock};

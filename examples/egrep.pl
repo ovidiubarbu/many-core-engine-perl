@@ -29,6 +29,9 @@
 use strict;
 use warnings;
 
+## no critic (InputOutput::RequireBriefOpen)
+## no critic (Variables::RequireLocalizedPunctuationVars)
+
 use Cwd 'abs_path';  ## Remove taintedness from path
 use lib ($_) = (abs_path().'/../lib') =~ /(.*)/;
 
@@ -60,7 +63,9 @@ use MCE;
 
 sub usage {
 
-   my $exit_status = $_[0] || 0;
+   my ($exit_status) = @_;
+   
+   $exit_status = 0 unless defined $exit_status;
 
    print <<"::_USAGE_BLOCK_END_::";
 
@@ -375,6 +380,8 @@ sub display_result {
       delete $result{$order_id};
       $order_id++;
    }
+
+   return;
 }
 
 sub report_match {
@@ -564,10 +571,10 @@ sub display_matched {
 
 sub process_file {
 
-   $file = $_[0];
+   ($file) = @_;
 
    if ($file eq '-') {
-      open(STDIN, ($^O eq 'MSWin32') ? 'CON' : '/dev/tty') or die $!;
+      open(STDIN, '<', ($^O eq 'MSWin32') ? 'CON' : '/dev/tty') or die $!;
       process_stdin();
    }
    elsif (! -e $file) {

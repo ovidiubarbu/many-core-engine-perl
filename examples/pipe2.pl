@@ -13,6 +13,12 @@
 use strict;
 use warnings;
 
+## no critic (InputOutput::ProhibitBarewordFileHandles)
+## no critic (InputOutput::ProhibitTwoArgOpen)
+
+## no critic (InputOutput::RequireBriefOpen)
+## no critic (Variables::RequireLocalizedPunctuationVars)
+
 my ($prog_name, $prog_dir, $base_dir);
 
 BEGIN {
@@ -238,6 +244,8 @@ sub output {
    }
 
    unlink $file;
+
+   return;
 }
 
 sub gather_iterator {

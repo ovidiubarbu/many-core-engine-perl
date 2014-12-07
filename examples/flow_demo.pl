@@ -50,6 +50,8 @@ sub _begin {
     # $mce->{dbh} = DBI->connect(...);
       $mce->{dbh} = "each 'writer' obtains db handle once";
    }
+
+   return;
 }
 
 sub _end {
@@ -59,6 +61,8 @@ sub _end {
     # $mce->{dbh}->disconnect;
       delete $mce->{dbh};
    }
+
+   return;
 }
 
 # Actual roles. Uncomment MCE->yield below if processing thousands or more.
@@ -85,6 +89,8 @@ sub poller {
    $pinger_q->enqueue( [ \@pinger_w, $chunk_id, 'ping' ] ) if @pinger_w;
    $setter_q->enqueue( [ \@setter_w, $chunk_id, 'set ' ] ) if @setter_w;
    $setter_q->enqueue( [ \@writer_w, $chunk_id, 'ok  ' ] ) if @writer_w;
+
+   return;
 }
 
 sub setter {
@@ -95,6 +101,8 @@ sub setter {
       my ($chunk_ref, $chunk_id, $status) = @{ $next_ref };
       $writer_q->enqueue( [ $chunk_ref, $chunk_id, $status ] );
    }
+
+   return;
 }
 
 sub pinger {
@@ -105,6 +113,8 @@ sub pinger {
       my ($chunk_ref, $chunk_id, $status) = @{ $next_ref };
       $writer_q->enqueue( [ $chunk_ref, $chunk_id, $status ] );
    }
+
+   return;
 }
 
 sub writer {
@@ -115,6 +125,8 @@ sub writer {
       my ($chunk_ref, $chunk_id, $status) = @{ $next_ref };
       MCE->say("$chunk_id $status " . scalar @$chunk_ref);
    }
+
+   return;
 }
 
 # Configure MCE options; task_name, max_workers can take and anonymous array.
