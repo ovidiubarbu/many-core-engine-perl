@@ -9,8 +9,6 @@
 use strict;
 use warnings;
 
-## no critic (InputOutput::RequireBriefOpen)
-
 use Cwd 'abs_path';  ## Remove taintedness from path
 use lib ($_) = (abs_path().'/../../lib') =~ /(.*)/;
 

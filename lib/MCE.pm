@@ -9,30 +9,6 @@ package MCE;
 use strict;
 use warnings;
 
-## no critic (BuiltinFunctions::ProhibitStringyEval)
-## no critic (TestingAndDebugging::ProhibitNoStrict)
-
-## no critic (CodeLayout::ProhibitParensWithBuiltins)
-## no critic (ControlStructures::ProhibitPostfixControls)
-## no critic (InputOutput::ProhibitOneArgSelect)
-## no critic (InputOutput::RequireBriefOpen)
-## no critic (InputOutput::RequireCheckedSyscalls)
-## no critic (NamingConventions::ProhibitAmbiguousNames)
-## no critic (RegularExpressions::RequireDotMatchAnything)
-## no critic (RegularExpressions::RequireExtendedFormatting)
-## no critic (RegularExpressions::RequireLineBoundaryMatching)
-## no critic (Subroutines::ProhibitBuiltinHomonyms)
-## no critic (Subroutines::ProhibitExcessComplexity)
-## no critic (Subroutines::ProhibitUnusedPrivateSubroutines)
-## no critic (Subroutines::ProtectPrivateSubs)
-## no critic (Subroutines::RequireArgUnpacking)
-## no critic (TestingAndDebugging::ProhibitNoWarnings)
-## no critic (TestingAndDebugging::ProhibitProlongedStrictureOverride)
-## no critic (ValuesAndExpressions::ProhibitConstantPragma)
-## no critic (Variables::ProhibitPunctuationVars)
-## no critic (Variables::ProtectPrivateVars)
-## no critic (Variables::RequireLocalizedPunctuationVars)
-
 BEGIN {
 
    ## Forking is emulated under the Windows enviornment (excluding Cygwin).

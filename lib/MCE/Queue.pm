@@ -9,21 +9,6 @@ package MCE::Queue;
 use strict;
 use warnings;
 
-## no critic (TestingAndDebugging::ProhibitNoStrict)
-
-## no critic (CodeLayout::ProhibitParensWithBuiltins)
-## no critic (ControlStructures::ProhibitPostfixControls)
-## no critic (InputOutput::ProhibitOneArgSelect)
-## no critic (Subroutines::ProhibitExcessComplexity)
-## no critic (Subroutines::ProtectPrivateSubs)
-## no critic (Subroutines::RequireArgUnpacking)
-## no critic (TestingAndDebugging::ProhibitNoWarnings)
-## no critic (TestingAndDebugging::ProhibitProlongedStrictureOverride)
-## no critic (ValuesAndExpressions::ProhibitConstantPragma)
-## no critic (Variables::ProhibitPunctuationVars)
-## no critic (Variables::ProtectPrivateVars)
-## no critic (Variables::RequireLocalizedPunctuationVars)
-
 use Fcntl qw( :flock O_RDONLY );
 use Socket qw( :crlf PF_UNIX PF_UNSPEC SOCK_STREAM );
 use Scalar::Util qw( looks_like_number );
@@ -1662,8 +1647,6 @@ sub _mce_m_insertp {
 }
 
 1;
-
-## no critic (Documentation::RequirePodSections)
 
 __END__
 

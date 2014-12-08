@@ -14,23 +14,6 @@ package MCE::Core::Manager;
 use strict;
 use warnings;
 
-## no critic (TestingAndDebugging::ProhibitNoStrict)
-
-## no critic (CodeLayout::ProhibitParensWithBuiltins)
-## no critic (ControlStructures::ProhibitPostfixControls)
-## no critic (InputOutput::ProhibitOneArgSelect)
-## no critic (InputOutput::RequireBriefOpen)
-## no critic (Modules::ProhibitMultiplePackages)
-## no critic (RegularExpressions::RequireDotMatchAnything)
-## no critic (RegularExpressions::RequireExtendedFormatting)
-## no critic (RegularExpressions::RequireLineBoundaryMatching)
-## no critic (Subroutines::ProhibitExcessComplexity)
-## no critic (Subroutines::ProhibitUnusedPrivateSubroutines)
-## no critic (Subroutines::RequireArgUnpacking)
-## no critic (TestingAndDebugging::ProhibitNoWarnings)
-## no critic (Variables::ProhibitPunctuationVars)
-## no critic (Variables::RequireLocalizedPunctuationVars)
-
 our $VERSION = '1.520';
 
 ## Items below are folded into MCE.

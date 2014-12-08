@@ -14,17 +14,6 @@ package MCE::Core::Input::Handle;
 use strict;
 use warnings;
 
-## no critic (CodeLayout::ProhibitParensWithBuiltins)
-## no critic (ControlStructures::ProhibitPostfixControls)
-## no critic (InputOutput::RequireBriefOpen)
-## no critic (Modules::ProhibitMultiplePackages)
-## no critic (Subroutines::ProhibitExcessComplexity)
-## no critic (Subroutines::ProhibitUnusedPrivateSubroutines)
-## no critic (Subroutines::RequireArgUnpacking)
-## no critic (TestingAndDebugging::ProhibitNoWarnings)
-## no critic (Variables::ProhibitPunctuationVars)
-## no critic (Variables::ProtectPrivateVars)
-
 our $VERSION = '1.520';
 
 ## Items below are folded into MCE.
