@@ -14,6 +14,8 @@ package MCE::Core::Manager;
 use strict;
 use warnings;
 
+## no critic (TestingAndDebugging::ProhibitNoStrict)
+
 our $VERSION = '1.520';
 
 ## Items below are folded into MCE.

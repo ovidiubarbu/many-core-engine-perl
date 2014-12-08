@@ -9,6 +9,9 @@ package MCE::Subs;
 use strict;
 use warnings;
 
+## no critic (Subroutines::ProhibitSubroutinePrototypes)
+## no critic (TestingAndDebugging::ProhibitNoStrict)
+
 use MCE;
 
 our $VERSION = '1.520';

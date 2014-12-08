@@ -9,6 +9,10 @@ package MCE::Step;
 use strict;
 use warnings;
 
+## no critic (BuiltinFunctions::ProhibitStringyEval)
+## no critic (Subroutines::ProhibitSubroutinePrototypes)
+## no critic (TestingAndDebugging::ProhibitNoStrict)
+
 use Scalar::Util qw( looks_like_number );
 
 use MCE;
