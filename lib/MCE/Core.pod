@@ -565,7 +565,7 @@ output.
       or die "Please specify a starting directory";
 
    -d $start_dir
-      or die "Cannot open '$start_dir': No such file or directory";
+      or die "Cannot open ($start_dir): No such file or directory";
 
    my $mce = MCE->new(
       max_workers => 'auto',
@@ -740,7 +740,7 @@ Sequence can be defined using an array or a hash reference.
    18.4 from 1 id 13
 
 The 1.5 release includes a new option (bounds_only). This option tells the
-sequence engine to compute the 'begin' and 'end' items only for the chunk
+sequence engine to compute 'begin' and 'end' items only, for the chunk,
 and not the items in between (hence boundaries only). This option applies
 to sequence only and has no effect when chunk_size equals 1.
 
@@ -1907,14 +1907,14 @@ The user_tasks is configured to simulate 4 nodes below. The demonstration uses
 
       MCE->sendto( "STDOUT",
          sprintf("Node %2d: %0.5f -- Worker %2d: %12s -- Started\n",
-            MCE->task_id + 1, time(), MCE->task_wid, '')
+            MCE->task_id + 1, time, MCE->task_wid, '')
       );
 
       return;
    }
 
    {
-      my $prev_time = time();
+      my $prev_time = time;
 
       sub user_func {
 
@@ -1924,14 +1924,14 @@ The user_tasks is configured to simulate 4 nodes below. The demonstration uses
          MCE->yield;
 
          ## Calculate how long this worker has waited.
-         my $curr_time = time();
+         my $curr_time = time;
          my $time_waited = $curr_time - $prev_time;
 
          $prev_time = $curr_time;
 
          MCE->sendto( "STDOUT",
             sprintf("Node %2d: %0.5f -- Worker %2d: %12.5f -- Seq_N %3d\n",
-               MCE->task_id + 1, time(), MCE->task_wid, $time_waited, $seq_n)
+               MCE->task_id + 1, time, MCE->task_wid, $time_waited, $seq_n)
          );
 
          return;

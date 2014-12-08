@@ -124,11 +124,11 @@ my $mce = MCE->new(
 
 )->spawn;
 
-my $start = time();
+my $start = time;
 
 $mce->process( input_iterator($s_begin, $s_end, $s_step) );
 
-my $end = time();
+my $end = time;
 
 printf STDERR "\n## Compute time: %0.03f\n\n", $end - $start;
 

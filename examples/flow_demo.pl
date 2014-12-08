@@ -48,7 +48,7 @@ sub _begin {
 
    if ($task_name eq 'writer') {
     # $mce->{dbh} = DBI->connect(...);
-      $mce->{dbh} = "each 'writer' obtains db handle once";
+      $mce->{dbh} = 'each (writer) obtains db handle once';
    }
 
    return;

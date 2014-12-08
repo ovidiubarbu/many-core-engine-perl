@@ -14,7 +14,6 @@ package MCE::Core::Input::Request;
 use strict;
 use warnings;
 
-## no critic (CodeLayout::ProhibitParensWithBuiltins)
 ## no critic (ControlStructures::ProhibitPostfixControls)
 ## no critic (Modules::ProhibitMultiplePackages)
 ## no critic (Subroutines::ProhibitExcessComplexity)
@@ -45,7 +44,7 @@ sub _worker_request_chunk {
 
    @_ = ();
 
-   die 'Private method called' unless (caller)[0]->isa( ref($self) );
+   die 'Private method called' unless (caller)[0]->isa( ref $self );
 
    _croak('MCE::_worker_request_chunk: (user_func) is not specified')
       unless (defined $self->{user_func});

@@ -618,7 +618,7 @@ sub _validate_number {
 
 1;
 
-## no critic (RequirePodSections)
+## no critic (Documentation::RequirePodSections)
 
 __END__
 

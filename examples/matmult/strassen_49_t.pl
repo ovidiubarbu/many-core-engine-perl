@@ -37,9 +37,9 @@ my $a = sequence $tam,$tam;
 my $b = sequence $tam,$tam;
 my $c = zeroes   $tam,$tam;
 
-my $start = time();
+my $start = time;
 strassen($a, $b, $c, $tam, $mce);
-my $end = time();
+my $end = time;
 
 $mce->shutdown if (defined $mce);
 

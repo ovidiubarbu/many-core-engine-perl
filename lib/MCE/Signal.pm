@@ -464,7 +464,7 @@ sub _warn_handler {
 
 1;
 
-## no critic (RequirePodSections)
+## no critic (Documentation::RequirePodSections)
 
 __END__
 

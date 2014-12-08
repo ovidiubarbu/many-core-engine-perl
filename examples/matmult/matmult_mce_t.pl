@@ -2,8 +2,8 @@
 
 ##
 ## Usage:
-##    perl matmult_mce_t.pl 1024 [ N_workers ]     ## Default matrix size 512
-##                                                 ## Default N_workers 8
+##    perl matmult_mce_t.pl 1024 [ n_workers ]     ## Default matrix size 512
+##                                                 ## Default n_workers 8
 ##
 
 use strict;
@@ -27,7 +27,7 @@ use MCE;
 ###############################################################################
 
 my $tam = @ARGV ? shift : 512;
-my $N_workers = @ARGV ? shift : 8;
+my $n_workers = @ARGV ? shift : 8;
 
 if ($tam !~ /^\d+$/ || $tam < 2) {
    die "error: $tam must be an integer greater than 1.\n";
@@ -38,7 +38,7 @@ my $rows = $tam;
 
 my $step_size = ($tam > 2048) ? 24 : ($tam > 1024) ? 16 : 8;
 
-my $mce = configure_and_spawn_mce($N_workers);
+my $mce = configure_and_spawn_mce($n_workers);
 
 my $a = sequence $cols,$rows;
 my $b = sequence $rows,$cols;
@@ -48,13 +48,13 @@ $a->share_as('left_input');
 $b->share_as('right_input');
 $c->share_as('output');
 
-my $start = time();
+my $start = time;
 
 $mce->run(0, {
    sequence => [ 0, $rows - 1, $step_size ]
 } );
 
-my $end = time();
+my $end = time;
 
 $mce->shutdown();
 
@@ -74,11 +74,11 @@ print "\n";
 
 sub configure_and_spawn_mce {
 
-   my $N_workers = shift || 8;
+   my $n_workers = shift || 8;
 
    return MCE->new(
 
-      max_workers => $N_workers,
+      max_workers => $n_workers,
 
       user_begin  => sub {
          my ($self) = @_;

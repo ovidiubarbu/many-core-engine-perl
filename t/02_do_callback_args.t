@@ -23,8 +23,7 @@ sub callback2 {
 }
 
 my $mce = MCE->new(
-   spawn_delay => 0.2,
-   max_workers => 1,
+   max_workers => 1, spawn_delay => 0.2,
 
    user_func => sub {
       my ($self) = @_;

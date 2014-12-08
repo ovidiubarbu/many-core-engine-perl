@@ -52,8 +52,8 @@ MCE::Flow::init {
       my ($mce, $task_id, $task_name) = @_;
 
       if ($task_name eq 'pinger') {
-         my $N_workers = $mce->{user_tasks}->[$task_id + 1]->{max_workers};
-         $Q->enqueue((undef) x $N_workers);
+         my $n_workers = $mce->{user_tasks}->[$task_id + 1]->{max_workers};
+         $Q->enqueue((undef) x $n_workers);
       }
 
       return;

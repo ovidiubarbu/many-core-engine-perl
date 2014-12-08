@@ -60,14 +60,14 @@ sub user_begin {
 
    MCE->sendto( "STDOUT",
       sprintf("Node %2d: %0.5f -- Worker %2d: %12s -- Started\n",
-         MCE->task_id + 1, time(), MCE->task_wid, '')
+         MCE->task_id + 1, time, MCE->task_wid, '')
    );
 
    return;
 }
 
 {
-   my $prev_time = time();
+   my $prev_time = time;
 
    sub user_func {
 
@@ -77,14 +77,14 @@ sub user_begin {
       MCE->yield;
 
       ## Calculate how long this worker has waited.
-      my $curr_time = time();
+      my $curr_time = time;
       my $time_waited = $curr_time - $prev_time;
 
       $prev_time = $curr_time;
 
       MCE->sendto( "STDOUT",
          sprintf("Node %2d: %0.5f -- Worker %2d: %12.5f -- Seq_N %3d\n",
-            MCE->task_id + 1, time(), MCE->task_wid, $time_waited, $seq_n)
+            MCE->task_id + 1, time, MCE->task_wid, $time_waited, $seq_n)
       );
 
       return;

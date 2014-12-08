@@ -327,7 +327,7 @@ sub _validate_number {
 
 1;
 
-## no critic (RequirePodSections)
+## no critic (Documentation::RequirePodSections)
 
 __END__
 
@@ -553,7 +553,7 @@ under "SYNTAX for INPUT_DATA" at L<MCE::Core|MCE::Core>.
 
 =back
 
-The sequence engine can compute the 'begin' and 'end' items only, for the chunk,
+The sequence engine can compute 'begin' and 'end' items only, for the chunk,
 leaving out the items in between with the bounds_only option (boundaries only).
 This option applies to sequence and has no effect when chunk_size equals 1.
 

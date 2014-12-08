@@ -48,9 +48,9 @@ $cnt = 0; for (0 .. $cols - 1) {
    $cnt += $rows;
 }
 
-my $start = time();
+my $start = time;
 strassen($a, $b, $c, $tam, $mce);
-my $end = time();
+my $end = time;
 
 ## Print results -- use same pairs to match David Mertens' output.
 printf "\n## $prog_name $tam: compute time: %0.03f secs\n\n", $end - $start;

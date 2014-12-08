@@ -17,6 +17,9 @@ use warnings;
 
 ## no critic (Variables::ProhibitAugmentedAssignmentInDeclaration)
 
+use Cwd 'abs_path';  ## Remove taintedness from path
+use lib ($_) = (abs_path().'/../../lib') =~ /(.*)/;
+
 use Time::HiRes qw(time);
 use MCE;
 
