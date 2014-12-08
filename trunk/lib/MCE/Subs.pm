@@ -17,6 +17,7 @@ use warnings;
 ## no critic (Subroutines::RequireFinalReturn)
 ## no critic (TestingAndDebugging::ProhibitNoWarnings)
 ## no critic (TestingAndDebugging::ProhibitProlongedStrictureOverride)
+## no critic (Variables::ProtectPrivateVars)
 
 use MCE;
 

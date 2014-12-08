@@ -16,6 +16,7 @@ use warnings;
 
 ## no critic (ControlStructures::ProhibitPostfixControls)
 ## no critic (Modules::ProhibitMultiplePackages)
+## no critic (Subroutines::ProhibitUnusedPrivateSubroutines)
 ## no critic (Subroutines::RequireArgUnpacking)
 ## no critic (TestingAndDebugging::ProhibitNoWarnings)
 ## no critic (Variables::ProhibitPunctuationVars)

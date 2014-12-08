@@ -23,9 +23,11 @@ use warnings;
 ## no critic (RegularExpressions::RequireExtendedFormatting)
 ## no critic (RegularExpressions::RequireLineBoundaryMatching)
 ## no critic (Subroutines::ProhibitExcessComplexity)
+## no critic (Subroutines::ProhibitUnusedPrivateSubroutines)
 ## no critic (Subroutines::RequireArgUnpacking)
 ## no critic (TestingAndDebugging::ProhibitNoWarnings)
 ## no critic (Variables::ProhibitPunctuationVars)
+## no critic (Variables::ProtectPrivateVars)
 ## no critic (Variables::RequireLocalizedPunctuationVars)
 
 our $VERSION = '1.520';

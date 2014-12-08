@@ -23,11 +23,14 @@ use warnings;
 ## no critic (RegularExpressions::RequireLineBoundaryMatching)
 ## no critic (Subroutines::ProhibitBuiltinHomonyms)
 ## no critic (Subroutines::ProhibitExcessComplexity)
+## no critic (Subroutines::ProhibitUnusedPrivateSubroutines)
+## no critic (Subroutines::ProtectPrivateSubs)
 ## no critic (Subroutines::RequireArgUnpacking)
 ## no critic (TestingAndDebugging::ProhibitNoWarnings)
 ## no critic (TestingAndDebugging::ProhibitProlongedStrictureOverride)
 ## no critic (ValuesAndExpressions::ProhibitConstantPragma)
 ## no critic (Variables::ProhibitPunctuationVars)
+## no critic (Variables::ProtectPrivateVars)
 ## no critic (Variables::RequireLocalizedPunctuationVars)
 
 BEGIN {
@@ -1574,7 +1577,7 @@ sub exit {
    threads->exit($_exit_status)
       if ($_has_threads && threads->can('exit'));
 
-   CORE::kill(9, $$) unless $MCE::_is_winenv;
+   CORE::kill(9, $$) unless $_is_winenv;
    CORE::exit($_exit_status);
 
    return;
@@ -2032,7 +2035,7 @@ sub _dispatch_child {
 
    unless ($_pid) {
       _worker_wrap($self, $_wid, $_task, $_task_id, $_task_wid, $_params);
-      CORE::kill(9, $$) unless $MCE::_is_winenv;
+      CORE::kill(9, $$) unless $_is_winenv;
       CORE::exit(0);
    }
 
