@@ -44,7 +44,7 @@
 ##   Compute chunk_level => 'auto' to use 'file' when reading STDIN.
 ##   Set chunk_size to 8M when not specified (from 4M previously).
 ##
-## 2014-12-06  v1.010
+## 2014-12-07  v1.010
 ##   Update: Passes perlcritic --severity 4.
 ##
 ###############################################################################
@@ -118,14 +118,14 @@ Options for Binary:
    return;
 }
 
-my $is_MSWin32 = $^O eq 'MSWin32';
+my $is_mswin32 = $^O eq 'MSWin32';
 my ($cmd_name, $cmd_path);
 
 $cmd_name = $prog_name;
 $cmd_name =~ s{^mce_}{};
 $cmd_name =~ s{\.pl$}{};
 
-if ($is_MSWin32) {
+if ($is_mswin32) {
    $cmd_name .= '.exe';
    for ( split ';', $ENV{'PATH'} ) {
       if (-x "$_\\$cmd_name") {
@@ -499,7 +499,7 @@ sub _output_n1 {
 
    my ($chunk_id, $out_file, $n_records, $size) = @_;
 
-   $_tmp{   $chunk_id } = $out_file;
+   $_tmp{ $chunk_id }   = $out_file;
    $_nsize{ $chunk_id } = $n_flag ? $n_records : $size;
 
    return unless exists $_tmp{ $_order_id };
@@ -570,7 +570,7 @@ sub _output_n2 {
 
    my ($chunk_id, $out_file, $n_records, $size) = @_;
 
-   $_tmp{   $chunk_id } = $out_file;
+   $_tmp{ $chunk_id }   = $out_file;
    $_nrecs{ $chunk_id } = $n_records;
    $_nsize{ $chunk_id } = $size;
 
@@ -669,7 +669,7 @@ sub make_user_func_file {
          $n_records++ while ($$chunk_ref =~ m!\n!mg);
       }
 
-      if ($is_MSWin32) {
+      if ($is_mswin32) {
          $out_file =~ s{/}{\\\\}g;
 
          open my $in_fh, '+>', $out_file . '.in'; binmode $in_fh, ':raw';
@@ -782,7 +782,7 @@ sub user_func_list {
    $$chunk_ref =~ s/\n/ /mg;
    local $?;
 
-   if ($is_MSWin32) {
+   if ($is_mswin32) {
       $err_file =~ s{/}{\\\\}g;
       $output = `$cmd_path @args $$chunk_ref 2> $err_file`;
       $status = $? >> 8;
@@ -839,7 +839,7 @@ sub process_file {
    ($file) = @_;
 
    if ($file eq '-') {
-      open(STDIN, '<', ($is_MSWin32) ? 'CON' : '/dev/tty') or die $!;
+      open(STDIN, '<', ($is_mswin32) ? 'CON' : '/dev/tty') or die $!;
       process_stdin();
    }
    elsif (! -e $file) {
@@ -972,7 +972,7 @@ if ($r_flag && @files > 0) {
 
    MCE->spawn;
 
-   unless ($is_MSWin32) {
+   unless ($is_mswin32) {
       open $list_fh, '-|', 'egrep', '-lsr', @r_patn, '^', @files;
    }
    else {

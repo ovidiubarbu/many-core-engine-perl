@@ -10,11 +10,14 @@
 use strict qw(subs refs);
 use warnings;
 
-use Time::HiRes qw(time);
-use Sys::Mmap;
-
 ## no critic (InputOutput::ProhibitBarewordFileHandles)
 ## no critic (InputOutput::RequireBriefOpen)
+
+use Cwd 'abs_path';  ## Remove taintedness from path
+use lib ($_) = (abs_path().'/../../lib') =~ /(.*)/;
+
+use Time::HiRes qw(time);
+use Sys::Mmap;
 
 $J ||= 8;
 

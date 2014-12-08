@@ -1872,7 +1872,7 @@ sub _create_socket_pair {
 
    @_ = (); local $!;
 
-   die 'Private method called' unless (caller)[0]->isa( ref($self) );
+   die 'Private method called' unless (caller)[0]->isa( ref $self );
 
    if (defined $_i) {
       socketpair( $self->{$_r_sock}->[$_i], $self->{$_w_sock}->[$_i],
@@ -1934,7 +1934,7 @@ sub _sync_params {
 
    @_ = ();
 
-   die 'Private method called' unless (caller)[0]->isa( ref($self) );
+   die 'Private method called' unless (caller)[0]->isa( ref $self );
 
    my $_requires_shutdown = 0;
 
@@ -1981,13 +1981,13 @@ sub _dispatch_thread {
 
    @_ = ();
 
-   die 'Private method called' unless (caller)[0]->isa( ref($self) );
+   die 'Private method called' unless (caller)[0]->isa( ref $self );
 
    my $_thr = threads->create( \&_worker_wrap,
       $self, $_wid, $_task, $_task_id, $_task_wid, $_params
    );
 
-   _croak('MCE::_dispatch_thread: Failed to spawn worker ' . "$_wid: $!")
+   _croak("MCE::_dispatch_thread: Failed to spawn worker $_wid: $!")
       unless (defined $_thr);
 
    if (defined $_thr) {
@@ -2023,11 +2023,11 @@ sub _dispatch_child {
 
    @_ = ();
 
-   die 'Private method called' unless (caller)[0]->isa( ref($self) );
+   die 'Private method called' unless (caller)[0]->isa( ref $self );
 
    my $_pid = fork();
 
-   _croak('MCE::_dispatch_child: Failed to spawn worker ' . "$_wid: $!")
+   _croak("MCE::_dispatch_child: Failed to spawn worker $_wid: $!")
       unless (defined $_pid);
 
    unless ($_pid) {

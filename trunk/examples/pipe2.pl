@@ -172,14 +172,14 @@ usage() if $ARGV[0] =~ /^-/;
 ##
 ###############################################################################
 
-my $is_MSWin32 = $^O eq 'MSWin32';
+my $is_mswin32 = $^O eq 'MSWin32';
 my ($cmd_name, $cmd_path);
 
 $cmd_name = shift @ARGV;
 
 {
-   my $pth_sep = $is_MSWin32 ? ";"  : ":";
-   my $dir_sep = $is_MSWin32 ? "\\" : "/";
+   my $pth_sep = $is_mswin32 ? ";"  : ":";
+   my $dir_sep = $is_mswin32 ? "\\" : "/";
 
    for ( split ${pth_sep}, $ENV{'PATH'} ) {
       if (-e "$_${dir_sep}${cmd_name}" || -e "$_${dir_sep}${cmd_name}.exe") {
@@ -193,7 +193,7 @@ if (! defined $cmd_path) {
    print STDERR "$prog_name: $cmd_name: command not found\n";
    exit 2;
 }
-if (! $is_MSWin32 && ! -x $cmd_path) {
+if (! $is_mswin32 && ! -x $cmd_path) {
    print STDERR "$prog_name: $cmd_name: command is not executable\n";
    exit 2;
 }
@@ -293,7 +293,7 @@ mce_loop_f {
    my $path = MCE->tmp_dir() .'/'. $chunk_id;
    local ($!, $?);
 
-   if ($is_MSWin32) {
+   if ($is_mswin32) {
       $path =~ s{/}{\\\\}g;
 
       open my $out_fh, "+>:raw", "$path.in";

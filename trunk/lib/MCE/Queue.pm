@@ -1661,7 +1661,7 @@ sub _mce_m_insertp {
 
 1;
 
-## no critic (RequirePodSections)
+## no critic (Documentation::RequirePodSections)
 
 __END__
 

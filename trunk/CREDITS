@@ -36,7 +36,7 @@ Oliver Gorwits
 
 Shawn Halpenny
   For reporting an issue (bug RT#94706) with signal handling in MCE::Signal.
-  Also, thank you for tip on getpgrp().
+  Also, thank you for tip on getpgrp.
 
 Dana Jacobsen
   For reporting an issue with get_ncpu on AIX. In addition, suggesting

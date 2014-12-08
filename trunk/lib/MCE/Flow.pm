@@ -435,7 +435,7 @@ sub _validate_number {
 
 1;
 
-## no critic (RequirePodSections)
+## no critic (Documentation::RequirePodSections)
 
 __END__
 
@@ -506,13 +506,13 @@ and how the value from $task_name is used for determining which task has ended.
       my ($mce, $task_id, $task_name) = @_;
 
       if (defined $mce->{user_tasks}->[$task_id + 1]) {
-         my $N_workers = $mce->{user_tasks}->[$task_id + 1]->{max_workers};
+         my $n_workers = $mce->{user_tasks}->[$task_id + 1]->{max_workers};
 
          if ($task_name eq 'a') {
-            $b->enqueue((undef) x $N_workers);
+            $b->enqueue((undef) x $n_workers);
          }
          elsif ($task_name eq 'b') {
-            $c->enqueue((undef) x $N_workers);
+            $c->enqueue((undef) x $n_workers);
          }
       }
 
@@ -594,10 +594,10 @@ The task_end must be updated as well due to workers dequeuing 2 items at a
 time. Therefore, we must double the number of undefs into the queue.
 
    if ($task_name eq 'a') {
-      $b->enqueue((undef) x ($N_workers * 2));
+      $b->enqueue((undef) x ($n_workers * 2));
    }
    elsif ($task_name eq 'b') {
-      $c->enqueue((undef) x ($N_workers * 2));
+      $c->enqueue((undef) x ($n_workers * 2));
    }
 
 =head1 SYNOPSIS when CHUNK_SIZE EQUALS 1
@@ -857,7 +857,7 @@ Iterators are described under "SYNTAX for INPUT_DATA" at L<MCE::Core|MCE::Core>.
 
 =back
 
-The sequence engine can compute the 'begin' and 'end' items only, for the chunk,
+The sequence engine can compute 'begin' and 'end' items only, for the chunk,
 leaving out the items in between with the bounds_only option (boundaries only).
 This option applies to sequence and has no effect when chunk_size equals 1.
 

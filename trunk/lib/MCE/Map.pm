@@ -102,7 +102,7 @@ my ($_total_chunks, %_tmp);
 
 sub _gather {
 
-   my ($_data_ref, $_chunk_id) = @_;
+   my ($_chunk_id, $_data_ref) = @_;
 
    $_tmp{$_chunk_id} = $_data_ref;
    $_total_chunks++;
@@ -304,7 +304,7 @@ sub mce_map (&@) {
                   }
                }
 
-               MCE->gather(\@_a, $_chunk_id);
+               MCE->gather($_chunk_id, \@_a);
             }
             else {
                my $_cnt = 0;
@@ -402,7 +402,7 @@ sub _validate_number {
 
 1;
 
-## no critic (RequirePodSections)
+## no critic (Documentation::RequirePodSections)
 
 __END__
 

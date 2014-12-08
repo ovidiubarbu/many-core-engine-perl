@@ -250,7 +250,7 @@ END {
       my $_buffer; my $self = shift; $_dest = shift; $_value = shift;
 
       if (@_ > 1) {
-         $_buffer = join('', @_);
+         $_buffer = join('', @_); @_ = ();
          return $_dest_function[$_dest](\$_buffer);
       }
       elsif (my $_ref = ref $_[0]) {
@@ -261,7 +261,7 @@ END {
          } elsif ($_ref eq 'HASH') {
             $_buffer = join('', %{ $_[0] });
          } else {
-            $_buffer = join('', @_);
+            $_buffer = join('', @_); @_ = ();
          }
          return $_dest_function[$_dest](\$_buffer);
       }
@@ -298,7 +298,9 @@ END {
 
       my ($self) = @_;
 
-      die 'Private method called' unless (caller)[0]->isa( ref($self) );
+      @_ = ();
+
+      die 'Private method called' unless (caller)[0]->isa( ref $self );
 
       $_chn        = $self->{_chn};
       $_DAT_LOCK   = $self->{_dat_lock};
@@ -329,6 +331,8 @@ END {
 
       my ($self) = @_;
 
+      @_ = ();
+
       $_user_func = $self->{user_func};
 
       return;
@@ -347,7 +351,7 @@ sub _worker_do {
 
    @_ = ();
 
-   die 'Private method called' unless (caller)[0]->isa( ref($self) );
+   die 'Private method called' unless (caller)[0]->isa( ref $self );
 
    ## Set options.
    $self->{_abort_msg}  = $_params_ref->{_abort_msg};
@@ -474,7 +478,7 @@ sub _worker_loop {
 
    @_ = ();
 
-   die 'Private method called' unless (caller)[0]->isa( ref($self) );
+   die 'Private method called' unless (caller)[0]->isa( ref $self );
 
    my ($_response, $_len, $_buffer, $_params_ref);
 
@@ -570,7 +574,7 @@ sub _worker_main {
    @_ = ();
 
    ## Commented out -- fails with the 'forks' module under FreeBSD.
-   ## die 'Private method called' unless (caller)[0]->isa( ref($self) );
+   ## die 'Private method called' unless (caller)[0]->isa( ref $self );
 
    if (exists $self->{input_data}) {
       my $_ref = ref $self->{input_data};
@@ -676,7 +680,9 @@ sub _worker_main {
    ## Begin processing if worker was added during processing. Otherwise,
    ## respond back to the main process if the last worker spawned.
    if (defined $_params) {
-      sleep 0.002; _worker_do($self, $_params); undef $_params;
+      sleep 0.002;
+      _worker_do($self, $_params);
+      undef $_params;
    }
    elsif ($self->{_wid} == $self->{_total_workers}) {
       my $_buffer; my $_COM_W_SOCK = $self->{_com_w_sock};
@@ -686,7 +692,6 @@ sub _worker_main {
 
    ## Enter worker loop.
    my $_status = _worker_loop($self);
-
    delete $MCE::_mce_spawned{$_mce_sid};
 
    ## Wait until MCE completes exit notification.

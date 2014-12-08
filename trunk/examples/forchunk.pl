@@ -78,7 +78,7 @@ my $mce = MCE->new(
 ## Below, $chunk_ref is a reference to an array containing the next
 ## $chunk_size items from @input_data.
 
-my $start = time();
+my $start = time;
 
 $mce->forchunk( \@input_data, sub {
    my ($mce, $chunk_ref, $chunk_id) = @_;
@@ -91,7 +91,7 @@ $mce->forchunk( \@input_data, sub {
    MCE->gather(\@result, $chunk_id);
 });
 
-my $end = time();
+my $end = time;
 
 printf STDERR "\n## Compute time: %0.03f\n\n", $end - $start;
 

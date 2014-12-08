@@ -2,8 +2,8 @@
 
 ##
 ## Usage:
-##    perl matmult_perl.pl 1024 [ N_workers ]      ## Default matrix size 512
-##                                                 ## Default N_workers 8
+##    perl matmult_perl.pl 1024 [ n_workers ]      ## Default matrix size 512
+##                                                 ## Default n_workers 8
 ##
 
 use strict;
@@ -27,13 +27,13 @@ use MCE;
 ###############################################################################
 
 my $tam = @ARGV ? shift : 512;
-my $N_workers = @ARGV ? shift : 8;
+my $n_workers = @ARGV ? shift : 8;
 
 if ($tam !~ /^\d+$/ || $tam < 2) {
    die "error: $tam must be an integer greater than 1.\n";
 }
 
-my $mce  = configure_and_spawn_mce($N_workers);
+my $mce  = configure_and_spawn_mce($n_workers);
 my $cols = $tam; my $rows = $tam;
 
 my $a = [ ]; my $b = [ ]; my $c = [ ];
@@ -58,14 +58,14 @@ for my $col (0 .. $rows - 1) {
 
 close $fh;
 
-my $start = time();
+my $start = time;
 
 $mce->run(0, {
    sequence  => { begin => 0, end => $rows - 1, step => 1 },
    user_args => { cols => $cols, rows => $rows, path_b => "$tmp_dir/cache.b" }
 } );
 
-my $end = time();
+my $end = time;
 
 $mce->shutdown();
 
@@ -96,11 +96,11 @@ sub insert_row {
 
 sub configure_and_spawn_mce {
 
-   my $N_workers = shift || 8;
+   my $n_workers = shift || 8;
 
    return MCE->new(
 
-      max_workers => $N_workers,
+      max_workers => $n_workers,
 
       user_begin  => sub {
          my ($self) = @_;

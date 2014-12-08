@@ -187,7 +187,7 @@ sub _export_subs {
 
 1;
 
-## no critic (RequirePodSections)
+## no critic (Documentation::RequirePodSections)
 
 __END__
 
