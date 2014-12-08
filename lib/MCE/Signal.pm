@@ -16,6 +16,8 @@ use warnings;
 ## no critic (RegularExpressions::RequireExtendedFormatting)
 ## no critic (RegularExpressions::RequireLineBoundaryMatching)
 ## no critic (Subroutines::ProhibitExcessComplexity)
+## no critic (Subroutines::ProhibitUnusedPrivateSubroutines)
+## no critic (Subroutines::ProtectPrivateSubs)
 ## no critic (Subroutines::RequireArgUnpacking)
 ## no critic (Variables::ProhibitPunctuationVars)
 ## no critic (Variables::RequireLocalizedPunctuationVars)

@@ -45,7 +45,7 @@
 ##   Set chunk_size to 8M when not specified (from 4M previously).
 ##
 ## 2014-12-07  v1.010
-##   Update: Passes perlcritic --severity 4.
+##   Small code refactoring.
 ##
 ###############################################################################
 

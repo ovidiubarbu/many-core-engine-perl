@@ -19,9 +19,11 @@ use warnings;
 ## no critic (InputOutput::RequireBriefOpen)
 ## no critic (Modules::ProhibitMultiplePackages)
 ## no critic (Subroutines::ProhibitExcessComplexity)
+## no critic (Subroutines::ProhibitUnusedPrivateSubroutines)
 ## no critic (Subroutines::RequireArgUnpacking)
 ## no critic (TestingAndDebugging::ProhibitNoWarnings)
 ## no critic (Variables::ProhibitPunctuationVars)
+## no critic (Variables::ProtectPrivateVars)
 
 our $VERSION = '1.520';
 

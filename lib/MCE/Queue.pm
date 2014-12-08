@@ -15,11 +15,13 @@ use warnings;
 ## no critic (ControlStructures::ProhibitPostfixControls)
 ## no critic (InputOutput::ProhibitOneArgSelect)
 ## no critic (Subroutines::ProhibitExcessComplexity)
+## no critic (Subroutines::ProtectPrivateSubs)
 ## no critic (Subroutines::RequireArgUnpacking)
 ## no critic (TestingAndDebugging::ProhibitNoWarnings)
 ## no critic (TestingAndDebugging::ProhibitProlongedStrictureOverride)
 ## no critic (ValuesAndExpressions::ProhibitConstantPragma)
 ## no critic (Variables::ProhibitPunctuationVars)
+## no critic (Variables::ProtectPrivateVars)
 ## no critic (Variables::RequireLocalizedPunctuationVars)
 
 use Fcntl qw( :flock O_RDONLY );
@@ -83,18 +85,18 @@ sub import {
       _mce_m_init();
    }
    else {
-      *{ 'MCE::Queue::clear'      } = \&MCE::Queue::_clear;
-      *{ 'MCE::Queue::enqueue'    } = \&MCE::Queue::_enqueue;
-      *{ 'MCE::Queue::enqueuep'   } = \&MCE::Queue::_enqueuep;
-      *{ 'MCE::Queue::dequeue'    } = \&MCE::Queue::_dequeue;
-      *{ 'MCE::Queue::dequeue_nb' } = \&MCE::Queue::_dequeue;
-      *{ 'MCE::Queue::pending'    } = \&MCE::Queue::_pending;
-      *{ 'MCE::Queue::insert'     } = \&MCE::Queue::_insert;
-      *{ 'MCE::Queue::insertp'    } = \&MCE::Queue::_insertp;
-      *{ 'MCE::Queue::peek'       } = \&MCE::Queue::_peek;
-      *{ 'MCE::Queue::peekp'      } = \&MCE::Queue::_peekp;
-      *{ 'MCE::Queue::peekh'      } = \&MCE::Queue::_peekh;
-      *{ 'MCE::Queue::heap'       } = \&MCE::Queue::_heap;
+      *{ 'MCE::Queue::clear'      } = \&_clear;
+      *{ 'MCE::Queue::enqueue'    } = \&_enqueue;
+      *{ 'MCE::Queue::enqueuep'   } = \&_enqueuep;
+      *{ 'MCE::Queue::dequeue'    } = \&_dequeue;
+      *{ 'MCE::Queue::dequeue_nb' } = \&_dequeue;
+      *{ 'MCE::Queue::pending'    } = \&_pending;
+      *{ 'MCE::Queue::insert'     } = \&_insert;
+      *{ 'MCE::Queue::insertp'    } = \&_insertp;
+      *{ 'MCE::Queue::peek'       } = \&_peek;
+      *{ 'MCE::Queue::peekp'      } = \&_peekp;
+      *{ 'MCE::Queue::peekh'      } = \&_peekh;
+      *{ 'MCE::Queue::heap'       } = \&_heap;
    }
 
    return;
@@ -1045,19 +1047,19 @@ sub _heap_insert_high {
 
       no strict 'refs'; no warnings 'redefine';
 
-      *{ 'MCE::Queue::clear'      } = \&MCE::Queue::_mce_m_clear;
-      *{ 'MCE::Queue::enqueue'    } = \&MCE::Queue::_mce_m_enqueue;
-      *{ 'MCE::Queue::enqueuep'   } = \&MCE::Queue::_mce_m_enqueuep;
-      *{ 'MCE::Queue::dequeue'    } = \&MCE::Queue::_mce_m_dequeue;
-      *{ 'MCE::Queue::dequeue_nb' } = \&MCE::Queue::_mce_m_dequeue_nb;
-      *{ 'MCE::Queue::insert'     } = \&MCE::Queue::_mce_m_insert;
-      *{ 'MCE::Queue::insertp'    } = \&MCE::Queue::_mce_m_insertp;
+      *{ 'MCE::Queue::clear'      } = \&_mce_m_clear;
+      *{ 'MCE::Queue::enqueue'    } = \&_mce_m_enqueue;
+      *{ 'MCE::Queue::enqueuep'   } = \&_mce_m_enqueuep;
+      *{ 'MCE::Queue::dequeue'    } = \&_mce_m_dequeue;
+      *{ 'MCE::Queue::dequeue_nb' } = \&_mce_m_dequeue_nb;
+      *{ 'MCE::Queue::insert'     } = \&_mce_m_insert;
+      *{ 'MCE::Queue::insertp'    } = \&_mce_m_insertp;
 
-      *{ 'MCE::Queue::pending'    } = \&MCE::Queue::_pending;
-      *{ 'MCE::Queue::peek'       } = \&MCE::Queue::_peek;
-      *{ 'MCE::Queue::peekp'      } = \&MCE::Queue::_peekp;
-      *{ 'MCE::Queue::peekh'      } = \&MCE::Queue::_peekh;
-      *{ 'MCE::Queue::heap'       } = \&MCE::Queue::_heap;
+      *{ 'MCE::Queue::pending'    } = \&_pending;
+      *{ 'MCE::Queue::peek'       } = \&_peek;
+      *{ 'MCE::Queue::peekp'      } = \&_peekp;
+      *{ 'MCE::Queue::peekh'      } = \&_peekh;
+      *{ 'MCE::Queue::heap'       } = \&_heap;
 
       return;
    }
@@ -1239,18 +1241,18 @@ sub _mce_m_insertp {
 
       no strict 'refs'; no warnings 'redefine';
 
-      *{ 'MCE::Queue::clear'      } = \&MCE::Queue::_mce_w_clear;
-      *{ 'MCE::Queue::enqueue'    } = \&MCE::Queue::_mce_w_enqueue;
-      *{ 'MCE::Queue::enqueuep'   } = \&MCE::Queue::_mce_w_enqueuep;
-      *{ 'MCE::Queue::dequeue'    } = \&MCE::Queue::_mce_w_dequeue;
-      *{ 'MCE::Queue::dequeue_nb' } = \&MCE::Queue::_mce_w_dequeue_nb;
-      *{ 'MCE::Queue::pending'    } = \&MCE::Queue::_mce_w_pending;
-      *{ 'MCE::Queue::insert'     } = \&MCE::Queue::_mce_w_insert;
-      *{ 'MCE::Queue::insertp'    } = \&MCE::Queue::_mce_w_insertp;
-      *{ 'MCE::Queue::peek'       } = \&MCE::Queue::_mce_w_peek;
-      *{ 'MCE::Queue::peekp'      } = \&MCE::Queue::_mce_w_peekp;
-      *{ 'MCE::Queue::peekh'      } = \&MCE::Queue::_mce_w_peekh;
-      *{ 'MCE::Queue::heap'       } = \&MCE::Queue::_mce_w_heap;
+      *{ 'MCE::Queue::clear'      } = \&_mce_w_clear;
+      *{ 'MCE::Queue::enqueue'    } = \&_mce_w_enqueue;
+      *{ 'MCE::Queue::enqueuep'   } = \&_mce_w_enqueuep;
+      *{ 'MCE::Queue::dequeue'    } = \&_mce_w_dequeue;
+      *{ 'MCE::Queue::dequeue_nb' } = \&_mce_w_dequeue_nb;
+      *{ 'MCE::Queue::pending'    } = \&_mce_w_pending;
+      *{ 'MCE::Queue::insert'     } = \&_mce_w_insert;
+      *{ 'MCE::Queue::insertp'    } = \&_mce_w_insertp;
+      *{ 'MCE::Queue::peek'       } = \&_mce_w_peek;
+      *{ 'MCE::Queue::peekp'      } = \&_mce_w_peekp;
+      *{ 'MCE::Queue::peekh'      } = \&_mce_w_peekh;
+      *{ 'MCE::Queue::heap'       } = \&_mce_w_heap;
 
       return;
    }
