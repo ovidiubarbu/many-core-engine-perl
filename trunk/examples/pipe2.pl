@@ -13,6 +13,9 @@
 use strict;
 use warnings;
 
+## no critic (InputOutput::ProhibitBarewordFileHandles)
+## no critic (InputOutput::ProhibitTwoArgOpen)
+
 my ($prog_name, $prog_dir, $base_dir);
 
 BEGIN {

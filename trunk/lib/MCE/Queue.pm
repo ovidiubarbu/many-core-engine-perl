@@ -9,6 +9,8 @@ package MCE::Queue;
 use strict;
 use warnings;
 
+## no critic (TestingAndDebugging::ProhibitNoStrict)
+
 use Fcntl qw( :flock O_RDONLY );
 use Socket qw( :crlf PF_UNIX PF_UNSPEC SOCK_STREAM );
 use Scalar::Util qw( looks_like_number );

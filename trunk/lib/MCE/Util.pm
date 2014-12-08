@@ -9,6 +9,8 @@ package MCE::Util;
 use strict;
 use warnings;
 
+## no critic (BuiltinFunctions::ProhibitStringyEval)
+
 use base qw( Exporter );
 use bytes;
 

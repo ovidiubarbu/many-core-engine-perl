@@ -9,6 +9,9 @@ package MCE;
 use strict;
 use warnings;
 
+## no critic (BuiltinFunctions::ProhibitStringyEval)
+## no critic (TestingAndDebugging::ProhibitNoStrict)
+
 BEGIN {
 
    ## Forking is emulated under the Windows enviornment (excluding Cygwin).
