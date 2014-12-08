@@ -10,9 +10,6 @@
 use strict qw(subs refs);
 use warnings;
 
-## no critic (InputOutput::ProhibitBarewordFileHandles)
-## no critic (InputOutput::RequireBriefOpen)
-
 use Cwd 'abs_path';  ## Remove taintedness from path
 use lib ($_) = (abs_path().'/../../lib') =~ /(.*)/;
 

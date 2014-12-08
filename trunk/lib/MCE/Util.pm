@@ -9,17 +9,6 @@ package MCE::Util;
 use strict;
 use warnings;
 
-## no critic (BuiltinFunctions::ProhibitStringyEval)
-
-## no critic (ControlStructures::ProhibitPostfixControls)
-## no critic (RegularExpressions::RequireDotMatchAnything)
-## no critic (RegularExpressions::RequireExtendedFormatting)
-## no critic (RegularExpressions::RequireLineBoundaryMatching)
-## no critic (Subroutines::ProhibitExcessComplexity)
-## no critic (Subroutines::ProhibitUnusedPrivateSubroutines)
-## no critic (Variables::ProhibitPunctuationVars)
-## no critic (Variables::RequireLocalizedPunctuationVars)
-
 use base qw( Exporter );
 use bytes;
 
@@ -231,8 +220,6 @@ sub _parse_chunk_size {
 }
 
 1;
-
-## no critic (Documentation::RequirePodSections)
 
 __END__
 

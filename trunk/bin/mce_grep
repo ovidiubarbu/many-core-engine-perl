@@ -52,12 +52,6 @@
 use strict;
 use warnings;
 
-## no critic (InputOutput::ProhibitBarewordFileHandles)
-## no critic (InputOutput::ProhibitTwoArgOpen)
-
-## no critic (InputOutput::RequireBriefOpen)
-## no critic (Variables::RequireLocalizedPunctuationVars)
-
 use Cwd qw( abs_path );
 use lib abs_path . '/../lib';
 

@@ -9,19 +9,6 @@ package MCE::Signal;
 use strict;
 use warnings;
 
-## no critic (CodeLayout::ProhibitParensWithBuiltins)
-## no critic (ControlStructures::ProhibitPostfixControls)
-## no critic (InputOutput::RequireBriefOpen)
-## no critic (RegularExpressions::RequireDotMatchAnything)
-## no critic (RegularExpressions::RequireExtendedFormatting)
-## no critic (RegularExpressions::RequireLineBoundaryMatching)
-## no critic (Subroutines::ProhibitExcessComplexity)
-## no critic (Subroutines::ProhibitUnusedPrivateSubroutines)
-## no critic (Subroutines::ProtectPrivateSubs)
-## no critic (Subroutines::RequireArgUnpacking)
-## no critic (Variables::ProhibitPunctuationVars)
-## no critic (Variables::RequireLocalizedPunctuationVars)
-
 use Time::HiRes qw( sleep time );
 use Fcntl qw( :flock O_RDONLY );
 use base qw( Exporter );
@@ -465,8 +452,6 @@ sub _warn_handler {
 }
 
 1;
-
-## no critic (Documentation::RequirePodSections)
 
 __END__
 

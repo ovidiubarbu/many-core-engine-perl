@@ -9,16 +9,6 @@ package MCE::Subs;
 use strict;
 use warnings;
 
-## no critic (Subroutines::ProhibitSubroutinePrototypes)
-## no critic (TestingAndDebugging::ProhibitNoStrict)
-
-## no critic (ControlStructures::ProhibitPostfixControls)
-## no critic (Subroutines::RequireArgUnpacking)
-## no critic (Subroutines::RequireFinalReturn)
-## no critic (TestingAndDebugging::ProhibitNoWarnings)
-## no critic (TestingAndDebugging::ProhibitProlongedStrictureOverride)
-## no critic (Variables::ProtectPrivateVars)
-
 use MCE;
 
 our $VERSION = '1.520';
@@ -187,8 +177,6 @@ sub _export_subs {
 }
 
 1;
-
-## no critic (Documentation::RequirePodSections)
 
 __END__
 

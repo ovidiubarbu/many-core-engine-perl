@@ -15,17 +15,6 @@ package MCE::Core::Input::Generator;
 use strict;
 use warnings;
 
-## no critic (CodeLayout::ProhibitParensWithBuiltins)
-## no critic (ControlStructures::ProhibitPostfixControls)
-## no critic (Modules::ProhibitMultiplePackages)
-## no critic (RegularExpressions::RequireDotMatchAnything)
-## no critic (RegularExpressions::RequireExtendedFormatting)
-## no critic (RegularExpressions::RequireLineBoundaryMatching)
-## no critic (Subroutines::ProhibitExcessComplexity)
-## no critic (Subroutines::ProhibitUnusedPrivateSubroutines)
-## no critic (Subroutines::RequireArgUnpacking)
-## no critic (TestingAndDebugging::ProhibitNoWarnings)
-
 our $VERSION = '1.520';
 
 ## Items below are folded into MCE.

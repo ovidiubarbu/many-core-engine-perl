@@ -9,22 +9,6 @@ package MCE::Loop;
 use strict;
 use warnings;
 
-## no critic (BuiltinFunctions::ProhibitStringyEval)
-## no critic (Subroutines::ProhibitSubroutinePrototypes)
-## no critic (TestingAndDebugging::ProhibitNoStrict)
-
-## no critic (ControlStructures::ProhibitPostfixControls)
-## no critic (RegularExpressions::RequireDotMatchAnything)
-## no critic (RegularExpressions::RequireExtendedFormatting)
-## no critic (RegularExpressions::RequireLineBoundaryMatching)
-## no critic (Subroutines::ProhibitExcessComplexity)
-## no critic (Subroutines::ProtectPrivateSubs)
-## no critic (Subroutines::RequireArgUnpacking)
-## no critic (TestingAndDebugging::ProhibitNoWarnings)
-## no critic (TestingAndDebugging::ProhibitProlongedStrictureOverride)
-## no critic (Variables::ProhibitPunctuationVars)
-## no critic (Variables::ProtectPrivateVars)
-
 use Scalar::Util qw( looks_like_number );
 
 use MCE;
@@ -328,8 +312,6 @@ sub _validate_number {
 }
 
 1;
-
-## no critic (Documentation::RequirePodSections)
 
 __END__
 
