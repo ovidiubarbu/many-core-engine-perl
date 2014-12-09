@@ -86,4 +86,12 @@ t/01_load_signal_tag.t
 t/02_do_callback_args.t
 t/02_do_callback_result.t
 t/03_chunk_size.t
+t/05_mce_flow.t
+t/05_mce_grep.t
+t/05_mce_loop.t
+t/05_mce_map.t
+t/05_mce_step.t
+t/05_mce_stream.t
+t/06_nodata_flow.t
+t/06_nodata_step.t
 META.yml
