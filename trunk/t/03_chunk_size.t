@@ -4,6 +4,7 @@ use strict;
 use warnings;
 
 use Test::More tests => 3;
+
 use MCE;
 
 my @ans;
@@ -15,7 +16,7 @@ sub callback {
 }
 
 my $mce = MCE->new(
-   max_workers => 4, spawn_delay => 0.2,
+   max_workers => 2,
 
    user_func => sub {
       my ($self, $chunk_ref, $chunk_id) = @_;

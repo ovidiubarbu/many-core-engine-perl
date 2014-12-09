@@ -418,7 +418,7 @@ sub mce_stream (@) {
       _gen_user_tasks(\@_queue, \@_code, \@_mode, \@_name, \@_wrks);
 
       my %_options = (
-         use_threads => 0, max_workers => $_max_workers, task_name => $_tag,
+         max_workers => $_max_workers, task_name => $_tag,
          user_tasks => \@_user_tasks, task_end => \&_task_end,
          use_slurpio => 0,
       );
@@ -465,8 +465,12 @@ sub mce_stream (@) {
       $_MCE->process({ chunk_size => $_chunk_size }, \@_);
    }
    else {
-      $_MCE->run({ chunk_size => $_chunk_size }, 0)
-         if (defined $_params && exists $_params->{sequence});
+      if (defined $_params && exists $_params->{sequence}) {
+         $_MCE->run({
+            chunk_size => $_chunk_size, sequence => $_params->{sequence}
+         }, 0);
+         delete $_MCE->{sequence};
+      }
    }
 
    MCE::_restore_state;

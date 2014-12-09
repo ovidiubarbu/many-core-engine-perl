@@ -372,7 +372,15 @@ sub mce_flow (@) {
       $_MCE->process({ chunk_size => $_chunk_size }, \@_);
    }
    else {
-      $_MCE->run({ chunk_size => $_chunk_size }, 0);
+      if (defined $_params && exists $_params->{sequence}) {
+         $_MCE->run({
+            chunk_size => $_chunk_size, sequence => $_params->{sequence}
+         }, 0);
+         delete $_MCE->{sequence};
+      }
+      else {
+         $_MCE->run({ chunk_size => $_chunk_size }, 0);
+      }
    }
 
    delete $_MCE->{gather} if (defined $_wa);

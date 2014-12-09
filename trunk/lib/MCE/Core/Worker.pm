@@ -43,7 +43,7 @@ END {
 
 {
    my ($_DAT_LOCK, $_DAT_W_SOCK, $_DAU_W_SOCK, $_tag, $_value, $_want_id);
-   my ($_chn, $_data_ref, $_dest, $_len, $_lock_chn, $_task_id, $_user_func);
+   my ($_chn, $_dest, $_len, $_lock_chn, $_task_id, $_user_func);
 
    ## Create array structure containing various send functions.
    my @_dest_function = ();
@@ -112,7 +112,9 @@ END {
 
    sub _do_callback {
 
-      my $_buffer; my $self = $_[0]; $_value = $_[1]; $_data_ref = $_[2];
+      my $_buffer; my $self = $_[0]; my $_data_ref = $_[2];
+
+      $_value = $_[1];
 
       @_ = ();
 
@@ -233,27 +235,35 @@ END {
 
    sub _do_send {
 
-      my $_buffer; my $self = shift; $_dest = shift; $_value = shift;
+      my $_buffer; my $self = shift;
+
+      $_dest = shift; $_value = shift;
 
       if (@_ > 1) {
-         $_buffer = join('', @_); @_ = ();
-         return $_dest_function[$_dest](\$_buffer);
+         $_buffer = join('', @_);
       }
       elsif (my $_ref = ref $_[0]) {
          if ($_ref eq 'SCALAR') {
-            return $_dest_function[$_dest]($_[0]);
-         } elsif ($_ref eq 'ARRAY') {
-            $_buffer = join('', @{ $_[0] });
-         } elsif ($_ref eq 'HASH') {
-            $_buffer = join('', %{ $_[0] });
-         } else {
-            $_buffer = join('', @_); @_ = ();
+            $_buffer = shift;
+            return $_dest_function[$_dest]($_buffer);
          }
-         return $_dest_function[$_dest](\$_buffer);
+         elsif ($_ref eq 'ARRAY') {
+            $_buffer = join('', @{ $_[0] });
+         }
+         elsif ($_ref eq 'HASH') {
+            $_buffer = join('', %{ $_[0] });
+         }
+         else {
+            $_buffer = join('', @_);
+         }
       }
       else {
-         return $_dest_function[$_dest](\$_[0]);
+         $_buffer = $_[0];
       }
+
+      @_ = ();
+
+      return $_dest_function[$_dest](\$_buffer);
    }
 
    sub _do_send_glob {
@@ -265,9 +275,11 @@ END {
       if ($self->{_wid} > 0) {
          if ($_fd == 1) {
             $self->_do_send(SENDTO_STDOUT, undef, $_data_ref);
-         } elsif ($_fd == 2) {
+         }
+         elsif ($_fd == 2) {
             $self->_do_send(SENDTO_STDERR, undef, $_data_ref);
-         } else {
+         }
+         else {
             $self->_do_send(SENDTO_FD, $_fd, $_data_ref);
          }
       }

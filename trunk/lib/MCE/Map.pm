@@ -271,7 +271,7 @@ sub mce_map (&@) {
       $_prev_c = $_code;
 
       my %_options = (
-         use_threads => 0, max_workers => $_max_workers, task_name => $_tag,
+         max_workers => $_max_workers, task_name => $_tag,
          user_func => sub {
 
             my ($_mce, $_chunk_ref, $_chunk_id) = @_;
@@ -350,8 +350,12 @@ sub mce_map (&@) {
       $_MCE->process({ chunk_size => $_chunk_size }, \@_);
    }
    else {
-      $_MCE->run({ chunk_size => $_chunk_size }, 0)
-         if (defined $_params && exists $_params->{sequence});
+      if (defined $_params && exists $_params->{sequence}) {
+         $_MCE->run({
+            chunk_size => $_chunk_size, sequence => $_params->{sequence}
+         }, 0);
+         delete $_MCE->{sequence};
+      }
    }
 
    MCE::_restore_state;
