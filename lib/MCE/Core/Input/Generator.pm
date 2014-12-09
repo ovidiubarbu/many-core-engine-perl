@@ -192,7 +192,7 @@ sub _worker_sequence_generator {
                }
             }
 
-            return unless (@_n);
+            return unless (scalar @_n);
          }
 
          ## -------------------------------------------------------------------

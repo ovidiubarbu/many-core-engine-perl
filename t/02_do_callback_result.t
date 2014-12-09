@@ -4,6 +4,7 @@ use strict;
 use warnings;
 
 use Test::More tests => 5;
+
 use MCE;
 
 my (@ans, @rpl, $mce);
@@ -17,7 +18,7 @@ sub callback {
 }
 
 $mce = MCE->new(
-   max_workers => 4, spawn_delay => 0.2,
+   max_workers => 4,
 
    user_func => sub {
       MCE->do('callback', MCE->wid());
@@ -28,7 +29,7 @@ $mce = MCE->new(
 @ans = ();
 $mce->run;
 
-is(join('', sort @ans), '1234', 'check that wid is correct test 1');
+is(join('', sort @ans), '1234', 'test1: check that wid is correct');
 
 ###############################################################################
 
@@ -45,7 +46,7 @@ sub callback3 {
 }
 
 $mce = MCE->new(
-   max_workers => 4, spawn_delay => 0.2,
+   max_workers => 4,
 
    user_func => sub {
       my $reply = MCE->do('callback2', MCE->wid());
@@ -57,8 +58,8 @@ $mce = MCE->new(
 @ans = (); @rpl = ();
 $mce->run;
 
-is(join('', sort @ans), '1234', 'check that wid is correct test 2');
-is(join('', sort @rpl), '2468', 'check that scalar is correct');
+is(join('', sort @ans), '1234', 'test2: check that wid is correct');
+is(join('', sort @rpl), '2468', 'test3: check that scalar is correct');
 
 ###############################################################################
 
@@ -93,7 +94,7 @@ sub callback6 {
 }
 
 $mce = MCE->new(
-   max_workers => 1, spawn_delay => 0.2,
+   max_workers => 1,
 
    user_func => sub {
       my @reply = MCE->do('callback4');
@@ -107,6 +108,6 @@ $mce = MCE->new(
 
 $mce->run;
 
-is(join('', sort @ans), '1234', 'check that list is correct');
-is(join('', sort @rpl), '2468', 'check that hash is correct');
+is(join('', sort @ans), '1234', 'test4: check that list is correct');
+is(join('', sort @rpl), '2468', 'test5: check that hash is correct');
 

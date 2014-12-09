@@ -486,7 +486,7 @@ The serial code is based off the one by "gamo". A sleep is added to imitate
 extra CPU time. The while loop is wrapped within a for loop to run 10 times.
 The random number generator is seeded as well.
 
-   use Time::HiRes qw(time sleep);
+   use Time::HiRes qw( sleep time );
 
    srand 5906;
 
@@ -532,7 +532,7 @@ Next, we'd do the same with MCE. This demonstration requires at least MCE 1.509
 to run properly. Folks on prior releases (1.505 - 1.508) will not see output
 for the 2nd run and beyond.
 
-   use Time::HiRes qw(time sleep);
+   use Time::HiRes qw( sleep time );
    use MCE::Loop;
 
    ## Configure MCE. Move common variables inside the user_begin

@@ -4,6 +4,7 @@ use strict;
 use warnings;
 
 use Test::More tests => 4;
+
 use MCE;
 
 sub callback1 {
@@ -23,7 +24,7 @@ sub callback2 {
 }
 
 my $mce = MCE->new(
-   max_workers => 1, spawn_delay => 0.2,
+   max_workers => 1,
 
    user_func => sub {
       my ($self) = @_;

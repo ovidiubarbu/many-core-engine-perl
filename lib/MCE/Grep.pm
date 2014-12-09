@@ -271,7 +271,7 @@ sub mce_grep (&@) {
       $_prev_c = $_code;
 
       my %_options = (
-         use_threads => 0, max_workers => $_max_workers, task_name => $_tag,
+         max_workers => $_max_workers, task_name => $_tag,
          user_func => sub {
 
             my ($_mce, $_chunk_ref, $_chunk_id) = @_;
@@ -283,7 +283,7 @@ sub mce_grep (&@) {
                if (ref $_chunk_ref eq 'SCALAR') {
                   local $/ = $_mce->{RS} if defined $_mce->{RS};
                   open my  $_MEM_FH, '<', $_chunk_ref;
-                  while ( <$_MEM_FH> ) { push @_a, $_ if &{ $_code }; }
+                  while ( <$_MEM_FH> ) { push (@_a, $_) if &{ $_code }; }
                   close    $_MEM_FH;
                }
                else {
@@ -350,8 +350,12 @@ sub mce_grep (&@) {
       $_MCE->process({ chunk_size => $_chunk_size }, \@_);
    }
    else {
-      $_MCE->run({ chunk_size => $_chunk_size }, 0)
-         if (defined $_params && exists $_params->{sequence});
+      if (defined $_params && exists $_params->{sequence}) {
+         $_MCE->run({
+            chunk_size => $_chunk_size, sequence => $_params->{sequence}
+         }, 0);
+         delete $_MCE->{sequence};
+      }
    }
 
    MCE::_restore_state;

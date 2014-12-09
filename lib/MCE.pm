@@ -17,6 +17,7 @@ BEGIN {
    ## Forking is emulated under the Windows enviornment (excluding Cygwin).
    ## MCE 1.514+ will load the 'threads' module by default on Windows.
    ## Folks may specify use_threads => 0 if threads is not desired.
+
    if ($^O eq 'MSWin32' && !defined $threads::VERSION) {
       local $@; local $SIG{__DIE__} = \&_NOOP;
       eval 'use threads; use threads::shared';
@@ -65,20 +66,17 @@ BEGIN {
 
    %_valid_fields_new = map { $_ => 1 } qw(
       max_workers tmp_dir use_threads user_tasks task_end task_name freeze thaw
-
       chunk_size input_data sequence job_delay spawn_delay submit_delay RS
       flush_file flush_stderr flush_stdout stderr_file stdout_file use_slurpio
       interval user_args user_begin user_end user_func user_error user_output
       bounds_only gather on_post_exit on_post_run parallel_io
    );
-
    %_params_allowed_args = map { $_ => 1 } qw(
       chunk_size input_data sequence job_delay spawn_delay submit_delay RS
       flush_file flush_stderr flush_stdout stderr_file stdout_file use_slurpio
       interval user_args user_begin user_end user_func user_error user_output
       bounds_only gather on_post_exit on_post_run parallel_io
    );
-
    %_valid_fields_task = map { $_ => 1 } qw(
       max_workers chunk_size input_data interval sequence task_end task_name
       bounds_only gather user_args user_begin user_end user_func use_threads
@@ -1073,8 +1071,7 @@ sub run {
       my $_frozen_params = $self->{freeze}(\%_params);
       my $_frozen_nodata;
 
-      $_frozen_nodata = $self->{freeze}(\%_params_nodata)
-         if ($_has_user_tasks);
+      $_frozen_nodata = $self->{freeze}(\%_params_nodata) if ($_has_user_tasks);
 
       if ($_has_user_tasks) { for (1 .. @{ $self->{_state} } - 1) {
          $_task0_wids{$_} = 1 unless ($self->{_state}->[$_]->{_task_id});
@@ -1441,7 +1438,9 @@ sub yield {
 
    sleep $_delay if ($_delay > 0.0);
 
-   $self->{_i_wrk_st} = time if ($_count && $_count > 2_000_000_000);
+   if ($_count && $_count > 2_000_000_000) {
+      $self->{_i_wrk_st} = time;
+   }
 
    return;
 }
