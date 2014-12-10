@@ -111,6 +111,8 @@ sub get_ncpu {
       warn "MCE::Util::get_ncpu: command failed or unknown operating system\n";
    }
 
+   $ncpu = 1 if (!$ncpu || $ncpu < 1);
+
    return $g_ncpu = $ncpu;
 }
 
@@ -127,14 +129,18 @@ sub _parse_max_workers {
    return $_max_workers unless (defined $_max_workers);
 
    if ($_max_workers =~ /^auto(?:$|\s*([\-\+\/\*])\s*(.+)$)/i) {
-      my $_ncpu = get_ncpu();
+      my ($_ncpu_ul, $_ncpu);
+
+      $_ncpu_ul = $_ncpu = get_ncpu();
+      $_ncpu_ul = 8 if ($_ncpu_ul > 8);
 
       if ($1 && $2) {
-         local $@; $_max_workers = eval "int($_ncpu $1 $2 + 0.5)";
+         local $@; $_max_workers = eval "int($_ncpu_ul $1 $2 + 0.5)";
          $_max_workers = 1 if (!$_max_workers || $_max_workers < 1);
+         $_max_workers = $_ncpu if ($_max_workers > $_ncpu);
       }
       else {
-         $_max_workers = $_ncpu;
+         $_max_workers = $_ncpu_ul;
       }
    }
 
@@ -256,14 +262,37 @@ than one.
  my $ncpu = MCE::Util::get_ncpu();
 
 Specifying 'auto' for max_workers calls MCE::Util::get_ncpu automatically.
+MCE 1.521 sets an upper-limit when specifying 'auto'. The reason is mainly
+to safeguard apps from spawning 100 workers on a box having 100 cores.
+This is important for apps which are IO-bound.
 
  use MCE;
 
+ ## 'Auto' is the total # of logical cores (lcores) (8 maximum, MCE 1.521)
+ ## The computed value will not exceed the # of logical cores on the box.
+
  my $mce = MCE->new(
-   max_workers => 'auto-1',        ## MCE::Util::get_ncpu() - 1
-   max_workers => 'auto+3',        ## MCE::Util::get_ncpu() + 3
-   max_workers => 'auto',          ## MCE::Util::get_ncpu()
+
+   max_workers => 'auto',       ##  1 on HW with 1-lcores;  2 on  2-lcores
+   max_workers =>  16,          ## 16 on HW with 4-lcores; 16 on 32-lcores
+
+   max_workers => 'auto',       ##  4 on HW with 4-lcores;  8 on 16-lcores
+   max_workers => 'auto*1.5',   ##  4 on HW with 4-lcores; 12 on 16-lcores
+   max_workers => 'auto*2.0',   ##  4 on HW with 4-lcores; 16 on 16-lcores
+   max_workers => 'auto/2.0',   ##  2 on HW with 4-lcores;  4 on 16-lcores
+   max_workers => 'auto+3',     ##  4 on HW with 4-lcores; 11 on 16-lcores
+   max_workers => 'auto-1',     ##  3 on HW with 4-lcores;  7 on 16-lcores
+
+   max_workers => MCE::Util::get_ncpu,   ## run on all lcores
  );
+
+In summary:
+
+ 1. Auto has an upper-limit of 8 in MCE 1.521 (# of lcores, 8 maximum)
+ 2. Math can be applied with auto (*/+-) to change the upper limit
+ 3. The computed value for auto will not exceed the total # of lcores
+ 4. One can specify max_workers explicity to a hard value
+ 5. MCE::Util::get_ncpu returns the actual # of lcores
 
 =head1 ACKNOWLEDGEMENTS
 

@@ -110,7 +110,7 @@ sub _validate_args_s {
 
    my $_tag = 'MCE::_validate_args_s';
 
-   _parse_max_workers($_s);
+   $_s->{max_workers} = _parse_max_workers($_s->{max_workers});
 
    _croak("$_tag: (max_workers) is not valid")
       if (defined $_s->{max_workers} && (
