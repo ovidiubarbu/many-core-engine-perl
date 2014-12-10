@@ -131,7 +131,7 @@ my %_valid_fields_new = map { $_ => 1 } qw(
 );
 
 my $_queues = {};
-my $_id = 0;
+my $_qid    = 0;
 
 sub DESTROY {
 
@@ -219,7 +219,7 @@ sub new {
 
    if (defined $MCE::VERSION) {
       if (MCE->wid == 0) {
-         $_queue->{_id} = ++$_id; $_queues->{$_id} = $_queue;
+         $_queue->{_id} = ++$_qid; $_queues->{$_qid} = $_queue;
          $_queue->{_desem} = 0 if ($_queue->{_fast});
 
          socketpair( $_queue->{_qr_sock}, $_queue->{_qw_sock},

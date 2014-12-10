@@ -639,9 +639,9 @@ sub spawn {
       $self->{_init_total_workers} = $self->{_total_workers};
 
       for my $_task (@{ $self->{user_tasks} }) {
-         my $_use_threads = $_task->{use_threads};
+         my $_tsk_use_threads = $_task->{use_threads};
 
-         if (defined $_use_threads && $_use_threads == 1) {
+         if (defined $_tsk_use_threads && $_tsk_use_threads == 1) {
             _dispatch_thread($self, ++$_wid, $_task, $_task_id, $_)
                for (1 .. $_task->{max_workers});
          } else {
