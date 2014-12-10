@@ -196,6 +196,9 @@ sub import {
    require MCE::Core::Validation;
    require MCE::Core::Manager;
    require MCE::Core::Worker;
+   require MCE::Util;
+
+   *{ _parse_max_workers } = \&MCE::Util::_parse_max_workers;
 
    ## Instantiate a module-level instance.
    $MCE = MCE->new( _module_instance => 1, max_workers => 0 );
@@ -422,7 +425,7 @@ sub new {
       _croak('MCE::new: (user_tasks) is not an ARRAY reference')
          unless (ref $self->{user_tasks} eq 'ARRAY');
 
-      _parse_max_workers($self);
+      $self->{max_workers} = _parse_max_workers($self->{max_workers});
 
       for my $_task (@{ $self->{user_tasks} }) {
          for (keys %{ $_task }) {
@@ -1799,32 +1802,6 @@ sub say {
 ## Private methods.
 ##
 ###############################################################################
-
-{
-   my $_ncpu;
-
-   sub _parse_max_workers {
-
-      my ($self) = @_; return unless ($self);
-
-      if ($self->{max_workers} =~ /^auto(?:$|\s*([\-\+\/\*])\s*(.+)$)/i) {
-         require  MCE::Util unless (defined $MCE::Util::VERSION);
-         $_ncpu = MCE::Util::get_ncpu() unless ($_ncpu);
-
-         if ($1 && $2) {
-            local $@; $self->{max_workers} = eval "int($_ncpu $1 $2 + 0.5)";
-
-            $self->{max_workers} = 1
-               if (!$self->{max_workers} || $self->{max_workers} < 1);
-         }
-         else {
-            $self->{max_workers} = $_ncpu;
-         }
-      }
-
-      return;
-   }
-}
 
 sub _die  { return MCE::Signal->_die_handler(@_); }
 sub _warn { return MCE::Signal->_warn_handler(@_); }
