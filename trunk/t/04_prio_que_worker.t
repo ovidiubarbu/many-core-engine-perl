@@ -3,14 +3,14 @@
 use strict;
 use warnings;
 
-use Test::More tests => 32;
+use Test::More tests => 40;
 
 use MCE::Flow max_workers => 1;
 use MCE::Queue;
 
 ###############################################################################
 
-##  Test MCE::Queue 'priority' queuing by the MCE Worker
+##  Test MCE::Queue (priority queue) by the MCE worker process.
 
 my ($q);
 
@@ -155,6 +155,70 @@ mce_flow sub {
    MCE->do('check', 'lifo, check peekp at index -14',   'n', $q->peekp(5, -14));
    MCE->do('check', 'lifo, check peekp at index -15', undef, $q->peekp(5, -15));
    MCE->do('check', 'lifo, check peekp at index -20', undef, $q->peekp(5, -20));
+
+   return;
+};
+
+MCE::Flow::finish;
+
+###############################################################################
+
+##  HIGHEST priority tests, mix-mode (normal and priority)
+
+$q = MCE::Queue->new(
+   porder => $MCE::Queue::HIGHEST, type => $MCE::Queue::FIFO
+);
+
+mce_flow sub {
+   my ($mce) = @_;
+
+   $q->enqueuep(5, 'a', 'b');    # priority queue
+   $q->enqueuep(7, 'e', 'f');    # priority queue
+   $q->enqueue (   'i', 'j');    # normal   queue
+   $q->enqueuep(8, 'g', 'h');    # priority queue
+   $q->enqueuep(6, 'c', 'd');    # priority queue
+
+   my @h = $q->heap;
+
+   MCE->do('check', 'highest, check heap', '8765', join('', @h));
+   MCE->do('check', 'highest, check peekh at index  0', '8', $q->peekh( 0));
+   MCE->do('check', 'highest, check peekh at index -2', '6', $q->peekh(-2));
+
+   my @r = $q->dequeue(10);
+
+   MCE->do('check', 'highest, check dequeue', 'ghefcdabij', join('', @r));
+
+   return;
+};
+
+MCE::Flow::finish;
+
+###############################################################################
+
+##  LOWEST priority tests, mix-mode (normal and priority)
+
+$q = MCE::Queue->new(
+   porder => $MCE::Queue::LOWEST, type => $MCE::Queue::FIFO
+);
+
+mce_flow sub {
+   my ($mce) = @_;
+
+   $q->enqueuep(5, 'a', 'b');    # priority queue
+   $q->enqueuep(7, 'e', 'f');    # priority queue
+   $q->enqueue (   'i', 'j');    # normal   queue
+   $q->enqueuep(8, 'g', 'h');    # priority queue
+   $q->enqueuep(6, 'c', 'd');    # priority queue
+
+   my @h = $q->heap;
+
+   MCE->do('check', 'lowest, check heap', '5678', join('', @h));
+   MCE->do('check', 'lowest, check peekh at index  0', '5', $q->peekh( 0));
+   MCE->do('check', 'lowest, check peekh at index -2', '7', $q->peekh(-2));
+
+   my @r = $q->dequeue(10);
+
+   MCE->do('check', 'lowest, check dequeue', 'abcdefghij', join('', @r));
 
    return;
 };

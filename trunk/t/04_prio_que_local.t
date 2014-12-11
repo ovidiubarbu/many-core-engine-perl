@@ -3,16 +3,16 @@
 use strict;
 use warnings;
 
-use Test::More tests => 32;
+use Test::More tests => 40;
 
 use MCE::Queue;
 
 ###############################################################################
 
-##  Test MCE::Queue 'priority' queuing in local mode (standalone).
+##  Test MCE::Queue (priority queue) in local mode.
 ##  Hence, MCE is not require to use MCE::Queue.
 
-my ($q, @r);
+my ($q, @r, @h);
 
 ###############################################################################
 
@@ -114,4 +114,52 @@ is( $q->peekp(5, -13),   'm', 'lifo, check peekp at index -13' );
 is( $q->peekp(5, -14),   'n', 'lifo, check peekp at index -14' );
 is( $q->peekp(5, -15), undef, 'lifo, check peekp at index -15' );
 is( $q->peekp(5, -20), undef, 'lifo, check peekp at index -20' );
+
+###############################################################################
+
+##  HIGHEST priority tests
+
+$q = MCE::Queue->new(
+   porder => $MCE::Queue::HIGHEST, type => $MCE::Queue::FIFO
+);
+
+$q->enqueuep(5, 'a', 'b');    # priority queue
+$q->enqueuep(7, 'e', 'f');    # priority queue
+$q->enqueue (   'i', 'j');    # normal   queue
+$q->enqueuep(8, 'g', 'h');    # priority queue
+$q->enqueuep(6, 'c', 'd');    # priority queue
+
+@h = $q->heap;
+
+is( join('', @h), '8765', 'highest, check heap' );
+is( $q->peekh( 0), '8',   'lowest, check peekh at index  0' );
+is( $q->peekh(-2), '6',   'lowest, check peekh at index -2' );
+
+@r = $q->dequeue(10);
+
+is( join('', @r), 'ghefcdabij', 'highest, check dequeue' );
+
+###############################################################################
+
+##  LOWEST priority tests
+
+$q = MCE::Queue->new(
+   porder => $MCE::Queue::LOWEST, type => $MCE::Queue::FIFO
+);
+
+$q->enqueuep(5, 'a', 'b');    # priority queue
+$q->enqueuep(7, 'e', 'f');    # priority queue
+$q->enqueue (   'i', 'j');    # normal   queue
+$q->enqueuep(8, 'g', 'h');    # priority queue
+$q->enqueuep(6, 'c', 'd');    # priority queue
+
+@h = $q->heap;
+
+is( join('', @h), '5678', 'lowest, check heap' );
+is( $q->peekh( 0), '5',   'lowest, check peekh at index  0' );
+is( $q->peekh(-2), '7',   'lowest, check peekh at index -2' );
+
+@r = $q->dequeue(10);
+
+is( join('', @r), 'abcdefghij', 'highest, check dequeue' );
 
