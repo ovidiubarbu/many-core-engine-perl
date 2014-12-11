@@ -4,7 +4,7 @@
 ## Cat script similar to the cat binary.
 ##
 ## The logic below only supports -n -u options. The focus is demonstrating
-## Many-core Engine for Perl.
+## Many-Core Engine for Perl.
 ##
 ## This script was created to show how order can be preserved even though there
 ## are only 4 shared socket pairs in MCE no matter the number of workers.
@@ -149,7 +149,7 @@ while ( my $arg = shift @ARGV ) {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Launch Many-core Engine.
+## Launch Many-Core Engine.
 ##
 ###############################################################################
 
@@ -239,7 +239,7 @@ else {
    $mce->process(\*STDIN);
 }
 
-## Shutdown Many-core Engine and exit.
+## Shutdown Many-Core Engine and exit.
 
 $mce->shutdown();
 exit $exit_status;

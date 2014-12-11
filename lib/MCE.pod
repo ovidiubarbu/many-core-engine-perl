@@ -1,7 +1,7 @@
 
 =head1 NAME
 
-MCE - Many-core Engine for Perl providing parallel processing capabilities
+MCE - Many-Core Engine for Perl providing parallel processing capabilities
 
 =head1 VERSION
 
@@ -9,7 +9,7 @@ This document describes MCE version 1.520
 
 =head1 DESCRIPTION
 
-Many-core Engine (MCE) for Perl helps enable a new level of performance by
+Many-Core Engine (MCE) for Perl helps enable a new level of performance by
 maximizing all available cores. MCE spawns a pool of workers and therefore
 does not fork a new process per each element of data. Instead, MCE follows
 a bank queuing model. Imagine the line being the data and bank-tellers the
@@ -27,7 +27,7 @@ Three modules make up the core engine for MCE.
 
 =item L<MCE::Core|MCE::Core>
 
-Provides the core API for Many-core Engine.
+Provides the core API for Many-Core Engine.
 
 =item L<MCE::Signal|MCE::Signal>
 
@@ -62,8 +62,8 @@ allows 3 options; :manager, :worker, :getter.
 =head1 MCE MODELS
 
 MCE 1.5 includes 6 models. They configure the MCE instance and tune chunk_size
-and max_workers for you. Spawning and shutdown is also automatic. In essence,
-the models take Many-core Engine to a new level for ease of use.
+and max_workers for you. Spawning and shutdown is automatic. In essence, the
+models take Many-Core Engine to a new level for ease of use.
 
 =over 3
 

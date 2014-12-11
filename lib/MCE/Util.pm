@@ -1,6 +1,6 @@
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## MCE::Util - Public and private utility functions for Many-core Engine.
+## MCE::Util - Public and private utility functions for Many-Core Engine.
 ##
 ###############################################################################
 
@@ -239,7 +239,7 @@ __END__
 
 =head1 NAME
 
-MCE::Util - Public and private utility functions for Many-core Engine
+MCE::Util - Public and private utility functions for Many-Core Engine
 
 =head1 VERSION
 

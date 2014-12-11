@@ -1,7 +1,7 @@
 
 =head1 NAME
 
-MCE::Core - Documentation describing the core API for Many-core Engine
+MCE::Core - Documentation describing the core API for Many-Core Engine
 
 =head1 VERSION
 
