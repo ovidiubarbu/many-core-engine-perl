@@ -9,6 +9,7 @@ package MCE::Queue;
 use strict;
 use warnings;
 
+## no critic (Subroutines::ProhibitExplicitReturnUndef)
 ## no critic (TestingAndDebugging::ProhibitNoStrict)
 
 use Fcntl qw( :flock O_RDONLY );
