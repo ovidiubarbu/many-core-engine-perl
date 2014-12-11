@@ -105,10 +105,13 @@ Below, a new instance is configured with all available options.
       thaw         => \&decode_sereal,   ## Default $MCE::THAW
 
           ## Release 1.412 allows freeze and thaw to be overridden.
-          ## Just include a serialization module prior to loading MCE.
+          ## Simply include a serialization module prior to loading
+          ## MCE. Configure freeze/thaw options.
 
-          ## use Sereal qw(encode_sereal decode_sereal);
-          ## use JSON::XS qw(encode_json decode_json);
+          ## use Sereal   qw(encode_sereal decode_sereal);
+          ## use CBOR::XS qw(encode_cbor   decode_cbor  );
+          ## use JSON::XS qw(encode_json   decode_json  );
+          ##
           ## use MCE;
 
       gather       => \@a,               ## Default undef
@@ -295,13 +298,15 @@ Below, a new instance is configured with all available options.
 
 The following list 5 options which may be overridden when loading the module.
 
-   use Sereal qw(encode_sereal decode_sereal);
+   use Sereal   qw(encode_sereal decode_sereal);  # Include a serialization
+   use CBOR::XS qw(encode_cbor   decode_cbor  );  #  module of your choice
+   use JSON::XS qw(encode_json   decode_json  );
 
-   use MCE max_workers => 4,                    ## Default 1
-           chunk_size  => 100,                  ## Default 1
-           tmp_dir     => "/path/to/app/tmp",   ## $MCE::Signal::tmp_dir
-           freeze      => \&encode_sereal,      ## \&Storable::freeze
-           thaw        => \&decode_sereal       ## \&Storable::thaw
+   use MCE max_workers => 4,                   ## Default 1
+           chunk_size  => 100,                 ## Default 1
+           tmp_dir     => "/path/to/app/tmp",  ## $MCE::Signal::tmp_dir
+           freeze      => \&encode_sereal,     ## \&Storable::freeze
+           thaw        => \&decode_sereal      ## \&Storable::thaw
    ;
 
    my $mce = MCE->new( ... );

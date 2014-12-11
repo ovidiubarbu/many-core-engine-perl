@@ -427,14 +427,16 @@ choosing 1 for chunk_size is fine.
 
 The following list 5 options which may be overridden when loading the module.
 
-   use Sereal qw(encode_sereal decode_sereal);
+   use Sereal   qw(encode_sereal decode_sereal);  # Include a serialization
+   use CBOR::XS qw(encode_cbor   decode_cbor  );  #  module of your choice
+   use JSON::XS qw(encode_json   decode_json  );
 
    use MCE::Loop
-         max_workers => 4,                    ## Default 'auto'
-         chunk_size  => 100,                  ## Default 'auto'
-         tmp_dir     => "/path/to/app/tmp",   ## $MCE::Signal::tmp_dir
-         freeze      => \&encode_sereal,      ## \&Storable::freeze
-         thaw        => \&decode_sereal       ## \&Storable::thaw
+         max_workers => 4,                     ## Default 'auto'
+         chunk_size  => 100,                   ## Default 'auto'
+         tmp_dir     => "/path/to/app/tmp",    ## $MCE::Signal::tmp_dir
+         freeze      => \&encode_sereal,       ## \&Storable::freeze
+         thaw        => \&decode_sereal        ## \&Storable::thaw
    ;
 
 There is a simpler way to enable Sereal with MCE 1.5. The following will
