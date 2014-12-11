@@ -539,8 +539,8 @@ sub _croak {
    return;
 }
 
-## Helper methods for getting the reference to the underlying arrays.
-## Use with test scripts only (not a public API), for comparing data.
+## Helper method for getting the reference to the underlying array.
+## Use with test scripts for comparing data only (not a public API).
 
 sub _get_aref {
 
@@ -558,15 +558,6 @@ sub _get_aref {
    }
 
    return $_queue->{_datq};
-}
-
-sub _get_href {
-
-   my $_queue = shift;
-
-   return if (defined $MCE::MCE && $MCE::MCE->wid);
-
-   return $_queue->{_heap};
 }
 
 ## A quick method for just wanting to know if the queue has pending data.
