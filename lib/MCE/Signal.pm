@@ -13,7 +13,7 @@ use Time::HiRes qw( sleep time );
 use Fcntl qw( :flock O_RDONLY );
 use base qw( Exporter );
 
-our $VERSION = '1.520';
+our $VERSION = '1.521';
 
 our ($has_threads, $main_proc_id, $prog_name);
 our ($display_die_with_localtime, $display_warn_with_localtime);
@@ -467,7 +467,7 @@ MCE::Signal - Temporary directory creation/cleanup & signal handling
 
 =head1 VERSION
 
-This document describes MCE::Signal version 1.520
+This document describes MCE::Signal version 1.521
 
 =head1 SYNOPSIS
 

@@ -20,7 +20,7 @@ use MCE::Util;
 
 use MCE::Queue;
 
-our $VERSION = '1.520';
+our $VERSION = '1.521';
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -537,7 +537,7 @@ MCE::Step - Parallel step model for building creative steps
 
 =head1 VERSION
 
-This document describes MCE::Step version 1.520
+This document describes MCE::Step version 1.521
 
 =head1 DESCRIPTION
 

@@ -34,7 +34,7 @@ use Time::HiRes qw( sleep time );
 use MCE::Signal;
 use bytes;
 
-our $VERSION = '1.520';
+our $VERSION = '1.521';
 
 our (%_valid_fields_new, %_params_allowed_args, %_valid_fields_task);
 our ($_is_cygwin, $_is_mswin32, $_is_winenv);

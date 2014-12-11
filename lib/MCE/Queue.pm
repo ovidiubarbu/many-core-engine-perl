@@ -17,7 +17,7 @@ use Socket qw( :crlf PF_UNIX PF_UNSPEC SOCK_STREAM );
 use Scalar::Util qw( looks_like_number );
 use bytes;
 
-our $VERSION = '1.520';
+our $VERSION = '1.521';
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -454,6 +454,8 @@ sub _insertp {
 ###############################################################################
 ## ----------------------------------------------------------------------------
 ## Peek and heap methods.
+##
+## Below, do not change 'return undef' statements to 'return'.
 ##
 ###############################################################################
 
@@ -1451,7 +1453,7 @@ sub _mce_m_insertp {
 
          if ($_len < 0) {
             flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
-            return undef;
+            return undef;   # Do not change this to return;
          }
 
          read  $_DAU_W_SOCK, $_buffer, $_len;
@@ -1497,7 +1499,7 @@ sub _mce_m_insertp {
 
          if ($_len < 0) {
             flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
-            return undef;
+            return undef;   # Do not change this to return;
          }
 
          read  $_DAU_W_SOCK, $_buffer, $_len;
@@ -1616,7 +1618,7 @@ sub _mce_m_insertp {
 
          if ($_len < 0) {
             flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
-            return undef;
+            return undef;   # Do not change this to return;
          }
 
          read  $_DAU_W_SOCK, $_buffer, $_len;
@@ -1650,7 +1652,7 @@ sub _mce_m_insertp {
 
          if ($_len < 0) {
             flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
-            return undef;
+            return undef;   # Do not change this to return;
          }
 
          read  $_DAU_W_SOCK, $_buffer, $_len;
@@ -1681,7 +1683,7 @@ sub _mce_m_insertp {
 
          if ($_len < 0) {
             flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
-            return undef;
+            return undef;   # Do not change this to return;
          }
 
          read  $_DAU_W_SOCK, $_buffer, $_len;
@@ -1734,7 +1736,7 @@ MCE::Queue - Hybrid queues (normal and priority) for Many-Core Engine
 
 =head1 VERSION
 
-This document describes MCE::Queue version 1.520
+This document describes MCE::Queue version 1.521
 
 =head1 SYNOPSIS
 
