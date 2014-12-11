@@ -1,6 +1,6 @@
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## MCE - Many-core Engine for Perl providing parallel processing capabilities.
+## MCE - Many-Core Engine for Perl providing parallel processing capabilities.
 ##
 ###############################################################################
 
@@ -111,8 +111,6 @@ BEGIN {
 
    ## PDL + MCE (spawning as threads) is not stable. Thanks to David Mertens
    ## for reporting on how he fixed it for his PDL::Parallel::threads module.
-   ## The same fix is also needed here in order for PDL + MCE threads to not
-   ## crash during exiting.
 
    sub PDL::CLONE_SKIP { return 1; }
 
@@ -1168,7 +1166,7 @@ sub run {
 
    $self->{_send_cnt} = 0;
 
-   ## Shutdown workers (also if any workers have exited).
+   ## Shutdown workers (shutdown as well, if any workers have exited).
    $self->shutdown() if ($_auto_shutdown == 1 || $self->{_total_exited} > 0);
 
    return $self;

@@ -5,7 +5,7 @@
 ## Look at bin/mce_grep for a wrapper script around the grep binary.
 ##
 ## This script supports egrep's options [ceHhiLlmnqRrsv]. The focus is
-## demonstrating Many-core Engine for Perl. Use this script against large
+## demonstrating Many-Core Engine for Perl. Use this script against large
 ## file(s).
 ##
 ## This script was created to show how output order can be preserved even
@@ -66,7 +66,7 @@ sub usage {
 
    print <<"::_USAGE_BLOCK_END_::";
 
-Options for Many-core Engine:
+Options for Many-Core Engine:
   --max-workers=NUM         override max workers (default 6)
                               e.g. auto, auto-2, 4
 
