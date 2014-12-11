@@ -24,7 +24,7 @@ our $VERSION = '1.520';
 ##
 ###############################################################################
 
-our ($HIGHEST, $LOWEST, $FIFO, $LILO, $LIFO, $FILO) = (1, 0, 1, 1, 0, 0);
+our ($HIGHEST, $LOWEST, $FIFO, $LIFO, $LILO, $FILO) = (1, 0, 1, 0, 1, 0);
 
 our $PORDER  = $HIGHEST;
 our $TYPE    = $FIFO;
@@ -180,10 +180,8 @@ sub new {
 
    $_queue->{_porder} = (exists $_argv{porder} && defined $_argv{porder})
       ? $_argv{porder} : $MCE::Queue::PORDER;
-
    $_queue->{_type} = (exists $_argv{type} && defined $_argv{type})
       ? $_argv{type} : $MCE::Queue::TYPE;
-
    $_queue->{_fast} = (exists $_argv{fast} && defined $_argv{fast})
       ? $_argv{fast} : $MCE::Queue::FAST;
 
@@ -191,10 +189,8 @@ sub new {
 
    _croak('MCE::Queue::new: (porder) must be 1 or 0')
       if ($_queue->{_porder} ne '1' && $_queue->{_porder} ne '0');
-
    _croak('MCE::Queue::new: (type) must be 1 or 0')
       if ($_queue->{_type} ne '1' && $_queue->{_type} ne '0');
-
    _croak('MCE::Queue::new: (fast) must be 1 or 0')
       if ($_queue->{_fast} ne '1' && $_queue->{_fast} ne '0');
 
@@ -379,11 +375,28 @@ sub _insert {
 
    return unless (scalar @_);
 
-   if ($_i > @{ $_queue->{_datq} }) {
-      push @{ $_queue->{_datq} }, @_;
+   if (abs($_i) > scalar @{ $_queue->{_datq} }) {
+      if ($_i >= 0) {
+         if ($_queue->{_type}) {
+            push @{ $_queue->{_datq} }, @_;
+         } else {
+            unshift @{ $_queue->{_datq} }, @_;
+         }
+      }
+      else {
+         if ($_queue->{_type}) {
+            unshift @{ $_queue->{_datq} }, @_;
+         } else {
+            push @{ $_queue->{_datq} }, @_;
+         }
+      }
    }
    else {
-      $_i = 0 if (abs($_i) > @{ $_queue->{_datq} });
+      if (!$_queue->{_type}) {
+         $_i = ($_i >= 0)
+            ? scalar(@{ $_queue->{_datq} }) - $_i
+            : abs($_i);
+      }
       splice @{ $_queue->{_datq} }, $_i, 0, @_;
    }
 
@@ -398,18 +411,35 @@ sub _insertp {
 
    _croak('MCE::Queue::insertp: (priority) is not an integer')
       if (!looks_like_number($_p) || int($_p) != $_p);
-
    _croak('MCE::Queue::insertp: (index) is not an integer')
       if (!looks_like_number($_i) || int($_i) != $_i);
 
    return unless (scalar @_);
 
    if (exists $_queue->{_datp}->{$_p} && scalar @{ $_queue->{_datp}->{$_p} }) {
-      if ($_i > @{ $_queue->{_datp}->{$_p} }) {
-         push @{ $_queue->{_datp}->{$_p} }, @_;
+
+      if (abs($_i) > scalar @{ $_queue->{_datp}->{$_p} }) {
+         if ($_i >= 0) {
+            if ($_queue->{_type}) {
+               push @{ $_queue->{_datp}->{$_p} }, @_;
+            } else {
+               unshift @{ $_queue->{_datp}->{$_p} }, @_;
+            }
+         }
+         else {
+            if ($_queue->{_type}) {
+               unshift @{ $_queue->{_datp}->{$_p} }, @_;
+            } else {
+               push @{ $_queue->{_datp}->{$_p} }, @_;
+            }
+         }
       }
       else {
-         $_i = 0 if (abs($_i) > @{ $_queue->{_datp}->{$_p} });
+         if (!$_queue->{_type}) {
+            $_i = ($_i >=0)
+               ? scalar(@{ $_queue->{_datp}->{$_p} }) - $_i
+               : abs($_i);
+         }
          splice @{ $_queue->{_datp}->{$_p} }, $_i, 0, @_;
       }
    }
@@ -435,6 +465,14 @@ sub _peek {
    _croak('MCE::Queue::peek: (index) is not an integer')
       if (!looks_like_number($_i) || int($_i) != $_i);
 
+   return if (abs($_i) > scalar @{ $_queue->{_datq} });
+
+   if (!$_queue->{_type}) {
+      $_i = ($_i >= 0)
+         ? scalar(@{ $_queue->{_datq} }) - ($_i + 1)
+         : abs($_i + 1);
+   }
+
    return $_queue->{_datq}->[$_i];
 }
 
@@ -446,11 +484,19 @@ sub _peekp {
 
    _croak('MCE::Queue::peekp: (priority) is not an integer')
       if (!looks_like_number($_p) || int($_p) != $_p);
-
    _croak('MCE::Queue::peekp: (index) is not an integer')
       if (!looks_like_number($_i) || int($_i) != $_i);
 
    return unless (exists $_queue->{_datp}->{$_p});
+
+   return if (abs($_i) > scalar @{ $_queue->{_datp}->{$_p} });
+
+   if (!$_queue->{_type}) {
+      $_i = ($_i >= 0)
+         ? scalar(@{ $_queue->{_datp}->{$_p} }) - ($_i + 1)
+         : abs($_i + 1);
+   }
+
    return $_queue->{_datp}->{$_p}->[$_i];
 }
 
@@ -488,6 +534,35 @@ sub _croak {
    }
 
    return;
+}
+
+## Helper methods for getting the reference to the underlying arrays.
+## Use with test scripts only (not a public API), for comparing data.
+
+sub _get_aref {
+
+   my $_queue = shift; my $_p = shift;
+
+   return if (defined $MCE::MCE && $MCE::MCE->wid);
+
+   if (defined $_p) {
+      _croak('MCE::Queue::_get_aref: (priority) is not an integer')
+         if (!looks_like_number($_p) || int($_p) != $_p);
+
+      return unless (exists $_queue->{_datp}->{$_p});
+      return $_queue->{_datp}->{$_p};
+   }
+
+   return $_queue->{_datq};
+}
+
+sub _get_href {
+
+   my $_queue = shift;
+
+   return if (defined $MCE::MCE && $MCE::MCE->wid);
+
+   return $_queue->{_heap};
 }
 
 ## A quick method for just wanting to know if the queue has pending data.
@@ -1999,13 +2074,13 @@ MCE::Queue for MCE.
 Two if statements were adopted for checking if the item belongs at the end or
 head of the queue.
 
-=item L<List::Binary::Search|List::Binary::Search>
+=item L<List::BinarySearch|List::BinarySearch>
 
 After glancing over the bsearch_num_pos method for returning the best insert
 position, a couple variations of that were in order for MCE::Queue to
 accommodate the highest/lowest order routines.
 
-=item L<Heap-Priority|Heap-Priority>, L<List::Priority|List::Priority>
+=item L<List::Priority|List::Priority>
 
 At this point, I thought why not have both normal queues and priority queues
 be efficient. And with that in mind, also provide options to allow folks to
@@ -2032,7 +2107,7 @@ when requesting the number of items to dequeue.
    ->pending();                  ## Counts both normal/priority data
                                  ## in the queue
 
-=item L<Parallel-DataPipe|Parallel-DataPipe>
+=item L<Parallel::DataPipe|Parallel::DataPipe>
 
 The idea for a queue recursion example came from reading this sysnopsis.
 
