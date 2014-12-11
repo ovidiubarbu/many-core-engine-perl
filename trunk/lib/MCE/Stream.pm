@@ -718,18 +718,20 @@ than end, otherwise -1.
 
 =head1 OVERRIDING DEFAULTS
 
-The following list 6 options which may be overridden when loading the module.
+The following list 7 options which may be overridden when loading the module.
 
-   use Sereal qw(encode_sereal decode_sereal);
+   use Sereal   qw(encode_sereal decode_sereal);  # Include a serialization
+   use CBOR::XS qw(encode_cbor   decode_cbor  );  #  module of your choice
+   use JSON::XS qw(encode_json   decode_json  );
 
    use MCE::Stream
-         default_mode => 'grep',              ## Default 'map'
-         max_workers  => 8,                   ## Default 'auto'
-         chunk_size   => 500,                 ## Default 'auto'
-         fast         => 1,                   ## Default 0 (fast queue?)
-         tmp_dir      => "/path/to/app/tmp",  ## $MCE::Signal::tmp_dir
-         freeze       => \&encode_sereal,     ## \&Storable::freeze
-         thaw         => \&decode_sereal      ## \&Storable::thaw
+         default_mode => 'grep',               ## Default 'map'
+         max_workers  => 8,                    ## Default 'auto'
+         chunk_size   => 500,                  ## Default 'auto'
+         fast         => 1,                    ## Default 0 (fast queue?)
+         tmp_dir      => "/path/to/app/tmp",   ## $MCE::Signal::tmp_dir
+         freeze       => \&encode_sereal,      ## \&Storable::freeze
+         thaw         => \&decode_sereal       ## \&Storable::thaw
    ;
 
 There is a simpler way to enable Sereal with MCE 1.5. The following will
