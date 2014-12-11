@@ -1,6 +1,6 @@
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## MCE::Queue - Hybrid queues (normal including priority) for Many-core Engine.
+## MCE::Queue - Hybrid queues (normal and priority) for Many-core Engine.
 ##
 ###############################################################################
 
@@ -465,7 +465,7 @@ sub _peek {
    _croak('MCE::Queue::peek: (index) is not an integer')
       if (!looks_like_number($_i) || int($_i) != $_i);
 
-   return if (abs($_i) > scalar @{ $_queue->{_datq} });
+   return undef if (abs($_i) > scalar @{ $_queue->{_datq} });
 
    if (!$_queue->{_type}) {
       $_i = ($_i >= 0)
@@ -487,8 +487,9 @@ sub _peekp {
    _croak('MCE::Queue::peekp: (index) is not an integer')
       if (!looks_like_number($_i) || int($_i) != $_i);
 
-   return unless (exists $_queue->{_datp}->{$_p});
-   return if (abs($_i) > scalar @{ $_queue->{_datp}->{$_p} });
+   return undef unless (exists $_queue->{_datp}->{$_p});
+
+   return undef if (abs($_i) > scalar @{ $_queue->{_datp}->{$_p} });
 
    if (!$_queue->{_type}) {
       $_i = ($_i >= 0)
@@ -508,7 +509,8 @@ sub _peekh {
    _croak('MCE::Queue::peekh: (index) is not an integer')
       if (!looks_like_number($_i) || int($_i) != $_i);
 
-   return if (abs($_i) > scalar @{ $_queue->{_heap} });
+   return undef if (abs($_i) > scalar @{ $_queue->{_heap} });
+
    return $_queue->{_heap}->[$_i];
 }
 
@@ -549,7 +551,8 @@ sub _get_aref {
       _croak('MCE::Queue::_get_aref: (priority) is not an integer')
          if (!looks_like_number($_p) || int($_p) != $_p);
 
-      return unless (exists $_queue->{_datp}->{$_p});
+      return undef unless (exists $_queue->{_datp}->{$_p});
+
       return $_queue->{_datp}->{$_p};
    }
 
@@ -1456,7 +1459,7 @@ sub _mce_m_insertp {
 
          if ($_len < 0) {
             flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
-            return;
+            return undef;
          }
 
          read  $_DAU_W_SOCK, $_buffer, $_len;
@@ -1502,7 +1505,7 @@ sub _mce_m_insertp {
 
          if ($_len < 0) {
             flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
-            return;
+            return undef;
          }
 
          read  $_DAU_W_SOCK, $_buffer, $_len;
@@ -1621,7 +1624,7 @@ sub _mce_m_insertp {
 
          if ($_len < 0) {
             flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
-            return;
+            return undef;
          }
 
          read  $_DAU_W_SOCK, $_buffer, $_len;
@@ -1655,7 +1658,7 @@ sub _mce_m_insertp {
 
          if ($_len < 0) {
             flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
-            return;
+            return undef;
          }
 
          read  $_DAU_W_SOCK, $_buffer, $_len;
@@ -1686,7 +1689,7 @@ sub _mce_m_insertp {
 
          if ($_len < 0) {
             flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
-            return;
+            return undef;
          }
 
          read  $_DAU_W_SOCK, $_buffer, $_len;
@@ -1735,7 +1738,7 @@ __END__
 
 =head1 NAME
 
-MCE::Queue - Hybrid queues (normal including priority) for Many-core Engine
+MCE::Queue - Hybrid queues (normal and priority) for Many-core Engine
 
 =head1 VERSION
 
@@ -1818,47 +1821,26 @@ process. MCE::Queue also allows for a worker to create any number of queues
 locally not available to other workers including the manager process. Think
 of a CPU having L3 (shared) and L1 (local) cache.
 
-The structure for the MCE::Queue object is provided below. It allows for normal
-queues to run as fast as an array. Data for priority queues are also nearly as
-fast due to having a brief lookup if the priority exists in the hash including
-adding/removal of the key. The heap array contains only priorities, not the
-data itself. This makes the management of the heap order only as necessary
-while running.
-
-   ## Normal queue data
-   $_queue->{_datq} = [];
-
-   ## Priority data { p1 => [ ], p2 => [ ], pN => [ ] }
-   $_queue->{_datp} = {};
-
-   ## Priority heap [ pN, p2, p1 ] ## in heap order
-   ## fyi, _datp will always dequeue before _datq
-   $_queue->{_heap} = [];
-
-   ## Priority order (default)
-   $_queue->{_porder} = $MCE::Queue::HIGHEST;
-
-   ## Priority type (default)
-   $_queue->{_type} = $MCE::Queue::FIFO;
-
 =head1 IMPORT
 
-Three options are available for overriding the default value for new queues
-(porder applies to priority queues only).
+Three options are available for overriding the default value for new queues.
+The porder option applies to priority queues only.
 
    use MCE::Queue porder => $MCE::Queue::HIGHEST,
                   type   => $MCE::Queue::FIFO,
                   fast   => 0;
 
-   use MCE::Queue;       ## same as above
+   use MCE::Queue;                # Same as above
 
-       porder => $HIGHEST = Highest priority items are dequeued first
-                 $LOWEST  = Lowest priority items are dequeued first
+   ## Possible values
 
-       type   => $FIFO    = First in, first out
-                 $LILO    =    (Synonym for FIFO)
-                 $LIFO    = Last in, first out
-                 $FILO    =    (Synonym for LIFO)
+   porder => $MCE::Queue::HIGHEST # Highest priority items dequeue first
+             $MCE::Queue::LOWEST  # Lowest priority items dequeue first
+
+   type   => $MCE::Queue::FIFO    # First in, first out
+             $MCE::Queue::LIFO    # Last in, first out
+             $MCE::Queue::LILO    # (Synonym for FIFO)
+             $MCE::Queue::FILO    # (Synonym for LIFO)
 
 =head1 THREE RUN MODES
 
@@ -1869,29 +1851,26 @@ MCE::Queue can be utilized under the following conditions:
 
 =over 3
 
-=item A) Loading MCE prior to inclusion of MCE::Queue
+=item A) MCE is included prior to inclusion of MCE::Queue
 
 The dequeue method blocks for the manager process including workers. All data
-resides under the manager process. Workers send/request data through IPC.
+resides under the manager process. Workers send/request data via IPC.
 
-Creating a queue from the worker process will cause the queue to run in local
-mode. The data resides under the worker process and not available to other
-workers including the manager process.
+Creating a queue from within the worker process will cause the queue to run in
+local mode (C). The data resides under the worker process and not available to
+other workers including the manager process.
 
-=item B) Loading MCE::Queue prior to inclusion of MCE
+=item B) MCE::Queue is included prior to inclusion of MCE
 
-Queues behave as if running in local mode for the manager including workers
+Queues behave as if running in local mode for the manager and worker processes
 for the duration of the script. I cannot think of a use-case for this, but
-wanted to mention the behavior in the event MCE::Queue is loaded prior to
-MCE.
+mentioning the behavior in the event MCE::Queue is included prior to MCE.
 
-=item C) Loading MCE::Queue without MCE
+=item C) MCE::Queue without inclusion of MCE
 
-The dequeue method is non-blocking in this fashion. This behaves like local
-mode when MCE is not present. As with local queuing, this mode is speedy due
-to minimum overhead and zero IPC.
-
-Essentially, the MCE module is not a prerequisite for using MCE::Queue.
+The dequeue method is non-blocking. Queues behave similarly to local queuing.
+This mode is efficient due to minimum overhead and zero IPC behind the scene.
+Hence, MCE is not required to use MCE::Queue.
 
 =back
 
@@ -1903,7 +1882,7 @@ Essentially, the MCE module is not a prerequisite for using MCE::Queue.
 
 This creates a new queue. Available options are queue, porder, type, fast, and
 gather. The gather option is mainly for running with MCE and wanting to pass
-item(s) to a callback function for adding to the queue.
+item(s) to a callback function for appending to the queue.
 
 The 'fast' option speeds up ->dequeue ops and not enabled by default. It is
 beneficial for queues not calling ->clear or ->dequeue_nb and not altering the
@@ -1924,12 +1903,12 @@ enable 'fast' if varying $count dynamically.
 
    my $q7 = MCE::Queue->new( fast => 1 );
 
-Multiple queues may point to the same callback function. Please note that the
-first argument for the callback function is the queue object itself.
+Multiple queues may point to the same callback function. The first argument
+for the callback is the queue object.
 
    sub _append {
-      my ($Q, @items) = @_;
-      $Q->enqueue(@items);
+      my ($q, @items) = @_;
+      $q->enqueue(@items);
    }
 
    my $q7 = MCE::Queue->new( gather => \&_append );
@@ -1938,10 +1917,9 @@ first argument for the callback function is the queue object itself.
    ## Items are diverted to the gather callback function.
    $q7->enqueue( 'apple', 'orange' );
 
-The gather option is useful when wanting to temporarily store items in a
-holding area until output order can be obtained. Although a queue is not
-required to gather data in MCE, this is simply a demonstration of the
-gather option in the context of a queue.
+The gather option allows one to store items temporarily while ensuring output
+order. Although a queue object is not required, this is simply a demonstration
+of the gather option in the context of a queue.
 
    use MCE;
    use MCE::Queue;
@@ -1949,13 +1927,13 @@ gather option in the context of a queue.
    my ($_order_id, %_tmp);
 
    sub _preserve_order {
-      my ($Q, $chunk_id, $result) = @_;
+      my ($q, $chunk_id, $result) = @_;
 
       $_tmp{$chunk_id} = $result;
 
       while (1) {
          last unless exists $_tmp{$_order_id};
-         $Q->enqueue( $_tmp{$_order_id} );
+         $q->enqueue( $_tmp{$_order_id} );
          delete $_tmp{$_order_id++};
       }
 
@@ -1982,12 +1960,12 @@ gather option in the context of a queue.
 =item ->clear ( void )
 
 Clears the queue of any items. This has the effect of nulling the queue.
-Each queue comes with a socket used for blocking behind the scene. Use
-the clear method when wanting to clear the content of the array.
+Each queue comes with a socket for blocking behind the scene. Use the clear
+method when wanting to clear the content of the array.
 
    my @a; my $q = MCE::Queue->new( queue => \@a );
 
-   @a = ();     ## no, the block socket may become out of sync
+   @a = ();     ## bad, the blocking socket may become out of sync
    $q->clear;   ## ok
 
 =item ->enqueue ( $item [, $item, ... ] )
@@ -2001,8 +1979,7 @@ Appends a list of items onto the end of the priority queue with priority.
 =item ->dequeue ( [ $count ] )
 
 Returns the requested number of items (default is 1) from the queue. Priority
-data will always dequeue first from the priority queue before any data from
-the normal queue.
+data will always dequeue first before any data from the normal queue.
 
 The method will block if the queue contains zero items. If the queue contains
 fewer than the requested number of items, the method will not block, but
@@ -2017,55 +1994,100 @@ which will block until the requested number of items are available.
 
 Returns the requested number of items (default is 1) from the queue. Like with
 dequeue, priority data will always dequeue first. This method is non-blocking
-and will return in the absence of data from the queue.
+and will return undef in the absence of data from the queue.
 
 =item ->insert ( $index, $item [, $item, ... ] )
 
-Adds the list of items to the queue at the specified index.
+Adds the list of items to the queue at the specified index position (0 is the
+head of the list). The head of the queue is that item which would be removed
+by a call to dequeue.
+
+   $q = MCE::Queue->new( type => $MCE::Queue::FIFO );
+   $q->enqueue(1, 2, 3, 4);
+   $q->insert(1, 'foo', 'bar'); 
+   # Queue now contains: 1, foo, bar, 2, 3, 4
+
+   $q = MCE::Queue->new( type => $MCE::Queue::LIFO );
+   $q->enqueue(1, 2, 3, 4);
+   $q->insert(1, 'foo', 'bar'); 
+   # Queue now contains: 1, 2, 3, 'foo', 'bar', 4
 
 =item ->insertp ( $p, $index, $item [, $item, ... ] )
 
-Adds the list of items to the queue at the specified index with priority.
+Adds the list of items to the queue at the specified index position with
+priority. The behavior is similarly to insert otherwise.
 
 =item ->pending ( void )
 
-Returns the number of items in the queue. This includes both normal and
-priority data.
+Returns the number of items in the queue. The count includes both normal
+and priority data.
+
+   $q = MCE::Queue->new();
+   $q->enqueuep(5, 'foo', 'bar');   # priority queue
+   $q->enqueue('sunny', 'day');     # normal queue
+
+   print $q->pending(), "\n";
+   # Output: 4
 
 =item ->peek ( [ $index ] )
 
 Returns an item from the normal queue, at the specified index, without
 dequeuing anything. It defaults to the head of the queue if index is not
-specified.
+specified. The head of the queue is that item which would be removed by a
+call to dequeue. Negative index values are supported, similarly to arrays.
+
+   $q = MCE::Queue->new( type => $MCE::Queue::FIFO );
+   $q->enqueue(1, 2, 3, 4, 5);
+
+   print $q->peek(1), ' ', $q->peek(-2), "\n";
+   # Output: 2 4
+
+   $q = MCE::Queue->new( type => $MCE::Queue::LIFO );
+   $q->enqueue(1, 2, 3, 4, 5);
+
+   print $q->peek(1), ' ', $q->peek(-2), "\n";
+   # Output: 4 2
 
 =item ->peekp ( $p [, $index ] )
 
 Returns an item from the queue with priority, at the specified index, without
 dequeuing anything. It defaults to the head of the queue if index is not
-specified.
+specified. The behavior is similarly to peek otherwise
 
 =item ->peekh ( [ $index ] )
 
 Returns an item from the heap, at the specified index.
+
+   $q = MCE::Queue->new( porder => $MCE::Queue::HIGHEST );
+   $q->enqueuep(5, 'foo');
+   $q->enqueuep(6, 'bar');
+   $q->enqueuep(4, 'sun');
+
+   print $q->peekh(0), "\n";
+   # Output: 6
+
+   $q = MCE::Queue->new( porder => $MCE::Queue::LOWEST );
+   $q->enqueuep(5, 'foo');
+   $q->enqueuep(6, 'bar');
+   $q->enqueuep(4, 'sun');
+
+   print $q->peekh(0), "\n";
+   # Output: 4
 
 =item ->heap ( void )
 
 Returns an array containing the heap data. Heap data consists of priority
 numbers, not the data.
 
+   @h = $q->heap;   # $MCE::Queue::HIGHEST
+   # Heap contains: 6, 5, 4
+   
+   @h = $q->heap;   # $MCE::Queue::LOWEST
+   # Heap contains: 4, 5, 6
+
 =back
 
 =head1 ACKNOWLEDGEMENTS
-
-The main reason for writing MCE::Queue was to have a Thread::Queue-like module
-for workers spawned as children. I was pleasantly surprised at the number of
-modules on CPAN for queuing. What stood out immediately were all the priority
-queues, heap queues, and whether (FIFO/LIFO) or (highest/lowest first) options
-are available. Hence, the reason for MCE::Queue supporting both normal
-and priority queues.
-
-The following provides a list of resources I've read in helping me create
-MCE::Queue for MCE.
 
 =over 3
 
@@ -2076,40 +2098,31 @@ head of the queue.
 
 =item L<List::BinarySearch|List::BinarySearch>
 
-After glancing over the bsearch_num_pos method for returning the best insert
-position, a couple variations of that were in order for MCE::Queue to
-accommodate the highest/lowest order routines.
+The bsearch_num_pos method is helpful for accommodating highest/lowest order.
 
 =item L<List::Priority|List::Priority>
 
-At this point, I thought why not have both normal queues and priority queues
-be efficient. And with that in mind, also provide options to allow folks to
-choose LIFO/LILO, and highest/lowest order for the queue. The data structure
-in MCE::Queue is described above.
-
-MCE workers also benefit from being able to create local queues not available
-to other workers including the manager process. Hence, the reason for the 3
-run modes described at the beginning of this document.
+MCE::Queue supports both normal and priority queues.
 
 =item L<Thread::Queue|Thread::Queue>
 
-Being that MCE supports both children and threads, Thread::Queue was used
-as a template for identifying and documenting the methods in MCE::Queue.
-Although not 100% compatible, pay close attention to the dequeue method
-when requesting the number of items to dequeue.
+Thread::Queue is used as a template for identifying and documenting the methods.
+MCE::Queue is not fully compatible due to supporting normal and priority queues
+simultaneously. E.g.
 
-   ->enqueuep( $p, $item [, $item, ... ] );    ## Extension (p)
-   ->enqueue( $item [, $item, ... ] );
+   $q->enqueuep( $p, $item [, $item, ... ] );    ## Priority queue
+   $q->enqueue( $item [, $item, ... ] );         ## Normal queue
 
-   ->dequeue( [ $count ] );      ## Priority data dequeues first
-   ->dequeue_nb( [ $count ] );
+   $q->dequeue( [ $count ] );      ## Priority data dequeues first
+   $q->dequeue_nb( [ $count ] );   ## Behavior is not the same
 
-   ->pending();                  ## Counts both normal/priority data
-                                 ## in the queue
+   $q->pending();                  ## Counts both normal/priority data
+                                   ## in the queue
 
 =item L<Parallel::DataPipe|Parallel::DataPipe>
 
-The idea for a queue recursion example came from reading this sysnopsis.
+The recursion example, in the sysopsis above, was largely adopted from this
+module.
 
 =back
 
