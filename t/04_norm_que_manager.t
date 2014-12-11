@@ -5,12 +5,12 @@ use warnings;
 
 use Test::More tests => 32;
 
-use MCE;
+use MCE::Flow max_workers => 1;
 use MCE::Queue;
 
 ###############################################################################
 
-##  Test MCE::Queue 'normal' queuing by the MCE Manager
+##  Test MCE::Queue (normal queue) by the MCE manager process.
 
 my (@a, $q, @r);
 

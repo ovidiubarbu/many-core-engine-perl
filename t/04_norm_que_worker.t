@@ -10,7 +10,7 @@ use MCE::Queue;
 
 ###############################################################################
 
-##  Test MCE::Queue 'normal' queuing by the MCE Worker
+##  Test MCE::Queue (normal queue) by the MCE worker process.
 
 my (@a, $q);
 

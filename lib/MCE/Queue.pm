@@ -488,7 +488,6 @@ sub _peekp {
       if (!looks_like_number($_i) || int($_i) != $_i);
 
    return unless (exists $_queue->{_datp}->{$_p});
-
    return if (abs($_i) > scalar @{ $_queue->{_datp}->{$_p} });
 
    if (!$_queue->{_type}) {
@@ -509,6 +508,7 @@ sub _peekh {
    _croak('MCE::Queue::peekh: (index) is not an integer')
       if (!looks_like_number($_i) || int($_i) != $_i);
 
+   return if (abs($_i) > scalar @{ $_queue->{_heap} });
    return $_queue->{_heap}->[$_i];
 }
 

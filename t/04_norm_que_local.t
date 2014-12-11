@@ -9,7 +9,7 @@ use MCE::Queue;
 
 ###############################################################################
 
-##  Test MCE::Queue 'normal' queuing in local mode (standalone).
+##  Test MCE::Queue (normal queue) in local mode.
 ##  Hence, MCE is not require to use MCE::Queue.
 
 my (@a, $q, @r);
