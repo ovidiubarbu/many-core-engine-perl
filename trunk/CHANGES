@@ -15,7 +15,7 @@ Revision history for MCE
   * Added support for negative index in MCE::Queue ->insert and ->peek.
     Updated the documentation.
 
-  * CBOR::XS serialization is mentioned in documentation alone with
+  * CBOR::XS serialization is mentioned in documentation along with
     JSON::XS and Sereal.
 
   * Completed code refactoring for the 1.5 branch.
