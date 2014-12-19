@@ -71,6 +71,10 @@ Sylvia Roy
   For driving on long trips while I worked in the passenger seat further
   developing and testing MCE. Not to forget, locally around town as well.
 
+Petr Šabata
+  For initial package submission at Red Hat.
+  https://bugzilla.redhat.com/show_bug.cgi?id=1162531
+
 Tom Sasser
   For reporting bin/mce_grep failing with Perl 5.8.x.
 
