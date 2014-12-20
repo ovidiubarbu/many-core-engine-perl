@@ -17,9 +17,12 @@ WriteMakefile(
    NAME           => 'MCE',
 
    PREREQ_PM => {
+      'bytes'        => 0,
+      'Carp'         => 0,
       'Fcntl'        => 0,
       'File::Path'   => 0,
       'Getopt::Long' => 0,
+      'IO::Handle'   => 0,
       'Scalar::Util' => 0,
       'Socket'       => 0,
       'Storable'     => 2.04,

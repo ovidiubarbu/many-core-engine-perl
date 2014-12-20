@@ -2,17 +2,29 @@ Name:           perl-MCE
 Version:        1.521
 Release:        1%{?dist}
 Summary:        Many-Core Engine for Perl providing parallel processing capabilities
-License:        CHECK(Distributable)
+License:        GPL+ or Artistic
 Group:          Development/Libraries
 URL:            http://search.cpan.org/dist/MCE/
-Source0:        http://search.cpan.org/CPAN/authors/id/M/MA/MARIOROY/MCE-%{version}.tar.gz
+Source0:        http://www.cpan.org/authors/id/M/MA/MARIOROY/MCE-%{version}.tar.gz
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildArch:      noarch
+# Build
+BuildRequires:  perl
 BuildRequires:  perl(ExtUtils::MakeMaker)
-BuildRequires:  perl(Storable) >= 2.04
 BuildRequires:  perl(Test::More) >= 0.45
-Requires:       perl(Storable) >= 2.04
+# Runtime
 Requires:       perl(:MODULE_COMPAT_%(eval "`%{__perl} -V:version`"; echo $version))
+Requires:       perl(bytes)
+Requires:       perl(Carp)
+Requires:       perl(Fcntl)
+Requires:       perl(File::Path)
+Requires:       perl(Getopt::Long)
+Requires:       perl(IO::Handle)
+Requires:       perl(Scalar::Util)
+Requires:       perl(Socket)
+Requires:       perl(Storable) >= 2.04
+Requires:       perl(Symbol)
+Requires:       perl(Time::HiRes)
 Autoreq:        no
 
 %description
