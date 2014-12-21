@@ -1674,9 +1674,10 @@ sub gather {
       $_dest = (exists $_sendto_lkup{$_to}) ? $_sendto_lkup{$_to} : undef;
 
       if (!defined $_dest) {
-         if (defined (my $_fd = fileno($_to))) {
+         if (ref $_to && defined (my $_fd = fileno($_to))) {
             my $_data = (scalar @_) ? join('', @_) : $_;
             _do_send_glob($self, $_to, $_fd, \$_data);
+            @_ = ();
             return;
          }
          if (defined $_to && $_to =~ /$_v2_regx/o) {
@@ -1720,7 +1721,7 @@ sub print {
 
    my $x = shift; my $self = ref($x) ? $x : $MCE;
 
-   if (defined (my $_fd = fileno($_[0]))) {
+   if (ref $_[0] && defined (my $_fd = fileno($_[0]))) {
       my $_glob = shift;
       my $_data = (scalar @_) ? join('', @_) : $_;
 
@@ -1747,7 +1748,7 @@ sub printf {
 
    my $x = shift; my $self = ref($x) ? $x : $MCE;
 
-   if (defined (my $_fd = fileno($_[0]))) {
+   if (ref $_[0] && defined (my $_fd = fileno($_[0]))) {
       my $_glob = shift; my $_fmt = shift || '%s';
       my $_data = (scalar @_) ? sprintf($_fmt, @_) : sprintf($_fmt, $_);
 
@@ -1775,7 +1776,7 @@ sub say {
 
    my $x = shift; my $self = ref($x) ? $x : $MCE;
 
-   if (defined (my $_fd = fileno($_[0]))) {
+   if (ref $_[0] && defined (my $_fd = fileno($_[0]))) {
       my $_glob = shift;
       my $_data = (scalar @_) ? join("\n", @_) . "\n" : $_ . "\n";
 
