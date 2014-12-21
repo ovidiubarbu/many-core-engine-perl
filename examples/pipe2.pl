@@ -16,18 +16,16 @@ use warnings;
 ## no critic (InputOutput::ProhibitBarewordFileHandles)
 ## no critic (InputOutput::ProhibitTwoArgOpen)
 
-my ($prog_name, $prog_dir, $base_dir);
+use Cwd 'abs_path'; ## Insert lib-path at the head of @INC.
+use lib abs_path($0 =~ m{^(.*)[\\/]} && $1 || abs_path) . '/../lib';
+
+my ($prog_name, $prog_dir);
 
 BEGIN {
-   use Cwd qw(abs_path);
-
    $prog_name = $0;             $prog_name =~ s{^.*[\\/]}{}g;
    $prog_dir  = abs_path($0);   $prog_dir  =~ s{[\\/][^\\/]*$}{};
-   $base_dir  = $prog_dir;      $base_dir  =~ s{[\\/][^\\/]*$}{};
 
    $ENV{PATH} = $prog_dir .($^O eq 'MSWin32' ? ';' : ':'). $ENV{PATH};
-
-   unshift @INC, "$base_dir/lib";
 }
 
 use Getopt::Long qw(
