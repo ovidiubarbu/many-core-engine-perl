@@ -10,7 +10,15 @@ use MCE::Queue;
 
 ###############################################################################
 
-##  Test MCE::Queue (normal queue) by the MCE manager process.
+##  MCE::Queue supports 3 operating modes (local, manager, worker).
+##  This will test MCE::Queue (normal queue) by the MCE manager process.
+##
+##  *{ 'MCE::Queue::clear'    } = \&MCE::Queue::_mce_m_clear;
+##  *{ 'MCE::Queue::enqueue'  } = \&MCE::Queue::_mce_m_enqueue;
+##  *{ 'MCE::Queue::dequeue'  } = \&MCE::Queue::_mce_m_dequeue;
+##  *{ 'MCE::Queue::insert'   } = \&MCE::Queue::_mce_m_insert;
+##  *{ 'MCE::Queue::pending'  } = \&MCE::Queue::_pending;
+##  *{ 'MCE::Queue::peek'     } = \&MCE::Queue::_peek;
 
 my (@a, $q, @r);
 
