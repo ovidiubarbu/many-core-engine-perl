@@ -29,17 +29,14 @@
 use strict;
 use warnings;
 
-use Cwd 'abs_path';  ## Remove taintedness from path
-use lib ($_) = (abs_path().'/../lib') =~ /(.*)/;
+use Cwd 'abs_path'; ## Insert lib-path at the head of @INC.
+use lib abs_path($0 =~ m{^(.*)[\\/]} && $1 || abs_path) . '/../lib';
 
 my ($prog_name, $prog_dir);
 
 BEGIN {
-   $prog_name = $0;
-   $prog_name =~ s{^.*[\\/]}{}g;
-
-   $prog_dir  = abs_path($0);
-   $prog_dir  =~ s{[\\/][^\\/]*$}{};
+   $prog_name = $0;             $prog_name =~ s{^.*[\\/]}{}g;
+   $prog_dir  = abs_path($0);   $prog_dir  =~ s{[\\/][^\\/]*$}{};
 
    $ENV{PATH} .= ($^O eq 'MSWin32' ? ';' : ':') . $prog_dir;
 }
@@ -618,12 +615,12 @@ if ($r_flag && @files > 0) {
 
    MCE->spawn;
 
-   unless ($^O eq 'MSWin32') {
-      open $list_fh, '-|', 'egrep', '-lsr', @r_patn, '^', @files;
-   }
-   else {
+   if ($^O eq 'MSWin32') {
       $list = `egrep -lsr @r_patn ^ @files`;
       open $list_fh, '<', \$list;
+   }
+   else {
+      open $list_fh, '-|', 'egrep', '-lsr', @r_patn, '^', @files;
    }
 
    while (<$list_fh>) {

@@ -1,4 +1,6 @@
 #!/usr/bin/env perl -s
+
+##
 ## wf.pl -- an implementation of the "wide finder" benchmark.
 ## Sean O'Rourke, 2007, public domain.
 ##
@@ -6,6 +8,7 @@
 ##     where $N is the number of processes, and $LOGFILE is the target.
 ##
 ## This code depends on Sys::Mmap, which is available on CPAN.
+##
 
 use strict qw(subs refs);
 use warnings;
@@ -13,8 +16,8 @@ use warnings;
 ## no critic (InputOutput::ProhibitBarewordFileHandles)
 ## no critic (InputOutput::ProhibitTwoArgOpen)
 
-use Cwd 'abs_path';  ## Remove taintedness from path
-use lib ($_) = (abs_path().'/../../lib') =~ /(.*)/;
+use Cwd 'abs_path'; ## Insert lib-path at the head of @INC.
+use lib abs_path($0 =~ m{^(.*)[\\/]} && $1 || abs_path) . '/../../lib';
 
 use Time::HiRes qw(time);
 use Sys::Mmap;

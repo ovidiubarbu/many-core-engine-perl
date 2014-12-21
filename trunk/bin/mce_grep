@@ -44,7 +44,7 @@
 ##   Compute chunk_level => 'auto' to use 'file' when reading STDIN.
 ##   Set chunk_size to 8M when not specified (from 4M previously).
 ##
-## 2014-12-07  v1.010
+## 2014-12-21  v1.010
 ##   Small code refactoring.
 ##
 ###############################################################################
@@ -55,17 +55,14 @@ use warnings;
 ## no critic (InputOutput::ProhibitBarewordFileHandles)
 ## no critic (InputOutput::ProhibitTwoArgOpen)
 
-use Cwd qw( abs_path );
-use lib abs_path . '/../lib';
+use Cwd 'abs_path'; ## Insert lib-path at the head of @INC.
+use lib abs_path($0 =~ m{^(.*)[\\/]} && $1 || abs_path) . '/../lib';
 
 my ($prog_name, $prog_dir);
 
 BEGIN {
-   $prog_name = $0;
-   $prog_name =~ s{^.*[\\/]}{}g;
-
-   $prog_dir  = abs_path($0);
-   $prog_dir  =~ s{[\\/][^\\/]*$}{};
+   $prog_name = $0;             $prog_name =~ s{^.*[\\/]}{}g;
+   $prog_dir  = abs_path($0);   $prog_dir  =~ s{[\\/][^\\/]*$}{};
 
    $ENV{PATH} .= ($^O eq 'MSWin32' ? ';' : ':') . $prog_dir;
 }
@@ -969,12 +966,12 @@ if ($r_flag && @files > 0) {
 
    MCE->spawn;
 
-   unless ($is_mswin32) {
-      open $list_fh, '-|', 'egrep', '-lsr', @r_patn, '^', @files;
-   }
-   else {
+   if ($is_mswin32) {
       $list = `egrep -lsr @r_patn ^ @files`;
       open $list_fh, '<', \$list;
+   }
+   else {
+      open $list_fh, '-|', 'egrep', '-lsr', @r_patn, '^', @files;
    }
 
    if ($chunk_level eq 'list') {

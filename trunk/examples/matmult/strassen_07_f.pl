@@ -8,8 +8,8 @@
 use strict;
 use warnings;
 
-use Cwd 'abs_path';  ## Remove taintedness from path
-use lib ($_) = (abs_path().'/../../lib') =~ /(.*)/;
+use Cwd 'abs_path'; ## Insert lib-path at the head of @INC.
+use lib abs_path($0 =~ m{^(.*)[\\/]} && $1 || abs_path) . '/../../lib';
 
 my $prog_name = $0; $prog_name =~ s{^.*[\\/]}{}g;
 
