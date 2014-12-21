@@ -10,7 +10,17 @@ use MCE::Queue;
 
 ###############################################################################
 
-##  Test MCE::Queue (priority queue) by the MCE worker process.
+##  MCE::Queue supports 3 operating modes (local, manager, worker).
+##  This will test MCE::Queue (priority queue) by the MCE worker process.
+##
+##  *{ 'MCE::Queue::clear'    } = \&MCE::Queue::_mce_w_clear;
+##  *{ 'MCE::Queue::enqueuep' } = \&MCE::Queue::_mce_w_enqueuep;
+##  *{ 'MCE::Queue::dequeue'  } = \&MCE::Queue::_mce_w_dequeue;
+##  *{ 'MCE::Queue::pending'  } = \&MCE::Queue::_mce_w_pending;
+##  *{ 'MCE::Queue::insertp'  } = \&MCE::Queue::_mce_w_insertp;
+##  *{ 'MCE::Queue::peekp'    } = \&MCE::Queue::_mce_w_peekp;
+##  *{ 'MCE::Queue::peekh'    } = \&MCE::Queue::_mce_w_peekh;
+##  *{ 'MCE::Queue::heap'     } = \&MCE::Queue::_mce_w_heap;
 
 my ($q);
 

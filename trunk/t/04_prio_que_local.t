@@ -9,8 +9,20 @@ use MCE::Queue;
 
 ###############################################################################
 
-##  Test MCE::Queue (priority queue) in local mode.
-##  Hence, MCE is not require to use MCE::Queue.
+##  MCE::Queue supports 3 operating modes (local, manager, worker).
+##  This will test MCE::Queue (priority queue) in local mode.
+##
+##  Local mode is selected when MCE is not present, during importing of
+##  MCE::Queue, or when initiating queues from inside the worker process.
+##
+##  *{ 'MCE::Queue::clear'    } = \&MCE::Queue::_clear;
+##  *{ 'MCE::Queue::enqueuep' } = \&MCE::Queue::_enqueuep;
+##  *{ 'MCE::Queue::dequeue'  } = \&MCE::Queue::_dequeue;
+##  *{ 'MCE::Queue::insertp'  } = \&MCE::Queue::_insertp;
+##  *{ 'MCE::Queue::pending'  } = \&MCE::Queue::_pending;
+##  *{ 'MCE::Queue::peekp'    } = \&MCE::Queue::_peekp;
+##  *{ 'MCE::Queue::peekh'    } = \&MCE::Queue::_peekh;
+##  *{ 'MCE::Queue::heap'     } = \&MCE::Queue::_heap;
 
 my ($q, @r, @h);
 

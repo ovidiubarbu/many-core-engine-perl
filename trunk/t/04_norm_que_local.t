@@ -9,8 +9,18 @@ use MCE::Queue;
 
 ###############################################################################
 
-##  Test MCE::Queue (normal queue) in local mode.
-##  Hence, MCE is not require to use MCE::Queue.
+##  MCE::Queue supports 3 operating modes (local, manager, worker).
+##  This will test MCE::Queue (normal queue) in local mode.
+##
+##  Local mode is selected when MCE is not present, during importing of
+##  MCE::Queue, or when initiating queues from inside the worker process.
+##
+##  *{ 'MCE::Queue::clear'    } = \&MCE::Queue::_clear;
+##  *{ 'MCE::Queue::enqueue'  } = \&MCE::Queue::_enqueue;
+##  *{ 'MCE::Queue::dequeue'  } = \&MCE::Queue::_dequeue;
+##  *{ 'MCE::Queue::insert'   } = \&MCE::Queue::_insert;
+##  *{ 'MCE::Queue::pending'  } = \&MCE::Queue::_pending;
+##  *{ 'MCE::Queue::peek'     } = \&MCE::Queue::_peek;
 
 my (@a, $q, @r);
 
