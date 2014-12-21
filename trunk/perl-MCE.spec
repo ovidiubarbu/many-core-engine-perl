@@ -15,10 +15,10 @@ BuildRequires:  perl(Test::More) >= 0.45
 # Runtime
 Requires:       perl(:MODULE_COMPAT_%(eval "`%{__perl} -V:version`"; echo $version))
 Requires:       perl(bytes)
+Requires:       perl(constant)
 Requires:       perl(Carp)
 Requires:       perl(Fcntl)
 Requires:       perl(File::Path)
-Requires:       perl(Getopt::Long)
 Requires:       perl(IO::Handle)
 Requires:       perl(Scalar::Util)
 Requires:       perl(Socket)
