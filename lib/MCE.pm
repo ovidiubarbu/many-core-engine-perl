@@ -1255,12 +1255,12 @@ sub shutdown {
 
    @_ = ();
 
-   _validate_runstate($self, 'MCE::shutdown');
-
    ## Return if workers have not been spawned or have already been shutdown.
+   return unless (defined $MCE::Signal::tmp_dir);
    return unless ($self->{_spawned});
 
    ## Wait for workers to complete processing before shutting down.
+   _validate_runstate($self, 'MCE::shutdown');
    $self->run(0) if ($self->{_send_cnt});
 
    local $SIG{__DIE__}  = \&_die;
