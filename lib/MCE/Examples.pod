@@ -26,12 +26,10 @@ count aggregation.
              The gain in performance is noticeable for expensive
              patterns, especially with agrep and tre-agrep.
 
-   barrier_sync.pl
-             A barrier sync demonstration.
-
-   cat.pl    Concatenation script, similar to the cat binary.
-   egrep.pl  Egrep script, similar to the egrep binary.
-   wc.pl     Word count script, similar to the wc binary.
+   cat.pl, egrep.pl, wc.pl
+             Concatenation script, similar to the cat binary.
+             Egrep script, similar to the egrep binary.
+             Word count script, similar to the wc binary.
 
    files_flow.pl, files_mce.pl, files_thr.pl
              Demonstrates MCE::Flow, MCE::Queue, and Thread::Queue.
@@ -73,6 +71,9 @@ count aggregation.
              divide-and-conquer algorithm. Included are 2 plain
              Perl examples.
 
+   ping.pl   Perform ping test and report back failed IP(s) to standard
+             output.
+
    pipe1.pl, pipe2.pl
              Process STDIN or FILE in parallel. Processing is via Perl
              for pipe1.pl, whereas an external command for pipe2.pl.
@@ -80,21 +81,18 @@ count aggregation.
    sampledb/create.pl, query.pl, update.pl
              Examples demonstrating DBI (SQLite) with MCE.
 
-   scaling_pings.pl
-             Perform ping test and report back failed IPs to standard
-             output.
-
    seq_demo.pl
-             A demonstration of the new sequence option appearing
+             Demonstration of the new sequence option appearing
              in MCE 1.3. Run with seq_demo.pl | sort
+
+   sync.pl   Barrier sync demonstration.
 
    tbray/wf_mce1.pl, wf_mce2.pl, wf_mce3.pl
              An implementation of wide finder utilizing MCE.
              As fast as MMAP IO when file resides in OS FS cache.
              2x ~ 3x faster when reading directly from disk.
 
-   utf8.pl
-             A demonstration of MCE processing unicode input_data.
+   utf8.pl   Demonstration of MCE processing unicode input_data.
 
 =head1 CHUNK_SIZE => 1 (in essence, wanting no chunking on input data)
 
