@@ -28,7 +28,6 @@ lib/MCE/Step.pm
 lib/MCE/Stream.pm
 lib/MCE/Subs.pm
 lib/MCE/Util.pm
-examples/barrier_sync.pl
 examples/cat.pl
 examples/egrep.pl
 examples/files_flow.pl
@@ -54,6 +53,7 @@ examples/matmult/strassen_07_t.pl
 examples/matmult/strassen_49_f.pl
 examples/matmult/strassen_49_t.pl
 examples/matmult/strassen_perl.pl
+examples/ping.pl
 examples/pipe1.pl
 examples/pipe2.pl
 examples/sampledb/README
@@ -64,8 +64,8 @@ examples/sampledb/query3.pl
 examples/sampledb/update1.pl
 examples/sampledb/update2.pl
 examples/sampledb/update3.pl
-examples/scaling_pings.pl
 examples/seq_demo.pl
+examples/sync.pl
 examples/tbray/README
 examples/tbray/tbray_baseline1.pl
 examples/tbray/tbray_baseline2.pl

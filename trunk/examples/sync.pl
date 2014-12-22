@@ -19,13 +19,15 @@ sub user_func {
    my ($mce) = @_; 
    my $wid = MCE->wid();
 
+   ## Various ways to send to STDOUT
+
    MCE->sendto("STDOUT", "a: $wid\n");
    MCE->sync;
 
-   MCE->sendto("STDOUT", "b: $wid\n");
+   MCE->sendto(\*STDOUT, "b: $wid\n");
    MCE->sync;
 
-   MCE->sendto("STDOUT", "c: $wid\n");
+   MCE->print("c: $wid\n");
    MCE->sync;
 
    return;
