@@ -7,6 +7,7 @@ use Cwd 'abs_path'; ## Insert lib-path at the head of @INC.
 use lib abs_path($0 =~ m{^(.*)[\\/]} && $1 || abs_path) . '/../lib';
 
 use MCE;
+use Time::HiRes 'sleep';
 
 ## A demonstration applying sequences with user_tasks.
 ## Chunking can also be configured independently as well.
@@ -23,20 +24,21 @@ sub user_func {
    if (ref $seq_n eq 'ARRAY') {
       ## Received the next "chunked" sequence of numbers
       ## e.g. when chunk_size > 1, $seq_n will be an array ref above
-
       foreach (@{ $seq_n }) {
-         $mce->sendto('STDOUT', sprintf(
+         $mce->printf(
             "task_id %d: seq_n %s: chunk_id %d: wid %d: task_wid %d\n",
             $task_id,    $_,       $chunk_id,   $wid,   $task_wid
-         ));
+         );
       }
    }
    else {
-      $mce->sendto('STDOUT', sprintf(
+      $mce->printf(
          "task_id %d: seq_n %s: chunk_id %d: wid %d: task_wid %d\n",
          $task_id,    $seq_n,   $chunk_id,   $wid,   $task_wid
-      ));
+      );
    }
+
+   sleep 0.003;
 
    return;
 }
