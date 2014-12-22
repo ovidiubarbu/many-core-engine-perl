@@ -21,7 +21,7 @@
     perl -MDBI -MDBD::SQLite -e 1
 
     ArchLinux : pacman -S perl-dbi perl-dbd-sqlite
-    Cygwin    : install via setup-x86; Perl -> perl-DBI, perl-DBD-SQLite
+    Cygwin    : install via setup-x86.exe; perl-DBI, perl-DBD-SQLite
     Debian    : apt-get install libdbi-perl libdbd-sqlite3-perl
     FreeBSD   : pkg install p5-DBI p5-DBD-SQLite
     Red Hat   : yum install perl-DBI perl-DBD-SQLite
