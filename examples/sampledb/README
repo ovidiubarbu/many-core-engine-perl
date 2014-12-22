@@ -1,0 +1,45 @@
+
+ This dir contains examples demonstrating DBI (SQLite) with MCE.
+
+ -- Usage ---------------------------------------------------------------------
+
+ 1. perl create.pl [ n_rows ]  ## create SAMPLE.DB  ; default 3k rows
+    perl create.pl 100000      ## re-create DB and insert 100k rows
+
+ 2. perl query1.pl             ## chunk_size => NA  ; MCE::Loop
+    perl query2.pl             ## chunk_size => 300 ; MCE::Loop no output order
+    perl query3.pl             ## chunk_size => 300 ; MCE::Flow w/ output order
+
+ 3. perl update1.pl            ## chunk_size => NA  ; MCE::Loop
+    perl update2.pl            ## chunk_size => 300 ; MCE::Loop
+    perl update3.pl            ## chunk_size => 300 ; MCE::Flow
+
+ -- Notes ---------------------------------------------------------------------
+
+ The query1.pl/update1.pl examples are beneficial when chunking is not desired.
+
+ Simulatenous updates and select is possible due to calling fetchall for the
+ select process. Otherwise, the process may stall when accessing a SQLite DB.
+
+ The update examples have two db iterator functions; db_iter_client_server
+ and db_iter_auto_offset. Configure MCE to use db_iter_client_server when
+ accessing a client/server DB.
+
+ -- Testing -------------------------------------------------------------------
+
+ Copy this sampledb dir to a writeable location. YMMV as far as running times.
+ Testing was completed on a CentOS 7 VM (2.6 GHz Intel Core i7, Perl 5.16.3)
+ under /dev/shm/.
+
+ perl create.pl 100000         ##  0.332s   100k rows; 2.1 MB
+
+ perl query1.pl  |tail         ##  4.450s
+ perl query2.pl  |tail         ##  0.120s
+ perl query3.pl  |tail         ##  0.122s
+
+ perl update1.pl >/dev/null    ## 21.163s
+ perl update2.pl >/dev/null    ##  1.155s
+ perl update3.pl >/dev/null    ##  1.154s
+
+ perl query3.pl  |tail
+

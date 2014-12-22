@@ -56,6 +56,14 @@ examples/matmult/strassen_49_t.pl
 examples/matmult/strassen_perl.pl
 examples/pipe1.pl
 examples/pipe2.pl
+examples/sampledb/README
+examples/sampledb/create.pl
+examples/sampledb/query1.pl
+examples/sampledb/query2.pl
+examples/sampledb/query3.pl
+examples/sampledb/update1.pl
+examples/sampledb/update2.pl
+examples/sampledb/update3.pl
 examples/scaling_pings.pl
 examples/seq_demo.pl
 examples/tbray/README

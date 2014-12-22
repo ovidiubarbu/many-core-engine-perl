@@ -77,6 +77,9 @@ count aggregation.
              Process STDIN or FILE in parallel. Processing is via Perl
              for pipe1.pl, whereas an external command for pipe2.pl.
 
+   sampledb/create.pl, query.pl, update.pl
+             Examples demonstrating DBI (SQLite) with MCE.
+
    scaling_pings.pl
              Perform ping test and report back failed IPs to standard
              output.
