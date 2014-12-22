@@ -58,9 +58,9 @@ sub user_begin {
 
    MCE->yield;
 
-   MCE->sendto( "STDOUT",
-      sprintf("Node %2d: %0.5f -- Worker %2d: %12s -- Started\n",
-         MCE->task_id + 1, time, MCE->task_wid, '')
+   MCE->printf(
+      "Node %2d: %0.5f -- Worker %2d: %12s -- Started\n",
+      MCE->task_id + 1, time, MCE->task_wid, ''
    );
 
    return;
@@ -82,9 +82,9 @@ sub user_begin {
 
       $prev_time = $curr_time;
 
-      MCE->sendto( "STDOUT",
-         sprintf("Node %2d: %0.5f -- Worker %2d: %12.5f -- Seq_N %3d\n",
-            MCE->task_id + 1, time, MCE->task_wid, $time_waited, $seq_n)
+      MCE->printf(
+         "Node %2d: %0.5f -- Worker %2d: %12.5f -- Seq_N %3d\n",
+         MCE->task_id + 1, time, MCE->task_wid, $time_waited, $seq_n
       );
 
       return;
