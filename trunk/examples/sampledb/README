@@ -3,27 +3,38 @@
 
  -- Usage ---------------------------------------------------------------------
 
- 1. perl create.pl [ n_rows ]  ## create SAMPLE.DB  ; default 3k rows
-    perl create.pl 100000      ## re-create DB and insert 100k rows
+ 1) perl create.pl [ n_rows ]   # create SAMPLE.DB  ; default 3k rows
+    perl create.pl 100000       # re-create DB and insert 100k rows
 
- 2. perl query1.pl             ## chunk_size => NA  ; MCE::Loop
-    perl query2.pl             ## chunk_size => 300 ; MCE::Loop no output order
-    perl query3.pl             ## chunk_size => 300 ; MCE::Flow w/ output order
+ 2) perl query1.pl              # chunk_size => NA  ; MCE::Loop
+    perl query2.pl              # chunk_size => 300 ; MCE::Loop no output order
+    perl query3.pl              # chunk_size => 300 ; MCE::Flow w/ output order
 
- 3. perl update1.pl            ## chunk_size => NA  ; MCE::Loop
-    perl update2.pl            ## chunk_size => 300 ; MCE::Loop
-    perl update3.pl            ## chunk_size => 300 ; MCE::Flow
+ 3) perl update1.pl             # chunk_size => NA  ; MCE::Loop
+    perl update2.pl             # chunk_size => 300 ; MCE::Loop
+    perl update3.pl             # chunk_size => 300 ; MCE::Flow
 
  -- Notes ---------------------------------------------------------------------
 
- The query1.pl/update1.pl examples are beneficial when chunking is not desired.
+ Ensure Perl can load DBI and DBD::SQLite. Install any missing module(s).
 
- Simulatenous updates and select is possible due to calling fetchall for the
- select process. Otherwise, the process may stall when accessing a SQLite DB.
+    perl -MDBI -MDBD::SQLite -e 1
 
- The update examples have two db iterator functions; db_iter_client_server
- and db_iter_auto_offset. Configure MCE to use db_iter_client_server when
- accessing a client/server DB.
+    ArchLinux : pacman -S perl-dbi perl-dbd-sqlite
+    Cygwin    : install via setup-x86; Perl -> perl-DBI, perl-DBD-SQLite
+    Debian    : apt-get install libdbi-perl libdbd-sqlite3-perl
+    FreeBSD   : pkg install p5-DBI p5-DBD-SQLite
+    Red Hat   : yum install perl-DBI perl-DBD-SQLite
+
+    Otherwise : cpan install DBD::SQLite
+
+ For SQLite, simulatenous updates and select are possible due to calling
+ fetchall for the select process. The update examples have 2 db iterator
+ functions; db_iter_client_server and db_iter_auto_offset. Configure MCE
+ to use db_iter_client_server when accessing a client/server DB.
+
+ The query1/update1 examples are beneficial when chunking is not desired.
+ Increase chunk_size (e.g: 900) in update2/update3 for faster throughput.
 
  -- Testing -------------------------------------------------------------------
 
@@ -31,15 +42,13 @@
  Testing was completed on a CentOS 7 VM (2.6 GHz Intel Core i7, Perl 5.16.3)
  under /dev/shm/.
 
- perl create.pl 100000         ##  0.332s   100k rows; 2.1 MB
+ 1) perl create.pl 100000              #   0.332s   100k rows; 2.1MB
 
- perl query1.pl  |tail         ##  4.450s
- perl query2.pl  |tail         ##  0.120s
- perl query3.pl  |tail         ##  0.122s
+ 2) perl query1.pl  |tail              #   4.450s
+    perl query2.pl  |tail              #   0.120s
+    perl query3.pl  |tail              #   0.122s
 
- perl update1.pl >/dev/null    ## 21.163s
- perl update2.pl >/dev/null    ##  1.155s
- perl update3.pl >/dev/null    ##  1.154s
-
- perl query3.pl  |tail
+ 3) perl update1.pl >/dev/null         #  21.163s
+    perl update2.pl >/dev/null         #   1.155s
+    perl update3.pl >/dev/null         #   1.154s
 
