@@ -116,8 +116,7 @@ Describes various demonstations for MCE including a Monte Carlo simulation.
 
 =head1 REQUIREMENTS
 
-Perl 5.8.0 or later. PDL::IO::Storable is required in scripts running PDL
-and using MCE for parallelization.
+Perl 5.8.0 or later. PDL::IO::Storable is required in scripts running PDL.
 
 =head1 SOURCE
 

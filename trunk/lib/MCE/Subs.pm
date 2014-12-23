@@ -251,15 +251,17 @@ to using MCE::Map, which takes care of creating a MCE instance and running.
 
    print scalar @a, "\n";
 
-Unlike the native Perl functions, print, printf, and say methods require the
-comma after the file handle.
+Unlike the native Perl functions, printf, print, and say methods require the
+comma after the glob reference or file handle.
 
-   MCE->print("STDERR", $error_msg, "\n");  ## Requires quotes around
-   MCE->say("STDERR", $error_msg);          ## the bare-word FH.
+   MCE->printf(\*STDERR, "%s\n", $error_msg);
+   MCE->print(\*STDERR, $error_msg, "\n");
+   MCE->say(\*STDERR, $error_msg);
    MCE->say($fh, $error_msg);
 
-   mce_print STDERR, $error_msg, "\n";      ## Quotes are optional
-   mce_say STDERR, $error_msg;              ## around the bare-word FH.
+   mce_printf \*STDERR, "%s\n", $error_msg;
+   mce_print \*STDERR, $error_msg, "\n";
+   mce_say \*STDERR, $error_msg;
    mce_say $fh, $error_msg;
 
 =head1 FUNCTIONS for the MANAGER PROCESS via ( :manager )

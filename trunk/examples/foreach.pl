@@ -31,7 +31,7 @@ my $prog_name = $0; $prog_name =~ s{^.*[\\/]}{}g;
 my $size = shift || 3000;
 
 unless ($size =~ /\A\d+\z/) {
-   print STDERR "usage: $prog_name [ size ]\n";
+   print {*STDERR} "usage: $prog_name [ size ]\n";
    exit;
 }
 
@@ -82,5 +82,5 @@ $mce->foreach( \@input_data, sub {
 
 my $end = time;
 
-printf STDERR "\n## Compute time: %0.03f\n\n", $end - $start;
+printf {*STDERR} "\n## Compute time: %0.03f\n\n", $end - $start;
 

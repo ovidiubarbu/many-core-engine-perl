@@ -41,7 +41,7 @@ use MCE::Loop;
 
 sub usage {
 
-   print STDERR <<"::_USAGE_BLOCK_END_::";
+   print {*STDERR} <<"::_USAGE_BLOCK_END_::";
 
 NAME
    $prog_name -- process STDIN or FILE via Perl in parallel
@@ -115,7 +115,7 @@ my $parallel_io  = 0;
 
    if ($max_workers !~ /^auto/) {
       unless (looks_like_number($max_workers) && $max_workers > 0) {
-         print STDERR "$prog_name: $max_workers: invalid max workers\n";
+         print {*STDERR} "$prog_name: $max_workers: invalid max workers\n";
          exit 2;
       }
    }
@@ -129,7 +129,7 @@ my $parallel_io  = 0;
       }
 
       if (!looks_like_number($chunk_size) || $chunk_size < 1) {
-         print STDERR "$prog_name: $chunk_size: invalid chunk size\n";
+         print {*STDERR} "$prog_name: $chunk_size: invalid chunk size\n";
          exit 2;
       }
    }
@@ -141,11 +141,11 @@ my $input = (defined $ARGV[0]) ? $ARGV[0] : \*STDIN;
 
 if (ref $input eq '') {
    if (! -e $input) {
-      print STDERR "$prog_name: $input: No such file or directory\n";
+      print {*STDERR} "$prog_name: $input: No such file or directory\n";
       exit 2;
    }
    if (-d $input) {
-      print STDERR "$prog_name: $input: Is a directory\n";
+      print {*STDERR} "$prog_name: $input: Is a directory\n";
       exit 2;
    }
 }

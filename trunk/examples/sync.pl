@@ -19,15 +19,13 @@ sub user_func {
    my ($mce) = @_; 
    my $wid = MCE->wid();
 
-   ## Various ways to send to STDOUT
-
-   MCE->sendto("STDOUT", "a: $wid\n");
+   MCE->sendto("STDOUT", "a: $wid\n");   ## MCE 1.0+
    MCE->sync;
 
-   MCE->sendto(\*STDOUT, "b: $wid\n");
+   MCE->sendto(\*STDOUT, "b: $wid\n");   ## MCE 1.5+
    MCE->sync;
 
-   MCE->print("c: $wid\n");
+   MCE->print("c: $wid\n");              ## MCE 1.5+
    MCE->sync;
 
    return;
@@ -35,6 +33,5 @@ sub user_func {
 
 my $mce = MCE->new(
    max_workers => 4, user_func => \&user_func
-
 )->run();
 

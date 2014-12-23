@@ -17,7 +17,7 @@ count aggregation.
 
    bin/mce_grep
              A wrapper script with support for the following C binaries.
-                agrep, grep, egrep, fgrep, and tre-agrep
+             agrep, grep, egrep, fgrep, and tre-agrep
 
              Chunking may be applied either at the [file] level, for
              large file(s), or at the [list] level when parsing many
@@ -71,10 +71,10 @@ count aggregation.
              divide-and-conquer algorithm. Included are 2 plain
              Perl examples.
 
-   ping.pl   Perform ping test and report back failed IP(s) to standard
+   ping.pl, pipe1.pl, pipe2.pl
+             Perform ping test and report back failed IP(s) to standard
              output.
 
-   pipe1.pl, pipe2.pl
              Process STDIN or FILE in parallel. Processing is via Perl
              for pipe1.pl, whereas an external command for pipe2.pl.
 
@@ -85,14 +85,14 @@ count aggregation.
              Demonstration of the new sequence option appearing
              in MCE 1.3. Run with seq_demo.pl | sort
 
-   sync.pl   Barrier sync demonstration.
-
    tbray/wf_mce1.pl, wf_mce2.pl, wf_mce3.pl
              An implementation of wide finder utilizing MCE.
              As fast as MMAP IO when file resides in OS FS cache.
              2x ~ 3x faster when reading directly from disk.
 
-   utf8.pl   Demonstration of MCE processing unicode input_data.
+   utf8.pl, sync.pl
+             Demonstration of MCE processing unicode input_data.
+             Barrier synchronization demonstration.
 
 =head1 CHUNK_SIZE => 1 (in essence, wanting no chunking on input data)
 
@@ -512,7 +512,7 @@ The random number generator is seeded as well.
 
    my $end = time;
 
-   printf STDERR "\n## compute time: %0.03f secs\n\n", $end - $start;
+   printf {*STDERR} "\n## compute time: %0.03f secs\n\n", $end - $start;
 
    -- Output
 
@@ -651,7 +651,7 @@ process on a first come, first serve basis.
             }
          }
 
-         MCE->sendto("STDOUT", "Worker $wid is exiting\n");
+         MCE->print(\*STDERR, "Worker $wid is exiting\n");
       }
    );
 

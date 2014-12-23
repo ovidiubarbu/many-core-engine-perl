@@ -111,7 +111,6 @@ BEGIN {
 
    ## PDL + MCE (spawning as threads) is not stable. Thanks to David Mertens
    ## for reporting on how he fixed it for his PDL::Parallel::threads module.
-
    sub PDL::CLONE_SKIP { return 1; }
 
    return;
@@ -178,7 +177,6 @@ sub import {
    ## Please include your threading library of choice prior to including
    ## the MCE library. This is only a requirement if wanting to use threads
    ## versus forking.
-
    unless (defined $_has_threads) {
       if (defined $threads::VERSION) {
          unless (defined $threads::shared::VERSION) {
@@ -272,7 +270,6 @@ $MCE::Signal::mce_spawned_ref  = \%_mce_spawned;
 
 ## Warnings are disabled to minimize bits of noise when user or OS signals
 ## the script to exit. e.g. MCE_script.pl < infile | head
-
 no warnings 'threads'; no warnings 'uninitialized';
 
 sub DESTROY { }
@@ -1677,8 +1674,7 @@ sub gather {
          if (ref $_to && defined (my $_fd = fileno($_to))) {
             my $_data = (scalar @_) ? join('', @_) : $_;
             _do_send_glob($self, $_to, $_fd, \$_data);
-            @_ = ();
-            return;
+            @_ = (); return;
          }
          if (defined $_to && $_to =~ /$_v2_regx/o) {
             $_dest  = (exists $_sendto_lkup{$1}) ? $_sendto_lkup{$1} : undef;
@@ -1722,8 +1718,7 @@ sub print {
    my $x = shift; my $self = ref($x) ? $x : $MCE;
 
    if (ref $_[0] && defined (my $_fd = fileno($_[0]))) {
-      my $_glob = shift;
-      my $_data = (scalar @_) ? join('', @_) : $_;
+      my ($_glob, $_data) = (shift, (scalar @_) ? join('', @_) : $_);
 
       _do_send_glob($self, $_glob, $_fd, \$_data);
    }
@@ -1739,9 +1734,7 @@ sub print {
       }
    }
 
-   @_ = ();
-
-   return;
+   @_ = (); return;
 }
 
 sub printf {
@@ -1749,7 +1742,7 @@ sub printf {
    my $x = shift; my $self = ref($x) ? $x : $MCE;
 
    if (ref $_[0] && defined (my $_fd = fileno($_[0]))) {
-      my $_glob = shift; my $_fmt = shift || '%s';
+      my ($_glob, $_fmt) = (shift, shift || '%s');
       my $_data = (scalar @_) ? sprintf($_fmt, @_) : sprintf($_fmt, $_);
 
       _do_send_glob($self, $_glob, $_fd, \$_data);
@@ -1767,9 +1760,7 @@ sub printf {
       }
    }
 
-   @_ = ();
-
-   return;
+   @_ = (); return;
 }
 
 sub say {
@@ -1794,9 +1785,7 @@ sub say {
       }
    }
 
-   @_ = ();
-
-   return;
+   @_ = (); return;
 }
 
 ###############################################################################

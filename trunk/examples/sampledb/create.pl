@@ -28,8 +28,7 @@ my $batch_size = 3000;
 my $batch_i    = $batch_size;
 
 unless ($n_rows =~ /\A\d+\z/) {
-   print STDERR "usage: perl $prog_name [ n_rows ]\n";
-   exit;
+   die "usage: perl $prog_name [ n_rows ]\n";
 }
 if (-e $db_file) {
    unlink $db_file or die "Cannot unlink $db_file: $!\n";
@@ -79,5 +78,5 @@ $dbh->commit;                  ## $dbh->do('COMMIT');
 $sth->finish;
 $dbh->disconnect;
 
-printf STDERR "\n## Compute time: %0.03f\n\n", time() - $start;
+printf {*STDERR} "\n## Compute time: %0.03f\n\n", time() - $start;
 

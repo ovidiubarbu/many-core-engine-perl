@@ -222,11 +222,11 @@ if (@files > 0) {
          $mce->process(\*STDIN);
       }
       elsif (! -e $file) {
-         print STDERR "$prog_name: $file: No such file or directory\n";
+         print {*STDERR} "$prog_name: $file: No such file or directory\n";
          $exit_status = 2;
       }
       elsif (-d $file) {
-         print STDERR "$prog_name: $file: Is a directory\n";
+         print {*STDERR} "$prog_name: $file: Is a directory\n";
          $exit_status = 1;
       }
       else {
