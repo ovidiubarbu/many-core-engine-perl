@@ -50,7 +50,7 @@ mce_loop {
       MCE->do("callback", "$wid: MCE->do: $_\n");
    }
 
-   MCE->sync();
+   MCE->sync;
 
    for (@{ $_ }) {
       MCE->gather("$wid: MCE->gather: $_\n");

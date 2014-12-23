@@ -141,7 +141,7 @@ results.
       }
    );
 
-   MCE->run();
+   $mce->run();
 
 This does the same thing using the foreach "sugar" method. 
 
@@ -150,7 +150,7 @@ This does the same thing using the foreach "sugar" method.
       gather => output_iterator()
    );
 
-   MCE->foreach( \@input_data, sub {
+   $mce->foreach( \@input_data, sub {
       my ($mce, $chunk_ref, $chunk_id) = @_;
       my $result = sqrt($chunk_ref->[0]);
 
@@ -226,7 +226,7 @@ containing up to $chunk_size items is sent to the next available worker.
       }
    );
 
-   MCE->run();
+   $mce->run();
 
 This does the same thing using the forchunk "sugar" method. 
 
@@ -235,7 +235,7 @@ This does the same thing using the forchunk "sugar" method.
       gather => output_iterator()
    );
 
-   MCE->forchunk( \@input_data, sub {
+   $mce->forchunk( \@input_data, sub {
       my ($mce, $chunk_ref, $chunk_id) = @_;
       my @result;
 
@@ -327,7 +327,7 @@ The input scalar $_ (not shown below) contains the same value as $seq_n.
       }]
    );
 
-   MCE->run();
+   $mce->run();
 
    -- Output
 
@@ -655,7 +655,7 @@ process on a first come, first serve basis.
       }
    );
 
-   MCE->run;
+   $mce->run;
 
    -- Output
 

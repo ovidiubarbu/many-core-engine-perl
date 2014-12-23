@@ -335,24 +335,24 @@ user_end. Run shuts down workers afterwards. Call the spawn method early
 whenever the need arises for large data structures within the main process
 prior to running.
 
-   MCE->spawn();                         ## This is optional
+   $mce->spawn();                        ## This is optional
 
-   MCE->run();                           ## Call run or process below
+   $mce->run();                          ## Call run or process below
 
    ## Acquire data arrays and/or input_files. The same pool of
    ## workers are used.
 
-   MCE->process(\@input_data_1);         ## Process arrays
-   MCE->process(\@input_data_2);
-   MCE->process(\@input_data_n);
+   $mce->process(\@input_data_1);        ## Process arrays
+   $mce->process(\@input_data_2);
+   $mce->process(\@input_data_n);
 
-   MCE->process('input_file_1');         ## Process files
-   MCE->process('input_file_2');
-   MCE->process('input_file_n');
+   $mce->process('input_file_1');        ## Process files
+   $mce->process('input_file_2');
+   $mce->process('input_file_n');
 
    ## Shutdown workers afterwards.
 
-   MCE->shutdown();
+   $mce->shutdown();
 
 =head2 SYNTAX for ON_POST_EXIT
 
@@ -377,7 +377,7 @@ The format of $e->{pid} is PID_123 for children and THR_123 for threads.
       user_func    => \&user_func
    );
 
-   MCE->run();
+   $mce->run();
 
    -- Output
 
@@ -409,7 +409,7 @@ completed processing or running.
       user_func   => \&user_func
    );
 
-   MCE->run();
+   $mce->run();
 
 =head2 SYNTAX for INPUT_DATA
 
@@ -551,7 +551,7 @@ the chunk_size value (added in MCE 1.510).
    ## Let's enumerate column indexes for easy column retrieval.
    my ($i_color, $i_desc) = (0 .. 1);
 
-   MCE->new(
+   my $mce = MCE->new(
       max_workers => 3, chunk_size => 1000,
       input_data => db_iter(),
 
@@ -567,7 +567,7 @@ the chunk_size value (added in MCE 1.510).
       }
    );
 
-   MCE->run();
+   $mce->run();
 
 There are many modules on CPAN which return an iterator reference. Below
 showing one such example. The demonstration ensures MCE workers are spawned
@@ -642,7 +642,7 @@ to have the process stop, otherwise will never end.
       };
    }
 
-   MCE->new(
+   my $mce = MCE->new(
       max_workers => 4, input_data => make_iterator(\@a),
 
       user_func => sub {
@@ -687,7 +687,7 @@ greater than $max.
       };
    }
 
-   MCE->new(
+   my $mce = MCE->new(
       chunk_size => 15, max_workers => 4,
       input_data => make_iterator(\@a, 100),
 
@@ -737,7 +737,7 @@ Sequence can be defined using an array or a hash reference.
       }
    );
 
-   MCE->run();
+   $mce->run();
 
    -- Output (sorted afterwards, notice wid and chunk_id in output)
 
@@ -797,7 +797,7 @@ simulations. Time was measured using 1 worker to emphasize the difference.
       }
    );
 
-   MCE->run;
+   $mce->run;
 
    -- Output
 
@@ -840,7 +840,7 @@ MCE 1.510 passes 2 additional parameters ($task_id and $task_name).
       user_end   => \&user_end
    );
 
-   MCE->run();
+   $mce->run();
 
 =head2 SYNTAX for USER_FUNC with USE_SLURPIO => 0
 
@@ -866,7 +866,7 @@ e.g. $chunk_ref = [ record1, record2, record3, ... ]
       use_slurpio => 0
    );
 
-   MCE->run();
+   $mce->run();
 
 =head2 SYNTAX for USER_FUNC with USE_SLURPIO => 1
 
@@ -886,7 +886,7 @@ Here, a reference to a scalar containing the raw chunk data is processed.
       use_slurpio => 1
    );
 
-   MCE->run();
+   $mce->run();
 
 =head2 SYNTAX for USER_ERROR and USER_OUTPUT
 
@@ -927,7 +927,7 @@ Handy when wanting to filter, modify, and/or direct the output elsewhere.
       user_func   => \&user_func
    );
 
-   MCE->run();
+   $mce->run();
 
 =head2 SYNTAX for USER_TASKS and TASK_END
 
@@ -977,7 +977,7 @@ processing.
       }]
    );
 
-   MCE->run();
+   $mce->run();
 
 =head1 DEFAULT INPUT SCALAR
 
@@ -1029,7 +1029,7 @@ user_func for input_data and sequence of numbers. The following applies.
       print $_, "\n;    ## Same as $chunk_ref->[0];
    }
 
-   MCE->foreach("/path/to/file", sub {
+   $mce->foreach("/path/to/file", sub {
     # my ($mce, $chunk_ref, $chunk_id) = @_;
       print $_;         ## Same as $chunk_ref->[0];
    });
@@ -1037,7 +1037,7 @@ user_func for input_data and sequence of numbers. The following applies.
    ## However, that's not the case for the forseq method.
    ## Both $_ and $n_seq are the same when chunk_size => 1.
 
-   MCE->forseq([ 1, 9 ], sub {
+   $mce->forseq([ 1, 9 ], sub {
     # my ($mce, $n_seq, $chunk_id) = @_;
       print $_, "\n";   ## Same as $n_seq
    });
@@ -1045,13 +1045,13 @@ user_func for input_data and sequence of numbers. The following applies.
 Sequence can also be specified using an array reference. The below is the same
 as the example afterwards.
 
-   MCE->forseq( { begin => 10, end => 40, step => 2 }, ... );
+   $mce->forseq( { begin => 10, end => 40, step => 2 }, ... );
 
 The code block receives an array containing the next 5 sequences. Chunk 1
 (chunk_id = 1) contains 10,12,14,16,18. $n_seq is a reference to an array,
 same as $_, due to chunk_size being greater than 1.
 
-   MCE->forseq( [ 10, 40000, 2 ], { chunk_size => 5 }, sub {
+   $mce->forseq( [ 10, 40000, 2 ], { chunk_size => 5 }, sub {
     # my ($mce, $n_seq, $chunk_id) = @_;
       my @result;
       for my $n ( @{ $_ } ) {
@@ -1200,7 +1200,7 @@ process method.
 
    ## Arguments inside the code block are the same as for user_func.
 
-   MCE->forchunk(\@input_data, sub {
+   $mce->forchunk(\@input_data, sub {
       my ($mce, $chunk_ref, $chunk_id) = @_;
 
       foreach ( @{ $chunk_ref } ) {
@@ -1210,7 +1210,7 @@ process method.
 
    ## Passing chunk_size as an option.
 
-   MCE->forchunk(\@input_data, { chunk_size => 30 }, sub {
+   $mce->forchunk(\@input_data, { chunk_size => 30 }, sub {
       ...
    });
 
@@ -1225,7 +1225,7 @@ Arguments within the block are the same whether calling foreach or forchunk.
       max_workers => $max_workers
    );
 
-   MCE->foreach(\@input_data, sub {
+   $mce->foreach(\@input_data, sub {
       my ($mce, $chunk_ref, $chunk_id) = @_;
       my $row = $chunk_ref->[0];
       MCE->print("$chunk_id: $row\n");
@@ -1246,7 +1246,7 @@ parallelize a serial loop with MCE.
 
    ## Parallel loop via MCE.
 
-   MCE->foreach([ (0 .. $max - 1) ], sub {
+   $mce->foreach([ (0 .. $max - 1) ], sub {
       my ($mce, $chunk_ref, $chunk_id) = @_;
       my $i = $chunk_ref->[0];
       ...  ## Runs in parallel
@@ -1254,28 +1254,28 @@ parallelize a serial loop with MCE.
 
 =item ->forseq ( $sequence_spec [, { options } ], sub { ... } )
 
-Sequence can be defined using a hash or an array reference.
+Sequence can be defined using an array or hash reference.
 
    my $mce = MCE->new(
       max_workers => 3
    );
 
-   MCE->forseq({ begin => 15, end => 10, step => -1 }, sub {
-      my ($mce, $n, $chunk_id) = @_;
-      print $n, " from ", MCE->wid(), "\n";
-   });
-
-   MCE->forseq([ 20, 40 ], sub {
+   $mce->forseq([ 20, 40 ], sub {
       my ($mce, $n, $chunk_id) = @_;
       my $result = `ping 192.168.1.${n}`;
       ...
+   });
+
+   $mce->forseq({ begin => 15, end => 10, step => -1 }, sub {
+      my ($mce, $n, $chunk_id) = @_;
+      print $n, " from ", MCE->wid(), "\n";
    });
 
 MCE 1.415 allows chunk_size > 1. $n_seq is a reference pointing to an array of
 sequences below. Chunking reduces IPC overhead behind the scene. Chunk size
 is 1 when not specified.
 
-   MCE->forseq([ 20, 80 ], { chunk_size => 10 }, sub {
+   $mce->forseq([ 20, 80 ], { chunk_size => 10 }, sub {
       my ($mce, $n_seq, $chunk_id) = @_;
       for my $n ( @{ $n_seq } ) {
          my $result = `ping 192.168.1.${n}`;
@@ -1305,15 +1305,15 @@ The below will cause workers to re-spawn after each process. It doesn't really
 matter for small jobs. One can create a few MCE instances. Perhaps the code
 block is different altogether.
 
-   MCE->new( max_workers => 'auto' );
+   my $mce = MCE->new( max_workers => 'auto' );
 
-   MCE->process( {
+   $mce->process( {
       user_begin => sub { ## connect to DB },
       user_func  => sub { ## process each row },
       user_end   => sub { ## close handle to DB },
    }, \@input_data );
 
-   MCE->process( {
+   $mce->process( {
       user_begin => sub { ## connect to DB },
       user_func  => sub { ## process each file },
       user_end   => sub { ## close handle to DB },
@@ -1325,26 +1325,26 @@ Below is shown with overriding the default for max_workers.
 
    use MCE MAX_WORKERS => 'auto';
 
-   MCE->new(
+   my $mce = MCE->new(
       user_begin => sub { ## connect to DB },
       user_func  => sub { ## process each chunk or row or host },
       user_end   => sub { ## close handle to DB },
    );
 
-   MCE->spawn();     ## Not necessary, unless you want to spawn early
+   $mce->spawn();    ## Not necessary, unless you want to spawn early
 
-   MCE->process("/one/very_big_file/_mce_/will_chunk_in_parallel");
-   MCE->process(\@array_of_files_to_grep);
-   MCE->process("/path/to/host/list");
+   $mce->process("/one/very_big_file/_mce_/will_chunk_in_parallel");
+   $mce->process(\@array_of_files_to_grep);
+   $mce->process("/path/to/host/list");
 
-   MCE->process($array_ref);
-   MCE->process($array_ref, { stdout_file => $output_file });
+   $mce->process($array_ref);
+   $mce->process($array_ref, { stdout_file => $output_file });
 
    ## This was not allowed before. Fixed in 1.415.
-   MCE->process({ sequence => { begin => 10, end => 90, step 2 } });
-   MCE->process({ sequence => [ 10, 90, 2 ] });
+   $mce->process({ sequence => { begin => 10, end => 90, step 2 } });
+   $mce->process({ sequence => [ 10, 90, 2 ] });
 
-   MCE->shutdown();
+   $mce->shutdown();
 
 =item ->restart_worker ( void )
 
@@ -1360,8 +1360,8 @@ The $e->{wid} argument is no longer necessary starting with the 1.5 release.
       on_post_exit => sub {
          my ($mce, $e) = @_;
          print "$e->{wid}: $e->{pid}: status $e->{status}: $e->{msg}";
-       # MCE->restart_worker($e->{wid});  ## MCE-1.415 and below
-         MCE->restart_worker();           ## MCE-1.5 and above
+       # $mce->restart_worker($e->{wid});  ## MCE-1.415 and below
+         $mce->restart_worker();           ## MCE-1.5 and above
       },
 
       user_begin => sub {
@@ -1386,7 +1386,7 @@ The $e->{wid} argument is no longer necessary starting with the 1.5 release.
       }]
    );
 
-   MCE->run();
+   $mce->run();
 
    -- Output
 
@@ -1427,7 +1427,8 @@ process method.
 
    my $mce = MCE->new( ... );
 
-   MCE->run(0);                          ## Disables auto-shutdown
+   ## Disables auto-shutdown
+   $mce->run(0);
 
 =item ->send ( $data_ref )
 
@@ -1456,14 +1457,14 @@ immediately after receiving user data.
       }
    );
 
-   MCE->spawn();    ## Optional, send will spawn if necessary.
+   $mce->spawn();   ## Optional, send will spawn if necessary.
 
-   MCE->send( { first_name => "Theresa" } );
-   MCE->send( { first_name => "Francis" } );
-   MCE->send( { first_name => "Padre"   } );
-   MCE->send( { first_name => "Anthony" } );
+   $mce->send( { first_name => "Theresa" } );
+   $mce->send( { first_name => "Francis" } );
+   $mce->send( { first_name => "Padre"   } );
+   $mce->send( { first_name => "Anthony" } );
 
-   MCE->run(0);     ## Wait for workers to complete processing.
+   $mce->run(0);    ## Wait for workers to complete processing.
 
    -- Output
 
@@ -1480,17 +1481,17 @@ processing. Call shutdown after processing all jobs.
 
    my $mce = MCE->new( ... );
 
-   MCE->spawn();
+   $mce->spawn();
 
-   MCE->process(\@input_data_1);         ## Processing multiple arrays
-   MCE->process(\@input_data_2);
-   MCE->process(\@input_data_n);
+   $mce->process(\@input_data_1);        ## Processing multiple arrays
+   $mce->process(\@input_data_2);
+   $mce->process(\@input_data_n);
 
-   MCE->process('input_file_1');         ## Processing multiple files
-   MCE->process('input_file_2');
-   MCE->process('input_file_n');
+   $mce->process('input_file_1');        ## Processing multiple files
+   $mce->process('input_file_2');
+   $mce->process('input_file_n');
 
-   MCE->shutdown();
+   $mce->shutdown();
 
 =item ->spawn ( void )
 
@@ -1499,7 +1500,7 @@ wanting to spawn workers early.
 
    my $mce = MCE->new( ... );
 
-   MCE->spawn();
+   $mce->spawn();
 
 =item ->status ( void )
 
@@ -1510,9 +1511,9 @@ callback support.
 
    my $mce = MCE->new( ... );
 
-   MCE->run();
+   $mce->run();
 
-   my $greatest_exit_status = MCE->status();
+   my $exit_status = $mce->status();
 
 =back
 
@@ -1596,7 +1597,7 @@ for additional use-case.
       }
    );
 
-   my %h; MCE->process(\@hosts, { gather => \%h });
+   my %h; $mce->process(\@hosts, { gather => \%h });
 
    foreach my $host (@hosts) {
       print $h{"$host.out"}, "\n";
@@ -1629,7 +1630,7 @@ foreach, forchunk, forseq, and user_func.
 
    my @list = (1 .. 80);
 
-   MCE->forchunk(\@list, { chunk_size => 2 }, sub {
+   $mce->forchunk(\@list, { chunk_size => 2 }, sub {
 
       my ($mce, $chunk_ref, $chunk_id) = @_;
       MCE->last if ($chunk_id > 4);
@@ -1661,7 +1662,7 @@ foreach, forchunk, forseq, and user_func.
 
    my @list = (1 .. 80);
 
-   MCE->forchunk(\@list, { chunk_size => 4 }, sub {
+   $mce->forchunk(\@list, { chunk_size => 4 }, sub {
 
       my ($mce, $chunk_ref, $chunk_id) = @_;
       MCE->next if ($chunk_id < 20);
