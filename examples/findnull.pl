@@ -209,7 +209,7 @@ sub output_iterator {
          if ($r->{found_match}) {
             for (@{ $r->{lines} }) {
                $e = "NULL value at line " . ($_ + $total_lines) . " in $file";
-               print STDERR "Warning: ", $e, "\n";
+               print {*STDERR} "Warning: ", $e, "\n";
             }
          }
 

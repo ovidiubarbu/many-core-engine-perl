@@ -264,13 +264,13 @@ while ( @ARGV ) {
 {
    if (defined $max_count) {
       unless (looks_like_number($max_count) && $max_count >= 0) {
-         print STDERR "$prog_name: invalid max count\n";
+         print {*STDERR} "$prog_name: invalid max count\n";
          exit 2;
       }
    }
    if ($max_workers !~ /^auto/) {
       unless (looks_like_number($max_workers) && $max_workers > 0) {
-         print STDERR "$prog_name: invalid max workers\n";
+         print {*STDERR} "$prog_name: invalid max workers\n";
          exit 2;
       }
    }
@@ -287,7 +287,7 @@ while ( @ARGV ) {
       $chunk_size =    204_800 if $chunk_size <    204_800;  ## 200K
    }
    else {
-      print STDERR "$prog_name: invalid chunk size\n";
+      print {*STDERR} "$prog_name: invalid chunk size\n";
       exit 2;
    }
 }
@@ -574,7 +574,7 @@ sub process_file {
    elsif (! -e $file) {
       $exit_status = 2;
 
-      print STDERR "$prog_name: $file: No such file or directory\n"
+      print {*STDERR} "$prog_name: $file: No such file or directory\n"
          unless $no_msg;
    }
    elsif (-d $file) {

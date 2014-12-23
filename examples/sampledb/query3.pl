@@ -80,5 +80,5 @@ sub {
    MCE->gather($chunk_id, $output);
 };
 
-printf STDERR "\n## Compute time: %0.03f\n\n", time() - $start;
+printf {*STDERR} "\n## Compute time: %0.03f\n\n", time() - $start;
 

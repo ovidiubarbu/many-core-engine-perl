@@ -178,7 +178,7 @@ my $mce = MCE->new(
 
       if (@fail > 0) {
          $mce->do('failed_callback');
-         $mce->sendto('STDOUT', @fail);
+         $mce->print(@fail);
       }
    }
 );

@@ -44,7 +44,7 @@
 ##   Compute chunk_level => 'auto' to use 'file' when reading STDIN.
 ##   Set chunk_size to 8M when not specified (from 4M previously).
 ##
-## 2014-12-21  v1.010
+## 2014-12-22  v1.010
 ##   Small code refactoring.
 ##
 ###############################################################################
@@ -814,7 +814,7 @@ sub user_func_list {
    }
    else {
       if (length $output) {
-         MCE->sendto('STDOUT', $output);
+         MCE->print($output);
          $child_found_match = 1;
       }
    }

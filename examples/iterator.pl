@@ -32,8 +32,8 @@ my $s_step    = shift || 1;
 my $s_format  = shift;
 
 if ($s_begin !~ /\A\d*\.?\d*\z/) {
-   print STDERR "usage: $prog_name [ size ]\n";
-   print STDERR "usage: $prog_name [ begin end [ step [ format ] ] ]\n";
+   print {*STDERR} "usage: $prog_name [ size ]\n";
+   print {*STDERR} "usage: $prog_name [ begin end [ step [ format ] ] ]\n";
    exit;
 }
 
@@ -129,5 +129,5 @@ $mce->process( input_iterator($s_begin, $s_end, $s_step) );
 
 my $end = time;
 
-printf STDERR "\n## Compute time: %0.03f\n\n", $end - $start;
+printf {*STDERR} "\n## Compute time: %0.03f\n\n", $end - $start;
 

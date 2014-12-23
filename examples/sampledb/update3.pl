@@ -122,5 +122,5 @@ sub {
    $dbh->commit;
 };
 
-printf STDERR "\n## Compute time: %0.03f\n\n", time() - $start;
+printf {*STDERR} "\n## Compute time: %0.03f\n\n", time() - $start;
 

@@ -120,5 +120,5 @@ mce_loop {
 
 } db_iter_auto_offset($dsn, $user, $password);
 
-printf STDERR "\n## Compute time: %0.03f\n\n", time() - $start;
+printf {*STDERR} "\n## Compute time: %0.03f\n\n", time() - $start;
 

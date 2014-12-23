@@ -46,7 +46,7 @@ use MCE::Loop;
 
 sub usage {
 
-   print STDERR <<"::_USAGE_BLOCK_END_::";
+   print {*STDERR} <<"::_USAGE_BLOCK_END_::";
 
 NAME
    $prog_name -- process STDIN or FILE via an external command in parallel
@@ -138,7 +138,7 @@ my $parallel_io  = 0;
 
    if ($max_workers !~ /^auto/) {
       unless (looks_like_number($max_workers) && $max_workers > 0) {
-         print STDERR "$prog_name: $max_workers: invalid max workers\n";
+         print {*STDERR} "$prog_name: $max_workers: invalid max workers\n";
          exit 2;
       }
    }
@@ -152,7 +152,7 @@ my $parallel_io  = 0;
       }
 
       if (!looks_like_number($chunk_size) || $chunk_size < 1) {
-         print STDERR "$prog_name: $chunk_size: invalid chunk size\n";
+         print {*STDERR} "$prog_name: $chunk_size: invalid chunk size\n";
          exit 2;
       }
    }
@@ -185,11 +185,11 @@ $cmd_name = shift @ARGV;
 }
 
 if (! defined $cmd_path) {
-   print STDERR "$prog_name: $cmd_name: command not found\n";
+   print {*STDERR} "$prog_name: $cmd_name: command not found\n";
    exit 2;
 }
 if (! $is_mswin32 && ! -x $cmd_path) {
-   print STDERR "$prog_name: $cmd_name: command is not executable\n";
+   print {*STDERR} "$prog_name: $cmd_name: command is not executable\n";
    exit 2;
 }
 
@@ -202,11 +202,11 @@ if (defined $ARGV[-1] && $ARGV[-1] !~ /^-/) {
 
 if (ref $input eq '') {
    if (! -e $input) {
-      print STDERR "$prog_name: $input: No such file or directory\n";
+      print {*STDERR} "$prog_name: $input: No such file or directory\n";
       exit 2;
    }
    if (-d $input) {
-      print STDERR "$prog_name: $input: Is a directory\n";
+      print {*STDERR} "$prog_name: $input: Is a directory\n";
       exit 2;
    }
 }
