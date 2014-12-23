@@ -51,7 +51,8 @@ sub output_iterator {
    my %tmp; my $order_id = 1;
 
    return sub {
-      $tmp{$_[1]} = $_[0];
+      my ($chunk_id, $data_ref) = @_;
+      $tmp{$chunk_id} = $data_ref;
 
       while (1) {
          last unless exists $tmp{$order_id};
@@ -87,7 +88,7 @@ $mce->forchunk( \@input_data, sub {
       push @result, sqrt($_);
    }
 
-   MCE->gather(\@result, $chunk_id);
+   MCE->gather($chunk_id, \@result);
 });
 
 my $end = time;

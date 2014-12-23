@@ -181,6 +181,11 @@ my $exit_status = 0;
 
 sub display_chunk {
 
+   ## One can have this receive 2 arguments; $chunk_id and $chunk_data.
+   ## However, I want the least overhead between worker and the manager
+   ## process. MCE->freeze is called when more than 1 argument is sent.
+   ## Thus, the reason for receiving $chunk_id at the end of $_[0].
+
    my $chunk_id = substr($_[0], rindex($_[0], ':') + 1);
 
    chop $_[0] for (1 .. length($chunk_id) + 1);
@@ -195,8 +200,7 @@ sub display_chunk {
          printf "%6d\t%s", ++$lines, $_ while (<$fh>);
          close $fh;
 
-         delete $result{$order_id};
-         $order_id++;
+         delete $result{$order_id++};
       }
    }
    else {
@@ -204,8 +208,7 @@ sub display_chunk {
          last unless exists $result{$order_id};
 
          print $result{$order_id};
-         delete $result{$order_id};
-         $order_id++;
+         delete $result{$order_id++};
       }
    }
 

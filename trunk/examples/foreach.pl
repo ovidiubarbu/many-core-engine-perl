@@ -49,7 +49,8 @@ sub output_iterator {
    my %tmp; my $order_id = 1;
 
    return sub {
-      $tmp{$_[1]} = $_[0];
+      my ($chunk_id, $data) = @_;
+      $tmp{$chunk_id} = $data;
 
       while (1) {
          last unless exists $tmp{$order_id};
@@ -76,8 +77,7 @@ my $start = time;
 
 $mce->foreach( \@input_data, sub {
    my ($mce, $chunk_ref, $chunk_id) = @_;
-   my $result = sqrt($chunk_ref->[0]);
-   MCE->gather($result, $chunk_id);
+   MCE->gather($chunk_id, sqrt($chunk_ref->[0]));
 });
 
 my $end = time;

@@ -113,8 +113,8 @@ results.
       my %tmp; my $order_id = 1;
 
       return sub {
-         my ($result, $chunk_id) = @_;
-         $tmp{$chunk_id} = $result;
+         my ($chunk_id, $data) = @_;
+         $tmp{$chunk_id} = $data;
 
          while (1) {
             last unless (exists $tmp{$order_id});
@@ -135,9 +135,7 @@ results.
 
       user_func => sub {
          my ($mce, $chunk_ref, $chunk_id) = @_;
-         my $result = sqrt($chunk_ref->[0]);
-
-         MCE->gather($result, $chunk_id);
+         MCE->gather($chunk_id, sqrt($chunk_ref->[0]));
       }
    );
 
@@ -191,8 +189,8 @@ containing up to $chunk_size items is sent to the next available worker.
       my %tmp; my $order_id = 1;
 
       return sub {
-         my ($result, $chunk_id) = @_;
-         $tmp{$chunk_id} = $result;
+         my ($chunk_id, $data_ref) = @_;
+         $tmp{$chunk_id} = $data_ref;
 
          while (1) {
             last unless (exists $tmp{$order_id});
@@ -222,7 +220,7 @@ containing up to $chunk_size items is sent to the next available worker.
             push @result, sqrt($_);
          }
 
-         MCE->gather(\@result, $chunk_id);
+         MCE->gather($chunk_id, \@result);
       }
    );
 

@@ -337,7 +337,7 @@ sub aggregate_count {
 
 sub display_result {
 
-   my ($result, $chunk_id) = @_;
+   my ($chunk_id, $result) = @_;
 
    return if ($abort_job);
    $result{$chunk_id} = $result;
@@ -370,9 +370,7 @@ sub display_result {
       }
 
       $total_lines += $r->{line_count} if ($n_flag);
-
-      delete $result{$order_id};
-      $order_id++;
+      delete $result{$order_id++};
    }
 
    return;
@@ -535,7 +533,7 @@ sub user_func {
       'lines' => \@lines
    );
 
-   MCE->do('display_result', \%result, $chunk_id);
+   MCE->do('display_result', $chunk_id, \%result);
 
    return;
 }

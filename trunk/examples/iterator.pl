@@ -80,8 +80,10 @@ sub output_iterator {
    my (%result_n, %result_d); my $order_id = 1;
 
    return sub {
-      $result_n{ $_[2] } = $_[0];
-      $result_d{ $_[2] } = $_[1];
+      my ($chunk_id, $n, $data) = @_;
+
+      $result_n{ $chunk_id } = $n;
+      $result_d{ $chunk_id } = $data;
 
       while (1) {
          last unless exists $result_d{$order_id};
@@ -114,10 +116,10 @@ my $mce = MCE->new(
 
       if (defined $s_format) {
          my $n = sprintf "%${s_format}", $_;
-         MCE->gather($n, sqrt($n), $chunk_id);
+         MCE->gather($chunk_id, $n, sqrt($n));
       }
       else {
-         MCE->gather($_, sqrt($_), $chunk_id);
+         MCE->gather($chunk_id, $_, sqrt($_));
       }
    }
 
