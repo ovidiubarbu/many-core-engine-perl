@@ -185,12 +185,13 @@ sub output {
 sub gather_iterator {
 
    my ($out_fh, $err_fh) = @_;
-   my (%tmp, $path); my $order_id = 1;
+   my %tmp; my $order_id = 1;
 
    return sub {
+      my ($chunk_id, $path, $status) = @_;
 
-      $tmp{$_[0]}  = $_[1]; 
-      $exit_status = $_[2] if ($_[2] > $exit_status);
+      $tmp{$chunk_id} = $path; 
+      $exit_status = $status if ($status > $exit_status);
 
       while (1) {
          last unless exists $tmp{$order_id};

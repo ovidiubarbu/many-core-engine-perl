@@ -56,20 +56,22 @@ unless (defined $s_end) {
 ## Make an output iterator for gather. Output order is preserved.
 
 sub output_iterator {
-   my (%result_n, %result); my $order_id = 1;
+   my (%result_n, %result_d); my $order_id = 1;
 
    return sub {
-      $result_n{$_[2]} = $_[0];
-      $result{  $_[2]} = $_[1];
+      my ($chunk_id, $n, $data) = @_;
+
+      $result_n{$chunk_id} = $n;
+      $result_d{$chunk_id} = $data;
 
       while (1) {
-         last unless exists $result{$order_id};
+         last unless exists $result_d{$order_id};
 
          printf "n: %s sqrt(n): %f\n",
-            $result_n{$order_id}, $result{$order_id};
+            $result_n{$order_id}, $result_d{$order_id};
 
          delete $result_n{$order_id};
-         delete $result{$order_id};
+         delete $result_d{$order_id};
 
          $order_id++;
       }
@@ -85,16 +87,14 @@ my $mce = MCE->new(
 );
 
 my $seq = {
-   begin => $s_begin, end => $s_end, step => $s_step,
-   format => $s_format
+   begin => $s_begin, end => $s_end, step => $s_step, format => $s_format
 };
 
 my $start = time;
 
 $mce->forseq( $seq, sub {
    my ($mce, $n, $chunk_id) = @_;
-   my $result = sqrt($n);
-   MCE->gather($n, $result, $chunk_id);
+   MCE->gather($chunk_id, $n, sqrt($n));
 });
 
 my $end = time;

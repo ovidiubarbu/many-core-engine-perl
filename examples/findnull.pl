@@ -180,7 +180,7 @@ sub user_func {
       'lines' => \@lines
    );
 
-   MCE->gather(\%result, $chunk_id);
+   MCE->gather($chunk_id, \%result);
 
    return;
 }
@@ -199,8 +199,8 @@ sub output_iterator {
    my %tmp; my $order_id = 1;
 
    return sub {
-      my ($result, $chunk_id) = @_;
-      $tmp{$chunk_id} = $result;
+      my ($chunk_id, $data_ref) = @_;
+      $tmp{$chunk_id} = $data_ref;
 
       while (1) {
          last unless exists $tmp{$order_id};
