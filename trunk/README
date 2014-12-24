@@ -3,7 +3,7 @@
  # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * #
 ###############################################################################
 
-This document describes MCE version 1.521
+This document describes MCE version 1.521.
 
  Many-Core Engine (MCE) for Perl helps enable a new level of performance by
  maximizing all available cores. MCE spawns a pool of workers and therefore
@@ -12,57 +12,60 @@ This document describes MCE version 1.521
  parallel workers. MCE enhances that model by adding the ability to chunk
  the next n elements from the input stream to the next available worker.
 
- Both chunking and input data are optional in MCE. One may simply use MCE to
- have many workers run in parallel.
-
  MCE uses domain sockets for IPC versus pipes. One day, a physical box will
  have hundreds of cores. MCE can spawn 960 workers (via fork) for ulimit re-
  porting 1024 allowed for max user processes. Other parallel implementations
  using pipes cannot do this (only about half of ulimit -u).
 
+Chunking in MCE.
+
+ Input data is optional in MCE. Thus, input data is not required to run MCE.
+
+ MCE iterates over input data in chunks. Workers can be spawned prior to
+ creating or obtaining data. MCE is a chunking engine. It does not divide
+ the input equally by the number of workers. Instead, it chunks from
+ start till end.
+
+ Imagine input data as a highway. Now think of MCE (automobile) on the
+ highway. Basically, data can be larger than physical memory allows.
+ The chunking nature of MCE makes this possible.
+
+    input_data => '/path/to/file',  ## process a file in parallel
+    input_data => \@array,          ## process an array in parallel
+    input_data => \*FileHandle,     ## process a filehandle in parallel
+    input_data => \$scalar,         ## treated like a memory-based file
+    input_data => \&iterator,       ## allows for custom input iterator
+
+ MCE can iterate over a sequence of numbers mathematically if all you need
+ is a numeric iterator. Check out forseq.pl and seq_demo.pl.
+
+    sequence => { begin => 1, end => 100, step => 2 },
+    chunk_size => 20,      ## Worker receives the next 20 sequences
+
 Use Cases for MCE.
 
- 1. Both forking and threading are supported. Workers are children by default
-    (via fork). Including threads in your script will have workers spawn as
-    threads unless use_threads => 0 is specified.
+ 1. Perl is not compiled with threads support and wanting something similar
+    to Thread::Queue. Check out MCE::Flow and MCE::Queue.
 
- 2. MCE can be used to process a single (large) file or process many (small)
-    files in parallel. Performance against a single file is as fast as MMAP
-    IO when specifying use_slurpio => 1.
+ 2. Wanting multiple roles and each role uniquely configured with number of
+    workers and function to execute. Check out flow_demo.pl.
 
- 3. MCE iterates over input data in chunks. Workers can be spawned prior to
-    creating or obtaining data. MCE is a chunking engine. It does not divide
-    the input equally by the number of workers. Instead, it chunks from start
-    till end.
+ 3. Wanting to process rows from a database in parallel. Check out sampledb
+    under the examples directory.
 
-       input_data => '/path/to/file',    ## Scalar is treated as a file
-       input_data => \$scalar,           ## Treated like a memory-based file
-       input_data => \@array,            ## A reference to an array
-       input_data => \*FileHandle,       ## Process a FH in parallel
-       input_data => \&iterator,         ## A reference to an iterator
+ 4. MCE can be used to process a single (large) file or process many (small)
+    files in parallel. Take bin/mce_grep, a wrapper around the grep binary,
+    for a test drive. MCE also includes egrep.pl for a pure Perl grep
+    implementation.
 
-    Think of input data as the highway. Now think of the automobile as being
-    MCE. Data can be larger than physical memory on the box. The chunking
-    nature makes this possible.
+ 5. A large telecom company wanting to poll millions of devices via SNMP.
+    This is possible with MCE, AnyEvent::SNMP, and Net::SNMP. Think of
+    having 200 workers and each worker connecting to 300 devices with
+    AnyEvent. Each worker processes 300 devices simultaneously.
 
- 4. If all you need is a numeric iterator, MCE can iterate over a sequence
-    of numbers mathematically. This too can be chunked by specifying chunk
-    size.
+ 6. Wanting to access many hosts in parallel via SSH or TCP/IP.
 
-       sequence => { begin => 1, end => 100, step => 2 },
-       chunk_size => 20,      ## Worker receives the next 20 sequences
-
-    Look at the examples included with MCE. The foreach.pl example is very
-    communication intensive whereas forchunk.pl requires much less overhead.
-
-       foreach.pl, forchunk.pl, and forseq.pl
-
- 5. For another example, a worker receives up to 600 host names or IPs per
-    chunk. The worker uses SNMP and an AnyEvent library. Imagine having
-    millions of hosts to process. One simply cannot create millions of
-    connections all at once. Chunking makes this trivial to do.
-
-Take MCE for a spin.
+ ...
 
 ###############################################################################
  # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * #
@@ -79,26 +82,36 @@ INSTALLATION
 
 DEPENDENCIES
 
- This module requires Perl 5.8.0 or later.
+ This module requires Perl 5.8.0 or later to run.
 
-    By default, MCE does forking (spawns child processes).
-    MCE also supports threads via 2 threading libraries.
+    MCE spawns child processes by default, not threads.
+
+    However, MCE supports threads via 2 threading libraries if threads
+    is desired.
 
     The use of threads in MCE requires that you include threads support
-    prior to loading MCE.
+    prior to loading MCE. The use_threads option defaults to 1 when a
+    thread library is loaded. Threads is loaded automatically for
+    $^O eq 'MSWin32'.
 
-       use threads;                  use forks;
-       use threads::shared;   (or)   use forks::shared;
+    use threads;                use forks;
+    use threads::shared;  (or)  use forks::shared;
+    use MCE;                    use MCE;
 
-       use MCE;                      use MCE;
+ MCE utilizes the following modules:
 
- This module requires these other modules and libraries:
-
+    bytes
+    constant
+    Carp
     Fcntl
-    Socket
-    Storable 2.04 or later
     File::Path
-    Test::More 0.45 or later (for testing)
+    IO::Handle
+    Scalar::Util
+    Socket
+    Storable 2.04+
+    Symbol
+    Test::More 0.45+ (for testing only via make test)
+    Time::HiRes
 
 COPYRIGHT AND LICENCE
 
