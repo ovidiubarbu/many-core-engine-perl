@@ -13,12 +13,13 @@ This is a simplistic use case of MCE running with 4 workers.
 
    ## Using the Core API.
 
-      use MCE max_workers => 4;
+      use MCE;
 
       my $mce = MCE->new(
+         max_workers => 4,
          user_func => sub {
             my ($mce) = @_;
-            MCE->say("Hello from " . MCE->wid);
+            $mce->say("Hello from " . $mce->wid);
          }
       );
 
@@ -210,21 +211,21 @@ Below, a new instance is configured with all available options.
 
           ## Or to file; user_error and user_output take precedence.
 
-      flush_file => 1,                   ## Default 0
+      flush_file   => 1,                 ## Default 0
       flush_stderr => 1,                 ## Default 0
       flush_stdout => 1,                 ## Default 0
 
           ## Flush sendto file, standard error, or standard output.
 
       interval => {
-          delay => 0.005 [, max_nodes => 4, node_id => 1 ]
+          delay => 0.007 [, max_nodes => 4, node_id => 1 ]
       },
 
           ## For use with the yield method introduced in MCE 1.5.
           ## Both max_nodes & node_id are optional and default to 1.
           ## Delay is the amount of time between intervals.
 
-          ## interval => 0.005           ## Shorter; MCE 1.506+
+          ## interval => 0.007           ## Shorter; MCE 1.506+
 
       sequence => {                      ## Default undef
           begin => -1, end => 1 [, step => 0.1 [, format => "%4.1f" ] ]
@@ -334,10 +335,9 @@ Storable for serialization.
 
 =head2 RUNNING
 
-Run calls spawn, submits job; workers call user_begin, user_func, and
-user_end. Run shuts down workers afterwards. Call the spawn method early
-when the need arises for large data structures within the main process
-itself prior to running.
+Run calls spawn, submits the job; workers call user_begin, user_func, and
+user_end. Run shuts down workers afterwards. Call spawn whenever the need
+arises for large data structures prior to running.
 
    $mce->spawn;                          ## Call early if desired
 
@@ -360,7 +360,7 @@ itself prior to running.
 
 Often times, one may want to capture the exit status. The on_post_exit option,
 if defined, is executed immediately by the manager process after a worker exits
-via exit (children), MCE->exit (children and threads), or die.
+via exit (children only), MCE->exit (children and threads), or die.
 
 The format of $e->{pid} is PID_123 for children and THR_123 for threads.
 
@@ -851,7 +851,7 @@ Time was measured using 1 worker to emphasize the difference.
 
 The user_begin and user_end options, if specified, behave similarly to
 awk 'BEGIN { begin } { func } { func } ... END { end }'. These are called
-once per each worker during a run.
+once per each worker during each run.
 
 MCE 1.510 passes 2 additional parameters ($task_id and $task_name).
 
@@ -969,7 +969,7 @@ Handy when wanting to filter, modify, and/or direct the output elsewhere.
 =head2 SYNTAX for USER_TASKS and TASK_END
 
 This option takes an array of tasks. Each task allows up to 16 options.
-Input_data, RS, and use_slurpio can be defined inside the first task or
+Input_data, RS, and use_slurpio may be defined inside the first task or
 at the top level, otherwise ignored under other sub-tasks.
 
    max_workers, chunk_size, input_data, interval, sequence,
@@ -1036,7 +1036,7 @@ user_func for input_data and sequence of numbers. The following applies.
 =item use_slurpio => 1
 
    $_ is a reference to the buffer e.g. $_ = \$_buffer;
-   $_ is a ref regardless of whether chunk_size is 1 or greater
+   $_ is a reference regardless of whether chunk_size is 1 or greater
 
    user_func => sub {
     # my ($mce, $chunk_ref, $chunk_id) = @_;
@@ -1096,7 +1096,7 @@ as the example afterwards.
 
 The code block receives an array containing the next 5 sequences. Chunk 1
 (chunk_id 1) contains 10,12,14,16,18. $n_seq is a reference to an array,
-same as $_, due to chunk_size greater than 1.
+same as $_, due to chunk_size being greater than 1.
 
    $mce->forseq( [ 10, 40000, 2 ], { chunk_size => 5 }, sub {
     # my ($mce, $n_seq, $chunk_id) = @_;
@@ -1345,8 +1345,7 @@ Options remain persistent going forward unless changed. Setting user_begin,
 user_end, or user_func will cause already spawned workers to shut down and
 re-spawn automatically. Therefore, define these during instantiation.
 
-The below will cause workers to re-spawn after each process. It doesn't really
-matter for small jobs.
+The below will cause workers to re-spawn after running.
 
    my $mce = MCE->new( max_workers => 'auto' );
 
@@ -1362,9 +1361,7 @@ matter for small jobs.
       user_end   => sub { ## close handle to DB },
    }, "/list/of/files" );
 
-For persistent workers, better to do the following instead. Workers will
-stay alive until told to shut down or during the exiting of the script.
-Below is shown with overriding the default for max_workers.
+Do the following if wanting workers to persist between jobs.
 
    use MCE max_workers => 'auto';
 
@@ -1374,7 +1371,7 @@ Below is shown with overriding the default for max_workers.
       user_end   => sub { ## close handle to DB },
    );
 
-   $mce->spawn;      ## Spawn early if required
+   $mce->spawn;      ## Spawn early if desired
 
    $mce->process("/one/very_big_file/_mce_/will_chunk_in_parallel");
    $mce->process(\@array_of_files_to_grep);
@@ -1465,7 +1462,7 @@ Press [ctrl-c] to terminate the script.
 
 The run method, by default, spawns workers, processes once, and shuts down
 afterwards. Specify 0 for $auto_shutdown when wanting workers to persist
-after running (default is 1).
+after running (default 1).
 
 Specifying options is optional. Valid options are the same as for the
 process method.
@@ -1485,8 +1482,7 @@ data as $mce->{user_data}.
 The data which can be sent is restricted to an ARRAY, HASH, or PDL reference.
 Workers begin processing immediately after receiving data. Workers set
 $mce->{user_data} to undef after processing. One cannot specify input_data,
-sequence, or user_tasks for the MCE instance in order to receive user data
-via the "send" method.
+sequence, or user_tasks when using the "send" method.
 
 Passing any options e.g. run(0, { options }) is ignored due to workers running
 immediately after receiving user data. There is no guarantee to which worker
@@ -1524,8 +1520,8 @@ will receive data first. It depends on which worker is available awaiting data.
 =item ->shutdown ( void )
 
 The run method will automatically spawn workers, run once, and shutdown workers
-automatically. Workers persist after calling the process method. Call shutdown
-after processing all jobs.
+automatically. Workers persist after running below. Shutdown may be called as
+needed or prior to exiting.
 
    my $mce = MCE->new( ... );
 
@@ -1535,6 +1531,8 @@ after processing all jobs.
    $mce->process(\@input_data_2);
    $mce->process(\@input_data_n);
 
+   $mce->shutdown;
+
    $mce->process('input_file_1');        ## Processing multiple files
    $mce->process('input_file_2');
    $mce->process('input_file_n');
@@ -1543,8 +1541,8 @@ after processing all jobs.
 
 =item ->spawn ( void )
 
-Workers are normally spawned automatically. The spawn method is beneficial when
-spawning workers early is desired.
+Workers are normally spawned automatically. The spawn method allows one to
+spawn workers early if so desired.
 
    my $mce = MCE->new( ... );
 
@@ -1552,10 +1550,8 @@ spawning workers early is desired.
 
 =item ->status ( void )
 
-The greatest exit status is saved among workers exiting during a run. Call this
-after running or processing to check if any worker exited with a non-zero value.
-For more granularity, look at the on_post_exit or on_post_run options for
-callback support.
+The greatest exit status is saved among workers while running. Look at
+the on_post_exit or on_post_run options for callback support.
 
    my $mce = MCE->new( ... );
 
@@ -1573,10 +1569,9 @@ Methods listed below are callable by workers only.
 
 =item ->do ( 'callback_func' [, $arg1, ... ] )
 
-MCE can serialized data transfers from worker processes via helper functions
-do & sendto. The manager process processes these serially. This utilizes
-the Storable Perl module for passing data from a worker process to the
-manager process. The callback function can optionally return a reply.
+MCE serializes data transfers from a worker process via helper functions
+do & sendto to the manager process. The callback function can optionally
+return a reply.
 
    [ $reply = ] MCE->do('callback' [, $arg1, ... ]);
 
@@ -1600,9 +1595,9 @@ MCE knows if wanting a void, list, hash, or a scalar return value.
 
 =item ->exit ( [ $status [, $message [, $id ] ] ] )
 
-Worker exits from MCE. $id (optional) can be used to pass the primary key
-or a string along with the message. Please look at the on_post_exit and
-on_post_run options for callback support.
+A worker exits from MCE entirely. $id (optional) can be used for passing the
+primary key or a string along with the message. Look at the on_post_exit
+or on_post_run options for callback support.
 
    MCE->exit;           ## default 0
    MCE->exit(1);
@@ -1675,8 +1670,8 @@ for additional use-case.
 
 =item ->last ( void )
 
-Worker leaves the chunking loop or user func immediately. Callable from inside
-foreach, forchunk, forseq, and user_func.
+Worker leaves the chunking loop or user_func block immediately. Callable from
+inside foreach, forchunk, forseq, and user_func.
 
    use MCE;
 
@@ -1924,46 +1919,46 @@ MCE->sync with MCE->do or output serialization methods inside a loop.
 
 =item ->yield ( void )
 
-There may be times when the MCE driven app is too fast. The interval option
-combined with the yield method, both introduced with MCE 1.5, allows one to
-enable the "grace" factor for the app.
+There may be on occasion when the MCE driven app is too fast. The interval
+option combined with the yield method, both introduced with MCE 1.5, allows
+one to throttle the app. It adds a "grace" factor to the design.
 
-A use case is an app configured with 200 workers running on a 24 logical way
-box. Data is polled from the database containing over 2.5 million rows. Workers
-chunk away at 300 rows per chunk and perform SNMP gets (300 sockets per worker)
-to poll 25 metrics from each device. With this scenario, the load on the box,
-at some point, rises to 90+. In addition, IP_Tables reaches its contention
-point causing the entire app to fail.
+A use case is an app configured with 100 workers running on a 24 logical way
+box. Data is polled from a database containing over 2.5 million rows. Workers
+chunk away at 300 rows per chunk performing SNMP gets (300 sockets per worker)
+polling 25 metrics from each device. With this scenario, the load on the box
+may rise beyond 90+. In addition, IP_Tables may reach its contention point
+causing the entire application to fail.
 
-The above is solved by simply having workers yield among themselves in a
-synchronized fashion. A delay of 0.006 seconds between intervals is all that's
-needed. The load on the box hovers between 23 ~ 27 for the duration of the run.
-The actual poll completes in under 17 minutes time. This is quite fast
-considering the app polls 62,500,000 metrics combined. The math equates to
-3,676,470 per minute or rather 61,275 per second from a single node.
+The scenario above is solved by simply having workers yield among themselves
+in a synchronized fashion. A delay of 0.007 seconds between intervals is all
+that's needed. The load on the box will hover between 23 ~ 27 for the duration
+of the run. Polling completes in under 17 minutes time. This is quite fast
+considering the app polls 62.5 million metrics combined. The math equates
+to 3,676,470 per minute or rather 61,275 per second from a single box.
 
-   ## Both max_nodes and node_id are optional (default is 1).
+   ## Both max_nodes and node_id are optional (default 1).
 
    interval => {
-      delay => 0.006, max_nodes => $max_nodes, node_id => $node_id
+      delay => 0.007, max_nodes => $max_nodes, node_id => $node_id
    }
 
 A 4 node setup can poll 10 million devices without the additional overhead of a
 distribution agent. The difference between the 4 nodes are simply node_id and
-the where clause used to query the data. The mac addresses are random such that
-the data divides equally to any power of 2. The distribution key lies in the
-mac address itself. In fact, the 2nd character from the right is all that's
-needed to maximize on the power of randomness for mac addresses.
+the where clause used to query the database. The mac addresses are random such
+that the data divides equally to any power of 2. The distribution key lies in
+the mac address itself. In fact, the 2nd character from the right is sufficient
+for maximizing on the power of randomness for equal distribution.
 
    Query NodeID 1: ... AND substr(MAC, -2, 1) IN ('0', '1', '2', '3')
    Query NodeID 2: ... AND substr(MAC, -2, 1) IN ('4', '5', '6', '7')
    Query NodeID 3: ... AND substr(MAC, -2, 1) IN ('8', '9', 'A', 'B')
    Query NodeID 4: ... AND substr(MAC, -2, 1) IN ('C', 'D', 'E', 'F')
 
-The user_tasks is configured to simulate 4 nodes below. The demonstration uses
-2 workers to minimize the output size. Input is from the sequence option.
+Below, the user_tasks is configured to simulate 4 nodes. This demonstration
+uses 2 workers to minimize the output size. Input is from the sequence option.
 
-   use Time::HiRes 'time';
+   use Time::HiRes qw(time);
    use MCE;
 
    my $d = shift || 0.1;
@@ -2084,7 +2079,7 @@ The user_tasks is configured to simulate 4 nodes below. The demonstration uses
    Node  3: 1374807979.74633 -- Worker  2:      0.80000 -- Seq_N  18
    Node  4: 1374807979.84636 -- Worker  2:      0.80000 -- Seq_N  24
 
-The interval.pl example is included with MCE.
+The interval.pl example above is included with MCE.
 
 =back
 
