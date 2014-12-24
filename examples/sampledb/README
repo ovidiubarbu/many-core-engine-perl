@@ -36,13 +36,13 @@
  ## Running ##################################################################
 
  Copy the sampledb dir to a writeable location. YMMV as far as running times.
- Testing was completed on a CentOS 7 VM (2.6 GHz Intel Core i7, Perl 5.16.3)
+ Testing was completed on a CentOS 7 VM (2.6 GHz Intel Core i7, 1600 MHz RAM)
  under /dev/shm/.
 
- 1) perl create.pl 100000                  0.332s ; 100k rows ; 2.1MB
+ 1) perl create.pl 100000                  0.322s ; 100k rows ; ~ 2.0MB
 
- 2) perl query1.pl  |tail                  4.965s ; w/ MCE->printf(...)
-    perl query1.pl                         3.153s ; no MCE->printf(...)
+ 2) perl query1.pl  |tail                  4.933s ; w/ MCE->printf(...)
+    perl query1.pl                         3.122s ; no MCE->printf(...)
 
     perl query2.pl  |tail                  0.165s ; chunk_size =>  100
     perl query2.pl  |tail                  0.125s ; chunk_size =>  300
@@ -55,11 +55,11 @@
  3) perl update1.pl >/dev/null            21.163s ; prefetch size: 300
                                                     one update per commit
 
-    perl update2.pl >/dev/null             3.655s ; chunk_size =>  100
-    perl update2.pl >/dev/null             1.155s ; chunk_size =>  300
-    perl update2.pl >/dev/null             0.601s ; chunk_size =>  900
+    perl update2.pl >/dev/null             2.931s ; chunk_size =>  100
+    perl update2.pl >/dev/null             0.963s ; chunk_size =>  300
+    perl update2.pl >/dev/null             0.532s ; chunk_size =>  900
 
-    perl update3.pl >/dev/null             3.658s ; chunk_size =>  100
-    perl update3.pl >/dev/null             1.154s ; chunk_size =>  300
-    perl update3.pl >/dev/null             0.603s ; chunk_size =>  900
+    perl update3.pl >/dev/null             2.936s ; chunk_size =>  100
+    perl update3.pl >/dev/null             0.961s ; chunk_size =>  300
+    perl update3.pl >/dev/null             0.537s ; chunk_size =>  900
 

@@ -9,14 +9,14 @@ This document describes MCE::Core version 1.521
 
 =head1 SYNOPSIS
 
-This is a simplistic use case of MCE running with 4 workers.
+This is a simplistic use case of MCE running with 5 workers.
 
-   ## Using the Core API
+   ## Construction using the Core API
 
       use MCE;
 
       my $mce = MCE->new(
-         max_workers => 4,
+         max_workers => 5,
          user_func => sub {
             my ($mce) = @_;
             $mce->say("Hello from " . $mce->wid);
@@ -25,9 +25,9 @@ This is a simplistic use case of MCE running with 4 workers.
 
       $mce->run;
 
-   ## Or a MCE model
+   ## Construction using a MCE model
 
-      use MCE::Flow max_workers => 4;
+      use MCE::Flow max_workers => 5;
 
       mce_flow sub {
          my ($mce) = @_;
@@ -36,10 +36,11 @@ This is a simplistic use case of MCE running with 4 workers.
 
    -- Output
 
-   Hello from 3
-   Hello from 1
    Hello from 2
    Hello from 4
+   Hello from 5
+   Hello from 1
+   Hello from 3
 
 =head2 ->new ( [ options ] )
 
