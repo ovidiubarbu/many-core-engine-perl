@@ -85,6 +85,9 @@ MCE::Loop::init {
          FetchHashKeyName => 'NAME_lc'
       }) or die $DBI::errstr;
 
+      $mce->{dbh}->do('PRAGMA synchronous = OFF');
+      $mce->{dbh}->do('PRAGMA journal_mode = MEMORY');
+
       $mce->{upd} = $mce->{dbh}->prepare(
          "UPDATE seq SET value1 = ?, value2 = ? WHERE seq_id = ?"
       );

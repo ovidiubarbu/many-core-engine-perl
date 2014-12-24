@@ -43,6 +43,8 @@ my $dbh = DBI->connect($dsn, $user, $password, {
 
 exit($?) unless -e $db_file;
 
+$dbh->do('PRAGMA page_size = 4096');
+
 ###############################################################################
 
 my ($sql, $sth);
