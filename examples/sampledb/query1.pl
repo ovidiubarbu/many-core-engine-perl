@@ -36,14 +36,14 @@ sub db_iter {
    my $sth = $dbh->prepare(
       "SELECT seq_id, value1, value2 FROM seq ORDER BY seq_id"
    );
-   $sth->execute();
+   $sth->execute;
 
    return sub {
       if (my @row = $sth->fetchrow_array) {
          return @row;
       }
       return;
-   }
+   };
 }
 
 ###############################################################################
@@ -58,5 +58,5 @@ mce_loop {
 
 } db_iter($dsn, $user, $password);
 
-printf {*STDERR} "\n## Compute time: %0.03f\n\n", time() - $start;
+printf {*STDERR} "\n## Compute time: %0.03f\n\n", time - $start;
 

@@ -17,7 +17,7 @@ use MCE;
 use Thread::Queue;
 
 my $D = Thread::Queue->new($ARGV[0] || '.');
-my $F = Thread::Queue->new();
+my $F = Thread::Queue->new;
 
 ## Glob() is not thread-safe in Perl 5.16.x; okay < 5.16; fixed in 5.18.2.
 ## Run with perl5.12 on Mavericks. Not all OS vendors have patched 5.16.x.

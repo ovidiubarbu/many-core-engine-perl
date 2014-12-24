@@ -36,7 +36,7 @@ sub db_iter_client_server {
    my $sth = $dbh->prepare(
       "SELECT seq_id, value1, value2 FROM seq"
    );
-   $sth->execute();
+   $sth->execute;
 
    return sub {
       my ($chunk_size) = @_;
@@ -44,7 +44,7 @@ sub db_iter_client_server {
          return @{ $rows_ref };
       }
       return;
-   }
+   };
 }
 
 sub db_iter_auto_offset {
@@ -67,7 +67,7 @@ sub db_iter_auto_offset {
          return @{ $rows_ref };
       }
       return;
-   }
+   };
 }
 
 ###############################################################################
@@ -122,5 +122,5 @@ sub {
    $dbh->commit;
 };
 
-printf {*STDERR} "\n## Compute time: %0.03f\n\n", time() - $start;
+printf {*STDERR} "\n## Compute time: %0.03f\n\n", time - $start;
 

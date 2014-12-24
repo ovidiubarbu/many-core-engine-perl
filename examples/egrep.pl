@@ -350,7 +350,7 @@ sub display_result {
          $found_match = 1;
 
          if ($q_flag) {
-            MCE->abort(); $abort_all = $abort_job = 1;
+            MCE->abort; $abort_all = $abort_job = 1;
             last;
          }
          for my $i (0 .. @{ $r->{matches} } - 1) {
@@ -363,7 +363,7 @@ sub display_result {
             }
 
             if ($max_count && $max_count == $total_found) {
-               MCE->abort(); $abort_job = 1;
+               MCE->abort; $abort_job = 1;
                last;
             }
          }
@@ -379,7 +379,7 @@ sub display_result {
 sub report_match {
 
    if (!$abort_job) {
-      MCE->abort();
+      MCE->abort;
       $abort_all = 1 if $q_flag;
       $abort_job = $total_found = 1;
    }
@@ -645,7 +645,7 @@ else {
 ##
 ###############################################################################
 
-MCE->shutdown();
+MCE->shutdown;
 
 if (!$q_flag && $exit_status) {
    exit($exit_status);

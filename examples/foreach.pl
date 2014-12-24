@@ -45,7 +45,7 @@ my @input_data = (0 .. $size - 1);
 
 ## Make an output iterator for gather. Output order is preserved.
 
-sub output_iterator {
+sub preserve_order {
    my %tmp; my $order_id = 1;
 
    return sub {
@@ -68,7 +68,7 @@ sub output_iterator {
 ## Configure MCE.
 
 my $mce = MCE->new(
-   max_workers => 3, gather => output_iterator()
+   max_workers => 3, gather => preserve_order
 );
 
 ## Use $chunk_ref->[0] or $_ to retrieve the single element.

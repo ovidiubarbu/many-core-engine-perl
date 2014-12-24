@@ -17,22 +17,21 @@ use Time::HiRes 'sleep';
 sub user_func {
    my ($mce, $seq_n, $chunk_id) = @_;
 
-   my $wid      = $mce->wid();
-   my $task_id  = $mce->task_id();
-   my $task_wid = $mce->task_wid();
+   my $wid      = MCE->wid;
+   my $task_id  = MCE->task_id;
+   my $task_wid = MCE->task_wid;
 
    if (ref $seq_n eq 'ARRAY') {
-      ## Received the next "chunked" sequence of numbers
-      ## e.g. when chunk_size > 1, $seq_n will be an array ref above
+      ## seq_n or $_ is an array reference when chunk_size > 1
       foreach (@{ $seq_n }) {
-         $mce->printf(
+         MCE->printf(
             "task_id %d: seq_n %s: chunk_id %d: wid %d: task_wid %d\n",
             $task_id,    $_,       $chunk_id,   $wid,   $task_wid
          );
       }
    }
    else {
-      $mce->printf(
+      MCE->printf(
          "task_id %d: seq_n %s: chunk_id %d: wid %d: task_wid %d\n",
          $task_id,    $seq_n,   $chunk_id,   $wid,   $task_wid
       );
@@ -43,7 +42,7 @@ sub user_func {
    return;
 }
 
-## Each task can be configured independently.
+## Each task can be configured uniquely.
 
 my $mce = MCE->new(
    user_tasks => [{
@@ -64,5 +63,5 @@ my $mce = MCE->new(
    }]
 );
 
-$mce->run();
+$mce->run;
 

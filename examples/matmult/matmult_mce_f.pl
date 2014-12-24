@@ -61,7 +61,7 @@ $mce->run(0, {
 
 my $end = time;
 
-$mce->shutdown();
+$mce->shutdown;
 
 ## Print results -- use same pairs to match David Mertens' output.
 printf "\n## $prog_name $tam: compute time: %0.03f secs\n\n", $end - $start;

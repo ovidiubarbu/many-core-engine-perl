@@ -160,7 +160,7 @@ sub strassen {
    sum_m($b21, $b22, $t2, $nTam);
    $mce->send([ $t1, $t2, 7, $nTam ]);
 
-   $mce->run();
+   $mce->run;
 
    $p1 = $p[1]; $p2 = $p[2]; $p3 = $p[3]; $p4 = $p[4];
    $p5 = $p[5]; $p6 = $p[6]; $p7 = $p[7];

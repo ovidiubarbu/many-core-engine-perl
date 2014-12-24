@@ -36,14 +36,14 @@ sub db_iter_client_server {
    my $sth = $dbh->prepare(
       "SELECT seq_id, value1, value2 FROM seq"
    );
-   $sth->execute();
+   $sth->execute;
 
    return sub {
       if (my @row = $sth->fetchrow_array) {
          return @row;
       }
       return;
-   }
+   };
 }
 
 sub db_iter_auto_offset {
@@ -71,7 +71,7 @@ sub db_iter_auto_offset {
          return @{ $rows_ref->[$i++] };
       }
       return;
-   }
+   };
 }
 
 ###############################################################################
@@ -116,5 +116,5 @@ mce_loop {
 
 } db_iter_auto_offset($dsn, $user, $password);
 
-printf {*STDERR} "\n## Compute time: %0.03f\n\n", time() - $start;
+printf {*STDERR} "\n## Compute time: %0.03f\n\n", time - $start;
 

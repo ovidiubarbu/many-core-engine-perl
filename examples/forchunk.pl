@@ -47,7 +47,7 @@ my @input_data = (0 .. $size - 1);
 
 my $chunk_size = 2500;
 
-sub output_iterator {
+sub preserve_order {
    my %tmp; my $order_id = 1;
 
    return sub {
@@ -72,7 +72,7 @@ sub output_iterator {
 ## Configure MCE.
 
 my $mce = MCE->new(
-   max_workers => 3, chunk_size => $chunk_size, gather => output_iterator()
+   max_workers => 3, chunk_size => $chunk_size, gather => preserve_order
 );
 
 ## Below, $chunk_ref is a reference to an array containing the next

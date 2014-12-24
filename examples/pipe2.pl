@@ -254,7 +254,7 @@ sub gather_iterator {
       $tmp{$chunk_id} = $path; 
       $exit_status = $status if ($status > $exit_status);
 
-      MCE->abort() if ($abort_on_err && $status);
+      MCE->abort if ($abort_on_err && $status);
 
       while (1) {
          last unless exists $tmp{$order_id};
@@ -286,7 +286,7 @@ MCE::Loop::init {
 mce_loop_f {
 
    my ($mce, $chunk_ref, $chunk_id) = @_;
-   my $path = MCE->tmp_dir() .'/'. $chunk_id;
+   my $path = MCE->tmp_dir .'/'. $chunk_id;
    local ($!, $?);
 
    if ($is_mswin32) {
@@ -336,7 +336,7 @@ mce_loop_f {
 ##
 ###############################################################################
 
-MCE::Loop::finish();
+MCE::Loop::finish;
 
 exit $exit_status;
 

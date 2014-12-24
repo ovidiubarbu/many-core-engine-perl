@@ -244,6 +244,6 @@ else {
 
 ## Shutdown Many-Core Engine and exit.
 
-$mce->shutdown();
+$mce->shutdown;
 exit $exit_status;
 

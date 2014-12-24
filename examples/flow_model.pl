@@ -17,7 +17,7 @@ use Net::Ping;
 use MCE::Flow;
 use MCE::Queue;
 
-my $Q = MCE::Queue->new();
+my $Q = MCE::Queue->new;
 
 ###############################################################################
 
@@ -32,7 +32,7 @@ MCE::Flow::init {
 
       if (MCE->task_name eq 'pinger') {
          $mce->{pinger} = Net::Ping->new('syn');
-         $mce->{pinger}->hires();
+         $mce->{pinger}->hires;
       }
 
       return;
@@ -42,7 +42,7 @@ MCE::Flow::init {
       my ($mce) = @_;
 
       if (MCE->task_name eq 'pinger') {
-         $mce->{pinger}->close();
+         $mce->{pinger}->close;
       }
 
       return;

@@ -78,5 +78,5 @@ $dbh->commit;                  ## $dbh->do('COMMIT');
 $sth->finish;
 $dbh->disconnect;
 
-printf {*STDERR} "\n## Compute time: %0.03f\n\n", time() - $start;
+printf {*STDERR} "\n## Compute time: %0.03f\n\n", time - $start;
 

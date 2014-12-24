@@ -376,7 +376,7 @@ sub _error {
 sub _abort_job {
 
    if (!$_abort_job) {
-      MCE->abort();
+      MCE->abort;
       $_abort_job = $_total_found = $found_match = 1;
       $_abort_all = 1 if $q_flag;
    }
@@ -399,7 +399,7 @@ sub _output_cnt {
       $_total_found += $cnt;
 
       if ($q_flag && !$_abort_all) {
-         MCE->abort(); $_abort_all = $_abort_job = 1;
+         MCE->abort; $_abort_all = $_abort_job = 1;
       }
    }
 
@@ -437,7 +437,7 @@ sub _output_n0 {
 
          if ($q_flag) {
             unless ($_abort_all) {
-               MCE->abort(); $_abort_all = $_abort_job = 1;
+               MCE->abort; $_abort_all = $_abort_job = 1;
             }
          }
          else {
@@ -446,7 +446,7 @@ sub _output_n0 {
                while (<$fh>) {
                   print $file . ':' . $_;
                   if ($max_count && ++$_total_found == $max_count) {
-                     MCE->abort(); $_abort_job = 1;
+                     MCE->abort; $_abort_job = 1;
                      last;
                   }
                }
@@ -458,7 +458,7 @@ sub _output_n0 {
                   while (<$fh>) {
                      print $_;
                      if ($max_count && ++$_total_found == $max_count) {
-                        MCE->abort(); $_abort_job = 1;
+                        MCE->abort; $_abort_job = 1;
                         last;
                      }
                   }
@@ -511,7 +511,7 @@ sub _output_n1 {
 
          if ($q_flag) {
             unless ($_abort_all) {
-               MCE->abort(); $_abort_all = $_abort_job = 1;
+               MCE->abort; $_abort_all = $_abort_job = 1;
             }
          }
          else {
@@ -524,7 +524,7 @@ sub _output_n1 {
 
                   print $file . ':' . $size . substr($_, $p1);
                   if ($max_count && ++$_total_found == $max_count) {
-                     MCE->abort(); $_abort_job = 1;
+                     MCE->abort; $_abort_job = 1;
                      last;
                   }
                }
@@ -536,7 +536,7 @@ sub _output_n1 {
 
                   print $size . substr($_, $p1);
                   if ($max_count && ++$_total_found == $max_count) {
-                     MCE->abort(); $_abort_job = 1;
+                     MCE->abort; $_abort_job = 1;
                      last;
                   }
                }
@@ -586,7 +586,7 @@ sub _output_n2 {
 
          if ($q_flag) {
             unless ($_abort_all) {
-               MCE->abort(); $_abort_all = $_abort_job = 1;
+               MCE->abort; $_abort_all = $_abort_job = 1;
             }
          }
          else {
@@ -602,7 +602,7 @@ sub _output_n2 {
 
                   print $file . ':' . $recs . ':' . $size . substr($_, $p2);
                   if ($max_count && ++$_total_found == $max_count) {
-                     MCE->abort(); $_abort_job = 1;
+                     MCE->abort; $_abort_job = 1;
                      last;
                   }
                }
@@ -617,7 +617,7 @@ sub _output_n2 {
 
                   print $recs . ':' . $size . substr($_, $p2);
                   if ($max_count && ++$_total_found == $max_count) {
-                     MCE->abort(); $_abort_job = 1;
+                     MCE->abort; $_abort_job = 1;
                      last;
                   }
                }
@@ -653,11 +653,10 @@ sub make_user_func_file {
    my $first_time = 1;
 
    return sub {
-
       my ($self, $chunk_ref, $chunk_id) = @_;
 
       my ($out_fh, $err_fh, $cmd_fh, $has_err); my $n_records = 0;
-      my $out_file = MCE->sess_dir() .'/'. $chunk_id;
+      my $out_file = MCE->sess_dir .'/'. $chunk_id;
 
       if ($n_flag) {
          $n_records++ while ($$chunk_ref =~ m!\n!mg);
@@ -708,7 +707,7 @@ sub make_user_func_file {
          }
       }
 
-      MCE->abort() if ($q_flag && -s $out_file);
+      MCE->abort if ($q_flag && -s $out_file);
 
       ## Send error.
 
@@ -716,7 +715,7 @@ sub make_user_func_file {
          my $err_file = "$out_file.err";
 
          if (-s $err_file) {
-            $has_err = 1; MCE->abort();
+            $has_err = 1; MCE->abort;
             if ($chunk_id == 1) {
                open  $err_fh, '<', $err_file;
                local $/ = undef; MCE->do('_error', <$err_fh>);
@@ -771,7 +770,7 @@ sub user_func_list {
    my ($self, $chunk_ref, $chunk_id) = @_;
 
    my ($output, $err_fh, $status);
-   my $err_file = MCE->sess_dir() .'/'. $chunk_id . '.err';
+   my $err_file = MCE->sess_dir .'/'. $chunk_id . '.err';
 
    $$chunk_ref =~ s/\n/ /mg;
    local $?;
@@ -795,7 +794,7 @@ sub user_func_list {
       close $err_fh;
    }
 
-   MCE->abort() if ($q_flag && length $output);
+   MCE->abort if ($q_flag && length $output);
 
    ## Send error.
 
@@ -1017,7 +1016,7 @@ else {
 ##
 ###############################################################################
 
-MCE->shutdown();
+MCE->shutdown;
 
 if (!$q_flag && $exit_status) {
    exit($exit_status);

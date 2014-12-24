@@ -136,12 +136,12 @@ my $mce = MCE->new(
    user_begin => sub {
       my ($mce) = @_;
       $mce->{pinger} = Net::Ping->new('syn');
-      $mce->{pinger}->hires();
+      $mce->{pinger}->hires;
    },
 
    user_end => sub {
       my ($mce) = @_;
-      $mce->{pinger}->close();
+      $mce->{pinger}->close;
    },
 
    user_func => sub {
@@ -183,7 +183,7 @@ my $mce = MCE->new(
    }
 );
 
-$mce->run();
+$mce->run;
 
 exit $exit_status;
 

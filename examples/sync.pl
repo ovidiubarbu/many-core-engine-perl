@@ -17,7 +17,7 @@ use MCE;
 sub user_func {
 
    my ($mce) = @_; 
-   my $wid = MCE->wid();
+   my $wid = MCE->wid;
 
    MCE->sendto("STDOUT", "a: $wid\n");   ## MCE 1.0+
    MCE->sync;
@@ -33,5 +33,5 @@ sub user_func {
 
 my $mce = MCE->new(
    max_workers => 4, user_func => \&user_func
-)->run();
+)->run;
 

@@ -36,7 +36,7 @@ sub db_iter {
    my $sth = $dbh->prepare(
       "SELECT seq_id, value1, value2 FROM seq ORDER BY seq_id"
    );
-   $sth->execute();
+   $sth->execute;
 
    return sub {
       my ($chunk_size) = @_;
@@ -44,7 +44,7 @@ sub db_iter {
          return @{ $rows_ref };
       }
       return;
-   }
+   };
 }
 
 sub preserve_order {
@@ -80,5 +80,5 @@ sub {
    MCE->gather($chunk_id, $output);
 };
 
-printf {*STDERR} "\n## Compute time: %0.03f\n\n", time() - $start;
+printf {*STDERR} "\n## Compute time: %0.03f\n\n", time - $start;
 
