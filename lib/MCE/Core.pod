@@ -11,7 +11,7 @@ This document describes MCE::Core version 1.521
 
 This is a simplistic use case of MCE running with 4 workers.
 
-   ## Using the Core API.
+   ## Using the Core API
 
       use MCE;
 
@@ -25,11 +25,11 @@ This is a simplistic use case of MCE running with 4 workers.
 
       $mce->run;
 
-   ## Using a MCE model.
+   ## Or a MCE model
 
       use MCE::Flow max_workers => 4;
 
-      mce_flow {
+      mce_flow sub {
          my ($mce) = @_;
          MCE->say("Hello from " . MCE->wid);
       };
@@ -851,7 +851,7 @@ Time was measured using 1 worker to emphasize the difference.
 
 The user_begin and user_end options, if specified, behave similarly to
 awk 'BEGIN { begin } { func } { func } ... END { end }'. These are called
-once per each worker during each run.
+once per worker during each run.
 
 MCE 1.510 passes 2 additional parameters ($task_id and $task_name).
 
