@@ -55,7 +55,7 @@ unless (defined $s_end) {
 
 ## Make an output iterator for gather. Output order is preserved.
 
-sub output_iterator {
+sub preserve_order {
    my (%result_n, %result_d); my $order_id = 1;
 
    return sub {
@@ -83,7 +83,7 @@ sub output_iterator {
 ## Configure MCE.
 
 my $mce = MCE->new(
-   max_workers => 3, gather => output_iterator()
+   max_workers => 3, gather => preserve_order
 );
 
 my $seq = {

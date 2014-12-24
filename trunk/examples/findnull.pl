@@ -167,7 +167,7 @@ sub user_func {
       1 while (<$_MEM_FH>);
    }
 
-   ## All workers report the last line count read irregardless on
+   ## All workers report the last line count read regardless on
    ## whether matching lines were found. The reason is that other
    ## workers may find matching lines and the callback function
    ## needs to accurately report line numbers.
@@ -195,7 +195,7 @@ sub user_func {
 
 my $total_lines = 0;
 
-sub output_iterator {
+sub preserve_order {
    my %tmp; my $order_id = 1;
 
    return sub {
@@ -223,11 +223,11 @@ sub output_iterator {
 
 my $mce = MCE->new(
    chunk_size => $chunk_size, max_workers => $max_workers,
-   input_data => $file, gather => output_iterator(),
+   input_data => $file, gather => preserve_order,
    user_func => \&user_func, use_slurpio => 1
 );
 
-$mce->run();
+$mce->run;
 
 print "$total_lines $file\n" if ($l_flag);
 

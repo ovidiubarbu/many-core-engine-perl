@@ -39,7 +39,7 @@ sub make_number_iter {
       $n = $min + 1; $done = 1 if $min == $last;
 
       return @numbers;
-   }
+   };
 }
 
 # Begin and End functions.

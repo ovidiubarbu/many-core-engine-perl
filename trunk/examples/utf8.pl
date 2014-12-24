@@ -24,8 +24,8 @@ use open qw(:utf8 :std);
 
 ## Iterate over @list and output to STDOUT three times:
 ## - Once from a normal for-loop,
-## - Once after fetching results from MCE->do()
-## - Once after fetching results from MCE->gather()
+## - Once after fetching results from MCE->do
+## - Once after fetching results from MCE->gather
 
 ## Some Unicode characters from Basic Latin, Latin-1, and beyond.
 ## my @list = (qw(U Ö Å Ǣ Ȝ), "\N{INTERROBANG}");
@@ -44,7 +44,7 @@ sub callback {
 }
 
 mce_loop {
-   my $wid = MCE->wid();
+   my $wid = MCE->wid;
 
    for (@{ $_ }) {
       MCE->do("callback", "$wid: MCE->do: $_\n");
@@ -71,7 +71,7 @@ my $unicode = join("\n", @list) . "\n";
 MCE::Loop::init { chunk_size => 1 };
 
 mce_loop_f {
-   my $wid = MCE->wid();
+   my $wid = MCE->wid;
    MCE->print("$wid: MCE->print: $_");
 
 } \$unicode;

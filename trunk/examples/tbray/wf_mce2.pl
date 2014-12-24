@@ -56,7 +56,7 @@ my $mce = MCE->new(
    }
 );
 
-$mce->run();
+$mce->run;
 
 my $end = time;
 

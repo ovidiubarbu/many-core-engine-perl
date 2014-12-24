@@ -3,7 +3,7 @@
 ## ----------------------------------------------------------------------------
 ## This example demonstrates the "interval" option in MCE.
 ##
-## usage: interval.pl [ delay ]   ## Default is 0.100
+## usage: interval.pl [ delay ]   ## Default is 0.1
 ##        interval.pl   0.005
 ##        interval.pl   1.000
 ##
@@ -17,10 +17,10 @@ use lib abs_path($0 =~ m{^(.*)[\\/]} && $1 || abs_path) . '/../lib';
 
 my $prog_name = $0; $prog_name =~ s{^.*[\\/]}{}g;
 
-use Time::HiRes qw(time);
+use Time::HiRes 'time';
 use MCE;
 
-my $d = shift || 0.100;
+my $d = shift || 0.1;
 
 local $| = 1;
 
@@ -46,7 +46,7 @@ sub create_task {
 
 sub user_begin {
 
-   my ($mce) = @_;
+   my ($mce, $task_id, $task_name) = @_;
 
    ## The yield method causes this worker to wait for its next
    ## time interval slot before running. Yield has no effect

@@ -223,7 +223,7 @@ MCE::Loop::init {
 mce_loop_f {
 
    my ($mce, $chunk_ref, $chunk_id) = @_;
-   my $path = MCE->tmp_dir() .'/'. $chunk_id;
+   my $path = MCE->tmp_dir .'/'. $chunk_id;
    my $chunk_status = 0;
 
    open my $out_fh, ">", "$path.out";
@@ -252,7 +252,7 @@ mce_loop_f {
 ##
 ###############################################################################
 
-MCE::Loop::finish();
+MCE::Loop::finish;
 
 exit $exit_status;
 

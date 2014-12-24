@@ -76,7 +76,7 @@ sub input_iterator {
 ## The external variables keep their state across successive calls to the
 ## closure.
 
-sub output_iterator {
+sub preserve_order {
    my (%result_n, %result_d); my $order_id = 1;
 
    return sub {
@@ -109,7 +109,7 @@ sub output_iterator {
 
 my $mce = MCE->new(
 
-   chunk_size => 1, max_workers => 3, gather => output_iterator(),
+   chunk_size => 1, max_workers => 3, gather => preserve_order,
 
    user_func => sub {
       my ($mce, $chunk_ref, $chunk_id) = @_;
