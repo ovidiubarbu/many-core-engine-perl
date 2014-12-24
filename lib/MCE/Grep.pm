@@ -520,16 +520,16 @@ seconds to run whereas MCE takes just 0.155 seconds (7.33x faster).
 
 The following list 5 options which may be overridden when loading the module.
 
-   use Sereal   qw(encode_sereal decode_sereal);  # Include a serialization
-   use CBOR::XS qw(encode_cbor   decode_cbor  );  #  module of your choice
-   use JSON::XS qw(encode_json   decode_json  );
+   use Sereal qw( encode_sereal decode_sereal );
+   use CBOR::XS qw( encode_cbor decode_cbor );
+   use JSON::XS qw( encode_json decode_json );
 
    use MCE::Grep
-         max_workers => 4,                     ## Default 'auto' 
-         chunk_size  => 100,                   ## Default 'auto'
-         tmp_dir     => "/path/to/app/tmp",    ## $MCE::Signal::tmp_dir
-         freeze      => \&encode_sereal,       ## \&Storable::freeze
-         thaw        => \&decode_sereal        ## \&Storable::thaw
+         max_workers => 4,               ## Default 'auto' 
+         chunk_size => 100,              ## Default 'auto'
+         tmp_dir => "/path/to/app/tmp",  ## $MCE::Signal::tmp_dir
+         freeze => \&encode_sereal,      ## \&Storable::freeze
+         thaw => \&decode_sereal         ## \&Storable::thaw
    ;
 
 There is a simpler way to enable Sereal with MCE 1.5. The following will
@@ -538,7 +538,7 @@ Storable for serialization.
 
    use MCE::Grep Sereal => 1;
 
-   ## Serialization is through Sereal if available.
+   ## Serialization is provided by Sereal if available.
    my @m2 = mce_grep { $_ % 5 == 0 } 1..10000;
 
 =head1 CUSTOMIZING MCE

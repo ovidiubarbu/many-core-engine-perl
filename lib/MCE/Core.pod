@@ -11,20 +11,27 @@ This document describes MCE::Core version 1.521
 
 This is a simplistic use case of MCE running with 4 workers.
 
-   use MCE;
+   ## Using the Core API.
 
-   my $mce = MCE->new(
-      max_workers => 4,
-      user_func => sub {
+      use MCE max_workers => 4;
+
+      my $mce = MCE->new(
+         user_func => sub {
+            my ($mce) = @_;
+            MCE->say("Hello from " . MCE->wid);
+         }
+      );
+
+      $mce->run;
+
+   ## Using a MCE model.
+
+      use MCE::Flow max_workers => 4;
+
+      mce_flow {
          my ($mce) = @_;
-         MCE->say("Hello from ", $mce->wid);
-      }
-   );
-
-   $mce->run;
-
-      ## All public methods beginning with MCE 1.5 may be called
-      ## directly via the package method e.g. MCE->wid, MCE->run.
+         MCE->say("Hello from " . MCE->wid);
+      };
 
    -- Output
 
@@ -32,33 +39,6 @@ This is a simplistic use case of MCE running with 4 workers.
    Hello from 1
    Hello from 2
    Hello from 4
-
-=head2 EXPORT_CONST, CONST
-
-The anonymous user_func above can be written using one less line. There are
-3 constants defined in MCE which are exportable. Using the constants in lieu
-of 0,1,2 makes it more legible when accessing the array elements.
-
-=head3 SELF CHUNK CID
-
-   ## The following exports SELF => 0, CHUNK => 1, CID => 2
-
-   use MCE EXPORT_CONST => 1;
-   use MCE CONST => 1;              ## Same in 1.415 and later
-
-   user_func => sub {
-    # my ($mce, $chunk_ref, $chunk_id) = @_;
-      print "Hello from ", $_[SELF]->wid, "\n";
-   }
-
-   ## MCE 1.5 allows any public method to be called directly.
-
-   use MCE;
-
-   user_func => sub {
-    # my ($mce, $chunk_ref, $chunk_id) = @_;
-      print "Hello from ", MCE->wid, "\n";
-   }
 
 =head2 ->new ( [ options ] )
 
@@ -76,19 +56,19 @@ Below, a new instance is configured with all available options.
           ## MCE 1.521 sets an upper-limit of 8 for 'auto'.
           ## See MCE::Util::get_ncpu for more info.
 
-          ## max_workers => 'auto',      ## = # of lcores, 8 maximum
-          ## max_workers => 'auto-1',    ## = 7 on HW with 16-lcores
-          ## max_workers => 'auto-1',    ## = 3 on HW with  4-lcores
+          ## max_workers => 'auto',      ## # of lcores, 8 maximum
+          ## max_workers => 'auto-1',    ## 7 on HW with 16-lcores
+          ## max_workers => 'auto-1',    ## 3 on HW with  4-lcores
 
           ## max_workers => MCE::Util::get_ncpu, # run on all lcores
 
       chunk_size => 2000,                ## Default $MCE::CHUNK_SIZE
 
           ## Can also take a suffix; K (Kilobytes) or M (Megabytes).
-          ## Less than or equal to 8192 is number of records.
-          ## Greater than 8192 is number of bytes. MCE reads
-          ## till the end of record before calling user_func.
-          ## A value above 24M will be set to 24M (the maximum).
+          ## Smaller than or equal to 8192 is number of records.
+          ## Greater than 8192 is number of bytes. MCE reads until
+          ## the end of record before calling user_func. A value
+          ## above 24M will be set to 24M (the maximum).
 
           ## chunk_size => 1,            ## Consists of 1 record
           ## chunk_size => 1000,         ## Consists of 1000 records
@@ -102,22 +82,22 @@ Below, a new instance is configured with all available options.
           ## to a location under /tmp.
 
       freeze => \&encode_sereal,         ## Default $MCE::FREEZE
-      thaw   => \&decode_sereal,         ## Default $MCE::THAW
+      thaw => \&decode_sereal,           ## Default $MCE::THAW
 
           ## Release 1.412 allows freeze and thaw to be overridden.
           ## Simply include a serialization module prior to loading
           ## MCE. Configure freeze/thaw options.
 
-          ## use Sereal   qw(encode_sereal decode_sereal);
-          ## use CBOR::XS qw(encode_cbor   decode_cbor  );
-          ## use JSON::XS qw(encode_json   decode_json  );
+          ## use Sereal qw( encode_sereal decode_sereal );
+          ## use CBOR::XS qw( encode_cbor decode_cbor );
+          ## use JSON::XS qw( encode_json decode_json );
           ##
           ## use MCE;
 
       gather => \@a,                     ## Default undef
 
-          ## Release 1.5 allows for gathering of data to an array/hash
-          ## reference, a MCE::Queue/Thread::Queue object, or a code
+          ## Release 1.5 allows for gathering of data to an array or
+          ## hash reference, a MCE::Queue/Thread::Queue object, or code
           ## reference. One invokes gathering by calling the gather
           ## method as often as needed.
 
@@ -127,42 +107,44 @@ Below, a new instance is configured with all available options.
           ## gather => \&order,
 
       input_data => $input_file,         ## Default undef
-      RS         => "::\n\n",            ## Default undef
+      RS => "::\n\n",                    ## Default undef
 
-          ## input_data => '/path/to/file'  for file paths
-          ## input_data => \@array          for arrays
-          ## input_data => \*FILE_HNDL      for file handles
+          ## input_data => '/path/to/file'  process file
+          ## input_data => \@array          process array
+          ## input_data => \*FILE_HNDL      process file handle
           ## input_data => \$scalar         treated like a file
-          ## input_data => \&iterator       for iterators
+          ## input_data => \&iterator       user specified iterator
 
-          ## Use the sequence option if simply wanting to loop
+          ## Specify the sequence option if simply wanting to loop
           ## through a sequence of numbers instead.
 
           ## Release 1.4 and later allows one to specify the
           ## record separator (RS) applicable to input files,
-          ## file handles, and scalar references.
-
-          ## Support for iterators was added in 1.505.
+          ## file handles, and scalar references. Support for
+          ## iterators was added in 1.505.
 
       use_slurpio => 1,                  ## Default 0
       parallel_io => 1,                  ## Default 0
 
-          ## Whether to enable slurpio when reading files
+          ## Whether to enable slurpio when reading files.
           ## Passes raw chunk (scalar ref) to user function.
 
           ## The parallel_io option enables parallel reads during
           ## large slurpio. Useful when reading from fast storage.
           ## Do not enable parallel_io when running MCE on many
-          ## blades and reading input from a shared storage unit.
+          ## blades and input coming from shared storage.
 
-      use_threads => 1,                  ## Default 0 or 1
+      use_threads => 1,                  ## Auto 0 or 1
 
-          ## By default MCE does forking (spawns child processes).
-          ## MCE also supports threads via 2 threading libraries.
+          ## MCE spawns child processes by default, not threads.
+          ##
+          ## However, MCE supports threads via 2 threading
+          ## libraries if threads is desired.
 
           ## The use of threads in MCE requires that you include
           ## threads support prior to loading MCE. The use_threads
-          ## option defaults to 1 when a thread library is present.
+          ## option defaults to 1 when a thread library is loaded.
+          ## Threads is loaded automatically for $^O eq 'MSWin32'.
           ##
           ## use threads;                use forks;
           ## use threads::shared;  (or)  use forks::shared;
@@ -172,63 +154,63 @@ Below, a new instance is configured with all available options.
       submit_delay => 0.002,             ## Default undef
       job_delay    => 0.150,             ## Default undef
 
-          ## Time to wait, in fractional seconds, before spawning
-          ## each worker, parameters submission to each worker,
-          ## and job commencement (staggered) for each worker.
-          ## For example, use job_delay when wanting to stagger
-          ## many workers connecting to a database.
+          ## Time to wait, in fractional seconds, after spawning
+          ## a worker, parameters submission to a worker, and
+          ## job commencement (running, staggered delay).
+
+          ## Specify job_delay when wanting to stagger
+          ## workers connecting to a database.
 
       on_post_exit => \&on_post_exit,    ## Default undef
-      on_post_run  => \&on_post_run,     ## Default undef
+      on_post_run => \&on_post_run,      ## Default undef
 
-          ## Execute code block immediately after a worker exits
-          ## (exit, MCE->exit, or die). Execute code block after
-          ## running a job (MCE->process or MCE->run).
+          ## Execute code block after a worker exits.
+          ## exit, MCE->exit, or die
 
-          ## One can take action immediately after a worker exits
-          ## or wait until after the job has completed.
+          ## Execute code block after running a job.
+          ## MCE->process or MCE->run
 
       user_args => { env => 'test' },    ## Default undef
 
-          ## MCE release 1.4 adds a new parameter to allow one to
+          ## MCE release 1.4 added a new parameter to allow one to
           ## specify arbitrary arguments such as a string, an ARRAY
           ## or a HASH reference. Workers can access this directly:
-          ## my $args = $mce->{user_args};
+          ## my $args = $mce->{user_args} or MCE->user_args;
 
       user_begin => \&user_begin,        ## Default undef
-      user_func  => \&user_func,         ## Default undef
-      user_end   => \&user_end,          ## Default undef
+      user_func => \&user_func,          ## Default undef
+      user_end => \&user_end,            ## Default undef
 
-          ## Think of user_begin, user_func, and user_end from
+          ## Think of user_begin, user_func, and user_end as in
           ## the awk scripting language:
-          ## awk 'BEGIN { ... } { ... } { ... } END { ... }'
+          ## awk 'BEGIN { begin } { func } { func } ... END { end }'
 
-          ## MCE workers call user_begin once per job, then
-          ## call user_func repeatedly until no chunks remain.
+          ## MCE workers call user_begin once at the start of a job,
+          ## then user_func repeatedly until no chunks remain.
           ## Afterwards, user_end is called.
 
-      user_error  => \&user_error,       ## Default undef
+      user_error => \&user_error,        ## Default undef
       user_output => \&user_output,      ## Default undef
 
           ## MCE will forward data to user_error/user_output,
           ## when defined, for the following methods.
 
-          ## MCE->sendto(\*STDERR, "Sent to user_error\n");
-          ## MCE->printf(\*STDERR, "%s\n", "Sent to user_error");
-          ## MCE->print(\*STDERR, "Sent to user_error\n");
-          ## MCE->say(\*STDERR, "Sent to user_error");
+          ## MCE->sendto(\*STDERR, "sent to user_error\n");
+          ## MCE->printf(\*STDERR, "%s\n", "sent to user_error");
+          ## MCE->print(\*STDERR, "sent to user_error\n");
+          ## MCE->say(\*STDERR, "sent to user_error");
 
-          ## MCE->sendto(\*STDOUT, "Sent to user_output\n");
-          ## MCE->printf("%s\n", "Sent to user_output");
-          ## MCE->print("Sent to user_output\n");
-          ## MCE->say("Sent to user_output");
+          ## MCE->sendto(\*STDOUT, "sent to user_output\n");
+          ## MCE->printf("%s\n", "sent to user_output");
+          ## MCE->print("sent to user_output\n");
+          ## MCE->say("sent to user_output");
 
       stderr_file => 'err_file',         ## Default STDERR
       stdout_file => 'out_file',         ## Default STDOUT
 
-          ## Or to file; user_error/output take precedence if set.
+          ## Or to file; user_error and user_output take precedence.
 
-      flush_file   => 1,                 ## Default 0
+      flush_file => 1,                   ## Default 0
       flush_stderr => 1,                 ## Default 0
       flush_stdout => 1,                 ## Default 0
 
@@ -242,7 +224,7 @@ Below, a new instance is configured with all available options.
           ## Both max_nodes & node_id are optional and default to 1.
           ## Delay is the amount of time between intervals.
 
-          ## interval => 0.005           ## Allowed in MCE 1.506
+          ## interval => 0.005           ## Shorter; MCE 1.506+
 
       sequence => {                      ## Default undef
           begin => -1, end => 1 [, step => 0.1 [, format => "%4.1f" ] ]
@@ -256,33 +238,28 @@ Below, a new instance is configured with all available options.
           ## is passed to sprintf behind the scene (% may be omitted).
           ## e.g. $seq_n_formated = sprintf("%4.1f", $seq_n);
 
-          ## Leave input_data set to undef when specifying the sequence
-          ## option. One cannot specify both options together.
-
-          ## Release 1.4 allows one to specify an array reference
-          ## instead (3rd & 4th values are optional):
-          ##
-          ## sequence => [ -1, 1, 0.1, "%4.1f" ]
+          ## Do not specify both options; input_data and sequence.
+          ## Release 1.4 allows one to specify an array reference.
+          ## e.g. sequence => [ -1, 1, 0.1, "%4.1f" ]
 
           ## The bounds_only => 1 option will compute the 'begin' and
           ## 'end' items only for the chunk and not the items in between
           ## (hence boundaries only). This option has no effect when
-          ## sequence is missing or chunk_size equals 1.
-          ##
+          ## sequence is not specified or chunk_size equals 1.
+
           ## my $begin = $chunk_ref->[0]; my $end = $chunk_ref->[1];
 
       task_end => \&task_end,            ## Default undef
 
-          ## MCE 1.5 allows this to be specified at the top level.
           ## This is called by the manager process after the task
-          ## has completed processing.
+          ## has completed processing. MCE 1.5 allows this option
+          ## to be specified at the top level.
 
       task_name => 'string',             ## Default 'MCE'
 
-          ## Added in MCE 1.5. This is beneficial for user_tasks.
-          ## Each task can be defined with a different name value.
-          ## It allows for task_end to be specified at the top level.
-          ## The task_name value is passed as the 3rd arg to task_end.
+          ## Added in MCE 1.5 and mainly beneficial for user_tasks.
+          ## One may specify a unique name per each sub-task.
+          ## The string is passed as the 3rd arg to task_end.
 
       user_tasks => [                    ## Default undef
          { ... },                        ## Options for task 0
@@ -293,7 +270,7 @@ Below, a new instance is configured with all available options.
           ## Takes a list of hash references, each allowing up to 16
           ## options. All other MCE options are ignored. Input_data,
           ## RS and use_slurpio are applicable for the first task only.
-          ##
+
           ## max_workers, chunk_size, input_data, interval, sequence,
           ## bounds_only, user_args, user_begin, user_end, user_func,
           ## gather, RS, task_end, task_name, use_slurpio, use_threads
@@ -302,19 +279,46 @@ Below, a new instance is configured with all available options.
           ## specified at the top level.
    );
 
+=head2 EXPORT_CONST, CONST
+
+There are 3 constants which are exportable. Using the constants in lieu of
+0,1,2 makes it more legible when accessing the user_func arguments directly.
+
+=head3 SELF CHUNK CID
+
+Exports SELF => 0, CHUNK => 1, and CID => 2.
+
+   use MCE export_const => 1;
+   use MCE const => 1;                   ## Shorter; MCE 1.415+
+
+   user_func => sub {
+    # my ($mce, $chunk_ref, $chunk_id) = @_;
+      print "Hello from ", $_[SELF]->wid, "\n";
+   }
+
+MCE 1.5 allows all public method to be called directly.
+
+   use MCE;
+
+   user_func => sub {
+    # my ($mce, $chunk_ref, $chunk_id) = @_;
+      print "Hello from ", MCE->wid, "\n";
+   }
+
 =head2 OVERRIDING DEFAULTS
 
 The following list 5 options which may be overridden when loading the module.
 
-   use Sereal   qw(encode_sereal decode_sereal);  # Include a serialization
-   use CBOR::XS qw(encode_cbor   decode_cbor  );  #  module of your choice
-   use JSON::XS qw(encode_json   decode_json  );
+   use Sereal qw( encode_sereal decode_sereal );
+   use CBOR::XS qw( encode_cbor decode_cbor );
+   use JSON::XS qw( encode_json decode_json );
 
-   use MCE max_workers => 4,                   ## Default 1
-           chunk_size  => 100,                 ## Default 1
-           tmp_dir     => "/path/to/app/tmp",  ## $MCE::Signal::tmp_dir
-           freeze      => \&encode_sereal,     ## \&Storable::freeze
-           thaw        => \&decode_sereal      ## \&Storable::thaw
+   use MCE
+         max_workers => 4,               ## Default 1
+         chunk_size => 100,              ## Default 1
+         tmp_dir => "/path/to/app/tmp",  ## $MCE::Signal::tmp_dir
+         freeze => \&encode_sereal,      ## \&Storable::freeze
+         thaw => \&decode_sereal         ## \&Storable::thaw
    ;
 
    my $mce = MCE->new( ... );
@@ -325,22 +329,22 @@ Storable for serialization.
 
    use MCE Sereal => 1;
 
-   ## Serialization is through Sereal if available.
+   ## Serialization is provided by Sereal if available.
    my $mce = MCE->new( ... );
 
 =head2 RUNNING
 
-Run calls spawn, kicks off job, workers call user_begin, user_func, and
+Run calls spawn, submits job; workers call user_begin, user_func, and
 user_end. Run shuts down workers afterwards. Call the spawn method early
-whenever the need arises for large data structures within the main process
-prior to running.
+when the need arises for large data structures within the main process
+itself prior to running.
 
-   $mce->spawn();                        ## This is optional
+   $mce->spawn;                          ## Call early if desired
 
-   $mce->run();                          ## Call run or process below
+   $mce->run;                            ## Call run or process below
 
-   ## Acquire data arrays and/or input_files. The same pool of
-   ## workers are used.
+   ## Acquire data arrays and/or input_files. Workers persist after
+   ## processing.
 
    $mce->process(\@input_data_1);        ## Process arrays
    $mce->process(\@input_data_2);
@@ -350,87 +354,120 @@ prior to running.
    $mce->process('input_file_2');
    $mce->process('input_file_n');
 
-   ## Shutdown workers afterwards.
-
-   $mce->shutdown();
+   $mce->shutdown;                       ## Shutdown workers
 
 =head2 SYNTAX for ON_POST_EXIT
 
 Often times, one may want to capture the exit status. The on_post_exit option,
-if defined, is executed immediately after a worker exits via exit (children),
-MCE->exit (children and threads), or die.
+if defined, is executed immediately by the manager process after a worker exits
+via exit (children), MCE->exit (children and threads), or die.
 
 The format of $e->{pid} is PID_123 for children and THR_123 for threads.
 
+   my $restart_flag = 1;
+
    sub on_post_exit {
       my ($mce, $e) = @_;
+
+      ## Display all possible hash elements.
       print "$e->{wid}: $e->{pid}: $e->{status}: $e->{msg}: $e->{id}\n";
+
+      ## Restart this worker if desired.
+      if ($restart_flag && $e->{wid} == 2) {
+         $mce->restart_worker;
+         $restart_flag = 0;
+      }
    }
 
    sub user_func {
       my ($mce) = @_;
-      MCE->exit(0, 'ok', 'pebbles');
+      MCE->exit(0, 'msg_foo', 1000 + MCE->wid);  ## Args, not necessary
    }
 
    my $mce = MCE->new(
       on_post_exit => \&on_post_exit,
-      user_func    => \&user_func
+      user_func => \&user_func,
+      max_workers => 3
    );
 
-   $mce->run();
+   $mce->run;
 
-   -- Output
+   -- Output (child processes)
 
-   2: PID_7625: 0: ok: pebbles
+   2: PID_33223: 0: msg_foo: 1002
+   1: PID_33222: 0: msg_foo: 1001
+   3: PID_33224: 0: msg_foo: 1003
+   2: PID_33225: 0: msg_foo: 1002
+
+   -- Output (running with threads)
+
+   3: TID_3: 0: msg_foo: 1003
+   2: TID_2: 0: msg_foo: 1002
+   1: TID_1: 0: msg_foo: 1001
+   2: TID_4: 0: msg_foo: 1002
 
 =head2 SYNTAX for ON_POST_RUN
 
-The on_post_run option, if defined, is executed immediately after running
-MCE->process or MCE->run. This option receives an array reference of hashes.
+The on_post_run option, if defined, is executed immediately by the manager
+process after running MCE->process or MCE->run. This option receives an
+array reference of hashes.
 
 The difference between on_post_exit and on_post_run is that the former is
 called immediately whereas the latter is called after all workers have
-completed processing or running.
+completed running.
 
    sub on_post_run {
       my ($mce, $status_ref) = @_;
       foreach my $e ( @{ $status_ref } ) {
+         ## Display all possible hash elements.
          print "$e->{wid}: $e->{pid}: $e->{status}: $e->{msg}: $e->{id}\n";
       }
    }
 
    sub user_func {
       my ($mce) = @_;
-      MCE->exit(0, 'ok', 'pebbles');
+      MCE->exit(0, 'msg_foo', 1000 + MCE->wid);  ## Args, not necessary
    }
 
    my $mce = MCE->new(
       on_post_run => \&on_post_run,
-      user_func   => \&user_func
+      user_func => \&user_func,
+      max_workers => 3
    );
 
-   $mce->run();
+   $mce->run;
+
+   -- Output (child processes)
+
+   3: PID_33174: 0: msg_foo: 1003
+   1: PID_33172: 0: msg_foo: 1001
+   2: PID_33173: 0: msg_foo: 1002
+
+   -- Output (running with threads)
+
+   2: TID_2: 0: msg_foo: 1002
+   3: TID_3: 0: msg_foo: 1003
+   1: TID_1: 0: msg_foo: 1001
 
 =head2 SYNTAX for INPUT_DATA
 
 MCE supports many ways to specify input_data. Support for iterators was added
 in MCE 1.505. The RS option allows one to specify the record separator when
-processing files. Specifying input_data is optional and not a requirement
-for spawning many workers to do different things.
+processing files.
 
 MCE is a chunking engine. Therefore, chunk_size is applicable to input_data.
-Specifying 1 for use_slurpio causes the user_func to receive a scalar ref
+Specifying 1 for use_slurpio causes user_func to receive a scalar reference
 containing the raw data (applicable to files only) instead of an array
 reference.
 
-   input_data  => '/path/to/file',  ## for file paths
-   input_data  => \@array,          ## for arrays
-   input_data  => \*FILE_HNDL,      ## for file handles
+   input_data  => '/path/to/file',  ## process file
+   input_data  => \@array,          ## process array
+   input_data  => \*FILE_HNDL,      ## process file handle
    input_data  => $fh,              ## open $fh, "<", "file"
    input_data  => $fh,              ## new IO::File "file", "r"
    input_data  => $fh,              ## new IO::Uncompress::Gunzip "file.gz"
    input_data  => \$scalar,         ## treated like a file
-   input_data  => \&iterator,       ## for iterators
+   input_data  => \&iterator,       ## user specified iterator
 
    chunk_size  => 1,                ## >1 means looping inside user_func
    use_slurpio => 1,                ## $chunk_ref is a scalar ref
@@ -463,16 +500,15 @@ equals 0.
       }
    }
 
-Specifying a value for input_data is pretty much straight forward for arrays
-and files. What about iterators? The next several examples specify an iterator
-reference for input_data.
+Specifying a value for input_data is straight forward for arrays and files.
+The next several examples specify an iterator reference for input_data.
 
    use MCE;
 
    ## A factory function which creates a closure (the iterator itself)
    ## for generating a sequence of numbers. The external variables
    ## ($n, $max, $step) are used for keeping state across successive
-   ## calls to the closure. The iterator returns undef when $n > max.
+   ## calls to the closure. The iterator simply returns when $n > max.
 
    sub input_iterator {
       my ($n, $max, $step) = @_;
@@ -492,12 +528,12 @@ reference for input_data.
 
    my $mce = MCE->new(
 
-      chunk_size => 1, max_workers => 4,
     # input_data => input_iterator(10, 30, 2),
+      chunk_size => 1, max_workers => 4,
 
       user_func => sub {
          my ($mce, $chunk_ref, $chunk_id) = @_;
-         MCE->say("$_: ", $_ * 2);
+         MCE->print("$_: ", $_ * 2, "\n");
       }
 
    )->spawn;
@@ -535,7 +571,7 @@ the chunk_size value (added in MCE 1.510).
 
       my $sth = $dbh->prepare('select color, desc from table');
 
-      $sth->execute();
+      $sth->execute;
 
       return sub {
          my $chunk_size = shift;
@@ -545,7 +581,7 @@ the chunk_size value (added in MCE 1.510).
          }
 
          return;
-      }
+      };
    }
 
    ## Let's enumerate column indexes for easy column retrieval.
@@ -567,12 +603,12 @@ the chunk_size value (added in MCE 1.510).
       }
    );
 
-   $mce->run();
+   $mce->run;
 
-There are many modules on CPAN which return an iterator reference. Below
-showing one such example. The demonstration ensures MCE workers are spawned
-before obtaining the iterator. Note the worker_id value (left column) in the
-output.
+There are many modules on CPAN which return an iterator reference. Showing
+one such example below. The demonstration ensures MCE workers are spawned
+before obtaining the iterator. Note the worker_id value (left column) in
+the output.
 
    use Path::Iterator::Rule;
    use MCE;
@@ -585,7 +621,7 @@ output.
 
    my $mce = MCE->new(
       max_workers => 'auto',
-      user_func => sub { MCE->say( MCE->wid, ": $_" ) }
+      user_func => sub { MCE->say( MCE->wid . ": $_" ) }
    )->spawn;
 
    my $rule = Path::Iterator::Rule->new->file->name( qr/[.](pm)$/ );
@@ -618,12 +654,12 @@ output.
    5: lib/MCE.pm
 
 Although MCE supports arrays, extra measures are needed to use a "lazy" array
-as input data for MCE. The reason for this is that MCE wants the size of the
-array before processing which may be unknown for lazy arrays. Therefore,
-closures provides an excellent mechanism for this.
+as input data. The reason for this is that MCE needs the size of the array
+before processing which may be unknown for lazy arrays. Therefore, closures
+provides an excellent mechanism for this.
 
-Note that undef is returned from the code block belonging to the lazy array
-to have the process stop, otherwise will never end.
+The code block belonging to the lazy array must return undef after exhausting
+its input data. Otherwise, the process will never end.
 
    use Tie::Array::Lazy;
    use MCE;
@@ -693,7 +729,7 @@ greater than $max.
 
       user_func => sub {
          my ($mce, $chunk_ref, $chunk_id) = @_;
-         MCE->say("$chunk_id: ", join(' ', @{ $chunk_ref }));
+         MCE->say("$chunk_id: " . join(' ', @{ $chunk_ref }));
       }
 
    )->run;
@@ -716,7 +752,7 @@ specified separately per each user_task entry unlike input_data which is
 applicable to the first task only.
 
 See the seq_demo.pl example, included with this distribution, on applying
-sequences with the user_tasks option including chunking.
+sequences with the user_tasks option.
 
 Sequence can be defined using an array or a hash reference.
 
@@ -733,11 +769,11 @@ Sequence can be defined using an array or a hash reference.
 
       user_func => sub {
          my ($mce, $n, $chunk_id) = @_;
-         print $n, " from ", MCE->wid(), " id ", $chunk_id, "\n";
+         print $n, " from ", MCE->wid, " id ", $chunk_id, "\n";
       }
    );
 
-   $mce->run();
+   $mce->run;
 
    -- Output (sorted afterwards, notice wid and chunk_id in output)
 
@@ -760,11 +796,12 @@ sequence engine to compute 'begin' and 'end' items only, for the chunk,
 and not the items in between (hence boundaries only). This option applies
 to sequence only and has no effect when chunk_size equals 1.
 
-The time to run for MCE below is 0.006s. This becomes 0.827s without the
-bounds_only option due to computing all items in between as well, thus
-creating a very large array. Basically, specify bounds_only => 1 when
-boundaries is all you need for looping inside the block; e.g Monte Carlo
-simulations. Time was measured using 1 worker to emphasize the difference.
+The time to run is 0.006s below. This becomes 0.827s without the bounds_only
+option due to computing all items in between, thus creating a very large
+array. Basically, specify bounds_only => 1 when boundaries is all you need
+for looping inside the block; e.g. Monte Carlo simulations.
+
+Time was measured using 1 worker to emphasize the difference.
 
    use MCE;
 
@@ -813,8 +850,8 @@ simulations. Time was measured using 1 worker to emphasize the difference.
 =head2 SYNTAX for USER_BEGIN and USER_END
 
 The user_begin and user_end options, if specified, behave similarly to
-awk 'BEGIN { ... } { ... } END { ... }'. These are called once per each
-worker during a run.
+awk 'BEGIN { begin } { func } { func } ... END { end }'. These are called
+once per each worker during a run.
 
 MCE 1.510 passes 2 additional parameters ($task_id and $task_name).
 
@@ -831,7 +868,7 @@ MCE 1.510 passes 2 additional parameters ($task_id and $task_name).
    sub user_end {                     ## Called once at the end
       my ($mce, $task_id, $task_name) = @_;
       printf "## %d: Processed %d rows\n",
-         MCE->wid(), $mce->{wk_total_rows};
+         MCE->wid, $mce->{wk_total_rows};
    }
 
    my $mce = MCE->new(
@@ -840,11 +877,11 @@ MCE 1.510 passes 2 additional parameters ($task_id and $task_name).
       user_end   => \&user_end
    );
 
-   $mce->run();
+   $mce->run;
 
 =head2 SYNTAX for USER_FUNC with USE_SLURPIO => 0
 
-When processing input data, MCE can pass an array or rows or a slurped chunk.
+When processing input data, MCE can pass an array of rows or a slurped chunk.
 Below, a reference to an array containing the chunk data is processed.
 
 e.g. $chunk_ref = [ record1, record2, record3, ... ]
@@ -866,7 +903,7 @@ e.g. $chunk_ref = [ record1, record2, record3, ... ]
       use_slurpio => 0
    );
 
-   $mce->run();
+   $mce->run;
 
 =head2 SYNTAX for USER_FUNC with USE_SLURPIO => 1
 
@@ -886,7 +923,7 @@ Here, a reference to a scalar containing the raw chunk data is processed.
       use_slurpio => 1
    );
 
-   $mce->run();
+   $mce->run;
 
 =head2 SYNTAX for USER_ERROR and USER_OUTPUT
 
@@ -927,13 +964,13 @@ Handy when wanting to filter, modify, and/or direct the output elsewhere.
       user_func   => \&user_func
    );
 
-   $mce->run();
+   $mce->run;
 
 =head2 SYNTAX for USER_TASKS and TASK_END
 
 This option takes an array of tasks. Each task allows up to 16 options.
-Input_data, RS and use_slurpio can be defined inside the first task or at
-the top level, otherwise ignored under other tasks.
+Input_data, RS, and use_slurpio can be defined inside the first task or
+at the top level, otherwise ignored under other sub-tasks.
 
    max_workers, chunk_size, input_data, interval, sequence,
    bounds_only, user_args, user_begin, user_end, user_func,
@@ -946,38 +983,48 @@ arguments $task_id and $task_name (shown below).
 
 Options not specified here will default to the same option specified at the
 top level. The task_end option is called by the manager process when all
-workers for that role have completed processing.
+workers for that sub-task have completed processing.
 
 Forking and threading can be intermixed among tasks unless running Cygwin.
 The run method will continue running until all workers have completed
 processing.
 
+   use threads;
+   use threads::shared;
+
    use MCE;
 
-   my $mce = MCE->new(
-      input_data => $list_file,
+   sub parallel_task1 { sleep 2; }
+   sub parallel_task2 { sleep 1; }
 
-      task_end   => sub {
+   my $mce = MCE->new(
+
+      task_end => sub {
          my ($mce, $task_id, $task_name) = @_;
          print "Task [$task_id -- $task_name] completed processing\n";
       },
 
       user_tasks => [{
-         task_name   => 'a',
+         task_name   => 'foo',
          max_workers => 2,
          user_func   => \&parallel_task1,
-         use_threads => 0
+         use_threads => 0             ## Not using threads
 
       },{
-         task_name   => 'b',
+         task_name   => 'bar',
          max_workers => 4,
          user_func   => \&parallel_task2,
-         use_threads => 1
+         use_threads => 1             ## Yes, threads
 
       }]
    );
 
-   $mce->run();
+   $mce->run;
+
+   -- Output
+
+   Task [1 -- bar] completed processing
+   Task [0 -- foo] completed processing
 
 =head1 DEFAULT INPUT SCALAR
 
@@ -989,7 +1036,7 @@ user_func for input_data and sequence of numbers. The following applies.
 =item use_slurpio => 1
 
    $_ is a reference to the buffer e.g. $_ = \$_buffer;
-   $_ is a ref irregardless of whether chunk_size is 1 or greater
+   $_ is a ref regardless of whether chunk_size is 1 or greater
 
    user_func => sub {
     # my ($mce, $chunk_ref, $chunk_id) = @_;
@@ -1008,7 +1055,7 @@ user_func for input_data and sequence of numbers. The following applies.
       }
    }
 
-   use MCE CONST => 1;
+   use MCE const => 1;
 
    user_func => sub {
     # my ($mce, $chunk_ref, $chunk_id) = @_;
@@ -1034,7 +1081,7 @@ user_func for input_data and sequence of numbers. The following applies.
       print $_;         ## Same as $chunk_ref->[0];
    });
 
-   ## However, that's not the case for the forseq method.
+   ## However, that is not the case for the forseq method.
    ## Both $_ and $n_seq are the same when chunk_size => 1.
 
    $mce->forseq([ 1, 9 ], sub {
@@ -1048,8 +1095,8 @@ as the example afterwards.
    $mce->forseq( { begin => 10, end => 40, step => 2 }, ... );
 
 The code block receives an array containing the next 5 sequences. Chunk 1
-(chunk_id = 1) contains 10,12,14,16,18. $n_seq is a reference to an array,
-same as $_, due to chunk_size being greater than 1.
+(chunk_id 1) contains 10,12,14,16,18. $n_seq is a reference to an array,
+same as $_, due to chunk_size greater than 1.
 
    $mce->forseq( [ 10, 40000, 2 ], { chunk_size => 5 }, sub {
     # my ($mce, $n_seq, $chunk_id) = @_;
@@ -1078,24 +1125,23 @@ available worker. In essence, the 'abort' method writes the last offset
 position. Workers, on requesting the next offset position, will think
 the end of input_data has been reached and leave the chunking loop.
 
-   $mce->abort();
-   MCE->abort();
+   $mce->abort;
+   MCE->abort;
 
 =item ->chunk_id ( void )
 
 Returns the chunk_id for the current chunk. The value starts at 1. Chunking
-applies to workers processing input_data or sequence. The value is set to 0
-for the manager process.
+applies to input_data or sequence. The value is 0 for the manager process.
 
-   my $chunk_id = $mce->chunk_id();
-   my $chunk_id = MCE->chunk_id();
+   my $chunk_id = $mce->chunk_id;
+   my $chunk_id = MCE->chunk_id;
 
 =item ->chunk_size ( void )
 
 Returns the chunk_size used by MCE.
 
-   my $chunk_size = $mce->chunk_size();
-   my $chunk_size = MCE->chunk_size();
+   my $chunk_size = $mce->chunk_size;
+   my $chunk_size = MCE->chunk_size;
 
 =item ->freeze ( $object_ref )
 
@@ -1110,40 +1156,39 @@ can be overridden when including MCE.
 
 Returns the value for max_workers used by MCE.
 
-   my $max_workers = $mce->max_workers();
-   my $max_workers = MCE->max_workers();
+   my $max_workers = $mce->max_workers;
+   my $max_workers = MCE->max_workers;
 
 =item ->sess_dir ( void )
 
 Returns the session directory used by the MCE instance. This is defined
 during spawning and removed during shutdown.
 
-   my $sess_dir = $mce->sess_dir();
-   my $sess_dir = MCE->sess_dir();
+   my $sess_dir = $mce->sess_dir;
+   my $sess_dir = MCE->sess_dir;
 
 =item ->task_id ( void )
 
 Returns the task ID. This applies to the user_tasks option (starts at 0).
 
-   my $task_id = $mce->task_id();
-   my $task_id = MCE->task_id();
+   my $task_id = $mce->task_id;
+   my $task_id = MCE->task_id;
 
 =item ->task_name ( void )
 
 Returns the task_name value specified via the task_name option when
 configuring MCE.
 
-   my $task_name = $mce->task_name();
-   my $task_name = MCE->task_name();
+   my $task_name = $mce->task_name;
+   my $task_name = MCE->task_name;
 
 =item ->task_wid ( void )
 
-Returns the task worker ID (applies to user_tasks). The value starts at 1
-per each task configured within user_tasks. The value is set to 0 for the
-manager process.
+Returns the task worker ID (applies to user_tasks). The value starts at 1 per
+each task configured within user_tasks. The value is 0 for the manager process.
 
-   my $task_wid = $mce->task_wid();
-   my $task_wid = MCE->task_wid();
+   my $task_wid = $mce->task_wid;
+   my $task_wid = MCE->task_wid;
 
 =item ->thaw ( $frozen )
 
@@ -1156,23 +1201,23 @@ Calls the internal thaw method to un-serialize the frozen object.
 
 Returns the temporary directory used by MCE.
 
-   my $tmp_dir = $mce->tmp_dir();
-   my $tmp_dir = MCE->tmp_dir();
+   my $tmp_dir = $mce->tmp_dir;
+   my $tmp_dir = MCE->tmp_dir;
 
 =item ->user_args ( void )
 
 Returns the arguments specified via the user_args option.
 
-   my ($arg1, $arg2, $arg3) = $mce->user_args();
-   my ($arg1, $arg2, $arg3) = MCE->user_args();
+   my ($arg1, $arg2, $arg3) = $mce->user_args;
+   my ($arg1, $arg2, $arg3) = MCE->user_args;
 
 =item ->wid ( void )
 
 Returns the MCE worker ID. Starts at 1 per each MCE instance. The value is
-set to 0 for the manager process.
+0 for the manager process.
 
-   my $wid = $mce->wid();
-   my $wid = MCE->wid();
+   my $wid = $mce->wid;
+   my $wid = MCE->wid;
 
 =back
 
@@ -1186,7 +1231,7 @@ Methods listed below are callable by the main process only.
 
 Forchunk, foreach, and forseq are sugar methods in MCE. Workers are
 automatically spawned, the code block is executed in parallel, and shutdown
-is called. Do not call these methods if workers must persist afterwards.
+is called. Do not use these methods if workers must persist afterwards.
 
 Specifying options is optional. Valid options are the same as for the
 process method.
@@ -1268,7 +1313,7 @@ Sequence can be defined using an array or hash reference.
 
    $mce->forseq({ begin => 15, end => 10, step => -1 }, sub {
       my ($mce, $n, $chunk_id) = @_;
-      print $n, " from ", MCE->wid(), "\n";
+      print $n, " from ", MCE->wid, "\n";
    });
 
 MCE 1.415 allows chunk_size > 1. $n_seq is a reference pointing to an array of
@@ -1298,12 +1343,10 @@ Allowable options { key => value, ... } are:
 
 Options remain persistent going forward unless changed. Setting user_begin,
 user_end, or user_func will cause already spawned workers to shut down and
-re-spawn automatically. Therefore, define these during instantiation if
-possible.
+re-spawn automatically. Therefore, define these during instantiation.
 
 The below will cause workers to re-spawn after each process. It doesn't really
-matter for small jobs. One can create a few MCE instances. Perhaps the code
-block is different altogether.
+matter for small jobs.
 
    my $mce = MCE->new( max_workers => 'auto' );
 
@@ -1319,11 +1362,11 @@ block is different altogether.
       user_end   => sub { ## close handle to DB },
    }, "/list/of/files" );
 
-To have persistent workers, it's better to do the following instead. Workers
-will stay alive until told to shut down or during the exiting of the script.
+For persistent workers, better to do the following instead. Workers will
+stay alive until told to shut down or during the exiting of the script.
 Below is shown with overriding the default for max_workers.
 
-   use MCE MAX_WORKERS => 'auto';
+   use MCE max_workers => 'auto';
 
    my $mce = MCE->new(
       user_begin => sub { ## connect to DB },
@@ -1331,7 +1374,7 @@ Below is shown with overriding the default for max_workers.
       user_end   => sub { ## close handle to DB },
    );
 
-   $mce->spawn();    ## Not necessary, unless you want to spawn early
+   $mce->spawn;      ## Spawn early if required
 
    $mce->process("/one/very_big_file/_mce_/will_chunk_in_parallel");
    $mce->process(\@array_of_files_to_grep);
@@ -1344,16 +1387,18 @@ Below is shown with overriding the default for max_workers.
    $mce->process({ sequence => { begin => 10, end => 90, step 2 } });
    $mce->process({ sequence => [ 10, 90, 2 ] });
 
-   $mce->shutdown();
+   $mce->shutdown;
 
 =item ->restart_worker ( void )
 
-One can restart a worker who has died or exited. The job never ends below due
-to restarting each time. Recommended is to call $mce->exit() or MCE->exit()
-instead of the native exit() function for better handling, especially under
+One can restart a worker who has died or exited. The job never ends below
+due to restarting each time. Recommended is to call MCE->exit or $mce->exit
+instead of the native exit function for better handling, especially under
 the Windows environment.
 
 The $e->{wid} argument is no longer necessary starting with the 1.5 release.
+
+Press [ctrl-c] to terminate the script.
 
    my $mce = MCE->new(
 
@@ -1361,32 +1406,32 @@ The $e->{wid} argument is no longer necessary starting with the 1.5 release.
          my ($mce, $e) = @_;
          print "$e->{wid}: $e->{pid}: status $e->{status}: $e->{msg}";
        # $mce->restart_worker($e->{wid});  ## MCE-1.415 and below
-         $mce->restart_worker();           ## MCE-1.5 and above
+         $mce->restart_worker;             ## MCE-1.500 and above
       },
 
       user_begin => sub {
          my ($mce, $task_id, $task_name) = @_;
-         ## Not interested in die messages going to STDERR.
-         ## The die handler calls MCE->exit(255, $_[0]).
+         ## Not interested in die messages going to STDERR,
+         ## because the die handler calls MCE->exit(255, $_[0]).
          close STDERR;
       },
 
       user_tasks => [{
          max_workers => 5,
          user_func => sub {
-            my ($mce) = @_; sleep MCE->wid();
-            MCE->exit(3, "exited from " . MCE->wid() . "\n");
+            my ($mce) = @_; sleep MCE->wid;
+            MCE->exit(3, "exited from " . MCE->wid . "\n");
          }
       },{
          max_workers => 4,
          user_func => sub {
-            my ($mce) = @_; sleep MCE->wid();
-            die("died from " . MCE->wid() . "\n");
+            my ($mce) = @_; sleep MCE->wid;
+            die("died from " . MCE->wid . "\n");
          }
       }]
    );
 
-   $mce->run();
+   $mce->run;
 
    -- Output
 
@@ -1419,8 +1464,8 @@ The $e->{wid} argument is no longer necessary starting with the 1.5 release.
 =item ->run ( [ $auto_shutdown [, { options } ] ] )
 
 The run method, by default, spawns workers, processes once, and shuts down
-workers. Set $auto_shutdown to 0 when wanting workers to persist after
-running (default is 1).
+afterwards. Specify 0 for $auto_shutdown when wanting workers to persist
+after running (default is 1).
 
 Specifying options is optional. Valid options are the same as for the
 process method.
@@ -1440,11 +1485,14 @@ data as $mce->{user_data}.
 The data which can be sent is restricted to an ARRAY, HASH, or PDL reference.
 Workers begin processing immediately after receiving data. Workers set
 $mce->{user_data} to undef after processing. One cannot specify input_data,
-sequence, or user_tasks for the MCE instance to receive user data via the
-"send" method.
+sequence, or user_tasks for the MCE instance in order to receive user data
+via the "send" method.
 
 Passing any options e.g. run(0, { options }) is ignored due to workers running
-immediately after receiving user data.
+immediately after receiving user data. There is no guarantee to which worker
+will receive data first. It depends on which worker is available awaiting data.
+
+   use MCE;
 
    my $mce = MCE->new(
       max_workers => 5,
@@ -1457,14 +1505,14 @@ immediately after receiving user data.
       }
    );
 
-   $mce->spawn();   ## Optional, send will spawn if necessary.
+   $mce->spawn;     ## Optional, send will spawn if necessary.
 
    $mce->send( { first_name => "Theresa" } );
    $mce->send( { first_name => "Francis" } );
    $mce->send( { first_name => "Padre"   } );
    $mce->send( { first_name => "Anthony" } );
 
-   $mce->run(0);    ## Wait for workers to complete processing.
+   $mce->run;       ## Wait for workers to complete processing.
 
    -- Output
 
@@ -1476,12 +1524,12 @@ immediately after receiving user data.
 =item ->shutdown ( void )
 
 The run method will automatically spawn workers, run once, and shutdown workers
-automatically. The process method leaves workers waiting for the next job after
-processing. Call shutdown after processing all jobs.
+automatically. Workers persist after calling the process method. Call shutdown
+after processing all jobs.
 
    my $mce = MCE->new( ... );
 
-   $mce->spawn();
+   $mce->spawn;
 
    $mce->process(\@input_data_1);        ## Processing multiple arrays
    $mce->process(\@input_data_2);
@@ -1491,29 +1539,29 @@ processing. Call shutdown after processing all jobs.
    $mce->process('input_file_2');
    $mce->process('input_file_n');
 
-   $mce->shutdown();
+   $mce->shutdown;
 
 =item ->spawn ( void )
 
 Workers are normally spawned automatically. The spawn method is beneficial when
-wanting to spawn workers early.
+spawning workers early is desired.
 
    my $mce = MCE->new( ... );
 
-   $mce->spawn();
+   $mce->spawn;
 
 =item ->status ( void )
 
 The greatest exit status is saved among workers exiting during a run. Call this
-after running or processing to check if a worker exited with a non-zero value.
+after running or processing to check if any worker exited with a non-zero value.
 For more granularity, look at the on_post_exit or on_post_run options for
 callback support.
 
    my $mce = MCE->new( ... );
 
-   $mce->run();
+   $mce->run;
 
-   my $exit_status = $mce->status();
+   my $exit_status = $mce->status;
 
 =back
 
@@ -1526,9 +1574,9 @@ Methods listed below are callable by workers only.
 =item ->do ( 'callback_func' [, $arg1, ... ] )
 
 MCE can serialized data transfers from worker processes via helper functions
-do & sendto. The main MCE thread will process these serially. This utilizes
-the Storable Perl module for passing data from a worker process to the main
-MCE thread. The callback function can optionally return a reply.
+do & sendto. The manager process processes these serially. This utilizes
+the Storable Perl module for passing data from a worker process to the
+manager process. The callback function can optionally return a reply.
 
    [ $reply = ] MCE->do('callback' [, $arg1, ... ]);
 
@@ -1552,20 +1600,22 @@ MCE knows if wanting a void, list, hash, or a scalar return value.
 
 =item ->exit ( [ $status [, $message [, $id ] ] ] )
 
-Worker exits entirely from MCE. $id (optional) can be used to pass the primary
-key or a string along with the message. Please look at the on_post_exit and
+Worker exits from MCE. $id (optional) can be used to pass the primary key
+or a string along with the message. Please look at the on_post_exit and
 on_post_run options for callback support.
 
-   MCE->exit();             ## default is 0
+   MCE->exit;           ## default 0
    MCE->exit(1);
-   MCE->exit(2, 'error: entire chunk failed', $chunk_id);
-   MCE->exit(0, 'ok', 'pebbles');
+   MCE->exit(2, 'chunk failed', $chunk_id);
+   MCE->exit(0, 'msg_foo', 'id_1000');
 
 =item ->gather ( $arg1, [, $arg2, ... ] )
 
 A worker can submit data to the location specified via the gather option by
 calling this method. See L<MCE::Flow|MCE::Flow> and L<MCE::Loop|MCE::Loop>
 for additional use-case.
+
+   use MCE;
 
    my @hosts = qw(
       hosta hostb hostc hostd hoste
@@ -1625,8 +1675,14 @@ for additional use-case.
 
 =item ->last ( void )
 
-Worker immediately leaves the chunking loop or user func. Called from inside
+Worker leaves the chunking loop or user func immediately. Callable from inside
 foreach, forchunk, forseq, and user_func.
+
+   use MCE;
+
+   my $mce = MCE->new(
+      max_workers => 5
+   );
 
    my @list = (1 .. 80);
 
@@ -1646,19 +1702,25 @@ foreach, forchunk, forseq, and user_func.
 
    -- Output (each chunk above consists of 2 elements)
 
-   1
-   2
    3
    4
-   5
-   6
+   1
+   2
    7
    8
+   5
+   6
 
 =item ->next ( void )
 
-Worker starts the next iteration of the chunking loop. Called from inside
+Worker starts the next iteration of the chunking loop. Callable from inside
 foreach, forchunk, forseq, and user_func.
+
+   use MCE;
+
+   my $mce = MCE->new(
+      max_workers => 5
+   );
 
    my @list = (1 .. 80);
 
@@ -1714,9 +1776,6 @@ not a glob reference.
 
    MCE->print(\*STDOUT, \@array, "\n");
    MCE->print("", \@array, "\n");          ## ok
-
-   MCE->say(\*STDOUT, \$scalar);
-   MCE->say("", \$scalar);                 ## ok
 
 =item ->sendto ( $to, $arg1, ... )
 
@@ -1785,7 +1844,7 @@ All workers assigned task_id 0 must call sync whenever barrier syncing.
    sub user_func {
 
       my ($mce) = @_;
-      my $wid = MCE->wid();
+      my $wid = MCE->wid;
 
       MCE->sendto("STDOUT", "a: $wid\n");   ## MCE 1.0+
       MCE->sync;
@@ -1801,7 +1860,7 @@ All workers assigned task_id 0 must call sync whenever barrier syncing.
 
    my $mce = MCE->new(
       max_workers => 4, user_func => \&user_func
-   )->run();
+   )->run;
 
    -- Output (without barrier synchronization)
 
@@ -1869,7 +1928,7 @@ There may be times when the MCE driven app is too fast. The interval option
 combined with the yield method, both introduced with MCE 1.5, allows one to
 enable the "grace" factor for the app.
 
-A use case is an app configured with 160 workers running on a 24 logical way
+A use case is an app configured with 200 workers running on a 24 logical way
 box. Data is polled from the database containing over 2.5 million rows. Workers
 chunk away at 300 rows per chunk and perform SNMP gets (300 sockets per worker)
 to poll 25 metrics from each device. With this scenario, the load on the box,
@@ -1877,16 +1936,16 @@ at some point, rises to 90+. In addition, IP_Tables reaches its contention
 point causing the entire app to fail.
 
 The above is solved by simply having workers yield among themselves in a
-synchronized fashion. A delay of 0.005 seconds between intervals is all that's
-needed -- even okay with 0.003. The load on the box hovers between 23 ~ 27 for
-the duration of the run. The actual poll completes in under 17 minutes time.
-It's quite fast considering the app polls 62,500,000 metrics combined. The math
-equates to 3,676,470 per minute or rather 61,275 per second from a single node.
+synchronized fashion. A delay of 0.006 seconds between intervals is all that's
+needed. The load on the box hovers between 23 ~ 27 for the duration of the run.
+The actual poll completes in under 17 minutes time. This is quite fast
+considering the app polls 62,500,000 metrics combined. The math equates to
+3,676,470 per minute or rather 61,275 per second from a single node.
 
    ## Both max_nodes and node_id are optional (default is 1).
 
    interval => {
-      delay => 0.005, max_nodes => $max_nodes, node_id => $node_id
+      delay => 0.006, max_nodes => $max_nodes, node_id => $node_id
    }
 
 A 4 node setup can poll 10 million devices without the additional overhead of a
@@ -1904,10 +1963,12 @@ needed to maximize on the power of randomness for mac addresses.
 The user_tasks is configured to simulate 4 nodes below. The demonstration uses
 2 workers to minimize the output size. Input is from the sequence option.
 
-   use Time::HiRes qw(time);
+   use Time::HiRes 'time';
    use MCE;
 
-   my $d = shift || 0.10;
+   my $d = shift || 0.1;
+
+   local $| = 1;
 
    sub create_task {
 
