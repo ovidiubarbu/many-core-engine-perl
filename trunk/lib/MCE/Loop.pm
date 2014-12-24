@@ -427,16 +427,16 @@ choosing 1 for chunk_size is fine.
 
 The following list 5 options which may be overridden when loading the module.
 
-   use Sereal   qw(encode_sereal decode_sereal);  # Include a serialization
-   use CBOR::XS qw(encode_cbor   decode_cbor  );  #  module of your choice
-   use JSON::XS qw(encode_json   decode_json  );
+   use Sereal qw( encode_sereal decode_sereal );
+   use CBOR::XS qw( encode_cbor decode_cbor );
+   use JSON::XS qw( encode_json decode_json );
 
    use MCE::Loop
-         max_workers => 4,                     ## Default 'auto'
-         chunk_size  => 100,                   ## Default 'auto'
-         tmp_dir     => "/path/to/app/tmp",    ## $MCE::Signal::tmp_dir
-         freeze      => \&encode_sereal,       ## \&Storable::freeze
-         thaw        => \&decode_sereal        ## \&Storable::thaw
+         max_workers => 4,               ## Default 'auto'
+         chunk_size => 100,              ## Default 'auto'
+         tmp_dir => "/path/to/app/tmp",  ## $MCE::Signal::tmp_dir
+         freeze => \&encode_sereal,      ## \&Storable::freeze
+         thaw => \&decode_sereal         ## \&Storable::thaw
    ;
 
 There is a simpler way to enable Sereal with MCE 1.5. The following will
@@ -449,7 +449,7 @@ Storable for serialization.
       chunk_size => 1
    };
 
-   ## Serialization is through Sereal if available.
+   ## Serialization is provided by Sereal if available.
    my %answer = mce_loop { MCE->gather( $_, sqrt $_ ) } 1..10000;
 
 =head1 CUSTOMIZING MCE
@@ -561,7 +561,7 @@ simulations. Time was measured using 1 worker to emphasize the difference.
 
    MCE::Loop::init {
       max_workers => 1,
-    # chunk_size  => 'auto',     ## btw, 'auto' will never drop below 2
+    # chunk_size  => 'auto',     ## 'auto' will never be smaller than 2
       chunk_size  => 1_250_000,
       bounds_only => 1
    };
@@ -695,73 +695,64 @@ data. Serialization is automatic behind the scene.
       print "Exit status: ", $h3{$host}->[2], "\n\n";
    }
 
-Perhaps you want more control with gather such as appending to an array while
-retaining output order. Although MCE::Map comes to mind, some folks want "full"
-control. And here we go... but this time around in chunking style... :)
+Although MCE::Map comes to mind, some folks may want additional control with
+gathering data. Below will retain output order.
 
-The two options passed to MCE::Loop are optional as they default to 'auto'. The
-beauty of chunking data is that IPC occurs once per chunk versus once per item.
-Although IPC is quite fast, chunking becomes beneficial the larger the data
-becomes. Hence, the reason for the demonstration below.
-
-   use MCE::Loop chunk_size => 'auto', max_workers => 'auto';
-
-   my (%_tmp, $_gather_ref, $_order_id);
+   use MCE::Loop;
 
    sub preserve_order {
-      $_tmp{ (shift) } = \@_;
+      my %tmp; my $order_id = 1; my $gather_ref = $_[0];
 
-      while (1) {
-         last unless exists $_tmp{$_order_id};
-         push @{ $_gather_ref }, @{ $_tmp{$_order_id} };
-         delete $_tmp{$_order_id++};
-      }
+      return sub {
+         $tmp{ (shift) } = \@_;
 
-      return;
+         while (1) {
+            last unless exists $tmp{$order_id};
+            push @{ $gather_ref }, @{ $tmp{$order_id} };
+            delete $tmp{$order_id++};
+         }
+
+         return;
+      };
    }
 
-   ## Workers persist after running. Therefore, not recommended to
-   ## use a closure for gather unless calling MCE::Loop::init each
-   ## time inside the loop. Use this demonstration when wanting
-   ## MCE::Loop to maintain output order.
+   my @m2;
 
-   MCE::Loop::init { gather => \&preserve_order };
+   MCE::Loop::init {
+      chunk_size => 'auto', max_workers => 'auto',
+      gather => preserve_order(\@m2)
+   };
 
-   for (1..2) {
-      my @m2;
+   mce_loop {
+      my @a; my ($mce, $chunk_ref, $chunk_id) = @_;
 
-      ## Remember to set $_order_id back to 1 prior to running.
-      $_gather_ref = \@m2; $_order_id = 1;
+      ## Compute the entire chunk data at once.
+      push @a, map { $_ * 2 } @{ $chunk_ref };
 
-      mce_loop {
-         my @a; my ($mce, $chunk_ref, $chunk_id) = @_;
+      ## Afterwards, invoke the gather feature, which
+      ## will direct the data to the callback function.
+      MCE->gather(MCE->chunk_id, @a);
 
-         ## Compute the entire chunk data at once.
-         push @a, map { $_ * 2 } @{ $chunk_ref };
+   } 1..100000;
 
-         ## Afterwards, invoke the gather feature, which
-         ## will direct the data to the callback function.
-         MCE->gather(MCE->chunk_id, @a);
+   MCE::Loop::finish;
 
-      } 1..100000;
-
-      print scalar @m2, "\n";
-   }
+   print scalar @m2, "\n";
 
 All 6 models support 'auto' for chunk_size whereas the core API doesn't. Think
 of the models as the basis for providing JIT for MCE. They create the instance
-and tune max_workers plus chunk_size automatically irregardless of the
-hardware being run on.
+and tune max_workers plus chunk_size automatically regardless of the hardware.
 
 The following does the same thing using the core API.
 
    use MCE;
 
-   ...
+   sub preserve_order {
+      ...
+   }
 
    my $mce = MCE->new(
       max_workers => 'auto', chunk_size => 8000,
-      gather => \&preserve_order,
 
       user_func => sub {
          my @a; my ($mce, $chunk_ref, $chunk_id) = @_;
@@ -775,9 +766,12 @@ The following does the same thing using the core API.
       }
    );
 
-   $mce->process([1..100000]);
+   my @m2;
 
-   ...
+   $mce->process({ gather => preserve_order(\@m2) }, [1..100000]);
+   $mce->shutdown;
+
+   print scalar @m2, "\n";
 
 =head1 MANUAL SHUTDOWN
 

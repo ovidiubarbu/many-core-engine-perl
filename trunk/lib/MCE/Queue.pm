@@ -1918,27 +1918,26 @@ of the gather option in the context of a queue.
    use MCE;
    use MCE::Queue;
 
-   my ($_order_id, %_tmp);
+   sub preserve_order {
+      my %tmp; my $order_id = 1;
 
-   sub _preserve_order {
-      my ($q, $chunk_id, $result) = @_;
+      return sub {
+         my ($q, $chunk_id, $data) = @_;
+         $tmp{$chunk_id} = $data;
 
-      $_tmp{$chunk_id} = $result;
+         while (1) {
+            last unless exists $tmp{$order_id};
+            $q->enqueue( $tmp{$order_id} );
+            delete $tmp{$order_id++};
+         }
 
-      while (1) {
-         last unless exists $_tmp{$_order_id};
-         $q->enqueue( $_tmp{$_order_id} );
-         delete $_tmp{$_order_id++};
-      }
-
-      return;
+         return;
+      };
    }
 
    my @squares; my $q = MCE::Queue->new(
-      queue => \@squares, gather => \&_preserve_order
+      queue => \@squares, gather => preserve_order
    );
-
-   $_order_id = 1;  ## The first chunk_id equals 1;
 
    my $mce = MCE->new(
       chunk_size => 1, input_data => [ 1 .. 100 ],
