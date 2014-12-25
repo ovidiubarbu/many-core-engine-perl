@@ -14,7 +14,7 @@ use warnings;
 use base qw( Exporter );
 use bytes;
 
-our $VERSION = '1.521';
+our $VERSION = '1.522';
 
 our @EXPORT_OK = qw( get_ncpu );
 our %EXPORT_TAGS = ( all => \@EXPORT_OK );
@@ -37,7 +37,7 @@ sub get_ncpu {
    return $g_ncpu if (defined $g_ncpu);
 
    local $ENV{PATH} = "/usr/sbin:/sbin:/usr/bin:/bin:$ENV{PATH}";
-   $ENV{PATH} =~ /(.*)/; $ENV{PATH} = $1;   ## Remove taintedness
+   $ENV{PATH} =~ /(.*)/; $ENV{PATH} = $1;   ## Remove tainted'ness
 
    my $ncpu = 1;
 
@@ -243,7 +243,7 @@ MCE::Util - Utility functions for Many-Core Engine
 
 =head1 VERSION
 
-This document describes MCE::Util version 1.521
+This document describes MCE::Util version 1.522
 
 =head1 SYNOPSIS
 

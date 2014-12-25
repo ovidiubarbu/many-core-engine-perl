@@ -19,7 +19,7 @@ use MCE;
 use MCE::Util;
 use MCE::Queue;
 
-our $VERSION = '1.521';
+our $VERSION = '1.522';
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -626,7 +626,7 @@ MCE::Stream - Parallel stream model for chaining multiple maps and greps
 
 =head1 VERSION
 
-This document describes MCE::Stream version 1.521
+This document describes MCE::Stream version 1.522
 
 =head1 SYNOPSIS
 
@@ -844,7 +844,7 @@ passing an array reference.
 =head1 API DOCUMENTATION
 
 Scripts using MCE::Stream can be written using the long or short form.
-The long form becomes relavant when mixing modes. Again, processing
+The long form becomes relevant when mixing modes. Again, processing
 occurs from right-to-left.
 
    my @m3 = mce_stream

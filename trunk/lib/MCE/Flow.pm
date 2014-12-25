@@ -18,7 +18,7 @@ use Scalar::Util qw( looks_like_number );
 use MCE;
 use MCE::Util;
 
-our $VERSION = '1.521';
+our $VERSION = '1.522';
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -447,7 +447,7 @@ MCE::Flow - Parallel flow model for building creative applications
 
 =head1 VERSION
 
-This document describes MCE::Flow version 1.521
+This document describes MCE::Flow version 1.522
 
 =head1 DESCRIPTION
 
@@ -581,7 +581,7 @@ If speed is not a concern and wanting to rid of all the MCE->freeze and
 MCE->thaw statements, simply enqueue and dequeue 2 items at a time.
 Or better yet, see L<MCE::Step|MCE::Step> introduced in MCE 1.506.
 
-First, task_end must be updated. The number of undefs must match the number
+First, task_end must be updated. The number of undef(s) must match the number
 of workers times the dequeue count. Otherwise, the script will stall.
 
    sub task_end {
@@ -1075,7 +1075,7 @@ gathering data such as retaining output order.
 
    ## Workers persist for the most part after running. Though, not always
    ## the case and depends on Perl. Pass a reference to a subroutine if
-   ## workers must persist; e.g. mce_flow { ... }, \&func, 1..100000.
+   ## workers must persist; e.g. mce_flow { ... }, \&foo, 1..100000.
 
    MCE::Flow::init {
       chunk_size => 'auto', max_workers => 'auto'
