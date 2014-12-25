@@ -1,6 +1,6 @@
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## MCE::Queue - Hybrid queues (normal and priority) for Many-Core Engine.
+## MCE::Queue - Hybrid (normal and priority) queues for Many-Core Engine.
 ##
 ###############################################################################
 
@@ -1732,7 +1732,7 @@ __END__
 
 =head1 NAME
 
-MCE::Queue - Hybrid queues (normal and priority) for Many-Core Engine
+MCE::Queue - Hybrid (normal and priority) queues for Many-Core Engine
 
 =head1 VERSION
 
@@ -1858,7 +1858,7 @@ other workers including the manager process.
 
 Queues behave as if running in local mode for the manager and worker processes
 for the duration of the script. I cannot think of a use-case for this, but
-mentioning the behavior in the event MCE::Queue is included prior to MCE.
+mentioning the behavior in the event MCE::Queue is included before MCE.
 
 =item C) MCE::Queue without inclusion of MCE
 
@@ -1908,7 +1908,7 @@ for the callback is the queue object.
    my $q7 = MCE::Queue->new( gather => \&_append );
    my $q8 = MCE::Queue->new( gather => \&_append );
 
-   ## Items are diverted to the gather callback function.
+   ## Items are diverted to the callback function, not the queue.
    $q7->enqueue( 'apple', 'orange' );
 
 The gather option allows one to store items temporarily while ensuring output
@@ -1953,8 +1953,7 @@ of the gather option in the context of a queue.
 =item ->clear ( void )
 
 Clears the queue of any items. This has the effect of nulling the queue.
-Each queue comes with a socket for blocking behind the scene. Use the clear
-method when wanting to clear the content of the array.
+Each queue is configured with a socket behind the scene.
 
    my @a; my $q = MCE::Queue->new( queue => \@a );
 
@@ -1971,7 +1970,7 @@ Appends a list of items onto the end of the priority queue with priority.
 
 =item ->dequeue ( [ $count ] )
 
-Returns the requested number of items (default is 1) from the queue. Priority
+Returns the requested number of items (default 1) from the queue. Priority
 data will always dequeue first before any data from the normal queue.
 
 The method will block if the queue contains zero items. If the queue contains
@@ -1979,13 +1978,13 @@ fewer than the requested number of items, the method will not block, but
 return the remaining items and undef for up to the count requested.
 
 The $count, used for requesting the number of items, is beneficial when workers
-are passing parameters through the queue. For this release, always remember to
+are passing parameters through the queue. For this reason, always remember to
 dequeue using the same multiple for the count. This is unlike Thread::Queue
 which will block until the requested number of items are available.
 
 =item ->dequeue_nb ( [ $count ] )
 
-Returns the requested number of items (default is 1) from the queue. Like with
+Returns the requested number of items (default 1) from the queue. Like with
 dequeue, priority data will always dequeue first. This method is non-blocking
 and will return undef in the absence of data from the queue.
 
@@ -2016,8 +2015,8 @@ Returns the number of items in the queue. The count includes both normal
 and priority data.
 
    $q = MCE::Queue->new();
-   $q->enqueuep(5, 'foo', 'bar');   # priority queue
-   $q->enqueue('sunny', 'day');     # normal queue
+   $q->enqueuep(5, 'foo', 'bar');   # priority
+   $q->enqueue('sunny', 'day');     # normal
 
    print $q->pending(), "\n";
    # Output: 4
@@ -2045,7 +2044,7 @@ call to dequeue. Negative index values are supported, similarly to arrays.
 
 Returns an item from the queue with priority, at the specified index, without
 dequeuing anything. It defaults to the head of the queue if index is not
-specified. The behavior is similarly to peek otherwise
+specified. The behavior is similarly to peek otherwise.
 
 =item ->peekh ( [ $index ] )
 
@@ -2091,7 +2090,8 @@ head of the queue.
 
 =item L<List::BinarySearch|List::BinarySearch>
 
-The bsearch_num_pos method is helpful for accommodating highest/lowest order.
+The bsearch_num_pos method was helpful for accommodating highest and lowest
+order in MCE::Queue.
 
 =item L<List::Priority|List::Priority>
 
@@ -2101,7 +2101,7 @@ MCE::Queue supports both normal and priority queues.
 
 Thread::Queue is used as a template for identifying and documenting the methods.
 MCE::Queue is not fully compatible due to supporting normal and priority queues
-simultaneously. E.g.
+simultaneously; e.g.
 
    $q->enqueuep( $p, $item [, $item, ... ] );    ## Priority queue
    $q->enqueue( $item [, $item, ... ] );         ## Normal queue

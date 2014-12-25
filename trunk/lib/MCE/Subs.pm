@@ -215,7 +215,7 @@ are prototyped, therefore allowing one to call them without using parentheses.
 
    use MCE::Subs qw( :worker );
 
-   ## barrier synchronization among workers
+   ## barrier synchronization demonstration
 
    sub user_func {
       my $wid = MCE->wid;
@@ -244,8 +244,8 @@ to using MCE::Map, which takes care of creating a MCE instance and running.
    use MCE::Map;
    use MCE::Subs qw( :worker );
 
-   ## The following will serialize output to STDOUT as well as gather
-   ## to @a. mce_say displays $_ when called without arguments.
+   ## The following will serialize output to STDOUT and gather to @a.
+   ## mce_say displays $_ when called without arguments.
 
    my @a = mce_map { mce_say; $_ } 1 .. 100;
 

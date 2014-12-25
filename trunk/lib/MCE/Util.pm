@@ -1,6 +1,6 @@
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## MCE::Util - Public and private utility functions for Many-Core Engine.
+## MCE::Util - Utility functions for Many-Core Engine.
 ##
 ###############################################################################
 
@@ -239,7 +239,7 @@ __END__
 
 =head1 NAME
 
-MCE::Util - Public and private utility functions for Many-Core Engine
+MCE::Util - Utility functions for Many-Core Engine
 
 =head1 VERSION
 
@@ -268,7 +268,7 @@ This is important for apps which are IO-bound.
 
  use MCE;
 
- ## 'Auto' is the total # of logical cores (lcores) (8 maximum, MCE 1.521)
+ ## 'Auto' is the total # of logical cores (lcores) (8 maximum, MCE 1.521).
  ## The computed value will not exceed the # of logical cores on the box.
 
  my $mce = MCE->new(

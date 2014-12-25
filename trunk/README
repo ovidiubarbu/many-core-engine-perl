@@ -48,7 +48,7 @@ Use Cases for MCE.
     to Thread::Queue. Check out MCE::Flow and MCE::Queue.
 
  2. Wanting multiple roles and each role uniquely configured with number of
-    workers and function to execute. Check out flow_demo.pl.
+    workers and function to execute. Check out flow_demo.pl and step_demo.pl.
 
  3. Wanting to process rows from a database in parallel. Check out sampledb
     under the examples directory.

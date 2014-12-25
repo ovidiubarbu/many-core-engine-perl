@@ -340,14 +340,66 @@ This document describes MCE::Loop version 1.521
 =head1 DESCRIPTION
 
 This module provides a parallel loop implementation through Many-Core Engine.
-MCE::Loop is not MCE::Map but more along the lines of an easy way to spun up a
+MCE::Loop is not MCE::Map but more along the lines of an easy way to spin up a
 MCE instance and have user_func pointing to your code block. If you want
-something similar to how map works, then also see L<MCE::Map|MCE::Map>.
+something similar to map, then see L<MCE::Map|MCE::Map>.
+
+   ## Construction when chunking is not desired
+
+   use MCE::Loop;
+
+   MCE::Loop::init {
+      max_workers => 5, chunk_size => 1
+   };
+
+   mce_loop {
+      my ($mce, $chunk_ref, $chunk_id) = @_;
+      MCE->say("$chunk_id: $_");
+   } 40 .. 48;
+
+   -- Output
+
+   3: 42
+   1: 40
+   2: 41
+   4: 43
+   5: 44
+   6: 45
+   7: 46
+   8: 47
+   9: 48
+
+   ## Construction when 'auto' or greater than 1
+
+   use MCE::Loop;
+
+   MCE::Loop::init {
+      max_workers => 5, chunk_size => 'auto'
+   };
+
+   mce_loop {
+      my ($mce, $chunk_ref, $chunk_id) = @_;
+      for (@{ $chunk_ref }) {
+         MCE->say("$chunk_id: $_");
+      }
+   } 40 .. 48;
+
+   -- Output
+
+   1: 40
+   2: 42
+   1: 41
+   4: 46
+   2: 43
+   5: 48
+   3: 44
+   4: 47
+   3: 45
 
 =head1 SYNOPSIS when CHUNK_SIZE EQUALS 1
 
 All models in MCE default to 'auto' for chunk_size. The arguments for the block
-are the same as writing a user_func block for the core API.
+are the same as writing a user_func block using the Core API.
 
 Beginning with MCE 1.5, the next input item is placed into the input scalar
 variable $_ when chunk_size equals 1. Otherwise, $_ points to $chunk_ref
@@ -365,7 +417,7 @@ when using $_. One can call MCE->chunk_id to obtain the current chunk id.
    line 9:  }
 
 Follow this synopsis when chunk_size equals one. Looping is not required from
-within the block. The block is called once per each item.
+inside the block. Hence, the block is called once per each item.
 
    ## Exports mce_loop, mce_loop_f, and mce_loop_s
    use MCE::Loop;
@@ -393,8 +445,8 @@ within the block. The block is called once per each item.
 
 =head1 SYNOPSIS when CHUNK_SIZE is GREATER THAN 1
 
-Follow this synopsis when chunk_size equals 'auto' or is greater than 1.
-This means having to loop through the chunk from within the block.
+Follow this synopsis when chunk_size equals 'auto' or greater than 1.
+This means having to loop through the chunk from inside the block.
 
    use MCE::Loop;
 
@@ -408,7 +460,7 @@ This means having to loop through the chunk from within the block.
 
    mce_loop { do_work($_) for (@{ $_ }) } 1..10000;
 
-   ## Same as above, resembles code using the core API.
+   ## Same as above, resembles code using the Core API.
 
    mce_loop {
       my ($mce, $chunk_ref, $chunk_id) = @_;
@@ -440,8 +492,7 @@ The following list 5 options which may be overridden when loading the module.
    ;
 
 There is a simpler way to enable Sereal with MCE 1.5. The following will
-attempt to use Sereal if available, otherwise will default back to using
-Storable for serialization.
+attempt to use Sereal if available, otherwise Storable for serialization.
 
    use MCE::Loop Sereal => 1;
 
@@ -449,7 +500,7 @@ Storable for serialization.
       chunk_size => 1
    };
 
-   ## Serialization is provided by Sereal if available.
+   ## Serialization is from Sereal if available.
    my %answer = mce_loop { MCE->gather( $_, sqrt $_ ) } 1..10000;
 
 =head1 CUSTOMIZING MCE
@@ -503,13 +554,20 @@ The init function accepts a hash of MCE options.
 =head1 API DOCUMENTATION
 
 The following assumes chunk_size equals 1 in order to demonstrate all the
-possibilities of passing input data into the loop.
+possibilities of passing input data into the code block.
 
 =over 3
 
+=item mce_loop { code } iterator
+
+An iterator reference can by specified for input_data. Iterators are described
+under "SYNTAX for INPUT_DATA" at L<MCE::Core|MCE::Core>.
+
+   mce_loop { $_ } make_iterator(10, 30, 2);
+
 =item mce_loop { code } list
 
-Input data can be defined using a list or passing a reference to an array.
+Input data can be defined using a list.
 
    mce_loop { $_ } 1..1000;
    mce_loop { $_ } [ 1..1000 ];
@@ -538,50 +596,41 @@ optional. The format is passed to sprintf (% may be omitted below).
       begin => $beg, end => $end, step => $step, format => $fmt
    };
 
-=item mce_loop { code } iterator
-
-An iterator reference can by specified for input data. Iterators are described
-under "SYNTAX for INPUT_DATA" at L<MCE::Core|MCE::Core>.
-
-   mce_loop { $_ } make_iterator(10, 30, 2);
-
 =back
 
 The sequence engine can compute 'begin' and 'end' items only, for the chunk,
-leaving out the items in between with the bounds_only option (boundaries only).
-This option applies to sequence and has no effect when chunk_size equals 1.
+and not the items in between (hence boundaries only). This option applies
+to sequence only and has no effect when chunk_size equals 1.
 
-The time to run for MCE below is 0.006s. This becomes 0.827s without the
-bounds_only option due to computing all items in between as well, thus
-creating a very large array. Basically, specify bounds_only => 1 when
-boundaries is all you need for looping inside the block; e.g Monte Carlo
-simulations. Time was measured using 1 worker to emphasize the difference.
+The time to run is 0.006s below. This becomes 0.827s without the bounds_only
+option due to computing all items in between, thus creating a very large
+array. Basically, specify bounds_only => 1 when boundaries is all you need
+for looping inside the block; e.g. Monte Carlo simulations.
+
+Time was measured using 1 worker to emphasize the difference.
 
    use MCE::Loop;
 
    MCE::Loop::init {
-      max_workers => 1,
-    # chunk_size  => 'auto',     ## 'auto' will never be smaller than 2
-      chunk_size  => 1_250_000,
+      max_workers => 1, chunk_size => 1_250_000,
       bounds_only => 1
    };
 
-   ## For sequence, the input scalar $_ points to $chunk_ref
-   ## when chunk_size > 1, otherwise equals $chunk_ref->[0].
+   ## For sequence, input scalar $_ points to $chunk_ref
+   ## when chunk_size > 1, otherwise $chunk_ref->[0].
    ##
    ## mce_loop_s {
    ##    my $begin = $_->[0]; my $end = $_->[-1];
    ##
    ##    for ($begin .. $end) {
-   ##       ... have fun with MCE ...
+   ##       ...
    ##    }
    ##
    ## } 1, 10_000_000;
 
    mce_loop_s {
       my ($mce, $chunk_ref, $chunk_id) = @_;
-
-      ## $chunk_ref contains just 2 items, not 1_250_000
+      ## $chunk_ref contains 2 items, not 1_250_000
 
       my $begin = $chunk_ref->[ 0];
       my $end   = $chunk_ref->[-1];   ## or $chunk_ref->[1]
@@ -612,8 +661,7 @@ the gather method is used to have results sent back to the manager process.
    my @a = mce_loop { MCE->gather($_ * 2) } 1..100;
    print "@a\n\n";
 
-   ## However, one can store to a hash by gathering 2 items per
-   ## each gather call (key, value).
+   ## Store to a hash by gathering 2 items (key, value).
    my %h1 = mce_loop { MCE->gather($_, $_ * 2) } 1..100;
    print "@h1{1..100}\n\n";
 
@@ -682,7 +730,6 @@ The following uses an anonymous array containing 3 elements when gathering
 data. Serialization is automatic behind the scene.
 
    my %h3 = mce_loop {
-
       ...
 
       MCE->gather($host, [$output, $error, $status]);
@@ -695,8 +742,8 @@ data. Serialization is automatic behind the scene.
       print "Exit status: ", $h3{$host}->[2], "\n\n";
    }
 
-Although MCE::Map comes to mind, some folks may want additional control with
-gathering data. Below will retain output order.
+Although MCE::Map comes to mind, one may want additional control when
+gathering data such as retaining output order.
 
    use MCE::Loop;
 
@@ -739,11 +786,11 @@ gathering data. Below will retain output order.
 
    print scalar @m2, "\n";
 
-All 6 models support 'auto' for chunk_size whereas the core API doesn't. Think
-of the models as the basis for providing JIT for MCE. They create the instance
-and tune max_workers plus chunk_size automatically regardless of the hardware.
+All 6 models support 'auto' for chunk_size unlike the Core API. Think of the
+models as the basis for providing JIT for MCE. They create the instance, tune
+max_workers, and tune chunk_size automatically regardless of the hardware.
 
-The following does the same thing using the core API.
+The following does the same thing using the Core API.
 
    use MCE;
 
@@ -779,9 +826,9 @@ The following does the same thing using the core API.
 
 =item finish
 
-MCE workers remain persistent as much as possible after running. Shutdown
-occurs when the script exits. One can manually shutdown MCE by simply calling
-finish after running. This resets the MCE instance.
+Workers remain persistent as much as possible after running. Shutdown occurs
+automatically when the script terminates. Call finish to manually shutdown
+workers and reset MCE.
 
    use MCE::Loop;
 

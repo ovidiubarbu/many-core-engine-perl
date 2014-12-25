@@ -85,9 +85,11 @@ with MCE.
              Process STDIN or FILE in parallel. Processing is via Perl
              for pipe1.pl, whereas an external command for pipe2.pl.
 
-   seq_demo.pl
+   seq_demo.pl, step_demo.pl
              Demonstration of the new sequence option appearing
              in MCE 1.3. Run with seq_demo.pl | sort
+
+             Transparent use of MCE::Queue with MCE::Step.
 
    sync.pl, utf8.pl
              Barrier synchronization demonstration.
@@ -169,7 +171,7 @@ This does the same thing using the foreach "sugar" method.
       MCE->gather($chunk_id, $_, sqrt($_));
    });
 
-The 2 examples described above were done using the core API. MCE 1.5 comes
+The 2 examples described above were done using the Core API. MCE 1.5 comes
 with several models. The L<MCE::Loop|MCE::Loop> model is used below.
 
    use MCE::Loop;

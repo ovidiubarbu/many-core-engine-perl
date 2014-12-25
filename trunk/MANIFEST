@@ -65,6 +65,7 @@ examples/sampledb/update1.pl
 examples/sampledb/update2.pl
 examples/sampledb/update3.pl
 examples/seq_demo.pl
+examples/step_demo.pl
 examples/sync.pl
 examples/tbray/README
 examples/tbray/tbray_baseline1.pl
