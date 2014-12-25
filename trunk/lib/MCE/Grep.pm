@@ -462,7 +462,7 @@ otherwise -1.
 
 Although this document is about MCE::Grep, the L<MCE::Stream|MCE::Stream>
 module can write results immediately without waiting for all chunks to
-complete. This is made possible by passing the reference of an array
+complete. This is made possible by passing the reference of the array
 (in this case @m4 and @m5).
 
    use MCE::Stream default_mode => 'grep';
@@ -487,7 +487,7 @@ The following list 5 options which may be overridden when loading the module.
    use JSON::XS qw( encode_json decode_json );
 
    use MCE::Grep
-         max_workers => 4,               ## Default 'auto' 
+         max_workers => 4,               ## Default 'auto'
          chunk_size => 100,              ## Default 'auto'
          tmp_dir => "/path/to/app/tmp",  ## $MCE::Signal::tmp_dir
          freeze => \&encode_sereal,      ## \&Storable::freeze
@@ -499,7 +499,7 @@ attempt to use Sereal if available, otherwise Storable for serialization.
 
    use MCE::Grep Sereal => 1;
 
-   ## Serialization is from Sereal if available.
+   ## Serialization is by the Sereal module if available.
    my @m2 = mce_grep { $_ % 5 == 0 } 1..10000;
 
 =head1 CUSTOMIZING MCE
