@@ -1,6 +1,31 @@
 
 Revision history for MCE
 
+1.522 Thu Dec 25 16:00:00 EST 2014
+
+  [BUG FIXES]
+
+  * Applied fix to MCE->shutdown so that MCE Models do not err when
+    receiving signal to terminate.
+
+  * Optimization for MCE->print, MCE->printf, MCE->say and MCE->sendto.
+    This was calling fileno unnecessarily. MCE->print('STDERR', ...)
+    is not supported. Do this instead; MCE->print(\*STDERR, ...)
+
+  [ENHANCEMENTS]
+
+  * Inserts the actual lib-path at the head of @INC in example files.
+  * Massive documentation updates throughout the entire distribution.
+  * Renamed barrier_sync.pl to sync.pl; scaling_pings.pl to ping.pl.
+  * Updated requires in META.yml, Makefile.PL and perl-MCE.spec.
+  * Updated comment in MCE::Queue test scripts.
+  * Updated the README file.
+
+  [NEW FEATURES]
+
+  * Added sampledb examples demonstrating DBI and SQLite with MCE.
+  * Added step_demo.pl to examples.
+
 1.521 Thu Dec 11 16:00:00 EST 2014
 
   [BUG FIXES]

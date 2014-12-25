@@ -5,7 +5,7 @@ MCE::Examples - A list of examples demonstrating Many-Core Engine
 
 =head1 VERSION
 
-This document describes MCE::Examples version 1.521
+This document describes MCE::Examples version 1.522
 
 =head1 DESCRIPTION
 
@@ -17,7 +17,7 @@ with MCE.
 =head1 INCLUDED WITH THE DISTRIBUTION
 
 A wrapper script for parallelizing the grep binary. Hence, processing is done
-by the binary, not Perl. This wrapper resides under the bin dir in MCE.
+by the binary, not Perl. This wrapper resides under the bin directory.
 
    mce_grep
         A wrapper script with support for the following C binaries.

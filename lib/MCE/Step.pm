@@ -20,7 +20,7 @@ use MCE::Util;
 
 use MCE::Queue;
 
-our $VERSION = '1.521';
+our $VERSION = '1.522';
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -537,7 +537,7 @@ MCE::Step - Parallel step model for building creative steps
 
 =head1 VERSION
 
-This document describes MCE::Step version 1.521
+This document describes MCE::Step version 1.522
 
 =head1 DESCRIPTION
 
@@ -1138,7 +1138,7 @@ gathering data such as retaining output order.
 
    ## Workers persist for the most part after running. Though, not always
    ## the case and depends on Perl. Pass a reference to a subroutine if
-   ## workers must persist; e.g. mce_step { ... }, \&func, 1..100000.
+   ## workers must persist; e.g. mce_step { ... }, \&foo, 1..100000.
 
    MCE::Step::init {
       chunk_size => 'auto', max_workers => 'auto'
