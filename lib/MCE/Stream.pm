@@ -737,7 +737,7 @@ attempt to use Sereal if available, otherwise Storable for serialization.
 
    use MCE::Stream Sereal => 1;
 
-   ## Serialization is from Sereal if available.
+   ## Serialization is by the Sereal module if available.
    my @m2 = mce_stream sub { $_ * $_ }, 1..10000;
 
 =head1 CUSTOMIZING MCE

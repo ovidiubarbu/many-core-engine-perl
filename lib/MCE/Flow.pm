@@ -756,7 +756,7 @@ attempt to use Sereal if available, otherwise Storable for serialization.
       chunk_size => 1
    };
 
-   ## Serialization is from Sereal if available.
+   ## Serialization is by the Sereal module if available.
    my %answer = mce_flow sub { MCE->gather( $_, sqrt $_ ) }, 1..10000;
 
 =head1 CUSTOMIZING MCE
@@ -925,7 +925,7 @@ Time was measured using 1 worker to emphasize the difference.
       bounds_only => 1
    };
 
-   ## For sequence, input scalar $_ points to $chunk_ref
+   ## For sequence, the input scalar $_ points to $chunk_ref
    ## when chunk_size > 1, otherwise $chunk_ref->[0].
    ##
    ## mce_flow_s sub {

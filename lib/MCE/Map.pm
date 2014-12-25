@@ -464,10 +464,10 @@ otherwise -1.
 
    my @m3 = mce_map_s { calc } 1, 1000000;                ## 0.270 secs
 
-Although this document is about MCE::Map, the L<MCE::Stream|MCE::Stream> module
-can write results immediately without waiting for all chunks to complete. This
-is made possible by passing the reference of the array (in this case @m4 and
-@m5).
+Although this document is about MCE::Map, the L<MCE::Stream|MCE::Stream>
+module can write results immediately without waiting for all chunks to
+complete. This is made possible by passing the reference of the array
+(in this case @m4 and @m5).
 
    use MCE::Stream;
 
@@ -477,8 +477,8 @@ is made possible by passing the reference of the array (in this case @m4 and
 
    my @m4; mce_stream \@m4, sub { calc }, 1..1000000;
 
-      ## Completes in 0.272 secs. That is amazing considering the
-      ## overhead for passing data between the manager and worker.
+      ## Completes in 0.272 secs. This is amazing considering the
+      ## overhead for passing data between the manager and workers.
 
    my @m5; mce_stream_s \@m5, sub { calc }, 1, 1000000;
 
@@ -507,7 +507,7 @@ attempt to use Sereal if available, otherwise Storable for serialization.
 
    use MCE::Map Sereal => 1;
 
-   ## Serialization is from Sereal if available.
+   ## Serialization is by the Sereal module if available.
    my @m2 = mce_map { $_ * $_ } 1..10000;
 
 =head1 CUSTOMIZING MCE

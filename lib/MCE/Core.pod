@@ -330,7 +330,7 @@ attempt to use Sereal if available, otherwise Storable for serialization.
 
    use MCE Sereal => 1;
 
-   ## Serialization is from Sereal if available.
+   ## Serialization is by the Sereal module if available.
    my $mce = MCE->new( ... );
 
 =head2 RUNNING
@@ -811,7 +811,7 @@ Time was measured using 1 worker to emphasize the difference.
       sequence => { begin => 1, end => 10_000_000 },
       bounds_only => 1,
 
-      ## For sequence, input scalar $_ points to $chunk_ref
+      ## For sequence, the input scalar $_ points to $chunk_ref
       ## when chunk_size > 1, otherwise $chunk_ref->[0].
       ##
       ## user_func => sub {
