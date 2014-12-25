@@ -1,6 +1,6 @@
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## MCE::Signal - Temporary directory creation/cleanup & signal handling.
+## MCE::Signal - Temporary directory creation/cleanup and signal handling.
 ##
 ###############################################################################
 
@@ -463,7 +463,7 @@ __END__
 
 =head1 NAME
 
-MCE::Signal - Temporary directory creation/cleanup & signal handling
+MCE::Signal - Temporary directory creation/cleanup and signal handling
 
 =head1 VERSION
 
@@ -485,7 +485,7 @@ terminate, removes the temporary directory unless -keep_tmp_dir is specified,
 and terminates itself.
 
 The location of temp dir resides under $ENV{TEMP} if defined, otherwise
-/dev/shm if writeable and -use_dev_shm is specified, or /tmp.
+/dev/shm if writeable and -use_dev_shm if specified, or /tmp.
 
 The temp dir resides under $ENV{TEMP}/mce/ for native Perl on Microsoft
 Windows.
@@ -528,9 +528,8 @@ Nothing is exported by default. Exportable are 1 variable and 2 subroutines.
 
 =head2 stop_and_exit ( [ $exit_status | $signal ] )
 
- ## Stops execution, removes temp directory and exits the entire
- ## application. Pass 'TERM' if wanting to terminate a spawned or
- ## running MCE state.
+Stops execution, removes temp directory and exits the entire application.
+Pass 'TERM' to terminate a spawned or running MCE state.
 
  MCE::Signal::stop_and_exit(1);
  MCE::Signal::stop_and_exit('TERM');
@@ -551,11 +550,11 @@ Perl script. For this reason, sys_cmd was added to MCE::Signal.
 
 =head1 EXAMPLES
 
- ## Creates tmp_dir under /tmp
+ ## Creates tmp_dir under $ENV{TEMP} if defined, otherwise /tmp
  use MCE::Signal;
  use MCE::Signal qw( :all );
 
- ## Attempt to create tmp_dir under /dev/shm, otherwise under /tmp
+ ## Attempt to create tmp_dir under /dev/shm if writable
  use MCE::Signal qw( -use_dev_shm );
 
  ## Keep tmp_dir after script terminates

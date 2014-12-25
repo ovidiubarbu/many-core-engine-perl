@@ -1,7 +1,7 @@
 
 =head1 NAME
 
-MCE::Core - Documentation describing the core API for Many-Core Engine
+MCE::Core - Documentation describing the Core API for Many-Core Engine
 
 =head1 VERSION
 
@@ -13,26 +13,26 @@ This is a simplistic use case of MCE running with 5 workers.
 
    ## Construction using the Core API
 
-      use MCE;
+   use MCE;
 
-      my $mce = MCE->new(
-         max_workers => 5,
-         user_func => sub {
-            my ($mce) = @_;
-            $mce->say("Hello from " . $mce->wid);
-         }
-      );
+   my $mce = MCE->new(
+      max_workers => 5,
+      user_func => sub {
+         my ($mce) = @_;
+         $mce->say("Hello from " . $mce->wid);
+      }
+   );
 
-      $mce->run;
+   $mce->run;
 
    ## Construction using a MCE model
 
-      use MCE::Flow max_workers => 5;
+   use MCE::Flow max_workers => 5;
 
-      mce_flow sub {
-         my ($mce) = @_;
-         MCE->say("Hello from " . MCE->wid);
-      };
+   mce_flow sub {
+      my ($mce) = @_;
+      MCE->say("Hello from " . MCE->wid);
+   };
 
    -- Output
 
@@ -326,12 +326,11 @@ The following list 5 options which may be overridden when loading the module.
    my $mce = MCE->new( ... );
 
 There is a simpler way to enable Sereal with MCE 1.5. The following will
-attempt to use Sereal if available, otherwise will default back to using
-Storable for serialization.
+attempt to use Sereal if available, otherwise Storable for serialization.
 
    use MCE Sereal => 1;
 
-   ## Serialization is provided by Sereal if available.
+   ## Serialization is from Sereal if available.
    my $mce = MCE->new( ... );
 
 =head2 RUNNING
@@ -807,26 +806,25 @@ Time was measured using 1 worker to emphasize the difference.
    use MCE;
 
    my $mce = MCE->new(
-      max_workers => 1,
-      sequence    => { begin => 1, end => 10_000_000 },
-      chunk_size  => 1_250_000,
+      max_workers => 1, chunk_size => 1_250_000,
+
+      sequence => { begin => 1, end => 10_000_000 },
       bounds_only => 1,
 
-      ## For sequence, the input scalar $_ points to $chunk_ref
-      ## when chunk_size > 1, otherwise equals $chunk_ref->[0].
+      ## For sequence, input scalar $_ points to $chunk_ref
+      ## when chunk_size > 1, otherwise $chunk_ref->[0].
       ##
       ## user_func => sub {
       ##    my $begin = $_->[0]; my $end = $_->[-1];
       ##
       ##    for ($begin .. $end) {
-      ##       ... have fun with MCE ...
+      ##       ...
       ##    }
       ## },
 
       user_func => sub {
          my ($mce, $chunk_ref, $chunk_id) = @_;
-
-         ## $chunk_ref contains just 2 items, not 1_250_000
+         ## $chunk_ref contains 2 items, not 1_250_000
 
          my $begin = $chunk_ref->[ 0];
          my $end   = $chunk_ref->[-1];   ## or $chunk_ref->[1]

@@ -26,15 +26,15 @@ Three modules make up the core engine for MCE.
 
 =item L<MCE::Core|MCE::Core>
 
-Provides the core API for Many-Core Engine.
+Provides the Core API for Many-Core Engine.
 
 =item L<MCE::Signal|MCE::Signal>
 
-Temporary directory creation/cleanup & signal handling.
+Temporary directory creation/cleanup and signal handling.
 
 =item L<MCE::Util|MCE::Util>
 
-Public and private utility functions.
+Utility functions for MCE.
 
 =back
 
