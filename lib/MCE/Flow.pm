@@ -971,7 +971,7 @@ the gather method is used to have results sent back to the manager process.
    my @a = mce_flow sub { MCE->gather($_ * 2) }, 1..100;
    print "@a\n\n";
 
-   ## Outputs to a hash by gathering 2 items (key, value).
+   ## Outputs to a hash instead (key, value).
    my %h1 = mce_flow sub { MCE->gather($_, $_ * 2) }, 1..100;
    print "@h1{1..100}\n\n";
 
@@ -1149,8 +1149,8 @@ running.
 =item finish
 
 Workers remain persistent as much as possible after running. Shutdown occurs
-automatically when the script terminates. Call finish to shutdown workers
-and reset MCE.
+automatically when the script terminates. Call finish when workers are no
+longer needed.
 
    use MCE::Flow;
 

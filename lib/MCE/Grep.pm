@@ -452,7 +452,7 @@ code incurs additional CPU time.
    my @m1 =     grep { /[2357][1468][9]/ } 1..1000000;    ## 0.353 secs
    my @m2 = mce_grep { /[2357][1468][9]/ } 1..1000000;    ## 0.218 secs
 
-Even faster is mce_grep_s, useful when input data is a range of numbers.
+Even faster is mce_grep_s; useful when input data is a range of numbers.
 Workers generate sequences mathematically among themselves without any
 interaction from the manager process. Two arguments are required for
 mce_grep_s (begin, end). Step defaults to 1 if begin is smaller than end,
@@ -478,15 +478,13 @@ complete. This is made possible by passing the reference to an array
       ## sequence specification turns out to be faster due to lesser
       ## overhead for the manager process.
 
-A common scenario is grepping for pattern(s) against a very large file.
+A common scenario is grepping for pattern(s) inside a massive log file.
 Notice how parallelism increases as complexity increases for the pattern.
 Testing was done against a 300 MB file containing 250k lines.
 
    use MCE::Grep;
 
    my @m; open my $LOG, "<", "/path/to/log/file" or die "$!\n";
-
-   ## Native grep.
 
    @m = grep { /pattern/ } <$LOG>;                      ##  0.756 secs
    @m = grep { /foobar|[2357][1468][9]/ } <$LOG>;       ## 24.681 secs
@@ -497,8 +495,8 @@ Testing was done against a 300 MB file containing 250k lines.
    @m = mce_grep { /pattern/ } <$LOG>;                  ##  0.997 secs
    @m = mce_grep { /foobar|[2357][1468][9]/ } <$LOG>;   ##  7.439 secs
 
-   ## Faster with mce_grep_f. Workers access the file directly with
-   ## zero interaction from the manager process.
+   ## Even faster with mce_grep_f. Workers access the file directly
+   ## with zero interaction from the manager process.
 
    my $LOG = "/path/to/file";
    @m = mce_grep_f { /pattern/ } $LOG;                  ##  0.112 secs
@@ -622,8 +620,8 @@ optional. The format is passed to sprintf (% may be omitted below).
 =item finish
 
 Workers remain persistent as much as possible after running. Shutdown occurs
-automatically when the script terminates. Call finish to shutdown workers
-and reset MCE.
+automatically when the script terminates. Call finish when workers are no
+longer needed.
 
    use MCE::Grep;
 

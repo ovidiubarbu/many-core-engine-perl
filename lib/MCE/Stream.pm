@@ -704,7 +704,7 @@ overhead will likely diminish as the complexity increases for the code.
    my @m3; mce_stream \@m3,
          sub { $_ * 4 }, sub { $_ * 3 }, sub { $_ * 2 }, 1..1000000;
 
-Even faster is mce_stream_s, useful when input data is a range of numbers.
+Even faster is mce_stream_s; useful when input data is a range of numbers.
 Workers generate sequences mathematically among themselves without any
 interaction from the manager process. Two arguments are required for
 mce_stream_s (begin, end). Step defaults to 1 if begin is smaller than end,
@@ -923,8 +923,8 @@ optional. The format is passed to sprintf (% may be omitted below).
 =item finish
 
 Workers remain persistent as much as possible after running. Shutdown occurs
-automatically when the script terminates. Call finish to shutdown workers
-and reset MCE.
+automatically when the script terminates. Call finish when workers are no
+longer needed.
 
    use MCE::Stream;
 
