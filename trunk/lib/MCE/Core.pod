@@ -326,7 +326,8 @@ The following list 5 options which may be overridden when loading the module.
    my $mce = MCE->new( ... );
 
 There is a simpler way to enable Sereal with MCE 1.5. The following will
-attempt to use Sereal if available, otherwise Storable for serialization.
+attempt to use Sereal if available, otherwise defaults to Storable for
+serialization.
 
    use MCE Sereal => 1;
 

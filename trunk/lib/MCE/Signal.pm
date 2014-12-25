@@ -484,8 +484,8 @@ receiving said signals call stop_and_exit, which signals all workers to
 terminate, removes the temporary directory unless -keep_tmp_dir is specified,
 and terminates itself.
 
-The location of temp dir resides under $ENV{TEMP} if defined, otherwise
-/dev/shm if writeable and -use_dev_shm if specified, or /tmp.
+The location of the temp directory resides under $ENV{TEMP} if defined,
+otherwise /dev/shm if writeable and -use_dev_shm is specified, or /tmp.
 
 The temp dir resides under $ENV{TEMP}/mce/ for native Perl on Microsoft
 Windows.
@@ -528,7 +528,7 @@ Nothing is exported by default. Exportable are 1 variable and 2 subroutines.
 
 =head2 stop_and_exit ( [ $exit_status | $signal ] )
 
-Stops execution, removes temp directory and exits the entire application.
+Stops execution, removes temp directory, and exits the entire application.
 Pass 'TERM' to terminate a spawned or running MCE state.
 
  MCE::Signal::stop_and_exit(1);

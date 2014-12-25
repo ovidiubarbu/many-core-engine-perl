@@ -542,7 +542,8 @@ This document describes MCE::Step version 1.521
 =head1 DESCRIPTION
 
 MCE::Step is similar to L<MCE::Flow|MCE::Flow> for writing custom apps.
-The main difference comes from transparent use of queues between sub-tasks.
+The main difference comes from the transparent use of queues between
+sub-tasks.
 
 It is trivial to parallelize with mce_stream shown below.
 
@@ -583,8 +584,8 @@ This calls for preserving output order.
    }
 
 Next are the 3 sub-tasks. Compare these 3 sub-tasks with the same as described
-in L<MCE::Flow|MCE::Flow>. The call to MCE->step simplifies passing data into
-the next sub-task.
+in L<MCE::Flow|MCE::Flow>. The call to MCE->step simplifies the passing of data
+into the next sub-task.
 
    sub task_a {
       my @ans; my ($mce, $chunk_ref, $chunk_id) = @_;
@@ -664,7 +665,7 @@ First, defining 3 sub-tasks.
       MCE->gather($_);
    }
 
-Next, passing MCE options, using chunk_size 1, and run all 3 tasks in parallel.
+Next, pass MCE options, using chunk_size 1, and run all 3 tasks in parallel.
 Notice how max_workers can take an anonymous array, similarly to task_name.
 
    my @arr = mce_step {
@@ -802,7 +803,8 @@ The following list 6 options which may be overridden when loading the module.
    ;
 
 There is a simpler way to enable Sereal with MCE 1.5. The following will
-attempt to use Sereal if available, otherwise Storable for serialization.
+attempt to use Sereal if available, otherwise defaults to Storable for
+serialization.
 
    use MCE::Step Sereal => 1;
 
@@ -1032,7 +1034,7 @@ the gather method is used to have results sent back to the manager process.
    my @a = mce_step sub { MCE->gather($_ * 2) }, 1..100;
    print "@a\n\n";
 
-   ## Store to a hash by gathering 2 items (key, value).
+   ## Outputs to a hash by gathering 2 items (key, value).
    my %h1 = mce_step sub { MCE->gather($_, $_ * 2) }, 1..100;
    print "@h1{1..100}\n\n";
 
@@ -1210,8 +1212,8 @@ running.
 =item finish
 
 Workers remain persistent as much as possible after running. Shutdown occurs
-automatically when the script terminates. Call finish to manually shutdown
-workers and reset MCE.
+automatically when the script terminates. Call finish to shutdown workers
+and reset MCE.
 
    use MCE::Step;
 

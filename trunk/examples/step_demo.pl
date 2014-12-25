@@ -50,9 +50,9 @@ sub task_c {
    MCE->gather($_);
 }
 
-## Next, passing MCE options, using chunk_size 1, and run all 3 tasks in
-## parallel. Notice how max_workers can take an anonymous array, similarly
-## to task_name.
+## Next, pass MCE options, using chunk_size 1, and run all 3 tasks
+## in parallel. Notice how max_workers can take an anonymous array,
+## similarly to task_name.
 
 my @arr = mce_step {
    task_name   => [ 'a', 'b', 'c' ],
