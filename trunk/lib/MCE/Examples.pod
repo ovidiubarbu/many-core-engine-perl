@@ -16,84 +16,89 @@ with MCE.
 
 =head1 INCLUDED WITH THE DISTRIBUTION
 
-   bin/mce_grep
-             A wrapper script with support for the following C binaries.
-             agrep, grep, egrep, fgrep, and tre-agrep
+A wrapper script for parallelizing the grep binary. Hence, processing is done
+by the binary, not Perl. This wrapper resides under the bin dir in MCE.
 
-             Chunking may be applied either at the [file] level, for
-             large file(s), or at the [list] level when parsing many
-             files recursively.
+   mce_grep
+        A wrapper script with support for the following C binaries.
+        agrep, grep, egrep, fgrep, and tre-agrep
 
-             The gain in performance is noticeable for expensive
-             patterns, especially with agrep and tre-agrep.
+        Chunking may be applied either at the [file] level, for large
+        file(s), or at the [list] level when parsing many files
+        recursively.
 
-   matmult/matmult_base.pl, matmult_mce.pl, strassen_mce.pl
-             Various matrix multiplication demonstrations benchmarking
-             PDL, PDL + MCE, as well as parallelizing Strassen's
-             divide-and-conquer algorithm. Included are 2 plain
-             Perl examples.
+        The gain in performance is noticeable for expensive patterns,
+        especially with agrep and tre-agrep.
 
-   sampledb/create.pl, query.pl, update.pl
-             Examples demonstrating DBI (SQLite) with MCE.
-
-   tbray/wf_mce1.pl, wf_mce2.pl, wf_mce3.pl
-             An implementation of wide finder utilizing MCE.
-             As fast as MMAP IO when file resides in OS FS cache.
-             2x ~ 3x faster when reading directly from disk.
+The following scripts are located under the examples directory.
 
    cat.pl, egrep.pl, wc.pl
-             Concatenation, egrep, and word count scripts similar
-             to the cat, egrep, and wc binaries respectively.
+        Concatenation, egrep, and word count scripts similar to the
+        cat, egrep, and wc binaries respectively.
 
    files_flow.pl, files_mce.pl, files_thr.pl
-             Demonstrates MCE::Flow, MCE::Queue, and Thread::Queue.
-             See MCE::Queue synopsis for another variation.
+        Demonstrates MCE::Flow, MCE::Queue, and Thread::Queue.
+        See MCE::Queue synopsis for another variation.
 
    findnull.pl
-             A parallel script for reporting lines containing null
-             fields. It is many times faster than the egrep binary.
-             Try this against a large file containing very long lines.
+        A parallel script for reporting lines containing null fields.
+        It is many times faster than the egrep binary. Try this against
+        a large file containing very long lines.
 
    flow_demo.pl, flow_model.pl
-             Demonstrates MCE::Flow, MCE::Queue, and MCE->gather.
+        Demonstrates MCE::Flow, MCE::Queue, and MCE->gather.
 
    foreach.pl, forseq.pl, forchunk.pl
-             These take the same sqrt example from Parallel::Loops and
-             measures the overhead of the engine. The number indicates
-             the size of @input which can be submitted and displayed
-             in under 1 second.
+        This example demonstrates the sqrt example from Parallel::Loops.
+        Parallel::Loops utilizes Parallel::ForkManager.
 
-             Parallel::Loops is based on Parallel::ForkManager. MCE
-             utilizes a pool of workers which persist while running.
+        Tested on Mac OS X 10.9.5; with Perl 5.16.2; 2.6 GHz Core i7;
+        1600 MHz RAM. The number indicates the size of input displayed
+        in 1 second. Output was directed to >/dev/null during testing.
 
-             Parallel::Loops:     600  Forking each @input is expensive
-             MCE foreach....:  34,000  Sends result after each @input
-             MCE forseq.....:  70,000  Loops through sequence of numbers
-             MCE forchunk...: 480,000  Chunking reduces overhead
+        Parallel::Loops:        800  Forking each @input is expensive
+        MCE->foreach...:     70,000  Workers persist between each @input
+        MCE->forseq....:    200,000  Uses sequence of numbers as input
+        MCE->forchunk..:  1,000,000  IPC overhead is greatly reduced
 
    interval.pl
-             Demonstration of the interval option appearing in MCE 1.5.
+        Demonstration of the interval option appearing in MCE 1.5.
 
    iterator.pl
-             Similar to forseq.pl. Specifies an iterator for input_data.
-             A factory function is called which returns a closure (the
-             iterator itself).
+        Similar to forseq.pl. Specifies an iterator for input_data.
+        A factory function is called which returns a closure.
 
    ping.pl, pipe1.pl, pipe2.pl
-             Report back failed pings to standard output.
+        Report back failed pings to standard output.
 
-             Process STDIN or FILE in parallel. Processing is via Perl
-             for pipe1.pl, whereas an external command for pipe2.pl.
+        Process STDIN or FILE in parallel. Processing is via Perl for
+        pipe1.pl, whereas an external command for pipe2.pl.
 
    seq_demo.pl, step_demo.pl
-             Demonstration of the new sequence option appearing
-             in MCE 1.3. Run with seq_demo.pl | sort
+        Demonstration of the new sequence option appearing in MCE 1.3.
+        Run with seq_demo.pl | sort
 
-             Transparent use of MCE::Queue with MCE::Step.
+        Transparent use of MCE::Queue with MCE::Step.
 
    sync.pl, utf8.pl
-             Barrier synchronization demonstration.
-             Process input containing unicode data.
+        Barrier synchronization demonstration.
+        Process input containing unicode data.
+
+The rest are organized into various sub directories.
+
+   matmult/matmult_base*.pl, matmult_mce*.pl, strassen_mce*.pl
+        Various matrix multiplication demonstrations benchmarking
+        PDL, PDL + MCE, as well as parallelizing Strassen's
+        divide-and-conquer algorithm. Included are 2 plain
+        Perl examples.
+
+   sampledb/create.pl, query*.pl, update*.pl
+        Examples demonstrating DBI (SQLite) with MCE.
+
+   tbray/wf_mce1.pl, wf_mce2.pl, wf_mce3.pl
+        An implementation of wide finder utilizing MCE.
+        As fast as MMAP IO when file resides in OS FS cache.
+        2x ~ 3x faster when reading directly from disk.
 
 =head1 CHUNK_SIZE => 1 (in essence, wanting no chunking on input data)
 
