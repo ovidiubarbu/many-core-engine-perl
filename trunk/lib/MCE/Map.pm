@@ -456,7 +456,7 @@ code incurs additional CPU time.
    my @m1 =     map { calc } 1..1000000;                  ## 0.367 secs
    my @m2 = mce_map { calc } 1..1000000;                  ## 0.365 secs
 
-Even faster is mce_map_s, useful when input data is a range of numbers.
+Even faster is mce_map_s; useful when input data is a range of numbers.
 Workers generate sequences mathematically among themselves without any
 interaction from the manager process. Two arguments are required for
 mce_map_s (begin, end). Step defaults to 1 if begin is smaller than end,
@@ -611,8 +611,8 @@ optional. The format is passed to sprintf (% may be omitted below).
 =item finish
 
 Workers remain persistent as much as possible after running. Shutdown occurs
-automatically when the script terminates. Call finish to shutdown workers
-and reset MCE.
+automatically when the script terminates. Call finish when workers are no
+longer needed.
 
    use MCE::Map;
 

@@ -1952,7 +1952,8 @@ of the gather option in the context of a queue.
 
 =item ->clear ( void )
 
-Clears the queue of any items. This has the effect of nulling the queue.
+Clears the queue of any items. This has the effect of nulling the queue and
+the socket used for blocking.
 
    my @a; my $q = MCE::Queue->new( queue => \@a );
 
