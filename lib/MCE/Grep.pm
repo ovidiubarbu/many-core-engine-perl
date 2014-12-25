@@ -438,8 +438,8 @@ This document describes MCE::Grep version 1.521
 
 This module provides a parallel grep implementation via Many-Core Engine.
 MCE incurs a small overhead due to passing of data. A fast code block will
-run faster natively in Perl. However, the overhead will likely diminish as
-the complexity of the code increases.
+run faster natively. However, the overhead will likely diminish as the
+complexity increases for the code.
 
    my @m1 =     grep { $_ % 5 == 0 } 1..1000000;          ## 0.065 secs
    my @m2 = mce_grep { $_ % 5 == 0 } 1..1000000;          ## 0.194 secs
@@ -447,12 +447,12 @@ the complexity of the code increases.
 Chunking, enabled by default, greatly reduces the overhead behind the scene.
 The time for mce_grep below also includes the time for data exchanges between
 the manager and worker processes. More parallelization will be seen when the
-code block incurs additional CPU time.
+code incurs additional CPU time.
 
    my @m1 =     grep { /[2357][1468][9]/ } 1..1000000;    ## 0.353 secs
    my @m2 = mce_grep { /[2357][1468][9]/ } 1..1000000;    ## 0.218 secs
 
-The mce_grep_s function is useful when input data is a range of numbers.
+Even faster is mce_grep_s, useful when input data is a range of numbers.
 Workers generate sequences mathematically among themselves without any
 interaction from the manager process. Two arguments are required for
 mce_grep_s (begin, end). Step defaults to 1 if begin is smaller than end,
@@ -462,7 +462,7 @@ otherwise -1.
 
 Although this document is about MCE::Grep, the L<MCE::Stream|MCE::Stream>
 module can write results immediately without waiting for all chunks to
-complete. This is made possible by passing the reference of the array
+complete. This is made possible by passing the reference to an array
 (in this case @m4 and @m5).
 
    use MCE::Stream default_mode => 'grep';
@@ -477,6 +477,32 @@ complete. This is made possible by passing the reference of the array
       ## Completed in 0.120 secs. Like with mce_grep_s, specifying a
       ## sequence specification turns out to be faster due to lesser
       ## overhead for the manager process.
+
+A common scenario is grepping for pattern(s) against a very large file.
+Notice how parallelism increases as complexity increases for the pattern.
+Testing was done against a 300 MB file containing 250k lines.
+
+   use MCE::Grep;
+
+   my @m; open my $LOG, "<", "/path/to/log/file" or die "$!\n";
+
+   ## Native grep.
+
+   @m = grep { /pattern/ } <$LOG>;                      ##  0.756 secs
+   @m = grep { /foobar|[2357][1468][9]/ } <$LOG>;       ## 24.681 secs
+
+   ## Parallelism with mce_grep. This involves the manager process
+   ## due to processing a file handle.
+
+   @m = mce_grep { /pattern/ } <$LOG>;                  ##  0.997 secs
+   @m = mce_grep { /foobar|[2357][1468][9]/ } <$LOG>;   ##  7.439 secs
+
+   ## Faster with mce_grep_f. Workers access the file directly with
+   ## zero interaction from the manager process.
+
+   my $LOG = "/path/to/file";
+   @m = mce_grep_f { /pattern/ } $LOG;                  ##  0.112 secs
+   @m = mce_grep_f { /foobar|[2357][1468][9]/ } $LOG;   ##  6.840 secs
 
 =head1 OVERRIDING DEFAULTS
 
@@ -495,7 +521,8 @@ The following list 5 options which may be overridden when loading the module.
    ;
 
 There is a simpler way to enable Sereal with MCE 1.5. The following will
-attempt to use Sereal if available, otherwise Storable for serialization.
+attempt to use Sereal if available, otherwise defaults to Storable for
+serialization.
 
    use MCE::Grep Sereal => 1;
 
@@ -595,8 +622,8 @@ optional. The format is passed to sprintf (% may be omitted below).
 =item finish
 
 Workers remain persistent as much as possible after running. Shutdown occurs
-automatically when the script terminates. Call finish to manually shutdown
-workers and reset MCE.
+automatically when the script terminates. Call finish to shutdown workers
+and reset MCE.
 
    use MCE::Grep;
 

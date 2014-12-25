@@ -438,8 +438,8 @@ This document describes MCE::Map version 1.521
 
 This module provides a parallel map implementation via Many-Core Engine.
 MCE incurs a small overhead due to passing of data. A fast code block will
-run faster natively in Perl. However, the overhead will likely diminish as
-the complexity of the code increases.
+run faster natively. However, the overhead will likely diminish as the
+complexity increases for the code.
 
    my @m1 =     map { $_ * $_ } 1..1000000;               ## 0.127 secs
    my @m2 = mce_map { $_ * $_ } 1..1000000;               ## 0.304 secs
@@ -447,7 +447,7 @@ the complexity of the code increases.
 Chunking, enabled by default, greatly reduces the overhead behind the scene.
 The time for mce_map below also includes the time for data exchanges between
 the manager and worker processes. More parallelization will be seen when the
-code block incurs additional CPU time.
+code incurs additional CPU time.
 
    sub calc {
       sqrt $_ * sqrt $_ / 1.3 * 1.5 / 3.2 * 1.07
@@ -456,7 +456,7 @@ code block incurs additional CPU time.
    my @m1 =     map { calc } 1..1000000;                  ## 0.367 secs
    my @m2 = mce_map { calc } 1..1000000;                  ## 0.365 secs
 
-The mce_map_s function is useful when input data is a range of numbers.
+Even faster is mce_map_s, useful when input data is a range of numbers.
 Workers generate sequences mathematically among themselves without any
 interaction from the manager process. Two arguments are required for
 mce_map_s (begin, end). Step defaults to 1 if begin is smaller than end,
@@ -466,7 +466,7 @@ otherwise -1.
 
 Although this document is about MCE::Map, the L<MCE::Stream|MCE::Stream>
 module can write results immediately without waiting for all chunks to
-complete. This is made possible by passing the reference of the array
+complete. This is made possible by passing the reference to an array
 (in this case @m4 and @m5).
 
    use MCE::Stream;
@@ -503,7 +503,8 @@ The following list 5 options which may be overridden when loading the module.
    ;
 
 There is a simpler way to enable Sereal with MCE 1.5. The following will
-attempt to use Sereal if available, otherwise Storable for serialization.
+attempt to use Sereal if available, otherwise defaults to Storable for
+serialization.
 
    use MCE::Map Sereal => 1;
 
@@ -610,8 +611,8 @@ optional. The format is passed to sprintf (% may be omitted below).
 =item finish
 
 Workers remain persistent as much as possible after running. Shutdown occurs
-automatically when the script terminates. Call finish to manually shutdown
-workers and reset MCE.
+automatically when the script terminates. Call finish to shutdown workers
+and reset MCE.
 
    use MCE::Map;
 

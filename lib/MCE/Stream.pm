@@ -690,8 +690,8 @@ are appended immediately when providing a reference to an array.
    ##
 
 MCE incurs a small overhead due to passing of data. A fast code block will
-run faster natively in Perl when chaining multiple map functions. However,
-the overhead will likely diminish as the complexity of the code increases.
+run faster natively when chaining multiple map functions. However, the
+overhead will likely diminish as the complexity increases for the code.
 
    ## 0.334 secs -- baseline using the native map function
    my @m1 = map { $_ * 4 } map { $_ * 3 } map { $_ * 2 } 1..1000000;
@@ -704,7 +704,7 @@ the overhead will likely diminish as the complexity of the code increases.
    my @m3; mce_stream \@m3,
          sub { $_ * 4 }, sub { $_ * 3 }, sub { $_ * 2 }, 1..1000000;
 
-The mce_stream_s function is useful when input data is a range of numbers.
+Even faster is mce_stream_s, useful when input data is a range of numbers.
 Workers generate sequences mathematically among themselves without any
 interaction from the manager process. Two arguments are required for
 mce_stream_s (begin, end). Step defaults to 1 if begin is smaller than end,
@@ -733,7 +733,8 @@ The following list 7 options which may be overridden when loading the module.
    ;
 
 There is a simpler way to enable Sereal with MCE 1.5. The following will
-attempt to use Sereal if available, otherwise Storable for serialization.
+attempt to use Sereal if available, otherwise defaults to Storable for
+serialization.
 
    use MCE::Stream Sereal => 1;
 
@@ -922,8 +923,8 @@ optional. The format is passed to sprintf (% may be omitted below).
 =item finish
 
 Workers remain persistent as much as possible after running. Shutdown occurs
-automatically when the script terminates. Call finish to manually shutdown
-workers and reset MCE.
+automatically when the script terminates. Call finish to shutdown workers
+and reset MCE.
 
    use MCE::Stream;
 

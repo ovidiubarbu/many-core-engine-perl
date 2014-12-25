@@ -34,7 +34,7 @@ Temporary directory creation/cleanup and signal handling.
 
 =item L<MCE::Util|MCE::Util>
 
-Utility functions for MCE.
+Utility functions for Many-Core Engine.
 
 =back
 

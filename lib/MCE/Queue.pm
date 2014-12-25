@@ -1953,7 +1953,6 @@ of the gather option in the context of a queue.
 =item ->clear ( void )
 
 Clears the queue of any items. This has the effect of nulling the queue.
-Each queue is configured with a socket behind the scene.
 
    my @a; my $q = MCE::Queue->new( queue => \@a );
 
@@ -2015,8 +2014,8 @@ Returns the number of items in the queue. The count includes both normal
 and priority data.
 
    $q = MCE::Queue->new();
-   $q->enqueuep(5, 'foo', 'bar');   # priority
-   $q->enqueue('sunny', 'day');     # normal
+   $q->enqueuep(5, 'foo', 'bar');
+   $q->enqueue('sunny', 'day');
 
    print $q->pending(), "\n";
    # Output: 4
@@ -2090,7 +2089,7 @@ head of the queue.
 
 =item L<List::BinarySearch|List::BinarySearch>
 
-The bsearch_num_pos method was helpful for accommodating highest and lowest
+The bsearch_num_pos method was helpful for accommodating the highest and lowest
 order in MCE::Queue.
 
 =item L<List::Priority|List::Priority>

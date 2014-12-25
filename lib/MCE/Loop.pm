@@ -369,7 +369,7 @@ something similar to map, then see L<MCE::Map|MCE::Map>.
    8: 47
    9: 48
 
-   ## Construction when 'auto' or greater than 1
+   ## Construction for 'auto' or greater than 1
 
    use MCE::Loop;
 
@@ -492,7 +492,8 @@ The following list 5 options which may be overridden when loading the module.
    ;
 
 There is a simpler way to enable Sereal with MCE 1.5. The following will
-attempt to use Sereal if available, otherwise Storable for serialization.
+attempt to use Sereal if available, otherwise defaults to Storable for
+serialization.
 
    use MCE::Loop Sereal => 1;
 
@@ -661,7 +662,7 @@ the gather method is used to have results sent back to the manager process.
    my @a = mce_loop { MCE->gather($_ * 2) } 1..100;
    print "@a\n\n";
 
-   ## Store to a hash by gathering 2 items (key, value).
+   ## Outputs to a hash by gathering 2 items (key, value).
    my %h1 = mce_loop { MCE->gather($_, $_ * 2) } 1..100;
    print "@h1{1..100}\n\n";
 
@@ -827,8 +828,8 @@ The following does the same thing using the Core API.
 =item finish
 
 Workers remain persistent as much as possible after running. Shutdown occurs
-automatically when the script terminates. Call finish to manually shutdown
-workers and reset MCE.
+automatically when the script terminates. Call finish to shutdown workers
+and reset MCE.
 
    use MCE::Loop;
 

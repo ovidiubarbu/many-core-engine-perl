@@ -597,7 +597,7 @@ of workers times the dequeue count. Otherwise, the script will stall.
       ...
    }
 
-Next, the 3 sub-tasks enqueuing and dequeuing 2 items at a time.
+Next, the 3 sub-tasks enqueuing and dequeuing 2 elements at a time.
 
    sub task_a {
       my @ans; my ($mce, $chunk_ref, $chunk_id) = @_;
@@ -748,7 +748,8 @@ The following list 5 options which may be overridden when loading the module.
    ;
 
 There is a simpler way to enable Sereal with MCE 1.5. The following will
-attempt to use Sereal if available, otherwise Storable for serialization.
+attempt to use Sereal if available, otherwise defaults to Storable for
+serialization.
 
    use MCE::Flow Sereal => 1;
 
@@ -970,7 +971,7 @@ the gather method is used to have results sent back to the manager process.
    my @a = mce_flow sub { MCE->gather($_ * 2) }, 1..100;
    print "@a\n\n";
 
-   ## Store to a hash by gathering 2 items (key, value).
+   ## Outputs to a hash by gathering 2 items (key, value).
    my %h1 = mce_flow sub { MCE->gather($_, $_ * 2) }, 1..100;
    print "@h1{1..100}\n\n";
 
@@ -1148,8 +1149,8 @@ running.
 =item finish
 
 Workers remain persistent as much as possible after running. Shutdown occurs
-automatically when the script terminates. Call finish to manually shutdown
-workers and reset MCE.
+automatically when the script terminates. Call finish to shutdown workers
+and reset MCE.
 
    use MCE::Flow;
 
