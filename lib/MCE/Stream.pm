@@ -16,7 +16,6 @@ use warnings;
 use Scalar::Util qw( looks_like_number );
 
 use MCE;
-use MCE::Util;
 use MCE::Queue;
 
 our $VERSION = '1.522';
@@ -46,20 +45,31 @@ sub import {
       $DEFAULT_MODE = shift and next if ( $_arg eq 'default_mode' );
       $MAX_WORKERS  = shift and next if ( $_arg eq 'max_workers' );
       $CHUNK_SIZE   = shift and next if ( $_arg eq 'chunk_size' );
-      $MCE::TMP_DIR = shift and next if ( $_arg eq 'tmp_dir' );
-      $MCE::FREEZE  = shift and next if ( $_arg eq 'freeze' );
-      $MCE::THAW    = shift and next if ( $_arg eq 'thaw' );
+
+      $MCE::FREEZE = $MCE::MCE->{freeze} = shift and next
+         if ( $_arg eq 'freeze' );
+      $MCE::THAW = $MCE::MCE->{thaw} = shift and next
+         if ( $_arg eq 'thaw' );
 
       if ( $_arg eq 'sereal' ) {
          if (shift eq '1') {
             local $@; eval 'use Sereal qw(encode_sereal decode_sereal)';
             unless ($@) {
-               $MCE::FREEZE = \&encode_sereal;
-               $MCE::THAW   = \&decode_sereal;
+               $MCE::FREEZE = $MCE::MCE->{freeze} = \&encode_sereal;
+               $MCE::THAW = $MCE::MCE->{thaw} = \&decode_sereal;
             }
          }
          next;
       }
+      if ( $_arg eq 'tmp_dir' ) {
+         $MCE::TMP_DIR = $MCE::MCE->{tmp_dir} = shift;
+         my $_e1 = 'is not a directory or does not exist';
+         my $_e2 = 'is not writeable';
+         _croak("$_tag::import: ($MCE::TMP_DIR) $_e1") unless -d $MCE::TMP_DIR;
+         _croak("$_tag::import: ($MCE::TMP_DIR) $_e2") unless -w $MCE::TMP_DIR;
+         next;
+      }
+
       if ( $_arg eq 'fast' ) {
          $FAST = 1 if (shift eq '1');
          next;
