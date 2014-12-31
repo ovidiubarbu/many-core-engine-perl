@@ -145,7 +145,6 @@ sub import {
 
       $MAX_WORKERS = shift and next if ( $_arg eq 'max_workers' );
       $CHUNK_SIZE  = shift and next if ( $_arg eq 'chunk_size' );
-      $TMP_DIR     = shift and next if ( $_arg eq 'tmp_dir' );
       $FREEZE      = shift and next if ( $_arg eq 'freeze' );
       $THAW        = shift and next if ( $_arg eq 'thaw' );
 
@@ -153,10 +152,18 @@ sub import {
          if (shift eq '1') {
             local $@; eval 'use Sereal qw(encode_sereal decode_sereal)';
             unless ($@) {
-               $MCE::FREEZE = \&encode_sereal;
-               $MCE::THAW   = \&decode_sereal;
+               $FREEZE = \&encode_sereal;
+               $THAW   = \&decode_sereal;
             }
          }
+         next;
+      }
+      if ( $_arg eq 'tmp_dir' ) {
+         $TMP_DIR = shift;
+         my $_e1 = 'is not a directory or does not exist';
+         my $_e2 = 'is not writeable';
+         _croak("MCE::import: ($TMP_DIR) $_e1") unless -d $TMP_DIR;
+         _croak("MCE::import: ($TMP_DIR) $_e2") unless -w $TMP_DIR;
          next;
       }
 
@@ -344,12 +351,12 @@ sub new {
 
    ## Public options.
    $self->{max_workers} = (exists $argv{max_workers})
-      ? $argv{max_workers} : $MCE::MAX_WORKERS;
+      ? $argv{max_workers} : $MAX_WORKERS;
 
-   $self->{chunk_size}   = $argv{chunk_size}   || $MCE::CHUNK_SIZE;
-   $self->{tmp_dir}      = $argv{tmp_dir}      || $MCE::TMP_DIR;
-   $self->{freeze}       = $argv{freeze}       || $MCE::FREEZE;
-   $self->{thaw}         = $argv{thaw}         || $MCE::THAW;
+   $self->{chunk_size}   = $argv{chunk_size}   || $CHUNK_SIZE;
+   $self->{tmp_dir}      = $argv{tmp_dir}      || $TMP_DIR;
+   $self->{freeze}       = $argv{freeze}       || $FREEZE;
+   $self->{thaw}         = $argv{thaw}         || $THAW;
    $self->{task_name}    = $argv{task_name}    || 'MCE';
 
    if (exists $argv{_module_instance}) {
