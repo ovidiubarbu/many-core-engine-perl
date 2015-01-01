@@ -37,10 +37,10 @@ use bytes;
 our $VERSION = '1.522';
 
 our (%_valid_fields_new, %_params_allowed_args, %_valid_fields_task);
-our ($_is_cygwin, $_is_mswin32, $_is_winenv);
 our ($_que_read_size, $_que_template);
+our $MCE;
 
-our $MCE; my $_prev_mce;
+my  ($_is_cygwin, $_is_mswin32, $_is_winenv, $_prev_mce);
 
 BEGIN {
 
@@ -1935,7 +1935,7 @@ sub _worker_wrap {
 
    $MCE = $_[0];
 
-   return _worker_main(@_, \@_plugin_worker_init, $_has_threads);
+   return _worker_main(@_, \@_plugin_worker_init, $_has_threads, $_is_winenv);
 }
 
 ###############################################################################
