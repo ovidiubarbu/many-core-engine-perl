@@ -66,8 +66,19 @@ sub preserve_order {
 
 ## Configure MCE.
 
+## use MCE::Flow;    ## Same thing in MCE 1.5+
+##
+## mce_flow {
+##    max_workers => 3, chunk_size => 1, gather => preserve_order
+## },
+## sub {
+##    my ($mce, $chunk_ref, $chunk_id) = @_;
+##    MCE->gather($chunk_id, sqrt($chunk_ref->[0]));
+##
+## }, @input_data;
+
 my $mce = MCE->new(
-   max_workers => 3, gather => preserve_order
+   max_workers => 3, chunk_size => 1, gather => preserve_order
 );
 
 ## Use $chunk_ref->[0] or $_ to retrieve the single element.
