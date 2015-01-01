@@ -666,9 +666,7 @@ sub _worker_main {
       _pids _state _status _thrs _tids
    ) };
 
-   foreach (keys %MCE::_mce_spawned) {
-      delete $MCE::_mce_spawned{$_} unless ($_ eq $_mce_sid);
-   }
+   MCE::_clean_sessions($_mce_sid);
 
    ## Call module's worker_init routine for modules plugged into MCE.
    $_->($self) for (@{ $_plugin_worker_init });
@@ -690,7 +688,7 @@ sub _worker_main {
 
    ## Enter worker loop.
    my $_status = _worker_loop($self);
-   delete $MCE::_mce_spawned{$_mce_sid};
+   MCE::_clear_session($_mce_sid);
 
    ## Wait until MCE completes exit notification.
    $SIG{__DIE__} = $SIG{__WARN__} = sub { };

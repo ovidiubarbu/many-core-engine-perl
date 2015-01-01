@@ -269,12 +269,24 @@ use constant {
    WANTS_REF      => 3                   ## Callee wants H/A/S ref
 };
 
-my  $_mce_count    = 0;
-our %_mce_sess_dir = ();
-our %_mce_spawned  = ();
+my $_mce_count    = 0;
+my %_mce_sess_dir = ();
+my %_mce_spawned  = ();
 
-$MCE::Signal::mce_sess_dir_ref = \%_mce_sess_dir;
-$MCE::Signal::mce_spawned_ref  = \%_mce_spawned;
+MCE::Signal::_set_session_vars(\%_mce_sess_dir, \%_mce_spawned);
+
+sub _clean_sessions {
+   my ($_mce_sid) = @_;
+   foreach (keys %_mce_spawned) {
+      delete $_mce_spawned{$_} unless ($_ eq $_mce_sid);
+   }
+   return;
+}
+sub _clear_session {
+   my ($_mce_sid) = @_;
+   delete $_mce_spawned{$_mce_sid};
+   return;
+}
 
 ## Warnings are disabled to minimize bits of noise when user or OS signals
 ## the script to exit. e.g. MCE_script.pl < infile | head

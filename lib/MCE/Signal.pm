@@ -119,7 +119,12 @@ sub import {
 ##
 ###############################################################################
 
-our ($mce_sess_dir_ref, $mce_spawned_ref);
+my ($_mce_sess_dir_ref, $_mce_spawned_ref);
+
+sub _set_session_vars {
+   ($_mce_sess_dir_ref, $_mce_spawned_ref) = @_;
+   return;
+}
 
 ## Set traps to catch signals.
 $SIG{XCPU} = \&stop_and_exit if (exists $SIG{XCPU});   ## UNIX SIG 24
@@ -147,7 +152,7 @@ END {
    my $_exit_status = $?;
 
    MCE::Signal->_shutdown_mce($_exit_status)
-      if (defined $mce_spawned_ref);
+      if (defined $_mce_spawned_ref);
 
    MCE::Signal->stop_and_exit($_exit_status)
       if ($$ == $main_proc_id);
@@ -213,7 +218,7 @@ sub sys_cmd {
       my $_is_sig      = 0;
 
       if (exists $_sig_name_lkup{$_sig_name}) {
-         $mce_spawned_ref = undef;
+         $_mce_spawned_ref = undef;
          $SIG{$_sig_name} = sub { };
          $_exit_status = $_is_sig = 1;
       }
@@ -275,10 +280,10 @@ sub sys_cmd {
             ## Remove temp directory.
             if (defined $tmp_dir && $tmp_dir ne '' && -d $tmp_dir) {
 
-               if (defined $mce_sess_dir_ref) {
-                  foreach my $_sess_dir (keys %{ $mce_sess_dir_ref }) {
+               if (defined $_mce_sess_dir_ref) {
+                  foreach my $_sess_dir (keys %{ $_mce_sess_dir_ref }) {
                      File::Path::rmtree($_sess_dir);
-                     delete $mce_sess_dir_ref->{$_sess_dir};
+                     delete $_mce_sess_dir_ref->{$_sess_dir};
                   }
                }
 
@@ -372,20 +377,20 @@ sub _shutdown_mce {
    shift @_ if (defined $_[0] && $_[0] eq 'MCE::Signal');
    my $_exit_status = $_[0] || $?;
 
-   if (defined $mce_spawned_ref) {
+   if (defined $_mce_spawned_ref) {
       my $_tid = ($has_threads) ? threads->tid() : '';
       $_tid = '' unless defined $_tid;
 
-      foreach my $_mce_sid (keys %{ $mce_spawned_ref }) {
-         if ($mce_spawned_ref->{$_mce_sid}->wid()) {
-            $mce_spawned_ref->{$_mce_sid}->exit($_exit_status);
+      foreach my $_mce_sid (keys %{ $_mce_spawned_ref }) {
+         if ($_mce_spawned_ref->{$_mce_sid}->wid()) {
+            $_mce_spawned_ref->{$_mce_sid}->exit($_exit_status);
          }
          else {
-            $mce_spawned_ref->{$_mce_sid}->shutdown()
+            $_mce_spawned_ref->{$_mce_sid}->shutdown()
                if ($_mce_sid =~ /\A$$\.$_tid\./);
          }
 
-         delete $mce_spawned_ref->{$_mce_sid};
+         delete $_mce_spawned_ref->{$_mce_sid};
       }
    }
 
