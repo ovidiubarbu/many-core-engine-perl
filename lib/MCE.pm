@@ -158,6 +158,7 @@ sub import {
          }
          next;
       }
+
       if ( $_arg eq 'tmp_dir' ) {
          $TMP_DIR = shift;
          my $_e1 = 'is not a directory or does not exist';

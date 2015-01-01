@@ -56,6 +56,7 @@ sub import {
          }
          next;
       }
+
       if ( $_arg eq 'tmp_dir' ) {
          $MCE::TMP_DIR = $MCE::MCE->{tmp_dir} = shift;
          my $_e1 = 'is not a directory or does not exist';
@@ -76,11 +77,11 @@ sub import {
 
    ## Import functions.
    no strict 'refs'; no warnings 'redefine';
-   my $_package = caller;
+   my $_pkg = caller;
 
-   *{ $_package . '::mce_grep_f' } = \&mce_grep_f;
-   *{ $_package . '::mce_grep_s' } = \&mce_grep_s;
-   *{ $_package . '::mce_grep'   } = \&mce_grep;
+   *{ $_pkg.'::mce_grep_f' } = \&go_f;
+   *{ $_pkg.'::mce_grep_s' } = \&go_s;
+   *{ $_pkg.'::mce_grep'   } = \&go;
 
    return;
 }
@@ -88,7 +89,7 @@ sub import {
 END {
    return if (defined $_MCE && $_MCE->wid);
 
-   MCE::Grep::finish();
+   finish();
 }
 
 ###############################################################################
@@ -117,16 +118,17 @@ sub _gather {
 
 sub init (@) {
 
+   shift if (defined $_[0] && $_[0] eq 'MCE::Grep');
+
    if (MCE->wid) {
       @_ = (); _croak(
          "$_tag: function cannot be called by the worker process"
       );
    }
 
-   _croak("$_tag: (argument) is not a HASH reference")
-      unless (ref $_[0] eq 'HASH');
+   finish(); $_params = (ref $_[0] eq 'HASH') ? shift : { @_ };
 
-   MCE::Grep::finish(); $_params = shift;
+   @_ = ();
 
    return;
 }
@@ -148,7 +150,9 @@ sub finish () {
 ##
 ###############################################################################
 
-sub mce_grep_f (&@) {
+sub go_f (&@) {
+
+   shift if (defined $_[0] && $_[0] eq 'MCE::Grep');
 
    my $_code = shift; my $_file = shift;
 
@@ -175,7 +179,7 @@ sub mce_grep_f (&@) {
 
    @_ = ();
 
-   return mce_grep($_code);
+   return go($_code);
 }
 
 ###############################################################################
@@ -184,7 +188,9 @@ sub mce_grep_f (&@) {
 ##
 ###############################################################################
 
-sub mce_grep_s (&@) {
+sub go_s (&@) {
+
+   shift if (defined $_[0] && $_[0] eq 'MCE::Grep');
 
    my $_code = shift;
 
@@ -222,7 +228,7 @@ sub mce_grep_s (&@) {
 
    @_ = ();
 
-   return mce_grep($_code);
+   return go($_code);
 }
 
 ###############################################################################
@@ -231,7 +237,9 @@ sub mce_grep_s (&@) {
 ##
 ###############################################################################
 
-sub mce_grep (&@) {
+sub go (&@) {
+
+   shift if (defined $_[0] && $_[0] eq 'MCE::Grep');
 
    my $_code = shift;   $_total_chunks = 0; undef %_tmp;
 
@@ -540,7 +548,9 @@ serialization.
 
 =over 3
 
-=item init
+=item MCE::Grep->init ( options )
+
+=item MCE::Grep::init { options }
 
 The init function accepts a hash of MCE options. The gather option, if
 specified, is ignored due to being used internally by the module.
@@ -582,6 +592,8 @@ specified, is ignored due to being used internally by the module.
 
 =over 3
 
+=item MCE::Grep->go ( sub { code }, iterator )
+
 =item mce_grep { code } iterator
 
 An iterator reference can by specified for input_data. Iterators are described
@@ -589,12 +601,16 @@ under "SYNTAX for INPUT_DATA" at L<MCE::Core|MCE::Core>.
 
    my @a = mce_grep { $_ % 3 == 0 } make_iterator(10, 30, 2);
 
+=item MCE::Grep->go ( sub { code }, list )
+
 =item mce_grep { code } list
 
 Input data can be defined using a list.
 
    my @a = mce_grep { /[2357]/ } 1..1000;
    my @b = mce_grep { /[2357]/ } [ 1..1000 ];
+
+=item MCE::Grep->go_f ( sub { code }, file )
 
 =item mce_grep_f { code } file
 
@@ -605,7 +621,9 @@ position among themselves without any interaction from the manager process.
    my @d = mce_grep_f { /pattern/ } $file_handle;
    my @e = mce_grep_f { /pattern/ } \$scalar;
 
-=item mce_grep_s { code } sequence
+=item MCE::Grep->go_s ( sub { code }, $beg, $end [, $step, $fmt ] )
+
+=item mce_grep_s { code } $beg, $end [, $step, $fmt ]
 
 Sequence can be defined as a list, an array reference, or a hash reference.
 The functions require both begin and end values to run. Step and format are
@@ -626,7 +644,9 @@ optional. The format is passed to sprintf (% may be omitted below).
 
 =over 3
 
-=item finish
+=item MCE::Grep->finish
+
+=item MCE::Grep::finish
 
 Workers remain persistent as much as possible after running. Shutdown occurs
 automatically when the script terminates. Call finish when workers are no

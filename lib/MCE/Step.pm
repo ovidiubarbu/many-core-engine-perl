@@ -59,6 +59,7 @@ sub import {
          }
          next;
       }
+
       if ( $_arg eq 'tmp_dir' ) {
          $MCE::TMP_DIR = $MCE::MCE->{tmp_dir} = shift;
          my $_e1 = 'is not a directory or does not exist';
@@ -84,11 +85,11 @@ sub import {
 
    ## Import functions.
    no strict 'refs'; no warnings 'redefine';
-   my $_package = caller;
+   my $_pkg = caller;
 
-   *{ $_package . '::mce_step_f' } = \&mce_step_f;
-   *{ $_package . '::mce_step_s' } = \&mce_step_s;
-   *{ $_package . '::mce_step'   } = \&mce_step;
+   *{ $_pkg.'::mce_step_f' } = \&go_f;
+   *{ $_pkg.'::mce_step_s' } = \&go_s;
+   *{ $_pkg.'::mce_step'   } = \&go;
 
    return;
 }
@@ -96,7 +97,7 @@ sub import {
 END {
    return if (defined $_MCE && $_MCE->wid);
 
-   MCE::Step::finish();
+   finish();
 }
 
 ###############################################################################
@@ -152,16 +153,17 @@ sub _task_end {
 
 sub init (@) {
 
+   shift if (defined $_[0] && $_[0] eq 'MCE::Step');
+
    if (MCE->wid) {
       @_ = (); _croak(
          "$_tag: function cannot be called by the worker process"
       );
    }
 
-   _croak("$_tag: (argument) is not a HASH reference")
-      unless (ref $_[0] eq 'HASH');
+   finish(); $_params = (ref $_[0] eq 'HASH') ? shift : { @_ };
 
-   MCE::Step::finish(); $_params = shift;
+   @_ = ();
 
    return;
 }
@@ -185,7 +187,9 @@ sub finish () {
 ##
 ###############################################################################
 
-sub mce_step_f (@) {
+sub go_f (@) {
+
+   shift if (defined $_[0] && $_[0] eq 'MCE::Step');
 
    my ($_file, $_pos); my $_start_pos = (ref $_[0] eq 'HASH') ? 2 : 1;
 
@@ -222,7 +226,7 @@ sub mce_step_f (@) {
       pop @_ for ($_pos .. @_ - 1);
    }
 
-   return mce_step(@_);
+   return go(@_);
 }
 
 ###############################################################################
@@ -231,7 +235,9 @@ sub mce_step_f (@) {
 ##
 ###############################################################################
 
-sub mce_step_s (@) {
+sub go_s (@) {
+
+   shift if (defined $_[0] && $_[0] eq 'MCE::Step');
 
    my ($_begin, $_end, $_pos); my $_start_pos = (ref $_[0] eq 'HASH') ? 2 : 1;
 
@@ -284,7 +290,7 @@ sub mce_step_s (@) {
       pop @_ for ($_pos .. @_ - 1);
    }
 
-   return mce_step(@_);
+   return go(@_);
 }
 
 ###############################################################################
@@ -293,7 +299,9 @@ sub mce_step_s (@) {
 ##
 ###############################################################################
 
-sub mce_step (@) {
+sub go (@) {
+
+   shift if (defined $_[0] && $_[0] eq 'MCE::Step');
 
    if (MCE->wid) {
       @_ = (); _croak(
@@ -828,7 +836,9 @@ serialization.
 
 =over 3
 
-=item init
+=item MCE::Step->init ( options )
+
+=item MCE::Step::init { options }
 
 The init function accepts a hash of MCE options. Unlike with MCE::Stream,
 both gather and bounds_only options may be specified when calling init
@@ -933,6 +943,8 @@ into the code block.
 
 =over 3
 
+=item MCE::Step->go ( { input_data => iterator }, sub { code } )
+
 =item mce_step { input_data => iterator }, sub { code }
 
 An iterator reference can by specified for input_data. The only other way
@@ -947,12 +959,16 @@ Iterators are described under "SYNTAX for INPUT_DATA" at L<MCE::Core|MCE::Core>.
 
    mce_step sub { $_ };
 
+=item MCE::Step->go ( sub { code }, list )
+
 =item mce_step sub { code }, list
 
 Input data can be defined using a list.
 
    mce_step sub { $_ }, 1..1000;
    mce_step sub { $_ }, [ 1..1000 ];
+
+=item MCE::Step->go_f ( sub { code }, file )
 
 =item mce_step_f sub { code }, file
 
@@ -963,7 +979,9 @@ position among themselves without any interaction from the manager process.
    mce_step_f sub { $_ }, $file_handle;
    mce_step_f sub { $_ }, \$scalar;
 
-=item mce_step_s sub { code }, sequence
+=item MCE::Step->go_s ( sub { code }, $beg, $end [, $step, $fmt ] )
+
+=item mce_step_s sub { code }, $beg, $end [, $step, $fmt ]
 
 Sequence can be defined as a list, an array reference, or a hash reference.
 The functions require both begin and end values to run. Step and format are
@@ -1218,7 +1236,9 @@ running.
 
 =over 3
 
-=item finish
+=item MCE::Step->finish
+
+=item MCE::Step::finish
 
 Workers remain persistent as much as possible after running. Shutdown occurs
 automatically when the script terminates. Call finish when workers are no

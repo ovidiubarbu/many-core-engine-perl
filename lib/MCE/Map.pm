@@ -56,6 +56,7 @@ sub import {
          }
          next;
       }
+
       if ( $_arg eq 'tmp_dir' ) {
          $MCE::TMP_DIR = $MCE::MCE->{tmp_dir} = shift;
          my $_e1 = 'is not a directory or does not exist';
@@ -76,11 +77,11 @@ sub import {
 
    ## Import functions.
    no strict 'refs'; no warnings 'redefine';
-   my $_package = caller;
+   my $_pkg = caller;
 
-   *{ $_package . '::mce_map_f' } = \&mce_map_f;
-   *{ $_package . '::mce_map_s' } = \&mce_map_s;
-   *{ $_package . '::mce_map'   } = \&mce_map;
+   *{ $_pkg.'::mce_map_f' } = \&go_f;
+   *{ $_pkg.'::mce_map_s' } = \&go_s;
+   *{ $_pkg.'::mce_map'   } = \&go;
 
    return;
 }
@@ -88,7 +89,7 @@ sub import {
 END {
    return if (defined $_MCE && $_MCE->wid);
 
-   MCE::Map::finish();
+   finish();
 }
 
 ###############################################################################
@@ -117,16 +118,17 @@ sub _gather {
 
 sub init (@) {
 
+   shift if (defined $_[0] && $_[0] eq 'MCE::Map');
+
    if (MCE->wid) {
       @_ = (); _croak(
          "$_tag: function cannot be called by the worker process"
       );
    }
 
-   _croak("$_tag: (argument) is not a HASH reference")
-      unless (ref $_[0] eq 'HASH');
+   finish(); $_params = (ref $_[0] eq 'HASH') ? shift : { @_ };
 
-   MCE::Map::finish(); $_params = shift;
+   @_ = ();
 
    return;
 }
@@ -148,7 +150,9 @@ sub finish () {
 ##
 ###############################################################################
 
-sub mce_map_f (&@) {
+sub go_f (&@) {
+
+   shift if (defined $_[0] && $_[0] eq 'MCE::Map');
 
    my $_code = shift; my $_file = shift;
 
@@ -175,7 +179,7 @@ sub mce_map_f (&@) {
 
    @_ = ();
 
-   return mce_map($_code);
+   return go($_code);
 }
 
 ###############################################################################
@@ -184,7 +188,9 @@ sub mce_map_f (&@) {
 ##
 ###############################################################################
 
-sub mce_map_s (&@) {
+sub go_s (&@) {
+
+   shift if (defined $_[0] && $_[0] eq 'MCE::Map');
 
    my $_code = shift;
 
@@ -222,7 +228,7 @@ sub mce_map_s (&@) {
 
    @_ = ();
 
-   return mce_map($_code);
+   return go($_code);
 }
 
 ###############################################################################
@@ -231,7 +237,9 @@ sub mce_map_s (&@) {
 ##
 ###############################################################################
 
-sub mce_map (&@) {
+sub go (&@) {
+
+   shift if (defined $_[0] && $_[0] eq 'MCE::Map');
 
    my $_code = shift;   $_total_chunks = 0; undef %_tmp;
 
@@ -524,7 +532,9 @@ serialization.
 
 =over 3
 
-=item init
+=item MCE::Map->init ( options )
+
+=item MCE::Map::init { options }
 
 The init function accepts a hash of MCE options. The gather option, if
 specified, is ignored due to being used internally by the module.
@@ -573,6 +583,8 @@ specified, is ignored due to being used internally by the module.
 
 =over 3
 
+=item MCE::Map->go ( sub { code }, iterator )
+
 =item mce_map { code } iterator
 
 An iterator reference can by specified for input_data. Iterators are described
@@ -580,12 +592,16 @@ under "SYNTAX for INPUT_DATA" at L<MCE::Core|MCE::Core>.
 
    my @a = mce_map { $_ * 2 } make_iterator(10, 30, 2);
 
+=item MCE::Map->go ( sub { code }, list )
+
 =item mce_map { code } list
 
 Input data can be defined using a list.
 
    my @a = mce_map { $_ * 2 } 1..1000;
    my @b = mce_map { $_ * 2 } [ 1..1000 ];
+
+=item MCE::Map->go_f ( sub { code }, file )
 
 =item mce_map_f { code } file
 
@@ -596,7 +612,9 @@ position among themselves without any interaction from the manager process.
    my @d = mce_map_f { chomp; $_ . "\r\n" } $file_handle;
    my @e = mce_map_f { chomp; $_ . "\r\n" } \$scalar;
 
-=item mce_map_s { code } sequence
+=item MCE::Map->go_s ( sub { code }, $beg, $end [, $step, $fmt ] )
+
+=item mce_map_s { code } $beg, $end [, $step, $fmt ]
 
 Sequence can be defined as a list, an array reference, or a hash reference.
 The functions require both begin and end values to run. Step and format are
@@ -617,7 +635,9 @@ optional. The format is passed to sprintf (% may be omitted below).
 
 =over 3
 
-=item finish
+=item MCE::Map->finish
+
+=item MCE::Map::finish
 
 Workers remain persistent as much as possible after running. Shutdown occurs
 automatically when the script terminates. Call finish when workers are no
