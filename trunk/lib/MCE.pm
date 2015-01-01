@@ -127,13 +127,13 @@ use constant { SELF => 0, CHUNK => 1, CID => 2 };
 our $_MCE_LOCK : shared = 1;
 our $_has_threads;
 
-our $MAX_WORKERS = 1;
-our $CHUNK_SIZE  = 1;
-our $TMP_DIR     = $MCE::Signal::tmp_dir;
-our $FREEZE      = \&Storable::freeze;
-our $THAW        = \&Storable::thaw;
+our $TMP_DIR = $MCE::Signal::tmp_dir;
+our $FREEZE  = \&Storable::freeze;
+our $THAW    = \&Storable::thaw;
 
-my $_loaded;
+my  $MAX_WORKERS = 1;
+my  $CHUNK_SIZE  = 1;
+my  $_loaded;
 
 sub import {
 
