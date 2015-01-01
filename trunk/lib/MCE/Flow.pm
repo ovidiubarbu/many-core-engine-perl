@@ -25,8 +25,8 @@ our $VERSION = '1.522';
 ##
 ###############################################################################
 
-our $MAX_WORKERS  = 'auto';
-our $CHUNK_SIZE   = 'auto';
+my $MAX_WORKERS = 'auto';
+my $CHUNK_SIZE  = 'auto';
 
 my ($_params, @_prev_c, @_prev_n, @_prev_w, @_user_tasks);
 my ($_MCE, $_loaded); my $_tag = 'MCE::Flow';

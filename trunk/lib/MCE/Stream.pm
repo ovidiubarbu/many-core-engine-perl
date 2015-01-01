@@ -26,10 +26,10 @@ our $VERSION = '1.522';
 ##
 ###############################################################################
 
-our $DEFAULT_MODE = 'map';
-our $MAX_WORKERS  = 'auto';
-our $CHUNK_SIZE   = 'auto';
-our $FAST         = 0;
+my $DEFAULT_MODE = 'map';
+my $MAX_WORKERS  = 'auto';
+my $CHUNK_SIZE   = 'auto';
+my $FAST         = 0;
 
 my ($_params, @_prev_c, @_prev_m, @_prev_n, @_prev_w, @_user_tasks, @_queue);
 my ($_MCE, $_loaded); my $_tag = 'MCE::Stream';
