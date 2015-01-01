@@ -567,7 +567,7 @@ sub _worker_loop {
 sub _worker_main {
 
    my ( $self, $_wid, $_task, $_task_id, $_task_wid, $_params,
-        $_plugin_worker_init ) = @_;
+        $_plugin_worker_init, $_has_threads ) = @_;
 
    @_ = ();
 
@@ -583,7 +583,7 @@ sub _worker_main {
    my $_use_threads = (defined $_task->{use_threads})
       ? $_task->{use_threads} : $self->{use_threads};
 
-   if ($MCE::_has_threads && $_use_threads) {
+   if ($_has_threads && $_use_threads) {
       $self->{_exit_pid} = 'TID_' . threads->tid();
    } else {
       $self->{_exit_pid} = 'PID_' . $$;
@@ -593,7 +593,7 @@ sub _worker_main {
    $SIG{PIPE} = \&MCE::_NOOP;
 
    $SIG{__DIE__} = sub {
-      unless ($MCE::_has_threads && $_use_threads) {
+      unless ($_has_threads && $_use_threads) {
          $_die_msg = (defined $_[0]) ? $_[0] : '';
          CORE::die(@_);
       }
