@@ -567,7 +567,7 @@ sub _worker_loop {
 sub _worker_main {
 
    my ( $self, $_wid, $_task, $_task_id, $_task_wid, $_params,
-        $_plugin_worker_init, $_has_threads ) = @_;
+        $_plugin_worker_init, $_has_threads, $_is_winenv ) = @_;
 
    @_ = ();
 
@@ -700,7 +700,7 @@ sub _worker_main {
       my $_c; sysread $self->{_bse_r_sock}, $_c, 1;
    };
 
-   sleep 0.005 if ($MCE::_is_winenv);
+   sleep 0.005 if ($_is_winenv);
 
    if ($_lock_chn) {
       close $_DAT_LOCK; undef $_DAT_LOCK;
