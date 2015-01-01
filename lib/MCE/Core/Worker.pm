@@ -622,7 +622,7 @@ sub _worker_main {
    my $_sess_dir = $self->{_sess_dir};
 
    if (defined $_params && exists $_params->{_chn}) {
-      $self->{_chn} = $_params->{_chn}; delete $_params->{_chn};
+      $self->{_chn} = delete $_params->{_chn};
    } else {
       $self->{_chn} = $_wid % $self->{_data_channels} + 1;
    }

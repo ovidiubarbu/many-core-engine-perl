@@ -196,11 +196,9 @@ sub gather_iterator {
       while (1) {
          last unless exists $tmp{$order_id};
 
-         $path = $tmp{$order_id};
+         $path = delete $tmp{$order_id++};
          output("$path.err", $err_fh);
          output("$path.out", $out_fh);
-
-         delete $tmp{$order_id++};
       }
    };
 }

@@ -1948,7 +1948,7 @@ sub _dispatch_thread {
 
    my ($self, $_wid, $_task, $_task_id, $_task_wid, $_params) = @_;
 
-   @_ = ();
+   @_ = (); local $_;
 
    die 'Private method called' unless (caller)[0]->isa( ref $self );
 
@@ -1990,7 +1990,7 @@ sub _dispatch_child {
 
    my ($self, $_wid, $_task, $_task_id, $_task_wid, $_params) = @_;
 
-   @_ = ();
+   @_ = (); local $_;
 
    die 'Private method called' unless (caller)[0]->isa( ref $self );
 

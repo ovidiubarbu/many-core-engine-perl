@@ -193,20 +193,20 @@ sub go_f (@) {
 
    my ($_file, $_pos); my $_start_pos = (ref $_[0] eq 'HASH') ? 2 : 1;
 
-   for ($_start_pos .. @_ - 1) {
-      my $_r = ref $_[$_];
-      if ($_r eq '' || $_r eq 'GLOB' || $_r eq 'SCALAR' || $_r =~ /^IO::/) {
-         $_file = $_[$_]; $_pos = $_;
-         last;
-      }
-   }
-
    if (defined $_params) {
       delete $_params->{input_data} if (exists $_params->{input_data});
       delete $_params->{sequence}   if (exists $_params->{sequence});
    }
    else {
       $_params = {};
+   }
+
+   for ($_start_pos .. @_ - 1) {
+      my $_r = ref $_[$_];
+      if ($_r eq '' || $_r eq 'GLOB' || $_r eq 'SCALAR' || $_r =~ /^IO::/) {
+         $_file = $_[$_]; $_pos = $_;
+         last;
+      }
    }
 
    if (defined $_file && ref $_file eq '' && $_file ne '') {
@@ -241,8 +241,14 @@ sub go_s (@) {
 
    my ($_begin, $_end, $_pos); my $_start_pos = (ref $_[0] eq 'HASH') ? 2 : 1;
 
-   delete $_params->{sequence}
-      if (exists $_params->{sequence});
+   if (defined $_params) {
+      delete $_params->{sequence}   if (exists $_params->{sequence});
+      delete $_params->{input_data} if (exists $_params->{input_data});
+      delete $_params->{_file}      if (exists $_params->{_file});
+   }
+   else {
+      $_params = {};
+   }
 
    for ($_start_pos .. @_ - 1) {
       my $_ref = ref $_[$_];
@@ -269,14 +275,6 @@ sub go_s (@) {
       }
    }
 
-   if (defined $_params) {
-      delete $_params->{input_data} if (exists $_params->{input_data});
-      delete $_params->{_file}      if (exists $_params->{_file});
-   }
-   else {
-      $_params = {};
-   }
-
    _croak("$_tag: (sequence) is not specified or valid")
       unless (exists $_params->{sequence});
 
@@ -285,6 +283,8 @@ sub go_s (@) {
 
    _croak("$_tag: (end) is not specified for sequence")
       unless (defined $_end);
+
+   $_params->{sequence_go} = 1;
 
    if (defined $_pos) {
       pop @_ for ($_pos .. @_ - 1);
@@ -380,10 +380,11 @@ sub go (@) {
    );
 
    if (defined $_params) {
-      $_input_data = $_params->{input_data} if (exists $_params->{input_data});
-
       if (exists $_params->{_file}) {
-         $_input_data = $_params->{_file}; delete $_params->{_file};
+         $_input_data = delete $_params->{_file};
+      }
+      else {
+         $_input_data = $_params->{input_data} if exists $_params->{input_data};
       }
    }
 
@@ -411,6 +412,7 @@ sub go (@) {
          my $_p = $_params;
 
          foreach (keys %{ $_p }) {
+            next if ($_ eq 'sequence_go');
             next if ($_ eq 'max_workers' && ref $_p->{max_workers} eq 'ARRAY');
             next if ($_ eq 'task_name' && ref $_p->{task_name} eq 'ARRAY');
             next if ($_ eq 'input_data');
@@ -427,16 +429,16 @@ sub go (@) {
       $_MCE = MCE->new(%_options);
    }
    else {
-      ## Workers may persist after running. MCE::Step allows options
-      ## to be passed using an anonymous hash. Therefore, lets update
-      ## the MCE instance. These options do not require respawning.
-
-      for (qw(
-         RS interval stderr_file stdout_file user_error user_output
-         job_delay submit_delay on_post_exit on_post_run user_args
-         flush_file flush_stderr flush_stdout gather
-      )) {
-         $_MCE->{$_} = $_params->{$_} if (exists $_params->{$_});
+      ## Workers may persist after running. Thus, updating the MCE instance.
+      ## These options do not require respawning.
+      if (defined $_params) {
+         for (qw(
+            RS interval stderr_file stdout_file user_error user_output
+            job_delay submit_delay on_post_exit on_post_run user_args
+            flush_file flush_stderr flush_stdout gather
+         )) {
+            $_MCE->{$_} = $_params->{$_} if (exists $_params->{$_});
+         }
       }
    }
 
@@ -445,16 +447,23 @@ sub go (@) {
    my @_a; my $_wa = wantarray; $_MCE->{gather} = \@_a if (defined $_wa);
 
    if (defined $_input_data) {
-      @_ = (); $_MCE->process({ chunk_size => $_chunk_size }, $_input_data);
+      @_ = ();
+      $_MCE->process({ chunk_size => $_chunk_size }, $_input_data);
+      delete $_MCE->{input_data};
    }
    elsif (scalar @_) {
       $_MCE->process({ chunk_size => $_chunk_size }, \@_);
+      delete $_MCE->{input_data};
    }
    else {
       if (defined $_params && exists $_params->{sequence}) {
          $_MCE->run({
             chunk_size => $_chunk_size, sequence => $_params->{sequence}
          }, 0);
+         if (exists $_params->{sequence_go}) {
+            delete $_params->{sequence_go};
+            delete $_params->{sequence};
+         }
          delete $_MCE->{sequence};
       }
       else {
@@ -592,8 +601,7 @@ This calls for preserving output order.
 
          while (1) {
             last unless exists $tmp{$order_id};
-            push @{ $gather_ref }, @{ $tmp{$order_id} };
-            delete $tmp{$order_id++};
+            push @{ $gather_ref }, @{ delete $tmp{$order_id++} };
          }
 
          return;
@@ -1155,8 +1163,7 @@ gathering data such as retaining output order.
 
          while (1) {
             last unless exists $tmp{$order_id};
-            push @{ $gather_ref }, @{ $tmp{$order_id} };
-            delete $tmp{$order_id++};
+            push @{ $gather_ref }, @{ delete $tmp{$order_id++} };
          }
 
          return;
