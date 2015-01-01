@@ -107,9 +107,33 @@ sub preserve_order {
 ##
 ###############################################################################
 
+## use MCE::Flow;    ## Same thing in MCE 1.5+
+##
+## MCE::Flow::init {
+##    max_workers => 3, chunk_size => 1
+## };
+##
+## sub _func {
+##    my ($mce, $chunk_ref, $chunk_id) = @_;
+##
+##    if (defined $s_format) {
+##       my $n = sprintf "%${s_format}", $_;
+##       MCE->gather($chunk_id, $n, sqrt($n));
+##    }
+##    else {
+##       MCE->gather($chunk_id, $_, sqrt($_));
+##    }
+## }
+##
+## mce_flow {
+##    input_data => input_iterator($s_begin, $s_end, $s_step),
+##    gather => preserve_order
+##
+## }, \&_func;
+
 my $mce = MCE->new(
 
-   chunk_size => 1, max_workers => 3, gather => preserve_order,
+   max_workers => 3, chunk_size => 1, gather => preserve_order,
 
    user_func => sub {
       my ($mce, $chunk_ref, $chunk_id) = @_;

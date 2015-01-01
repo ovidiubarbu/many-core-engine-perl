@@ -70,6 +70,23 @@ sub preserve_order {
 
 ## Configure MCE.
 
+## use MCE::Flow;    ## Same thing in MCE 1.5+
+##
+## mce_flow {
+##    max_workers => 3, chunk_size => $chunk_size, gather => preserve_order
+## },
+## sub {
+##    my ($mce, $chunk_ref, $chunk_id) = @_;
+##    my @result;
+## 
+##    for ( @{ $chunk_ref } ) {
+##       push @result, sqrt($_);
+##    }
+## 
+##    MCE->gather($chunk_id, \@result);
+## 
+## }, @input_data;
+
 my $mce = MCE->new(
    max_workers => 3, chunk_size => $chunk_size, gather => preserve_order
 );

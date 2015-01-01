@@ -81,8 +81,19 @@ sub preserve_order {
 
 ## Configure MCE.
 
+## use MCE::Flow;    ## Same thing in MCE 1.5+
+##
+## mce_flow_s {
+##    max_workers => 3, chunk_size => 1, gather => preserve_order
+## },
+## sub {
+##    my ($mce, $n, $chunk_id) = @_;
+##    MCE->gather($chunk_id, $n, sqrt($n));
+##
+## }, $s_begin, $s_end, $s_step;
+
 my $mce = MCE->new(
-   max_workers => 3, gather => preserve_order
+   max_workers => 3, chunk_size => 1, gather => preserve_order
 );
 
 my $seq = {
