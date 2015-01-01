@@ -56,6 +56,7 @@ sub import {
          }
          next;
       }
+
       if ( $_arg eq 'tmp_dir' ) {
          $MCE::TMP_DIR = $MCE::MCE->{tmp_dir} = shift;
          my $_e1 = 'is not a directory or does not exist';
@@ -76,11 +77,11 @@ sub import {
 
    ## Import functions.
    no strict 'refs'; no warnings 'redefine';
-   my $_package = caller;
+   my $_pkg = caller;
 
-   *{ $_package . '::mce_loop_f' } = \&mce_loop_f;
-   *{ $_package . '::mce_loop_s' } = \&mce_loop_s;
-   *{ $_package . '::mce_loop'   } = \&mce_loop;
+   *{ $_pkg.'::mce_loop_f' } = \&go_f;
+   *{ $_pkg.'::mce_loop_s' } = \&go_s;
+   *{ $_pkg.'::mce_loop'   } = \&go;
 
    return;
 }
@@ -88,7 +89,7 @@ sub import {
 END {
    return if (defined $_MCE && $_MCE->wid);
 
-   MCE::Loop::finish();
+   finish();
 }
 
 ###############################################################################
@@ -99,16 +100,17 @@ END {
 
 sub init (@) {
 
+   shift if (defined $_[0] && $_[0] eq 'MCE::Loop');
+
    if (MCE->wid) {
       @_ = (); _croak(
          "$_tag: function cannot be called by the worker process"
       );
    }
 
-   _croak("$_tag: (argument) is not a HASH reference")
-      unless (ref $_[0] eq 'HASH');
+   finish(); $_params = (ref $_[0] eq 'HASH') ? shift : { @_ };
 
-   MCE::Loop::finish(); $_params = shift;
+   @_ = ();
 
    return;
 }
@@ -130,7 +132,9 @@ sub finish () {
 ##
 ###############################################################################
 
-sub mce_loop_f (&@) {
+sub go_f (&@) {
+
+   shift if (defined $_[0] && $_[0] eq 'MCE::Loop');
 
    my $_code = shift; my $_file = shift;
 
@@ -157,7 +161,7 @@ sub mce_loop_f (&@) {
 
    @_ = ();
 
-   return mce_loop($_code);
+   return go($_code);
 }
 
 ###############################################################################
@@ -166,7 +170,9 @@ sub mce_loop_f (&@) {
 ##
 ###############################################################################
 
-sub mce_loop_s (&@) {
+sub go_s (&@) {
+
+   shift if (defined $_[0] && $_[0] eq 'MCE::Loop');
 
    my $_code = shift;
 
@@ -204,7 +210,7 @@ sub mce_loop_s (&@) {
 
    @_ = ();
 
-   return mce_loop($_code);
+   return go($_code);
 }
 
 ###############################################################################
@@ -213,7 +219,9 @@ sub mce_loop_s (&@) {
 ##
 ###############################################################################
 
-sub mce_loop (&@) {
+sub go (&@) {
+
+   shift if (defined $_[0] && $_[0] eq 'MCE::Loop');
 
    my $_code = shift;
 
@@ -517,7 +525,9 @@ serialization.
 
 =over 3
 
-=item init
+=item MCE::Loop->init ( options )
+
+=item MCE::Loop::init { options }
 
 The init function accepts a hash of MCE options.
 
@@ -568,6 +578,8 @@ possibilities of passing input data into the code block.
 
 =over 3
 
+=item MCE::Loop->go ( sub { code }, iterator )
+
 =item mce_loop { code } iterator
 
 An iterator reference can by specified for input_data. Iterators are described
@@ -575,12 +587,16 @@ under "SYNTAX for INPUT_DATA" at L<MCE::Core|MCE::Core>.
 
    mce_loop { $_ } make_iterator(10, 30, 2);
 
+=item MCE::Loop->go ( sub { code }, list )
+
 =item mce_loop { code } list
 
 Input data can be defined using a list.
 
    mce_loop { $_ } 1..1000;
    mce_loop { $_ } [ 1..1000 ];
+
+=item MCE::Loop->go_f ( sub { code }, file )
 
 =item mce_loop_f { code } file
 
@@ -591,7 +607,9 @@ position among themselves without any interaction from the manager process.
    mce_loop_f { $_ } $file_handle;
    mce_loop_f { $_ } \$scalar;
 
-=item mce_loop_s { code } sequence
+=item MCE::Loop->go_s ( sub { code }, $beg, $end [, $step, $fmt ] )
+
+=item mce_loop_s { code } $beg, $end [, $step, $fmt ]
 
 Sequence can be defined as a list, an array reference, or a hash reference.
 The functions require both begin and end values to run. Step and format are
@@ -834,7 +852,9 @@ The following does the same thing using the Core API.
 
 =over 3
 
-=item finish
+=item MCE::Loop->finish
+
+=item MCE::Loop::finish
 
 Workers remain persistent as much as possible after running. Shutdown occurs
 automatically when the script terminates. Call finish when workers are no
