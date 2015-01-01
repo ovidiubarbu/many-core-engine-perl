@@ -30,6 +30,7 @@ lib/MCE/Subs.pm
 lib/MCE/Util.pm
 examples/cat.pl
 examples/egrep.pl
+examples/fastareader.pl
 examples/files_flow.pl
 examples/files_mce.pl
 examples/files_thr.pl
