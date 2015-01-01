@@ -1924,8 +1924,7 @@ of the gather option in the context of a queue.
 
          while (1) {
             last unless exists $tmp{$order_id};
-            $q->enqueue( $tmp{$order_id} );
-            delete $tmp{$order_id++};
+            $q->enqueue( delete $tmp{$order_id++} );
          }
 
          return;

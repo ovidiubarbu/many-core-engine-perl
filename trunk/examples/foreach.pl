@@ -55,9 +55,7 @@ sub preserve_order {
          last unless exists $tmp{$order_id};
 
          printf "n: %d sqrt(n): %f\n",
-            $input_data[$order_id - 1], $tmp{$order_id};
-
-         delete $tmp{$order_id++};
+            $input_data[$order_id - 1], delete $tmp{$order_id++};
       }
 
       return;

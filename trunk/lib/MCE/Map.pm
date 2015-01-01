@@ -226,6 +226,8 @@ sub go_s (&@) {
    _croak("$_tag: (end) is not specified for sequence")
       unless (defined $_end);
 
+   $_params->{sequence_go} = 1;
+
    @_ = ();
 
    return go($_code);
@@ -272,10 +274,11 @@ sub go (&@) {
    );
 
    if (defined $_params) {
-      $_input_data = $_params->{input_data} if (exists $_params->{input_data});
-
       if (exists $_params->{_file}) {
-         $_input_data = $_params->{_file}; delete $_params->{_file};
+         $_input_data = delete $_params->{_file};
+      }
+      else {
+         $_input_data = $_params->{input_data} if exists $_params->{input_data};
       }
    }
 
@@ -337,6 +340,7 @@ sub go (&@) {
 
       if (defined $_params) {
          foreach (keys %{ $_params }) {
+            next if ($_ eq 'sequence_go');
             next if ($_ eq 'input_data');
             next if ($_ eq 'chunk_size');
 
@@ -361,16 +365,23 @@ sub go (&@) {
       ? \&_gather : sub { $_cnt += $_[0]; return; };
 
    if (defined $_input_data) {
-      @_ = (); $_MCE->process({ chunk_size => $_chunk_size }, $_input_data);
+      @_ = ();
+      $_MCE->process({ chunk_size => $_chunk_size }, $_input_data);
+      delete $_MCE->{input_data};
    }
    elsif (scalar @_) {
       $_MCE->process({ chunk_size => $_chunk_size }, \@_);
+      delete $_MCE->{input_data};
    }
    else {
       if (defined $_params && exists $_params->{sequence}) {
          $_MCE->run({
             chunk_size => $_chunk_size, sequence => $_params->{sequence}
          }, 0);
+         if (exists $_params->{sequence_go}) {
+            delete $_params->{sequence_go};
+            delete $_params->{sequence};
+         }
          delete $_MCE->{sequence};
       }
    }
