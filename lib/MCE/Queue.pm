@@ -27,9 +27,9 @@ our $VERSION = '1.522';
 
 our ($HIGHEST, $LOWEST, $FIFO, $LIFO, $LILO, $FILO) = (1, 0, 1, 0, 1, 0);
 
-our $PORDER  = $HIGHEST;
-our $TYPE    = $FIFO;
-our $FAST    = 0;
+my $PORDER = $HIGHEST;
+my $TYPE   = $FIFO;
+my $FAST   = 0;
 
 my $_loaded;
 
@@ -45,22 +45,19 @@ sub import {
          _croak('MCE::Queue::import: (PORDER) must be 1 or 0')
             if (!defined $_[0] || ($_[0] ne '1' && $_[0] ne '0'));
 
-         $MCE::Queue::PORDER = shift;
-         next;
+         $PORDER = shift ; next;
       }
       if ( $_arg eq 'type' ) {
          _croak('MCE::Queue::import: (TYPE) must be 1 or 0')
             if (!defined $_[0] || ($_[0] ne '1' && $_[0] ne '0'));
 
-         $MCE::Queue::TYPE = shift;
-         next;
+         $TYPE   = shift ; next;
       }
       if ( $_arg eq 'fast' ) {
          _croak('MCE::Queue::import: (FAST) must be 1 or 0')
             if (!defined $_[0] || ($_[0] ne '1' && $_[0] ne '0'));
 
-         $MCE::Queue::FAST = shift;
-         next;
+         $FAST   = shift ; next;
       }
 
       _croak("MCE::Queue::import: ($_argument) is not a valid module argument");
@@ -180,11 +177,11 @@ sub new {
                            ## fyi, _datp will always dequeue before _datq
 
    $_queue->{_porder} = (exists $_argv{porder} && defined $_argv{porder})
-      ? $_argv{porder} : $MCE::Queue::PORDER;
+      ? $_argv{porder} : $PORDER;
    $_queue->{_type} = (exists $_argv{type} && defined $_argv{type})
-      ? $_argv{type} : $MCE::Queue::TYPE;
+      ? $_argv{type} : $TYPE;
    $_queue->{_fast} = (exists $_argv{fast} && defined $_argv{fast})
-      ? $_argv{fast} : $MCE::Queue::FAST;
+      ? $_argv{fast} : $FAST;
 
    ## -------------------------------------------------------------------------
 
