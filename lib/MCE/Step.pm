@@ -26,9 +26,9 @@ our $VERSION = '1.522';
 ##
 ###############################################################################
 
-our $MAX_WORKERS  = 'auto';
-our $CHUNK_SIZE   = 'auto';
-our $FAST         = 0;
+my $MAX_WORKERS = 'auto';
+my $CHUNK_SIZE  = 'auto';
+my $FAST        = 0;
 
 my ($_params, @_prev_c, @_prev_n, @_prev_w, @_user_tasks, @_queue);
 my ($_MCE, $_loaded, $_last_task_id); my $_tag = 'MCE::Step';
