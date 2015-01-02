@@ -13,7 +13,6 @@ use warnings;
 ## no critic (TestingAndDebugging::ProhibitNoStrict)
 
 BEGIN {
-
    ## Forking is emulated under the Windows enviornment (excluding Cygwin).
    ## MCE 1.514+ will load the 'threads' module by default on Windows.
    ## Folks may specify use_threads => 0 if threads is not desired.
@@ -37,13 +36,11 @@ use bytes;
 our $VERSION = '1.522';
 
 our (%_valid_fields_new, %_params_allowed_args, %_valid_fields_task);
-our ($_que_read_size, $_que_template);
-our $MCE;
+our ($MCE, $_que_read_size, $_que_template);
 
 my  ($_is_cygwin, $_is_mswin32, $_is_winenv, $_prev_mce);
 
 BEGIN {
-
    ## Configure pack/unpack template for writing to and reading from
    ## the queue. Each entry contains 2 positive numbers: chunk_id & msg_id.
    ## Attempt 64-bit size, otherwize fall back to host machine's word length.
@@ -83,9 +80,9 @@ BEGIN {
       RS use_slurpio parallel_io
    );
 
-   $_is_cygwin  = ($^O eq 'cygwin');
-   $_is_mswin32 = ($^O eq 'MSWin32');
-   $_is_winenv  = ($_is_cygwin || $_is_mswin32);
+   $_is_cygwin  = ($^O eq 'cygwin' ) ? 1 : 0;
+   $_is_mswin32 = ($^O eq 'MSWin32') ? 1 : 0;
+   $_is_winenv  = ($_is_cygwin || $_is_mswin32) ? 1 : 0;
 
    ## Create accessor functions.
    no strict 'refs'; no warnings 'redefine';
@@ -111,6 +108,7 @@ BEGIN {
 
    ## PDL + MCE (spawning as threads) is not stable. Thanks to David Mertens
    ## for reporting on how he fixed it for his PDL::Parallel::threads module.
+
    sub PDL::CLONE_SKIP { return 1; }
 
    return;
@@ -182,9 +180,7 @@ sub import {
       _croak("MCE::import: ($_argument) is not a valid module argument");
    }
 
-   ## Please include your threading library of choice prior to including
-   ## the MCE library. This is only a requirement if wanting to use threads
-   ## versus forking.
+   ## Will spawn threads when threads is present, otherwise processes.
    unless (defined $_has_threads) {
       if (defined $threads::VERSION) {
          unless (defined $threads::shared::VERSION) {
@@ -197,10 +193,10 @@ sub import {
    }
 
    ## Preload essential modules early on.
+   require MCE::Util;
    require MCE::Core::Validation;
    require MCE::Core::Manager;
    require MCE::Core::Worker;
-   require MCE::Util;
 
    {
       no strict 'refs'; no warnings 'redefine';
@@ -290,6 +286,7 @@ sub _clear_session {
 
 ## Warnings are disabled to minimize bits of noise when user or OS signals
 ## the script to exit. e.g. MCE_script.pl < infile | head
+
 no warnings 'threads'; no warnings 'uninitialized';
 
 sub DESTROY { }
@@ -395,8 +392,9 @@ sub new {
       $self->{use_threads} = ($_has_threads) ? 1 : 0;
    }
 
-   $MCE::Signal::has_threads = 1
-      if ($self->{use_threads} && !$MCE::Signal::has_threads);
+   if ($self->{use_threads} && !$MCE::Signal::has_threads) {
+      $MCE::Signal::has_threads = 1;
+   }
 
    $self->{gather}       = $argv{gather}       if (exists $argv{gather});
    $self->{interval}     = $argv{interval}     if (exists $argv{interval});
@@ -486,8 +484,9 @@ sub new {
    $self->{_wid}        = 0;     ## MCE Worker ID, starts at 1 per MCE instance
    $self->{_wrk_status} = 0;     ## For saving exit status when worker exits
 
-   $self->{chunk_size} = MAX_CHUNK_SIZE
-      if ($self->{chunk_size} > MAX_CHUNK_SIZE);
+   if ($self->{chunk_size} > MAX_CHUNK_SIZE) {
+      $self->{chunk_size} = MAX_CHUNK_SIZE;
+   }
 
    my $_total_workers = 0;
 
@@ -918,15 +917,16 @@ sub run {
 
    @_ = ();
 
-   my $_has_user_tasks = (defined $self->{user_tasks});
+   my $_has_user_tasks = (defined $self->{user_tasks}) ? 1 : 0;
    my $_requires_shutdown = 0;
 
    ## Unset params if workers have been sent user_data via send.
    $_params_ref = undef if ($self->{_send_cnt});
 
    ## Set user_func to NOOP if not specified.
-   $self->{user_func} = \&_NOOP
-      if (!defined $self->{user_func} && !defined $_params_ref->{user_func});
+   if (!defined $self->{user_func} && !defined $_params_ref->{user_func}) {
+      $self->{user_func} = \&_NOOP;
+   }
 
    ## Set user specified params if specified.
    if (defined $_params_ref && ref $_params_ref eq 'HASH') {
@@ -955,8 +955,7 @@ sub run {
    $self->shutdown() if ($_requires_shutdown);
 
    if (ref $self->{input_data} eq 'SCALAR') {
-      $self->shutdown()
-         unless $self->{_last_sref} == $self->{input_data};
+      $self->shutdown() unless $self->{_last_sref} == $self->{input_data};
 
       $self->{_last_sref} = $self->{input_data};
    }
@@ -986,14 +985,17 @@ sub run {
    if (defined $_seq) {
       my ($_begin, $_end, $_step, $_fmt) = (ref $_seq eq 'ARRAY')
          ? @{ $_seq } : ($_seq->{begin}, $_seq->{end}, $_seq->{step});
+
       $_chunk_size = $self->{user_tasks}->[0]->{chunk_size}
          if ($_has_user_tasks && $self->{user_tasks}->[0]->{chunk_size});
+
       $_run_mode  = 'sequence';
       $_abort_msg = int(($_end - $_begin) / $_step / $_chunk_size) + 1;
       $_first_msg = 0;
    }
    elsif (defined $self->{input_data}) {
       my $_ref = ref $self->{input_data};
+
       if ($_ref eq 'ARRAY') {                        ## Array mode.
          $_run_mode   = 'array';
          $_input_data = $self->{input_data};
@@ -1001,6 +1003,7 @@ sub run {
          $_single_dim = 1 if (ref $_input_data->[0] eq '');
          $_abort_msg  = 0; ## Flag: Has Data: No
          $_first_msg  = 1; ## Flag: Has Data: Yes
+
          if (@{ $_input_data } == 0) {
             return $self->shutdown() if ($_auto_shutdown == 1);
          }
@@ -1025,6 +1028,7 @@ sub run {
          $_input_data = $_input_glob = undef;
          $_abort_msg  = (-s $_input_file) + 1;
          $_first_msg  = 0; ## Begin at offset position
+
          if ((-s $_input_file) == 0) {
             return $self->shutdown() if ($_auto_shutdown == 1);
          }
@@ -1034,6 +1038,7 @@ sub run {
          $_input_data = $_input_file = $_input_glob = undef;
          $_abort_msg  = length(${ $self->{input_data} }) + 1;
          $_first_msg  = 0; ## Begin at offset position
+
          if (length(${ $self->{input_data} }) == 0) {
             return $self->shutdown() if ($_auto_shutdown == 1);
          }
@@ -1330,7 +1335,7 @@ sub shutdown {
    CORE::shutdown $self->{_bsb_r_sock}, 2;
    CORE::shutdown $self->{_com_w_sock}, 2;        ## Communication channels
    CORE::shutdown $self->{_com_r_sock}, 2;
-   CORE::shutdown $self->{_que_w_sock}, 2;        ## Queue channels
+   CORE::shutdown $self->{_que_w_sock}, 2;        ## Input offset channels
    CORE::shutdown $self->{_que_r_sock}, 2;
 
    CORE::shutdown $self->{_dat_w_sock}->[0], 2;   ## Data channels
