@@ -42,8 +42,10 @@ END {
 ###############################################################################
 
 {
-   my ($_DAT_LOCK, $_DAT_W_SOCK, $_DAU_W_SOCK, $_tag, $_value, $_want_id);
-   my ($_chn, $_dest, $_len, $_lock_chn, $_task_id, $_user_func);
+   my (
+      $_DAT_LOCK, $_DAT_W_SOCK, $_DAU_W_SOCK, $_tag, $_value, $_want_id,
+      $_chn, $_dest, $_len, $_lock_chn, $_task_id, $_user_func
+   );
 
    ## Create array structure containing various send functions.
    my @_dest_function = ();

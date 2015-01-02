@@ -44,7 +44,7 @@ sub _croak { require Carp; goto &Carp::croak; }
 sub _usage { return _croak "MCE::Signal error: $_[0] is not a valid option"; }
 sub _flag  { return 1; }
 
-my $_is_mswin32   = ($^O eq 'MSWin32');
+my $_is_mswin32   = ($^O eq 'MSWin32') ? 1 : 0;
 my $_keep_tmp_dir = 0;
 my $_no_sigmsg    = 0;
 my $_no_kill9     = 0;

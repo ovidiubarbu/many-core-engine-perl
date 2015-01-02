@@ -67,25 +67,23 @@ sub _task_end {
 
 sub _output_loop {
 
-   my $self = $_[0]; my $_input_data = $_[1]; my $_input_glob = $_[2];
-
-   my $_plugin_function   = $_[3];
-   my $_plugin_loop_begin = $_[4];
-   my $_plugin_loop_end   = $_[5];
+   my ( $self, $_input_data, $_input_glob, $_plugin_function,
+        $_plugin_loop_begin, $_plugin_loop_end ) = @_;
 
    @_ = ();
 
    die 'Private method called' unless (caller)[0]->isa( ref $self );
 
-   my ($_aborted, $_eof_flag, $_syn_flag, %_sendto_fhs, $_want_id);
-   my ($_callback, $_chunk_id, $_chunk_size, $_fd, $_file, $_flush_file);
-   my (@_is_c_ref, @_is_h_ref, @_is_q_ref, $_on_post_exit, $_on_post_run);
-   my ($_has_user_tasks, $_sess_dir, $_task_id, $_user_error, $_user_output);
-   my ($_input_size, $_len, $_offset_pos, $_single_dim, @_gather);
-   my ($_exit_id, $_exit_pid, $_exit_status, $_exit_wid, $_sync_cnt);
-
-   my ($_BSB_W_SOCK, $_BSE_W_SOCK, $_DAT_R_SOCK, $_DAU_R_SOCK, $_MCE_STDERR);
-   my ($_I_FLG, $_O_FLG, $_I_SEP, $_O_SEP, $_RS, $_RS_FLG, $_MCE_STDOUT);
+   my (
+      $_aborted, $_eof_flag, $_syn_flag, %_sendto_fhs, $_want_id,
+      $_callback, $_chunk_id, $_chunk_size, $_fd, $_file, $_flush_file,
+      @_is_c_ref, @_is_h_ref, @_is_q_ref, $_on_post_exit, $_on_post_run,
+      $_has_user_tasks, $_sess_dir, $_task_id, $_user_error, $_user_output,
+      $_input_size, $_len, $_offset_pos, $_single_dim, @_gather, $_cs_one_flag,
+      $_exit_id, $_exit_pid, $_exit_status, $_exit_wid, $_sync_cnt,
+      $_BSB_W_SOCK, $_BSE_W_SOCK, $_DAT_R_SOCK, $_DAU_R_SOCK, $_MCE_STDERR,
+      $_I_FLG, $_O_FLG, $_I_SEP, $_O_SEP, $_RS, $_RS_FLG, $_MCE_STDOUT
+   );
 
    ## -------------------------------------------------------------------------
    ## Create hash structure containing various output functions.
@@ -220,7 +218,7 @@ sub _output_loop {
             return;
          }
 
-         if ($_single_dim && $_chunk_size == 1) {
+         if ($_single_dim && $_cs_one_flag) {
             $_buffer = $_input_data->[$_offset_pos];
          }
          else {
@@ -641,7 +639,10 @@ sub _output_loop {
 
    ## -------------------------------------------------------------------------
 
-   $_has_user_tasks = (defined $self->{user_tasks});
+   local $!; local $_;
+
+   $_has_user_tasks = (defined $self->{user_tasks}) ? 1 : 0;
+   $_cs_one_flag = ($self->{chunk_size} == 1) ? 1 : 0;
    $_aborted = $_chunk_id = $_eof_flag = 0;
 
    $_on_post_exit = $self->{on_post_exit};
@@ -729,16 +730,18 @@ sub _output_loop {
    $_BSE_W_SOCK = $self->{_bse_w_sock};
    $_DAT_R_SOCK = $self->{_dat_r_sock}->[0];
 
-   $_RS    = $self->{RS} || $/;    $_RS_FLG = (!$_RS || $_RS ne $LF);
-   $_O_SEP = $\; local $\ = undef; $_O_FLG  = defined $_O_SEP;
-   $_I_SEP = $/; local $/ = $LF;   $_I_FLG  = (!$_I_SEP || $_I_SEP ne $LF);
+   $_RS     = $self->{RS} || $/;
+   $_O_SEP  = $\; local $\ = undef;
+   $_I_SEP  = $/; local $/ = $LF;
+
+   $_RS_FLG = (!$_RS || $_RS ne $LF) ? 1 : 0;
+   $_O_FLG  = (defined $_O_SEP) ? 1 : 0;
+   $_I_FLG  = (!$_I_SEP || $_I_SEP ne $LF) ? 1 : 0;
 
    ## Call module's loop_begin routine for modules plugged into MCE.
    $_->($self, \$_DAU_R_SOCK) for (@{ $_plugin_loop_begin });
 
    ## Call on hash function. Exit loop when workers have completed.
-   local $!;
-
    while (1) {
       $_func = <$_DAT_R_SOCK>;
       next unless (defined $_func);
