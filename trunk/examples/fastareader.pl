@@ -1,33 +1,25 @@
 #!/usr/bin/env perl
 
-## Two million clusters taken from uniref100.fasta.gz (2013_12)
-## gunzip -c uniref100.fasta.gz | head -15687827 > uniref.fasta
-## https://gist.github.com/marioroy/4b85483b16a950255b8d
-##
-## Serial Code (without MCE)
-##   Line driven:   17.027s      (FastaReader, BioUtil-2014.1226)
-##   Record driven:  9.123s
-## 
-## MCE Code -- Parallelization
-##   Line driven:    4.992s      (FastaReader, BioUtil-2014.1226)
-##   Record driven:  2.767s
-
 use strict;
 use warnings;
 
-use Cwd 'abs_path'; ## Insert lib-path at the head of @INC.
-use lib abs_path($0 =~ m{^(.*)[\\/]} && $1 || abs_path) . '/../lib';
-
-use Time::HiRes qw(time);
-use MCE::Flow;
-
 package BioUtil::Seq;
 
-## The original plan was to run BioUtil::Seq::FastaReader in parallel.
+## The original plan was to run CPAN BioUtil::Seq::FastaReader in parallel.
 ## I thought faster was possible if logic processed records versus lines.
-## The following logic (record driven) runs nearly 2x ($/ = "\n>").
-##
+## https://gist.github.com/marioroy/4b85483b16a950255b8d
 ## Usage: fastareader.pl [ /path/to/fastafile.fa ]
+##
+## Two million clusters taken from uniref100.fasta.gz (2013_12).
+## gunzip -c uniref100.fasta.gz | head -15687827 > uniref.fasta
+##
+## Serial Code (without MCE)
+##   Line driven:   17.027s       CPAN FastaReader, BioUtil-2014.1226
+##   Record driven:  9.123s       Nearly 2x faster serially
+## 
+## MCE Code -- Parallelization
+##   Line driven:    4.992s       CPAN FastaReader, BioUtil-2014.1226
+##   Record driven:  2.767s
 
 sub FastaReader {
    my ($file, $not_trim) = @_;
@@ -75,6 +67,12 @@ sub FastaReader {
 }
 
 package main;
+
+use Cwd 'abs_path'; ## Insert lib-path at the head of @INC.
+use lib abs_path($0 =~ m{^(.*)[\\/]} && $1 || abs_path) . '/../lib';
+
+use Time::HiRes qw(time);
+use MCE::Flow;
 
 ## Iterator for preserving output order.
 
