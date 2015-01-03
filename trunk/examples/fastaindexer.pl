@@ -3,84 +3,38 @@
 use strict;
 use warnings;
 
+use Cwd 'abs_path'; ## Insert lib-path at the head of @INC.
+use lib abs_path($0 =~ m{^(.*)[\\/]} && $1 || abs_path) . '/../lib';
+
 ## FASTA index (.fai) generation for FASTA files.
-## Perl Many-Core Engine (MCE) Demonstration.
 ##
-## usage: fastaindexer.pl [ /path/to/fastafile.fa ]
-## creates index file; e.g. /path/to/fastafile.fa.fai
-
-###############################################################################
-
-package BioUtil::Seq;
-
 ## The original plan was to run CPAN BioUtil::Seq::FastaReader in parallel.
 ## I thought faster was possible if logic processed records versus lines.
 ## https://gist.github.com/marioroy/85d08fc82845f11d12b5 (for most current)
 ##
-## If running using the CPAN module, change 1 to 2 in the mce_flow_f block.
-##   from:  $c3 += (1 + length $hdr);  ## ">", header line
-##     to:  $c3 += (2 + length $hdr);  ## ">", header line, "\n"
+## Synopsis
+##   fastaindexer.pl [ /path/to/fastafile.fa ]
 ##
-## Two million clusters taken from uniref100.fasta.gz (2013_12).
-## gunzip -c uniref100.fasta.gz | head -15687827 > uniref.fasta
+## Two million clusters extracted from uniref100.fasta.gz (2013_12).
+##   gunzip -c uniref100.fasta.gz | head -15687827 > uniref.fasta
 ##
 ## Running serially (one core)
 ##   C++ , fastahack -i   28.216s      https://github.com/ekg/fastahack
-##   Perl, line driven    21.934s      FastaReader, BioUtil-2014.1226
-##   Perl, record driven  15.258s      By input record separator "\n>"
+##   Perl, line driven    21.934s      FastaReader from BioUtil-2014.1226
+##   Perl, line driven    19.668s      FastaReader from BioUtil-2014.1226 (mod)
+##   Perl, record driven  15.258s      Faster alternative
 ##
 ## Many-Core Engine
-##   Perl, line driven     6.781s      FastaReader, BioUtil-2014.1226.
-##   Perl, record driven   4.835s      By input record separator "\n>"
+##   Perl, line driven     6.781s      FastaReader from BioUtil-2014.1226
+##   Perl, line driven     6.094s      FastaReader from BioUtil-2014.1226 (mod)
+##   Perl, record driven   4.835s      Faster alternative
 
-sub FastaReader {
-   my ($file, $not_trim) = @_;
+my $prog_dir = abs_path($0 =~ m{^(.*)[\\/]} && $1 || abs_path);
 
-   my ($is_stdin, $rec, $finished) = (0, 0, 0);
-   my ($fh, $pos, $hdr, $seq);
-
-   if ($file =~ /^STDIN$/i) {
-      ($is_stdin, $fh) = (1, *STDIN);
-   } else {
-      open $fh, '<', $file or die "fail to open file: $file!\n";
-   }
-
-   return sub {
-      return if $finished;
-      local $/ = "\n>";                     ## set input record separator
-
-      while (<$fh>) {
-         unless ($rec++) {                  ## 1st record must have leading ">"
-            s/^>// || next;                 ## trim ">", otherwise skip record
-         }
-         chop if substr($_, -1, 1) eq '>';  ## trim trailing ">"
-
-         $pos = index($_, "\n");            ## extract header and sequence data
-         $hdr = substr($_, 0, $pos + 1);
-         $seq = substr($_, $pos + 1);
-
-         unless ($not_trim) {
-            chop $hdr;                                 ## trim trailing "\n"
-            chop $hdr if substr($hdr, -1, 1) eq "\r";  ## trim trailing "\r"
-            $seq =~ tr/ \t\r\n//d;                     ## trim white space
-         }
-
-         return [ $hdr, $seq ];
-      }
-
-      close $fh unless $is_stdin;
-      $finished = 1;
-
-      return;
-   };
-}
+## do "$prog_dir/include/fastareader_cpan.inc.pl";   ## line driven
+   do "$prog_dir/include/fastareader_fast.inc.pl";   ## record driven
 
 ###############################################################################
-
-package main;
-
-use Cwd 'abs_path'; ## Insert lib-path at the head of @INC.
-use lib abs_path($0 =~ m{^(.*)[\\/]} && $1 || abs_path) . '/../lib';
 
 use MCE::Flow chunk_size => '1024k', max_workers => 'auto';
 use Time::HiRes qw(time);
@@ -123,7 +77,7 @@ sub print_error {
    $exit_status = 1;
 }
 
-## Obtain handle to index file *.fai.
+## Open handle to index file *.fai.
 
 my $fasta_file = shift || \*DATA;
 my $start = time;
@@ -167,15 +121,13 @@ sub {
       ($hdr, $seq) = @{ $fa };
 
       ($c1) = ($hdr) =~ /^(\S+)/;
-       $c3 += (1 + length $hdr);  ## ">", header line
-     # $c3 += (2 + length $hdr);  ## ">", header line, "\n" (CPAN FastaReader)
-
+       $c3 += (1 + length $hdr);                   ## ">" plus header line
        $len = length $seq;
        $sz  = $c3 + $len;
        $c5  = index $seq, "\n";
 
       if ($c5 < 0) {
-         ($c2, $c3, $c4, $c5) = (0, -1, 0, 0);     ## without sequence data
+         ($c2, $c3, $c4, $c5) = (0, -1, 0, 0);     ## without bases
       }
       else {
          my @a;  $p1 = $c5 + 1;
