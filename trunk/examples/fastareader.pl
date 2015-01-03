@@ -3,6 +3,9 @@
 use strict;
 use warnings;
 
+## FASTA reader for FASTA files (driven by input record separator "\n>").
+## Perl Many-Core Engine (MCE) Demonstration.
+##
 ## usage: fastareader.pl [ /path/to/fastafile.fa ]
 
 ###############################################################################
