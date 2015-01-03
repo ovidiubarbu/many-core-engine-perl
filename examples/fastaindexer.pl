@@ -3,6 +3,9 @@
 use strict;
 use warnings;
 
+## FASTA index (.fai) generation for FASTA files.
+## Perl Many-Core Engine (MCE) Demonstration.
+##
 ## usage: fastaindexer.pl [ /path/to/fastafile.fa ]
 ## creates index file; e.g. /path/to/fastafile.fa.fai
 
@@ -152,6 +155,12 @@ sub {
 
    my ($p1, $err, $hdr, $seq, $sz, @output);  $sz = 0;
    my ($p2, $len, $c1, $c2, $c3, $c4, $c5);   $c3 = 0;
+
+   ## $c1 = the name of the sequence
+   ## $c2 = the length of the sequence
+   ## $c3 = the offset of the first base in the file
+   ## $c4 = the number of bases in each fasta line
+   ## $c5 = the number of bytes in each fasta line
 
    ## loop through sequences in $slurp_ref
    while (my $fa = &$next_seq()) {
