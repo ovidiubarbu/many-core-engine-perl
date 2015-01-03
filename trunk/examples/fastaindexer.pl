@@ -210,10 +210,12 @@ sub {
 
 }, $fasta_file;
 
-close $output_fh unless ref $fasta_file;
+unless (ref $fasta_file) {
+   close $output_fh;
 
-rename "$fasta_file.fai.tmp", "$fasta_file.fai"
-   or die "rename $fasta_file.fai.tmp to $fasta_file.fai: $!\n";
+   rename "$fasta_file.fai.tmp", "$fasta_file.fai"
+      or die "rename $fasta_file.fai.tmp to $fasta_file.fai: $!\n";
+}
 
 printf {*STDERR} "\n## Compute time: %0.03f\n\n", time - $start;
 
