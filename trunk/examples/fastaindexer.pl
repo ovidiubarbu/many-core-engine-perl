@@ -42,9 +42,9 @@ use Time::HiRes qw(time);
 ## Iterator for preserving output order.
 
 sub output_iterator {
-   my ($output_fh) = @_;
+   my ($output_fh, $offset) = @_;
 
-   my (%tmp, $size); my ($order_id, $offset) = (1, 0);
+   my (%tmp, $size); my $order_id = 1;
 
    return sub {
       $tmp{ (shift) } = \@_;
@@ -65,6 +65,24 @@ sub output_iterator {
 
       return;
    };
+}
+
+## Get 1st offset position, typically 0, but just in case.
+
+sub get_first_offset {
+   my ($offset, $fasta_file) = (0, @_);
+
+   if (ref $fasta_file eq '' || ref $fasta_file eq 'SCALAR') {
+      open my $fh, '<', $fasta_file or die "$fasta_file: open: $!\n";
+      while (<$fh>) { last if (/^>/); $offset += length; }
+      close $fh;
+   }
+   else {
+      while (<$fasta_file>) { last if (/^>/); $offset += length; }
+      seek $fasta_file, 0, 0;
+   }
+
+   return $offset;
 }
 
 ## Display error message.
@@ -95,7 +113,7 @@ else {
 ## Run in parallel.
 
 mce_flow_f {
-   gather => output_iterator($output_fh),
+   gather => output_iterator($output_fh, get_first_offset($fasta_file)),
    RS => "\n>", use_slurpio => 1,
 },
 sub {
