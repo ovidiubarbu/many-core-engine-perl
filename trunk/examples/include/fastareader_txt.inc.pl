@@ -8,7 +8,8 @@ no strict 'refs';
 no warnings 'redefine';
 
 ## Using "\n>" for the input record separator, thus record driven.
-## Generates text output containing the raw data.
+## Generates text output containing the raw data, excluding '>'.
+## Also see FastaReader in BioUtil::Seq.
 
 sub FastaReader_txt {
    my ($file, $not_trim) = @_;
