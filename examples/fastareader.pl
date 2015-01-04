@@ -4,31 +4,30 @@ use strict;
 use warnings;
 
 ## FASTA reader for FASTA files.
+##   https://gist.github.com/marioroy/1294672e8e3ba42cb684
 ##
 ## The original plan was to run CPAN BioUtil::Seq::FastaReader in parallel.
-## I decided to process by records versus lines.
-##
-## https://gist.github.com/marioroy/1294672e8e3ba42cb684 (for most current)
-##
-## Synopsis
-##   fastareader.pl [ /path/to/fastafile.fa ]
+## I decided to process by records insteads ($/ = "\n>") versus lines for
+## faster performance. Created for the investigative spirit wanting faster.
+## Beware, MCE eats files, among other things; e.g. cpu cycles :)
 ##
 ## Two million clusters extracted from uniref100.fasta.gz (2013_12).
 ##   gunzip -c uniref100.fasta.gz | head -15687827 > uniref.fasta
 ##
-## Running serially:   7.877s
-## Many-Core Engine:   2.467s
+## Synopsis
+##   fastareader.pl [ /path/to/fastafile.fa ]
+##
+## BioUtil::Seq::FastaReader:  15.649s   $/ = "\n"  thus, line driven
+## FastaReaderTxt ( no mce ):   7.877s   $/ = "\n>" record driven
+## FastaReaderTxt ( w/ mce ):   2.467s
 
 use Cwd 'abs_path';
+use lib abs_path($0 =~ m{^(.*)[\\/]} && $1 || abs_path) . '/include';
 use lib abs_path($0 =~ m{^(.*)[\\/]} && $1 || abs_path) . '/../lib';
 
-my  $prog_dir = abs_path($0 =~ m{^(.*)[\\/]} && $1 || abs_path);
-do "$prog_dir/include/fastareader_txt.inc.pl";
-
-###############################################################################
-
 use MCE::Flow chunk_size => '1024k', max_workers => 'auto';
-use Time::HiRes qw(time);
+use Time::HiRes 'time';
+use FastaReaderTxt;
 
 ## Iterator for preserving output order.
 
@@ -64,7 +63,7 @@ sub {
    ${ $slurp_ref } = '>' . ${ $slurp_ref } if $chunk_id > 1;
 
    ## read from scalar reference
-   my $next_seq = BioUtil::Test::FastaReader_txt($slurp_ref, 0);
+   my $next_seq = FastaReaderTxt::Reader($slurp_ref, 0);
 
    ## loop through sequences in $slurp_ref
    while (my $fa = &$next_seq()) {
@@ -78,8 +77,6 @@ sub {
 }, $file;
 
 printf {*STDERR} "\n## Compute time: %0.03f\n\n", time - $start;
-
-###############################################################################
 
 __END__
 >seq1 description1

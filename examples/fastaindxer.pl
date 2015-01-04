@@ -4,31 +4,30 @@ use strict;
 use warnings;
 
 ## FASTA index (.fai) generation for FASTA files.
+##   https://gist.github.com/marioroy/85d08fc82845f11d12b5
 ##
 ## The original plan was to run CPAN BioUtil::Seq::FastaReader in parallel.
-## I decided to process by records versus lines.
-##
-## https://gist.github.com/marioroy/85d08fc82845f11d12b5 (for most current)
-##
-## Synopsis
-##   fastaindxer.pl [ /path/to/fastafile.fa ]
+## I decided to process by records instead ($/ = "\n>") versus lines for
+## faster performance. Created for the investigative spirit wanting faster.
+## Beware, MCE eats files, among other things; e.g. cpu cycles :)
 ##
 ## Two million clusters extracted from uniref100.fasta.gz (2013_12).
 ##   gunzip -c uniref100.fasta.gz | head -15687827 > uniref.fasta
 ##
-## Running serially:  15.642s
-## Many-Core Engine:   4.886s
+## Synopsis
+##   fastaindxer.pl [ /path/to/fastafile.fa ]
+##
+## Fastahack C++  ( -i arg ):  28.216s   $/ = "\n"  thus, line driven
+## FastaReaderFai ( no mce ):  15.642s   $/ = "\n>" record driven
+## FastaReaderFai ( w/ mce ):   4.886s
 
 use Cwd 'abs_path';
+use lib abs_path($0 =~ m{^(.*)[\\/]} && $1 || abs_path) . '/include';
 use lib abs_path($0 =~ m{^(.*)[\\/]} && $1 || abs_path) . '/../lib';
 
-my  $prog_dir = abs_path($0 =~ m{^(.*)[\\/]} && $1 || abs_path);
-do "$prog_dir/include/fastareader_fai.inc.pl";
-
-###############################################################################
-
 use MCE::Flow chunk_size => '1024k', max_workers => 'auto';
-use Time::HiRes qw(time);
+use Time::HiRes 'time';
+use FastaReaderFai;
 
 my $exit_status = 0;
 
@@ -85,7 +84,7 @@ else {
 
 ## Process file in parallel.
 
-my $offset_adj = BioUtil::Test::GetFirstOffset($file);
+my $offset_adj = FastaReaderFai::GetFirstOffset($file);
 
 mce_flow_f {
    gather => output_iterator($output_fh, $offset_adj),
@@ -98,7 +97,7 @@ sub {
    ${ $slurp_ref } = '>' . ${ $slurp_ref } if $chunk_id > 1;
 
    ## read from scalar reference
-   my $next_seq = BioUtil::Test::FastaReader_fai($slurp_ref, 0);
+   my $next_seq = FastaReaderFai::Reader($slurp_ref, 0);
    my ($name, $len, $off, $bases, $bytes, $acc, @output);
 
    ## loop through sequences in $slurp_ref
@@ -126,8 +125,6 @@ close $output_fh unless (ref $file);
 printf {*STDERR} "\n## Compute time: %0.03f\n\n", time - $start;
 
 exit $exit_status;
-
-###############################################################################
 
 __END__
 >seq1 description1
