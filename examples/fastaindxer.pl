@@ -121,7 +121,7 @@ sub {
 
 ## Finish.
 
-close $output_fh unless (ref $file);
+close $output_fh unless ref $file;
 printf {*STDERR} "\n## Compute time: %0.03f\n\n", time - $start;
 
 exit $exit_status;
