@@ -2,16 +2,13 @@
 use strict;
 use warnings;
 
-package BioUtil::Test;
-
-no strict 'refs';
-no warnings 'redefine';
+package FastaReaderFai;
 
 ## Using "\n>" for the input record separator, thus record driven.
 ## Generates output suitable for (.fai) index files.
-## Also see FastaReader in BioUtil::Seq.
+## Also see BioUtil::Seq::FastaReader.
 
-sub FastaReader_fai {
+sub Reader {
    my ($file, $offset_adj) = @_;
 
    my ($open_flg, $finished, $rec) = (0, 0, 0);
@@ -58,7 +55,7 @@ sub FastaReader_fai {
             return [ $c1, 0, -1, 0, 0, $acc ];     ## sequence has no bases
          }
          else {
-            my @a;  $p1 = $c5 + 1;
+            my @a;  $p1 = $c5 + 1;                 ## start on 2nd bases line
 
             while ($p1 < $c2) {                    ## collect line lengths
                $p2 = index $seq, "\n", $p1;
@@ -66,8 +63,8 @@ sub FastaReader_fai {
                $p1 = $p2 + 1;
             }
             if (scalar @a) {
-               pop @a while ($a[-1] == 0);         ## pop blank lines
-               pop @a;
+               pop @a while ($a[-1] == 0);         ## pop trailing blank lines
+               pop @a;                             ## pop last line w/ bases
 
                foreach (0 .. scalar(@a) - 1) {     ## any length mismatch?
                   if ($a[$_] != $c5) {

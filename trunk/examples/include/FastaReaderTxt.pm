@@ -2,16 +2,13 @@
 use strict;
 use warnings;
 
-package BioUtil::Test;
-
-no strict 'refs';
-no warnings 'redefine';
+package FastaReaderTxt;
 
 ## Using "\n>" for the input record separator, thus record driven.
 ## Generates text output containing the raw data, excluding '>'.
-## Also see FastaReader in BioUtil::Seq.
+## Also see BioUtil::Seq::FastaReader.
 
-sub FastaReader_txt {
+sub Reader {
    my ($file, $not_trim) = @_;
 
    my ($open_flg, $finished, $rec) = (0, 0, 0);
