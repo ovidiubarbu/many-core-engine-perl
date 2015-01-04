@@ -9,6 +9,7 @@ no warnings 'redefine';
 
 ## Using "\n>" for the input record separator, thus record driven.
 ## Generates output suitable for (.fai) index files.
+## Also see FastaReader in BioUtil::Seq.
 
 sub FastaReader_fai {
    my ($file, $offset_adj) = @_;
