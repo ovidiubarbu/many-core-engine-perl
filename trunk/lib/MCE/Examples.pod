@@ -36,8 +36,8 @@ The following scripts are located under the examples directory.
         Concatenation, egrep, and word count scripts similar to the
         cat, egrep, and wc binaries respectively.
 
-   fastaindexer.pl, fastareader.pl
-        A BioUtil::Seq::FastaReader compatible FASTA reader.
+   fastaindxer.pl, fastareader.pl
+        Parallel bioinformatics utilities for FASTA files.
 
    files_flow.pl, files_mce.pl, files_thr.pl
         Demonstrates MCE::Flow, MCE::Queue, and Thread::Queue.

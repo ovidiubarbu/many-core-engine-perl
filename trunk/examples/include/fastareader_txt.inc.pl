@@ -2,28 +2,25 @@
 use strict;
 use warnings;
 
-package BioUtil::Seq;
+package BioUtil::Test;
 
 no strict 'refs';
 no warnings 'redefine';
 
-## Below, a faster alternative to CPAN BioUtil::Seq::FastaReader.
 ## Using "\n>" for the input record separator, thus record driven.
+## Generates text output containing the raw data.
 
-sub FastaReader {
+sub FastaReader_txt {
    my ($file, $not_trim) = @_;
 
-   my ($is_stdin, $rec, $finished) = (0, 0, 0);
+   my ($close_flg, $finished, $rec) = (0, 0, 0);
    my ($fh, $pos, $hdr, $seq);
 
-   if ($file =~ /^STDIN$/i) {
-      ($is_stdin, $fh) = (1, *STDIN);
+   if (ref $file eq '' || ref $file eq 'SCALAR') {
+      open $fh, '<', $file or die "$file: open: !\n";
+      $close_flg = 1;
    } else {
-      if (ref $file eq '' || ref $file eq 'SCALAR') {
-         open $fh, '<', $file or die "fail to open file: $file!\n";
-      } else {
-         $fh = $file;
-      }
+      $fh = $file;
    }
 
    return sub {
@@ -36,7 +33,7 @@ sub FastaReader {
          }
          chop if substr($_, -1, 1) eq '>';  ## trim trailing ">"
 
-         $pos = index($_, "\n");            ## extract header and sequence data
+         $pos = index($_, "\n");            ## extract header and bases
          $hdr = substr($_, 0, $pos + 1);
          $seq = substr($_, $pos + 1);
 
@@ -49,7 +46,7 @@ sub FastaReader {
          return [ $hdr, $seq ];
       }
 
-      close $fh unless $is_stdin;
+      close $fh if $close_flg;
       $finished = 1;
 
       return;

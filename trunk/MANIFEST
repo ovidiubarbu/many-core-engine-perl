@@ -30,11 +30,10 @@ lib/MCE/Subs.pm
 lib/MCE/Util.pm
 examples/cat.pl
 examples/egrep.pl
-examples/fastaindexer.pl
+examples/fastaindxer.pl
 examples/fastareader.pl
-examples/include/fastareader_fast.inc.pl
-examples/include/fastareader_orig.inc.pl
-examples/include/fastareader_cpan.inc.pl
+examples/include/fastareader_fai.inc.pl
+examples/include/fastareader_txt.inc.pl
 examples/files_flow.pl
 examples/files_mce.pl
 examples/files_thr.pl
