@@ -65,6 +65,12 @@ Joseph Ogulin
   For providing the initial perl-MCE.spec file.
   For the cool remarks at work about MCE being really big :)
 
+Demian Riccardi
+  I received a message from Demian asking for mce_map. His message contained a
+  cool example which looked so elegant as far as ease of use. Five models were
+  created; MCE::Flow, MCE::Grep, MCE::Loop, MCE::Map, and MCE::Stream.
+  Thus, MCE 1.5 takes on new form without breaking backwards compatibility.
+
 Jillian Rowe
   For reporting on IO::File handles not working with MCE. Fixed in 1.515.
   For believing in possibilities, beyond text-book thinking.
