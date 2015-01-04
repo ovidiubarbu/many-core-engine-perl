@@ -47,29 +47,32 @@ Stephan Kulow
   https://build.opensuse.org/package/show/devel:languages:perl:CPAN-M/perl-MCE
 
 Henry Lu
-  For listening during our walks on numerous occasions while I chatted away
-  about the work done to MCE during my off-time hours including vacations.
+  For listening during our walks on numerous occasions while I talked about
+  how ridiculously hard to provide support for the Windows environmemnt.
+  For encouraging me to hang in there when I wanted to give up.
 
 Philip Mabon
   For reporting on a couple issues with MCE in particular bug RT#92627.
 
 David Mertens
-  * I am thankful for the tip on making PDL + MCE a possibility. Workers were
-    crashing during exiting. Adding "sub PDL::CLONE_SKIP { 1 }" inside MCE.pm
-    solved this issue entirely.
-  * In addition, for pointers on how to effectively use PDL from his example
-    matmult_pdl_thr.pl utilizing PDL::Parallel::threads::SIMD at
-    https://gist.github.com/run4flat/4942132.
+  I am thankful for the tip on making PDL + MCE a possibility. Workers were
+  crashing during exiting. Adding "sub PDL::CLONE_SKIP { 1 }" inside MCE.pm
+  solved this issue entirely. Also, for pointers on how to effectively use PDL
+  from his example matmult_pdl_thr.pl utilizing PDL::Parallel::threads::SIMD
+  at https://gist.github.com/run4flat/4942132.
 
 Joseph Ogulin
   For providing the initial perl-MCE.spec file.
+  For the cool remarks at work about MCE being really big :)
 
 Jillian Rowe
   For reporting on IO::File handles not working with MCE. Fixed in 1.515.
+  For believing in possibilities, beyond text-book thinking.
 
 Sylvia Roy
   For driving on long trips while I worked in the passenger seat further
-  developing and testing MCE. Not to forget, locally around town as well.
+  developing MCE. Not to forget, locally around town as well. Gosh, a lot
+  of MCE was done while in the car and not to forget Panera Bread.
 
 Petr Šabata
   For initial package submission at Red Hat.
