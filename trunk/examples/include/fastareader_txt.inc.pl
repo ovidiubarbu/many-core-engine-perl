@@ -13,12 +13,12 @@ no warnings 'redefine';
 sub FastaReader_txt {
    my ($file, $not_trim) = @_;
 
-   my ($close_flg, $finished, $rec) = (0, 0, 0);
+   my ($open_flg, $finished, $rec) = (0, 0, 0);
    my ($fh, $pos, $hdr, $seq);
 
    if (ref $file eq '' || ref $file eq 'SCALAR') {
       open $fh, '<', $file or die "$file: open: !\n";
-      $close_flg = 1;
+      $open_flg = 1;
    } else {
       $fh = $file;
    }
@@ -46,7 +46,7 @@ sub FastaReader_txt {
          return [ $hdr, $seq ];
       }
 
-      close $fh if $close_flg;
+      close $fh if $open_flg;
       $finished = 1;
 
       return;

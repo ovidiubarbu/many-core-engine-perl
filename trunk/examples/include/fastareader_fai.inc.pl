@@ -13,12 +13,12 @@ no warnings 'redefine';
 sub FastaReader_fai {
    my ($file, $offset_adj) = @_;
 
-   my ($close_flg, $finished, $rec) = (0, 0, 0);
+   my ($open_flg, $finished, $rec) = (0, 0, 0);
    my ($fh, $pos, $hdr, $seq);
 
    if (ref $file eq '' || ref $file eq 'SCALAR') {
       open $fh, '<', $file or die "$file: open: !\n";
-      $close_flg = 1;
+      $open_flg = 1;
    } else {
       $fh = $file;
    }
@@ -82,7 +82,7 @@ sub FastaReader_fai {
          return [ $c1, $c2, $c3, $c4, $c5, $acc ];
       }
 
-      close $fh if $close_flg;
+      close $fh if $open_flg;
       $finished = 1;
 
       return;
