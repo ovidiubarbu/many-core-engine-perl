@@ -66,10 +66,8 @@ sub Reader {
                pop @a while ($a[-1] == 0);         ## pop trailing blank lines
                pop @a;                             ## pop last line w/ bases
 
-               foreach (0 .. scalar(@a) - 1) {     ## any length mismatch?
-                  if ($a[$_] != $c5) {
-                     return [ $c1, 0, -2, 0, 0, $acc ];
-                  }
+               foreach (@a) {                      ## any length mismatch?
+                  return [ $c1, 0, -2, 0, 0, $acc ] if $_ != $c5;
                }
             }
             $c4  =  (substr($seq, ++$c5 - 2, 1) eq "\r") ? $c5 - 2 : $c5 - 1;
