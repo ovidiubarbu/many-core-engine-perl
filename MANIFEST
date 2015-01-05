@@ -32,8 +32,6 @@ examples/cat.pl
 examples/egrep.pl
 examples/fastaindxer.pl
 examples/fastareader.pl
-examples/include/fastareader_fai.inc.pl
-examples/include/fastareader_txt.inc.pl
 examples/files_flow.pl
 examples/files_mce.pl
 examples/files_thr.pl
@@ -43,6 +41,8 @@ examples/flow_model.pl
 examples/forchunk.pl
 examples/foreach.pl
 examples/forseq.pl
+examples/include/FastaReaderFai.pm
+examples/include/FastaReaderTxt.pm
 examples/interval.pl
 examples/iterator.pl
 examples/matmult/README
