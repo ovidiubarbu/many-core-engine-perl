@@ -11,11 +11,11 @@ package FastaReaderTxt;
 sub Reader {
    my ($file, $not_trim) = @_;
 
-   my ($open_flg, $finished, $rec) = (0, 0, 0);
+   my ($open_flg, $finished, $first_flg) = (0, 0, 1);
    my ($fh, $pos, $hdr, $seq);
 
    if (ref $file eq '' || ref $file eq 'SCALAR') {
-      open $fh, '<', $file or die "$file: open: !\n";
+      open($fh, '<', $file) or die "$file: open: !\n";
       $open_flg = 1;
    } else {
       $fh = $file;
@@ -26,14 +26,15 @@ sub Reader {
       local $/ = "\n>";                     ## set input record separator
 
       while (<$fh>) {
-         unless ($rec++) {                  ## 1st record must have leading ">"
-            s/^>// || next;                 ## trim ">", otherwise skip record
+         if ($first_flg) {                  ## 1st record must have leading ">"
+            $first_flg--;                   ## trim ">", otherwise skip record
+            s/^>// || next;
          }
-         chop if substr($_, -1, 1) eq '>';  ## trim trailing ">"
+         chop if substr($_, -1, 1) eq '>';  ## trim trailing ">", part of $/
 
-         $pos = index($_, "\n");            ## extract header and bases
-         $hdr = substr($_, 0, $pos + 1);
-         $seq = substr($_, $pos + 1);
+         $pos = index($_, "\n") + 1;        ## extract header and bases
+         $hdr = substr($_, 0, $pos);
+         $seq = substr($_, $pos);
 
          unless ($not_trim) {
             chop $hdr;                                 ## trim trailing "\n"

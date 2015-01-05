@@ -7,9 +7,8 @@ use warnings;
 ##   https://gist.github.com/marioroy/85d08fc82845f11d12b5
 ##
 ## The original plan was to run CPAN BioUtil::Seq::FastaReader in parallel.
-## I decided to process by records instead ($/ = "\n>") versus lines for
-## faster performance. Created for the investigative spirit wanting faster.
-## Beware, MCE eats files, among other things; e.g. cpu cycles :)
+## I decided to process by records ($/ = "\n>") versus lines for faster
+## performance. Created for the investigative Bioinformatics field.
 ##
 ## Two million clusters extracted from uniref100.fasta.gz (2013_12).
 ##   gunzip -c uniref100.fasta.gz | head -15687827 > uniref.fasta
@@ -17,16 +16,17 @@ use warnings;
 ## Synopsis
 ##   fastaindxer.pl [ /path/to/fastafile.fa ]
 ##
-## Fastahack C++  ( -i arg ):  28.216s   $/ = "\n"  thus, line driven
-## FastaReaderFai ( serial ):  15.013s   $/ = "\n>" record driven
-## Samtools faidx ( serial ):   7.371s   Host OS,  14.799s   Linux VM
-## FastaReaderFai ( w/ mce ):   4.804s   Host OS,   6.383s   Linux VM
+## Fastahack C++  ( -i arg ):  28.216s  $/ = "\n"  thus, line driven
+## FastaReaderFai ( serial ):  14.456s  $/ = "\n>" record driven
+## Samtools faidx ( serial ):   7.371s  Host OS,   14.799s  Linux VM
+## FastaReaderFai ( w/ mce ):   4.810s  Host OS,    6.383s  Linux VM
 
 use Cwd 'abs_path';
 use lib abs_path($0 =~ m{^(.*)[\\/]} && $1 || abs_path) . '/include';
 use lib abs_path($0 =~ m{^(.*)[\\/]} && $1 || abs_path) . '/../lib';
 
 use MCE::Flow chunk_size => '1024k', max_workers => 'auto';
+
 use Time::HiRes 'time';
 use FastaReaderFai;
 
@@ -38,6 +38,20 @@ sub print_error {
    my ($error_msg) = @_;
    print {*STDERR} $error_msg."\n";
    $exit_status = 1;
+}
+
+## Open handle to index file *.fai.
+
+my $output_fh;
+my $file  = shift || \*DATA;
+my $start = time;
+
+if (ref $file) {
+   $output_fh = \*STDOUT;
+}
+else {
+   die "$file: $!\n" unless -f $file;
+   open($output_fh, '>', "$file.fai") or die "$file.fai: open: $!\n";
 }
 
 ## Iterator for preserving output order.
@@ -69,21 +83,7 @@ sub output_iterator {
    };
 }
 
-## Open handle to index file *.fai.
-
-my $output_fh;
-my $file  = shift || \*DATA;
-my $start = time;
-
-if (ref $file) {
-   $output_fh = \*STDOUT;
-}
-else {
-   die "$file: $!\n" unless -f $file;
-   open $output_fh, '>', "$file.fai" or die "$file.fai: open: $!\n";
-}
-
-## Process file in parallel.
+## Process file.
 
 print {*STDERR} "Building $file.fai\n" unless ref $file;
 my $offset_adj = FastaReaderFai::GetFirstOffset($file);
@@ -124,6 +124,7 @@ sub {
 ## Finish.
 
 close $output_fh unless ref $file;
+
 printf {*STDERR} "\n## Compute time: %0.03f\n\n", time - $start;
 
 exit $exit_status;

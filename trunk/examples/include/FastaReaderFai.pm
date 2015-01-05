@@ -11,11 +11,11 @@ package FastaReaderFai;
 sub Reader {
    my ($file, $offset_adj) = @_;
 
-   my ($open_flg, $finished, $rec) = (0, 0, 0);
+   my ($open_flg, $finished, $first_flg) = (0, 0, 1);
    my ($fh, $pos, $hdr, $seq);
 
    if (ref $file eq '' || ref $file eq 'SCALAR') {
-      open $fh, '<', $file or die "$file: open: !\n";
+      open($fh, '<', $file) or die "$file: open: !\n";
       $open_flg = 1;
    } else {
       $fh = $file;
@@ -23,32 +23,33 @@ sub Reader {
 
    my ($c1, $c2, $c3, $c4, $c5, $p1, $p2, $acc);
 
-   $c3 = $offset_adj; $acc = 0;
-
    ## $c1 = the name of the sequence
    ## $c2 = the length of the sequence
    ## $c3 = the offset of the first base in the file
    ## $c4 = the number of bases in each fasta line
    ## $c5 = the number of bytes in each fasta line
 
+   $c3 = $offset_adj; $acc = 0;
+
    return sub {
       return if $finished;
       local $/ = "\n>";                     ## set input record separator
 
       while (<$fh>) {
-         unless ($rec++) {                  ## 1st record must have leading ">"
-            s/^>// || next;                 ## trim ">", otherwise skip record
+         if ($first_flg) {                  ## 1st record must have leading ">"
+            $first_flg--;                   ## trim ">", otherwise skip record
+            s/^>// || next;
          }
-         chop if substr($_, -1, 1) eq '>';  ## trim trailing ">"
+         chop if substr($_, -1, 1) eq '>';  ## trim trailing ">", part of $/
 
-         $pos = index($_, "\n");            ## extract header and bases
-         $hdr = substr($_, 0, $pos + 1);
-         $seq = substr($_, $pos + 1);
+         $pos = index($_, "\n") + 1;        ## extract header and bases
+         $hdr = substr($_, 0, $pos);
+         $seq = substr($_, $pos);
 
         ($c1) = ($hdr) =~ /^(\S+)/;         ## compute initial values
-         $c2  = length $seq;
-         $c3  = $acc + 1 + length $hdr;
-         $c5  = index $seq, "\n";
+         $c2  = length($seq);
+         $c3  = $acc + 1 + length($hdr);
+         $c5  = index($seq, "\n");
          $acc = $c3 + $c2;
 
          if ($c5 < 0) {
@@ -58,7 +59,7 @@ sub Reader {
             my @a;  $p1 = $c5 + 1;                 ## start on 2nd bases line
 
             while ($p1 < $c2) {                    ## collect line lengths
-               $p2 = index $seq, "\n", $p1;
+               $p2 = index($seq, "\n", $p1);
                push @a, $p2 - $p1;
                $p1 = $p2 + 1;
             }
@@ -72,7 +73,7 @@ sub Reader {
             }
             $c4  =  (substr($seq, ++$c5 - 2, 1) eq "\r") ? $c5 - 2 : $c5 - 1;
             $seq =~ tr/ \t\r\n//d;
-            $c2  =  length $seq;
+            $c2  =  length($seq);
          }
 
          return [ $c1, $c2, $c3, $c4, $c5, $acc ];
