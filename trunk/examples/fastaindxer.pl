@@ -25,7 +25,7 @@ use Cwd 'abs_path';
 use lib abs_path($0 =~ m{^(.*)[\\/]} && $1 || abs_path) . '/include';
 use lib abs_path($0 =~ m{^(.*)[\\/]} && $1 || abs_path) . '/../lib';
 
-use MCE::Flow chunk_size => '1024k', max_workers => 'auto';
+use MCE::Flow chunk_size => '2048k', max_workers => 'auto';
 
 use Time::HiRes 'time';
 use FastaReaderFai;
