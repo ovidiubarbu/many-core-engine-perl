@@ -65,7 +65,7 @@ sub output_iterator {
 
       while (1) {
          last unless exists $tmp{$order_id};
-         $size = shift @{ $tmp{$order_id} };
+         $size = pop @{ $tmp{$order_id} };
          my $buffer = '';
 
          foreach my $row ( @{ delete $tmp{$order_id++} } ) {
@@ -117,7 +117,7 @@ sub {
    }
 
    ## gather output for this chunk
-   MCE->gather($chunk_id, $acc, @output);
+   MCE->gather($chunk_id, @output, $acc);
 
 }, $file;
 
