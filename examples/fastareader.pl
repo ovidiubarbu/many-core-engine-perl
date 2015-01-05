@@ -7,9 +7,8 @@ use warnings;
 ##   https://gist.github.com/marioroy/1294672e8e3ba42cb684
 ##
 ## The original plan was to run CPAN BioUtil::Seq::FastaReader in parallel.
-## I decided to process by records insteads ($/ = "\n>") versus lines for
-## faster performance. Created for the investigative spirit wanting faster.
-## Beware, MCE eats files, among other things; e.g. cpu cycles :)
+## I decided to process by records ($/ = "\n>") versus lines for faster
+## performance. Created for the investigative Bioinformatics field.
 ##
 ## Two million clusters extracted from uniref100.fasta.gz (2013_12).
 ##   gunzip -c uniref100.fasta.gz | head -15687827 > uniref.fasta
@@ -17,17 +16,21 @@ use warnings;
 ## Synopsis
 ##   fastareader.pl [ /path/to/fastafile.fa ]
 ##
-## BioUtil::Seq::FastaReader:  15.649s   $/ = "\n"  thus, line driven
-## FastaReaderTxt ( sereal ):   7.877s   $/ = "\n>" record driven
-## FastaReaderTxt ( w/ mce ):   2.467s
+## BioUtil::Seq::FastaReader:  15.649s  $/ = "\n"  thus, line driven
+## FastaReaderTxt ( serial ):   7.768s  $/ = "\n>" record driven
+## FastaReaderTxt ( w/ mce ):   2.453s
 
 use Cwd 'abs_path';
 use lib abs_path($0 =~ m{^(.*)[\\/]} && $1 || abs_path) . '/include';
 use lib abs_path($0 =~ m{^(.*)[\\/]} && $1 || abs_path) . '/../lib';
 
 use MCE::Flow chunk_size => '1024k', max_workers => 'auto';
+
 use Time::HiRes 'time';
 use FastaReaderTxt;
+
+my $file  = shift || \*DATA;
+my $start = time;
 
 ## Iterator for preserving output order.
 
@@ -46,10 +49,7 @@ sub output_iterator {
    };
 }
 
-## Process file in parallel.
-
-my $file  = shift || \*DATA;
-my $start = time;
+## Process file.
 
 mce_flow_f {
    gather => output_iterator,
