@@ -18,8 +18,8 @@ use warnings;
 ##   fastaindxer.pl [ /path/to/fastafile.fa ]
 ##
 ## Fastahack C++  ( -i arg ):  28.216s   $/ = "\n"  thus, line driven
-## FastaReaderFai ( no mce ):  15.642s   $/ = "\n>" record driven
-## FastaReaderFai ( w/ mce ):   4.886s
+## FastaReaderFai ( no mce ):  15.013s   $/ = "\n>" record driven
+## FastaReaderFai ( w/ mce ):   4.804s
 
 use Cwd 'abs_path';
 use lib abs_path($0 =~ m{^(.*)[\\/]} && $1 || abs_path) . '/include';
@@ -84,6 +84,7 @@ else {
 
 ## Process file in parallel.
 
+print {*STDERR} "Building $file.fai\n" unless ref $file;
 my $offset_adj = FastaReaderFai::GetFirstOffset($file);
 
 mce_flow_f {
