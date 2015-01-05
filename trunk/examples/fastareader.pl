@@ -18,7 +18,7 @@ use warnings;
 ##   fastareader.pl [ /path/to/fastafile.fa ]
 ##
 ## BioUtil::Seq::FastaReader:  15.649s   $/ = "\n"  thus, line driven
-## FastaReaderTxt ( no mce ):   7.877s   $/ = "\n>" record driven
+## FastaReaderTxt ( sereal ):   7.877s   $/ = "\n>" record driven
 ## FastaReaderTxt ( w/ mce ):   2.467s
 
 use Cwd 'abs_path';

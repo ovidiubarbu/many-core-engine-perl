@@ -18,8 +18,9 @@ use warnings;
 ##   fastaindxer.pl [ /path/to/fastafile.fa ]
 ##
 ## Fastahack C++  ( -i arg ):  28.216s   $/ = "\n"  thus, line driven
-## FastaReaderFai ( no mce ):  15.013s   $/ = "\n>" record driven
-## FastaReaderFai ( w/ mce ):   4.804s
+## FastaReaderFai ( serial ):  15.013s   $/ = "\n>" record driven
+## Samtools faidx ( serial ):   7.371s   Host OS,  14.799s   Linux VM
+## FastaReaderFai ( w/ mce ):   4.804s   Host OS,   6.383s   Linux VM
 
 use Cwd 'abs_path';
 use lib abs_path($0 =~ m{^(.*)[\\/]} && $1 || abs_path) . '/include';
