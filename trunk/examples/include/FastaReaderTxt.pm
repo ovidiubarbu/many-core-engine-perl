@@ -36,8 +36,6 @@ sub Reader {
          $hdr = substr($_, 0, $pos);
          $seq = substr($_, $pos);
 
-         undef $_;                          ## reduces memory consumption
-
          unless ($not_trim) {
             chop $hdr;                                 ## trim trailing "\n"
             chop $hdr if substr($hdr, -1, 1) eq "\r";  ## trim trailing "\r"
