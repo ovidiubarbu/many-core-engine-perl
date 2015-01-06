@@ -39,7 +39,7 @@ sub Reader {
          unless ($not_trim) {
             chop $hdr;                                 ## trim trailing "\n"
             chop $hdr if substr($hdr, -1, 1) eq "\r";  ## trim trailing "\r"
-            $seq =~ tr/ \t\r\n//d;                     ## trim white space
+            $seq =~ s/\s//g;                           ## trim white space
          }
 
          return [ $hdr, $seq ];
