@@ -46,6 +46,8 @@ sub Reader {
          $hdr = substr($_, 0, $pos);
          $seq = substr($_, $pos);
 
+         undef $_;                          ## reduces memory consumption
+
         ($c1) = ($hdr) =~ /^(\S+)/;         ## compute initial values
          $c2  = length($seq);
          $c3  = $acc + 1 + length($hdr);
