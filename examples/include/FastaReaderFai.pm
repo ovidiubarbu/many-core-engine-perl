@@ -72,7 +72,7 @@ sub Reader {
                }
             }
             $c4  =  (substr($seq, ++$c5 - 2, 1) eq "\r") ? $c5 - 2 : $c5 - 1;
-            $seq =~ tr/ \t\r\n//d;
+            $seq =~ s/\s//g;
             $c2  =  length($seq);
 
             undef $seq;
