@@ -209,6 +209,8 @@ sub _worker_read_handle {
             $_wuf->($self, \@_records, $_chunk_id);
          }
       }
+
+      undef $_buffer;
    }
 
    _WORKER_READ_HANDLE__LAST:
