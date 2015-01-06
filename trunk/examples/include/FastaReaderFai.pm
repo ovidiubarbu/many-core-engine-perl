@@ -33,8 +33,8 @@ sub Reader {
 
    return sub {
       return if $finished;
-      local $/ = "\n>";                     ## set input record separator
 
+      local $/ = "\n>";                     ## set input record separator
       while (<$fh>) {
          if ($first_flg) {                  ## 1st record must have leading ">"
             $first_flg--;                   ## trim ">", otherwise skip record
@@ -42,7 +42,7 @@ sub Reader {
          }
          chop if substr($_, -1, 1) eq '>';  ## trim trailing ">", part of $/
 
-         $pos = index($_, "\n") + 1;        ## extract header and bases
+         $pos = index($_, "\n") + 1;        ## extract header and sequence
          $hdr = substr($_, 0, $pos);
          $seq = substr($_, $pos);
 
@@ -75,7 +75,7 @@ sub Reader {
             $seq =~ s/\s//g;
             $c2  =  length($seq);
 
-            undef $seq;
+            undef $seq if length($seq) > 500_000;  ## lowers memory consumption
          }
 
          return [ $c1, $c2, $c3, $c4, $c5, $acc ];
