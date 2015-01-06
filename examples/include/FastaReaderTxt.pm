@@ -37,7 +37,7 @@ sub Reader {
          $seq = substr($_, $pos);
 
          chop $hdr if substr($hdr, -1, 1) eq "\r";  ## trim trailing "\r"
-         $seq =~ s/\s//g unless $not_trim;          ## trim white space
+         $seq =~ tr/\t\r\n //d unless $not_trim;    ## trim white space
 
          return [ $hdr, $seq ];
       }
