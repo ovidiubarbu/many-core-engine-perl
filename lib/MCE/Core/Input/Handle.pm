@@ -57,8 +57,9 @@ sub _worker_read_handle {
    my $_wuf         = $self->{_wuf};
 
    my ($_data_size, $_next, $_chunk_id, $_offset_pos, $_IN_FILE, $_tmp_cs);
-   my @_records = (); $_chunk_id = $_offset_pos = 0;
+   my (@_records);
 
+   $_chunk_id  = $_offset_pos = 0;
    $_data_size = ($_proc_type == READ_MEMORY)
       ? length ${ $_input_data } : -s $_input_data;
 
@@ -125,7 +126,7 @@ sub _worker_read_handle {
          local $/ = $_RS if ($_RS_FLG);
 
          if ($_proc_type == READ_MEMORY) {
-            if ($_parallel_io) {
+            if ($_parallel_io && ! $_RS_FLG) {
                syswrite $_QUE_W_SOCK,
                   pack($_que_template, $_chunk_id, $_offset_pos + $_chunk_size);
 
@@ -152,7 +153,7 @@ sub _worker_read_handle {
             }
          }
          else {
-            if ($_parallel_io) {
+            if ($_parallel_io && ! $_RS_FLG) {
                syswrite $_QUE_W_SOCK,
                   pack($_que_template, $_chunk_id, $_offset_pos + $_chunk_size);
 
@@ -210,7 +211,7 @@ sub _worker_read_handle {
          }
       }
 
-      undef $_buffer;
+      undef $_buffer if (length $_buffer > 500_000);
    }
 
    _WORKER_READ_HANDLE__LAST:
