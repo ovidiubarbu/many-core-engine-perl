@@ -9,7 +9,7 @@ package FastaReaderFai;
 ## Also see BioUtil::Seq::FastaReader.
 
 sub Reader {
-   my ($file, $offset_adj) = @_;
+   my ($file) = @_;
 
    my ($open_flg, $finished, $first_flg) = (0, 0, 1);
    my ($fh, $pos, $hdr, $seq);
@@ -29,24 +29,25 @@ sub Reader {
    ## $c4 = the number of bases in each fasta line
    ## $c5 = the number of bytes in each fasta line
 
-   $c3 = $offset_adj; $acc = 0;
+   $c3 = $acc = 0;
+
+   local $/ = \1;                                  ## read one byte
+   while (<$fh>) {                                 ## until reaching ">"
+      $c3++; last if $_ eq '>';
+   }
 
    return sub {
       return if $finished;
 
-      local $/ = "\n>";                     ## set input record separator
+      local $/ = "\n>";                            ## input record separator
       while (<$fh>) {
-         if ($first_flg) {                  ## 1st record must have leading ">"
-            $first_flg--;                   ## trim ">", otherwise skip record
-            s/^>// || next;
-         }
-         chop if substr($_, -1, 1) eq '>';  ## trim trailing ">", part of $/
+         chop if substr($_, -1, 1) eq '>';         ## trim trailing ">"
 
-         $pos = index($_, "\n") + 1;        ## extract header and sequence
+         $pos = index($_, "\n") + 1;               ## header and sequence
          $hdr = substr($_, 0, $pos);
          $seq = substr($_, $pos);
 
-        ($c1) = ($hdr) =~ /^(\S+)/;         ## compute initial values
+        ($c1) = ($hdr) =~ /^(\S+)/;                ## compute initial values
          $c2  = length($seq);
          $c3  = $acc + 1 + length($hdr);
          $c5  = index($seq, "\n");
@@ -75,7 +76,7 @@ sub Reader {
             $seq =~ tr/\t\r\n //d;
             $c2  =  length($seq);
 
-            undef $seq if length($seq) > 500_000;  ## lowers memory consumption
+            undef $seq if length($seq) > 500_000;  ## lowers mem consumption
          }
 
          return [ $c1, $c2, $c3, $c4, $c5, $acc ];
@@ -93,14 +94,17 @@ sub Reader {
 sub GetFirstOffset {
    my ($offset, $file) = (0, @_);
 
+   local $/ = \1;                                  ## read one byte
+
    if (ref $file eq '' || ref $file eq 'SCALAR') {
       open my $fh, '<', $file or die "$file: open: $!\n";
-      while (<$fh>) { last if (/^>/); $offset += length; }
+      while (<$fh>) { last if $_ eq '>'; $offset++; }
       close $fh;
    }
    else {
-      while (<$file>) { last if (/^>/); $offset += length; }
-      seek $file, 0, 0;
+      my $this_offset = tell $file;
+      while (<$file>) { last if $_ eq '>'; $offset++; }
+      seek $file, $this_offset, 0;
    }
 
    return $offset;

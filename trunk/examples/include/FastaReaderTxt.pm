@@ -11,7 +11,7 @@ package FastaReaderTxt;
 sub Reader {
    my ($file, $not_trim) = @_;
 
-   my ($open_flg, $finished, $first_flg) = (0, 0, 1);
+   my ($open_flg, $finished) = (0, 0);
    my ($fh, $pos, $hdr, $seq);
 
    if (ref $file eq '' || ref $file eq 'SCALAR') {
@@ -21,18 +21,19 @@ sub Reader {
       $fh = $file;
    }
 
+   local $/ = \1;                                   ## read one byte
+   while (<$fh>) {                                  ## until reaching ">"
+      last if $_ eq '>';
+   }
+
    return sub {
       return if $finished;
 
-      local $/ = "\n>";                     ## set input record separator
+      local $/ = "\n>";                             ## input record separator
       while (<$fh>) {
-         if ($first_flg) {                  ## 1st record must have leading ">"
-            $first_flg--;                   ## trim ">", otherwise skip record
-            s/^>// || next;
-         }
-         chop if substr($_, -1, 1) eq '>';  ## trim trailing ">", part of $/
+         chop if substr($_, -1, 1) eq '>';          ## trim trailing ">"
 
-         $pos = index($_, "\n") + 1;        ## extract header and sequence
+         $pos = index($_, "\n") + 1;                ## header and sequence
          $hdr = substr($_, 0, $pos - 1);
          $seq = substr($_, $pos);
 
