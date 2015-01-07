@@ -1741,22 +1741,24 @@ sub gather {
 sub print {
 
    my $x = shift; my $self = ref($x) ? $x : $MCE;
+   my ($_glob, $_fd, $_data, $_data_ref);
 
-   if (ref $_[0] && defined (my $_fd = fileno($_[0]))) {
-      my ($_glob, $_data) = (shift, (scalar @_) ? join('', @_) : $_);
-
-      _do_send_glob($self, $_glob, $_fd, \$_data);
+   if (ref $_[0] && defined ($_fd = fileno($_[0]))) {
+      $_glob = shift;
    }
-   else {
-      my $_data = (scalar @_) ? join('', @_) : $_;
 
-      if ($self->{_wid}) {
-         $self->_do_send(SENDTO_STDOUT, undef, \$_data);
-      }
-      else {
-         local $\ = undef if (defined $\);
-         print $_data;
-      }
+   if (scalar @_ == 1  ) {
+      $_data_ref = \$_[0];
+   } elsif (scalar @_ > 1) {
+      $_data = join('', @_); $_data_ref = \$_data;
+   } else {
+      $_data_ref = \$_;
+   }
+
+   if (defined $_glob) {
+      _do_send_glob($self, $_glob, $_fd, $_data_ref);
+   } else {
+      _do_send_glob($self, \*STDOUT, 1, $_data_ref);
    }
 
    @_ = (); return;
@@ -1765,24 +1767,19 @@ sub print {
 sub printf {
 
    my $x = shift; my $self = ref($x) ? $x : $MCE;
+   my ($_glob, $_fd, $_fmt, $_data);
 
-   if (ref $_[0] && defined (my $_fd = fileno($_[0]))) {
-      my ($_glob, $_fmt) = (shift, shift || '%s');
-      my $_data = (scalar @_) ? sprintf($_fmt, @_) : sprintf($_fmt, $_);
-
-      _do_send_glob($self, $_glob, $_fd, \$_data);
+   if (ref $_[0] && defined ($_fd = fileno($_[0]))) {
+      $_glob = shift;
    }
-   else {
-      my $_fmt  = shift || '%s';
-      my $_data = (scalar @_) ? sprintf($_fmt, @_) : sprintf($_fmt, $_);
 
-      if ($self->{_wid}) {
-         $self->_do_send(SENDTO_STDOUT, undef, \$_data);
-      }
-      else {
-         local $\ = undef if (defined $\);
-         print $_data;
-      }
+   $_fmt  = shift || '%s';
+   $_data = (scalar @_) ? sprintf($_fmt, @_) : sprintf($_fmt, $_);
+
+   if (defined $_glob) {
+      _do_send_glob($self, $_glob, $_fd, \$_data);
+   } else {
+      _do_send_glob($self, \*STDOUT, 1, \$_data);
    }
 
    @_ = (); return;
@@ -1791,23 +1788,18 @@ sub printf {
 sub say {
 
    my $x = shift; my $self = ref($x) ? $x : $MCE;
+   my ($_glob, $_fd, $_data);
 
-   if (ref $_[0] && defined (my $_fd = fileno($_[0]))) {
-      my $_glob = shift;
-      my $_data = (scalar @_) ? join("\n", @_) . "\n" : $_ . "\n";
-
-      _do_send_glob($self, $_glob, $_fd, \$_data);
+   if (ref $_[0] && defined ($_fd = fileno($_[0]))) {
+      $_glob = shift;
    }
-   else {
-      my $_data = (scalar @_) ? join("\n", @_) . "\n" : $_ . "\n";
 
-      if ($self->{_wid}) {
-         $self->_do_send(SENDTO_STDOUT, undef, \$_data);
-      }
-      else {
-         local $\ = undef if (defined $\);
-         print $_data;
-      }
+   $_data = (scalar @_) ? join("\n", @_) . "\n" : $_ . "\n";
+
+   if (defined $_glob) {
+      _do_send_glob($self, $_glob, $_fd, \$_data);
+   } else {
+      _do_send_glob($self, \*STDOUT, 1, \$_data);
    }
 
    @_ = (); return;
