@@ -53,14 +53,14 @@ END {
    $_dest_function[SENDTO_FILEV2] = sub {         ## Content >> File
 
       return unless (defined $_value);
-
-      my $_buffer = $_value . $LF . length(${ $_[0] }) . $LF . ${ $_[0] };
-
       local $\ = undef if (defined $\);
 
       flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
       print {$_DAT_W_SOCK} OUTPUT_F_SND . $LF . $_chn . $LF;
-      print {$_DAU_W_SOCK} $_buffer;
+
+      print {$_DAU_W_SOCK}
+         $_value . $LF . length(${ $_[0] }) . $LF . ${ $_[0] };
+
       flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
 
       return;
@@ -69,14 +69,14 @@ END {
    $_dest_function[SENDTO_FD] = sub {             ## Content >> File descriptor
 
       return unless (defined $_value);
-
-      my $_buffer = $_value . $LF . length(${ $_[0] }) . $LF . ${ $_[0] };
-
       local $\ = undef if (defined $\);
 
       flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
       print {$_DAT_W_SOCK} OUTPUT_D_SND . $LF . $_chn . $LF;
-      print {$_DAU_W_SOCK} $_buffer;
+
+      print {$_DAU_W_SOCK}
+         $_value . $LF . length(${ $_[0] }) . $LF . ${ $_[0] };
+
       flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
 
       return;
@@ -84,13 +84,11 @@ END {
 
    $_dest_function[SENDTO_STDOUT] = sub {         ## Content >> STDOUT
 
-      my $_buffer = length(${ $_[0] }) . $LF . ${ $_[0] };
-
       local $\ = undef if (defined $\);
 
       flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
       print {$_DAT_W_SOCK} OUTPUT_O_SND . $LF . $_chn . $LF;
-      print {$_DAU_W_SOCK} $_buffer;
+      print {$_DAU_W_SOCK} length(${ $_[0] }) . $LF . ${ $_[0] };
       flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
 
       return;
@@ -98,13 +96,11 @@ END {
 
    $_dest_function[SENDTO_STDERR] = sub {         ## Content >> STDERR
 
-      my $_buffer = length(${ $_[0] }) . $LF . ${ $_[0] };
-
       local $\ = undef if (defined $\);
 
       flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
       print {$_DAT_W_SOCK} OUTPUT_E_SND . $LF . $_chn . $LF;
-      print {$_DAU_W_SOCK} $_buffer;
+      print {$_DAU_W_SOCK} length(${ $_[0] }) . $LF . ${ $_[0] };
       flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
 
       return;
