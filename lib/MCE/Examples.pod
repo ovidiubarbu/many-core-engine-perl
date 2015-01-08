@@ -36,7 +36,7 @@ The following scripts are located under the examples directory.
         Concatenation, egrep, and word count scripts similar to the
         cat, egrep, and wc binaries respectively.
 
-   fastaindxer.pl, fastareader.pl
+   fasta_faidx.pl, fasta_io.pl
         Parallel bioinformatics utilities for FASTA files.
 
    files_flow.pl, files_mce.pl, files_thr.pl

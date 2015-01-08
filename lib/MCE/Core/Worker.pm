@@ -55,13 +55,15 @@ END {
       return unless (defined $_value);
       local $\ = undef if (defined $\);
 
-      flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
-      print {$_DAT_W_SOCK} OUTPUT_F_SND . $LF . $_chn . $LF;
+      if (length ${ $_[0] }) {
+         flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
+         print {$_DAT_W_SOCK} OUTPUT_F_SND . $LF . $_chn . $LF;
 
-      print {$_DAU_W_SOCK}
-         $_value . $LF . length(${ $_[0] }) . $LF . ${ $_[0] };
+         print {$_DAU_W_SOCK}
+            $_value . $LF . length(${ $_[0] }) . $LF . ${ $_[0] };
 
-      flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
+         flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
+      }
 
       return;
    };
@@ -71,13 +73,15 @@ END {
       return unless (defined $_value);
       local $\ = undef if (defined $\);
 
-      flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
-      print {$_DAT_W_SOCK} OUTPUT_D_SND . $LF . $_chn . $LF;
+      if (length ${ $_[0] }) {
+         flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
+         print {$_DAT_W_SOCK} OUTPUT_D_SND . $LF . $_chn . $LF;
 
-      print {$_DAU_W_SOCK}
-         $_value . $LF . length(${ $_[0] }) . $LF . ${ $_[0] };
+         print {$_DAU_W_SOCK}
+            $_value . $LF . length(${ $_[0] }) . $LF . ${ $_[0] };
 
-      flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
+         flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
+      }
 
       return;
    };
@@ -86,10 +90,12 @@ END {
 
       local $\ = undef if (defined $\);
 
-      flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
-      print {$_DAT_W_SOCK} OUTPUT_O_SND . $LF . $_chn . $LF;
-      print {$_DAU_W_SOCK} length(${ $_[0] }) . $LF . ${ $_[0] };
-      flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
+      if (length ${ $_[0] }) {
+         flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
+         print {$_DAT_W_SOCK} OUTPUT_O_SND . $LF . $_chn . $LF;
+         print {$_DAU_W_SOCK} length(${ $_[0] }) . $LF . ${ $_[0] };
+         flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
+      }
 
       return;
    };
@@ -98,10 +104,12 @@ END {
 
       local $\ = undef if (defined $\);
 
-      flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
-      print {$_DAT_W_SOCK} OUTPUT_E_SND . $LF . $_chn . $LF;
-      print {$_DAU_W_SOCK} length(${ $_[0] }) . $LF . ${ $_[0] };
-      flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
+      if (length ${ $_[0] }) {
+         flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
+         print {$_DAT_W_SOCK} OUTPUT_E_SND . $LF . $_chn . $LF;
+         print {$_DAU_W_SOCK} length(${ $_[0] }) . $LF . ${ $_[0] };
+         flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
+      }
 
       return;
    };
@@ -356,6 +364,7 @@ sub _worker_do {
    $self->{use_slurpio} = $_params_ref->{_use_slurpio};
    $self->{parallel_io} = $_params_ref->{_parallel_io};
    $self->{RS}          = $_params_ref->{_RS};
+   $self->{RS_prepend}  = $_params_ref->{_RS_prepend};
 
    _do_user_func_init($self);
 

@@ -51,12 +51,13 @@ sub _worker_request_chunk {
    my $_chunk_size  = $self->{chunk_size};
    my $_use_slurpio = $self->{use_slurpio};
    my $_RS          = $self->{RS} || $/;
+   my $_RS_prepend  = $self->{RS_prepend} || '';
    my $_RS_FLG      = (!$_RS || $_RS ne $LF);
    my $_I_FLG       = (!$/ || $/ ne $LF);
    my $_wuf         = $self->{_wuf};
 
    my ($_chunk_id, $_len, $_chunk_ref);
-   my ($_output_tag, @_records);
+   my ($_p, $_output_tag, @_records);
 
    if ($_proc_type == REQUEST_ARRAY) {
       $_output_tag = OUTPUT_A_ARY;
@@ -93,7 +94,14 @@ sub _worker_request_chunk {
          }
 
          chomp($_chunk_id = <$_DAU_W_SOCK>);
-         read $_DAU_W_SOCK, $_buffer, $_len;
+
+         if ($_chunk_id > 1 && length $_RS_prepend) {
+            $_p = 1; $_buffer = $_RS_prepend;
+         } else {
+            $_p = 0;
+         }
+
+         read $_DAU_W_SOCK, $_buffer, $_len, $_p;
 
          flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
       }

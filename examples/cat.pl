@@ -206,9 +206,7 @@ sub display_chunk {
    else {
       while (1) {
          last unless exists $result{$order_id};
-
-         print $result{$order_id};
-         delete $result{$order_id++};
+         print delete $result{$order_id++};
       }
    }
 

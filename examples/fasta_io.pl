@@ -3,131 +3,76 @@
 use strict;
 use warnings;
 
-## FASTA index (.fai) generation for FASTA files.
-##   https://gist.github.com/marioroy/85d08fc82845f11d12b5
+## FASTA reader for FASTA files.
+##   https://gist.github.com/marioroy/1294672e8e3ba42cb684
 ##
 ## The original plan was to run CPAN BioUtil::Seq::FastaReader in parallel.
 ## I decided to process by records ($/ = "\n>") versus lines for faster
 ## performance. Created for the investigative Bioinformatics field.
 ##
-## Two million clusters extracted from uniref100.fasta.gz (2013_12).
-##   gunzip -c uniref100.fasta.gz | head -15687827 > uniref.fasta
-##
 ## Synopsis
-##   fastaindxer.pl [ /path/to/fastafile.fa ]
-##
-## Fastahack C++  ( -i arg ):  28.216s  $/ = "\n"  thus, line driven
-## FastaReaderFai ( serial ):  14.456s  $/ = "\n>" record driven
-## Samtools faidx ( serial ):   7.371s  Host OS,   14.799s  Linux VM
-## FastaReaderFai ( w/ mce ):   4.810s  Host OS,    6.383s  Linux VM
+##   fasta_io.pl [ /path/to/fastafile.fa ]
 
 use Cwd 'abs_path';
 use lib abs_path($0 =~ m{^(.*)[\\/]} && $1 || abs_path) . '/include';
 use lib abs_path($0 =~ m{^(.*)[\\/]} && $1 || abs_path) . '/../lib';
 
-use MCE::Flow chunk_size => '2048k', max_workers => 'auto';
+use constant { HDR => 0, SEQ => 1, SID => 2, DESC => 3 };
 
+use MCE::Flow;
 use Time::HiRes 'time';
-use FastaReaderFai;
+use FastaReaderIO;
 
-my $exit_status = 0;
-
-## Display error message.
-
-sub print_error {
-   my ($error_msg) = @_;
-   print {*STDERR} $error_msg."\n";
-   $exit_status = 1;
-}
-
-## Open handle to index file *.fai.
-
-my $output_fh;
 my $file  = shift || \*DATA;
 my $start = time;
 
-if (ref $file) {
-   $output_fh = \*STDOUT;
-}
-else {
-   die "$file: $!\n" unless -f $file;
-   open($output_fh, '>', "$file.fai") or die "$file.fai: open: $!\n";
-}
-
 ## Iterator for preserving output order.
-
+ 
 sub output_iterator {
-   my ($output_fh, $offset) = @_;
-   my (%tmp, $size); my $order_id = 1;
-
+   my %tmp; my $order_id = 1;
+ 
    return sub {
       $tmp{ (shift) } = \@_;
-
+ 
       while (1) {
          last unless exists $tmp{$order_id};
-         $size = pop @{ $tmp{$order_id} };
-         my $buffer = '';
-
-         foreach my $row ( @{ delete $tmp{$order_id++} } ) {
-            if ($row->[1] < 0) {
-               $buffer .= $row->[0].$row->[1].$row->[2];
-            } else {
-               $buffer .= $row->[0].($row->[1] + $offset).$row->[2];
-            }
-         }
-         print {$output_fh} $buffer;
-         $offset += $size;
+         print @{ delete $tmp{$order_id++} };
       }
-
+ 
       return;
    };
 }
 
 ## Process file.
 
-print {*STDERR} "Building $file.fai\n" unless ref $file;
-my $offset_adj = FastaReaderFai::GetFirstOffset($file);
+my $ncpu = MCE::Util::get_ncpu; $ncpu = 4 if $ncpu > 4;
 
 mce_flow_f {
-   gather => output_iterator($output_fh, $offset_adj),
-   RS => "\n>", use_slurpio => 1,
+   RS => "\n>", RS_prepend => ">", use_slurpio => 1,
+   chunk_size => "2m", max_workers => $ncpu,
+   gather => output_iterator,
 },
 sub {
    my ($mce, $slurp_ref, $chunk_id) = @_;
-
-   ## prepend leading '>' for chunks 2 and higher
-   ${ $slurp_ref } = '>' . ${ $slurp_ref } if $chunk_id > 1;
+   my ($hdr, $seq, $sid, $desc, $output);
 
    ## read from scalar reference
-   my $next_seq = FastaReaderFai::Reader($slurp_ref, 0);
-   my ($name, $len, $off, $bases, $bytes, $acc, @output);
+   my $next_seq = FastaReaderIO::Reader($slurp_ref);
 
    ## loop through sequences in $slurp_ref
    while (my $fa = &$next_seq()) {
-      ($name, $len, $off, $bases, $bytes, $acc) = @{ $fa };
-
-      if ($off == -2) {
-         my $err = 'SKIPPED: mismatched line lengths within sequence '.$name;
-         MCE->do('print_error', $err);
-      }
-      else {
-         ## concatenate left,right sides to save time for the manager process
-         push @output, [ "$name\t$len\t", $off, "\t$bases\t$bytes\n" ];
-      }
+    # my ($hdr, $seq, $sid, $desc) = @{ $fa };       ## <- extra copy in memory
+    # $output .= ">$fa->[HDR]\n". $fa->[SEQ] ."\n";  ## <- do this instead
+      $output .=  "$fa->[SID]\t$fa->[DESC]\n";       ##    hash-like retrieval
    }
 
-   ## gather output for this chunk
-   MCE->gather($chunk_id, @output, $acc);
+   ## Send output to STDOUT for this chunk
+   ## MCE->gather($chunk_id, $output);               ## <- not for big seq data
+   MCE->print($output);                              ##    out of order ok
 
 }, $file;
 
-## Finish.
-
-close $output_fh unless ref $file;
-
 printf {*STDERR} "\n## Compute time: %0.03f\n\n", time - $start;
-
-exit $exit_status;
 
 __END__
 >seq1 description1

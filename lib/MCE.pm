@@ -63,21 +63,21 @@ BEGIN {
 
    %_valid_fields_new = map { $_ => 1 } qw(
       max_workers tmp_dir use_threads user_tasks task_end task_name freeze thaw
-      chunk_size input_data sequence job_delay spawn_delay submit_delay RS
+      chunk_size input_data sequence job_delay spawn_delay submit_delay
       flush_file flush_stderr flush_stdout stderr_file stdout_file use_slurpio
       interval user_args user_begin user_end user_func user_error user_output
-      bounds_only gather on_post_exit on_post_run parallel_io
+      bounds_only gather on_post_exit on_post_run parallel_io RS RS_prepend
    );
    %_params_allowed_args = map { $_ => 1 } qw(
-      chunk_size input_data sequence job_delay spawn_delay submit_delay RS
+      chunk_size input_data sequence job_delay spawn_delay submit_delay
       flush_file flush_stderr flush_stdout stderr_file stdout_file use_slurpio
       interval user_args user_begin user_end user_func user_error user_output
-      bounds_only gather on_post_exit on_post_run parallel_io
+      bounds_only gather on_post_exit on_post_run parallel_io RS RS_prepend
    );
    %_valid_fields_task = map { $_ => 1 } qw(
       max_workers chunk_size input_data interval sequence task_end task_name
       bounds_only gather user_args user_begin user_end user_func use_threads
-      RS use_slurpio parallel_io
+      use_slurpio parallel_io RS RS_prepend
    );
 
    $_is_cygwin  = ($^O eq 'cygwin' ) ? 1 : 0;
@@ -417,6 +417,7 @@ sub new {
    $self->{user_tasks}   = $argv{user_tasks}   if (exists $argv{user_tasks});
    $self->{task_end}     = $argv{task_end}     if (exists $argv{task_end});
    $self->{RS}           = $argv{RS}           if (exists $argv{RS});
+   $self->{RS_prepend}   = $argv{RS_prepend}   if (exists $argv{RS_prepend});
 
    $self->{flush_file}   = $argv{flush_file}   || 0;
    $self->{flush_stderr} = $argv{flush_stderr} || 0;
@@ -950,6 +951,9 @@ sub run {
 
       $self->{RS} = $self->{user_tasks}->[0]->{RS}
          if ($self->{user_tasks}->[0]->{RS});
+
+      $self->{RS_prepend} = $self->{user_tasks}->[0]->{RS_prepend}
+         if ($self->{user_tasks}->[0]->{RS_prepend});
    }
 
    $self->shutdown() if ($_requires_shutdown);
@@ -1065,6 +1069,7 @@ sub run {
    my $_total_workers = $self->{_total_workers};
    my $_send_cnt      = $self->{_send_cnt};
    my $_RS            = $self->{RS};
+   my $_RS_prepend    = $self->{RS_prepend};
 
    ## Begin processing.
    unless ($_send_cnt) {
@@ -1076,6 +1081,7 @@ sub run {
          '_sequence'    => $_sequence,     '_bounds_only' => $_bounds_only,
          '_use_slurpio' => $_use_slurpio,  '_parallel_io' => $_parallel_io,
          '_user_args'   => $_user_args,    '_RS'          => $_RS,
+         '_RS_prepend'  => $_RS_prepend,
       );
       my %_params_nodata = (
          '_abort_msg'   => undef,          '_run_mode'    => 'nodata',
@@ -1084,6 +1090,7 @@ sub run {
          '_sequence'    => $_sequence,     '_bounds_only' => $_bounds_only,
          '_use_slurpio' => $_use_slurpio,  '_parallel_io' => $_parallel_io,
          '_user_args'   => $_user_args,    '_RS'          => $_RS,
+         '_RS_prepend'  => $_RS_prepend,
       );
 
       local $\ = undef; local $/ = $LF;

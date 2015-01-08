@@ -53,11 +53,12 @@ sub _worker_read_handle {
    my $_use_slurpio = $self->{use_slurpio};
    my $_parallel_io = $self->{parallel_io};
    my $_RS          = $self->{RS} || $/;
+   my $_RS_prepend  = $self->{RS_prepend} || '';
    my $_RS_FLG      = (!$_RS || $_RS ne $LF);
    my $_wuf         = $self->{_wuf};
 
    my ($_data_size, $_next, $_chunk_id, $_offset_pos, $_IN_FILE, $_tmp_cs);
-   my (@_records);
+   my ($_p, @_records);
 
    $_chunk_id  = $_offset_pos = 0;
    $_data_size = ($_proc_type == READ_MEMORY)
@@ -94,7 +95,11 @@ sub _worker_read_handle {
          return;
       }
 
-      $_chunk_id++;
+      if (++$_chunk_id > 1 && length $_RS_prepend) {
+         $_p = 1; $_buffer = $_RS_prepend;
+      } else {
+         $_p = 0;
+      }
 
       ## Read data.
       if ($_chunk_size <= MAX_RECS_SIZE) {        ## One or many records.
@@ -102,7 +107,7 @@ sub _worker_read_handle {
          seek $_IN_FILE, $_offset_pos, 0;
 
          if ($_chunk_size == 1) {
-            $_buffer = <$_IN_FILE>;
+            $_buffer .= <$_IN_FILE>;
          }
          else {
             if ($_use_slurpio) {
@@ -137,14 +142,14 @@ sub _worker_read_handle {
                   $_tmp_cs -= length <$_IN_FILE> || 0;
                }
 
-               if (read($_IN_FILE, $_buffer, $_tmp_cs) == $_tmp_cs) {
+               if (read($_IN_FILE, $_buffer, $_tmp_cs, $_p) == $_tmp_cs) {
                   $_buffer .= <$_IN_FILE>;
                }
             }
             else {
                seek $_IN_FILE, $_offset_pos, 0;
 
-               if (read($_IN_FILE, $_buffer, $_chunk_size) == $_chunk_size) {
+               if (read($_IN_FILE, $_buffer, $_chunk_size, $_p) == $_chunk_size) {
                   $_buffer .= <$_IN_FILE>;
                }
 
@@ -168,7 +173,7 @@ sub _worker_read_handle {
                   sysseek $_IN_FILE, $_offset_pos, 0;
                }
 
-               if (sysread($_IN_FILE, $_buffer, $_tmp_cs) == $_tmp_cs) {
+               if (sysread($_IN_FILE, $_buffer, $_tmp_cs, $_p) == $_tmp_cs) {
                   seek $_IN_FILE, sysseek($_IN_FILE, 0, 1), 0;
                   $_buffer .= <$_IN_FILE>;
                }
@@ -176,7 +181,7 @@ sub _worker_read_handle {
             else {
                sysseek $_IN_FILE, $_offset_pos, 0;
 
-               if (sysread($_IN_FILE, $_buffer, $_chunk_size) == $_chunk_size) {
+               if (sysread($_IN_FILE, $_buffer, $_chunk_size, $_p) == $_chunk_size) {
                   seek $_IN_FILE, sysseek($_IN_FILE, 0, 1), 0;
                   $_buffer .= <$_IN_FILE>;
                }
