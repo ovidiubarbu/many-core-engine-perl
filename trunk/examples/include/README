@@ -1,6 +1,6 @@
 
 ## FASTA index (.fai) generation for FASTA files.
-##   https://gist.github.com/marioroy/85d08fc82845f11d12b5
+## This file provides the time taken to index a couple FASTA files.
 
 ## Intel Xeon E5-2660 (v1) 2.2 GHz, 128 GB ECC 1600 MHz, CentOS 7.
 ## Tests occurred from /dev/shm.
