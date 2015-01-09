@@ -10,7 +10,6 @@ use MCE::Flow Sereal => 1;        # Use Sereal for serialization if available
 use MCE::Queue  fast => 1;        # MCE 1.520 (compare with => 0, also Sereal)
 
 # Results from CentOS 7 VM (4 cores): time flow_demo.pl | wc -l
-# https://gist.github.com/marioroy/37817977b4e101f3e880
 #
 # Sereal 0, fast 0:   4.703s      # Serialization via Storable
 # Sereal 1, fast 0:   3.926s      # Serialization via Sereal

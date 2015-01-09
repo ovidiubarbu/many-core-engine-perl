@@ -5,7 +5,6 @@ use warnings;
 
 ##
 ## FASTA index (.fai) generation for FASTA files.
-##   https://gist.github.com/marioroy/85d08fc82845f11d12b5
 ##
 ## The original plan was to run CPAN BioUtil::Seq::FastaReader in parallel.
 ## I wanted to process by records versus lines ($/ = "\n>") for faster

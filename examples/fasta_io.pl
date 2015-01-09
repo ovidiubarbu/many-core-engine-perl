@@ -5,7 +5,6 @@ use warnings;
 
 ##
 ## FASTA reader for FASTA files.
-##   https://gist.github.com/marioroy/1294672e8e3ba42cb684
 ##
 ## The original plan was to run CPAN BioUtil::Seq::FastaReader in parallel.
 ## I wanted to process by records versus lines ($/ = "\n>") for faster
