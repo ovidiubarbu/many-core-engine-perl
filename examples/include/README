@@ -1,0 +1,83 @@
+
+## FASTA index (.fai) generation for FASTA files.
+##   https://gist.github.com/marioroy/85d08fc82845f11d12b5
+
+## Intel Xeon E5-2660 (v1) 2.2 GHz, 128 GB ECC 1600 MHz, CentOS 7.
+## Tests occurred from /dev/shm.
+
+#####################################################################
+## Serially using C++, C, Python, and Perl.
+#####################################################################
+
+-- fastahack
+   hg19.fa      0m 3.989s    3 GiB, 93 chromosomes
+   uniref.fa    0m25.620s    1 GiB,  2 million
+
+-- samtools
+   hg19.fa      0m20.077s
+   uniref.fa    0m 8.332s          
+
+-- pyfaidx
+   hg19.fa      0m52.626s
+   uniref.fa    0m20.520s           
+
+-- serial_faidx
+   hg19.fa      0m33.502s                 0m 8.822s  FAIDXC=1
+   uniref.fa    0m24.667s                 0m18.939s  FAIDXC=1
+
+#####################################################################
+## Parallel via Perl-MCE; without and with Inline C.
+#####################################################################
+
+-- fasta_faidx
+   hg19.fa      0m20.402s    NPROCS=2     0m 7.221s  FAIDXC=1
+   hg19.fa      0m11.712s    NPROCS=4     0m 4.805s  FAIDXC=1
+   hg19.fa      0m 7.807s    NPROCS=8     0m 4.454s  FAIDXC=1
+   hg19.fa      0m 6.700s    NPROCS=16    0m 4.595s  FAIDXC=1
+
+   There are > 62.7 million lines inside hg19.fa.
+   Workers are idled due to waiting for the next offset.
+
+-- fasta_faidx
+   uniref.fa    0m15.597s    NPROCS=2     0m10.920s  FAIDXC=1
+   uniref.fa    0m 7.328s    NPROCS=4     0m 5.891s  FAIDXC=1
+   uniref.fa    0m 4.215s    NPROCS=8     0m 3.518s  FAIDXC=1
+   uniref.fa    0m 3.286s    NPROCS=16    0m 3.055s  FAIDXC=1
+
+   There are > 15.6 million lines inside uniref.fa.
+   Perl catches up to Inline C.
+
+#####################################################################
+## Numa Fun.
+#####################################################################
+
+-- Run on 16 cores; excludes hyperthreads; e.g. 16,17,...,31
+
+   time NPROCS=16 numactl \
+      --physcpubind 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15 -l \
+      ./fasta_faidx.pl uniref.fa
+
+   real  0m 2.770s   <- under 3 secs ->   0m 2.711s  FAIDX=1
+   user  0m31.814s                        0m25.270s  FAIDX=1
+   sys   0m 0.495s                        0m 0.517s  FAIDX=1
+
+-- Run on node 0 (1st CPU socket, 8 cores and 8 hyperthreads)
+
+   time NPROCS=16 numactl -N 0 -l ./fasta_faidx.pl uniref.fa
+
+   real  0m 3.983s                        0m 3.347s  FAIDX=1
+   user  0m41.815s                        0m29.667s  FAIDX=1
+   sys   0m 0.659s                        0m 0.618s  FAIDX=1
+
+-- Run on node 1 (2nd CPU socket, 8 cores and 8 hyperthreads)
+
+   time NPROCS=16 numactl -N 1 -l ./fasta_faidx.pl uniref.fa
+
+   real  0m 4.002s                        0m 3.413s  FAIDX=1
+   user  0m43.789s                        0m30.591s  FAIDX=1
+   sys   0m 0.696s                        0m 0.628s  FAIDX=1
+
+   Compare user times between left and right sides. If you may,
+   simulate or visualize a computer processing 2 million sequences
+   or 15.6 million lines in under 3 seconds.
+

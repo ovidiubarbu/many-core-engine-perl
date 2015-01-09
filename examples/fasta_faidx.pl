@@ -3,15 +3,20 @@
 use strict;
 use warnings;
 
+##
 ## FASTA index (.fai) generation for FASTA files.
 ##   https://gist.github.com/marioroy/85d08fc82845f11d12b5
 ##
 ## The original plan was to run CPAN BioUtil::Seq::FastaReader in parallel.
-## I decided to process by records ($/ = "\n>") versus lines for faster
+## I decided to process by records versus lines ($/ = "\n>") for faster
 ## performance. Created for the investigative Bioinformatics field.
 ##
 ## Synopsis
 ##   fasta_faidx.pl [ /path/to/fastafile.fa ]
+##
+##   FAIDXC=1 fasta_faidx.pl ...  use Incline C if available
+##   NPROCS=2 fasta_faidx.pl ...  run with 2 MCE workers
+##
 
 use Cwd 'abs_path';
 use lib abs_path($0 =~ m{^(.*)[\\/]} && $1 || abs_path) . '/include';
@@ -21,9 +26,23 @@ use MCE::Flow;
 use Time::HiRes 'time';
 use FastaReaderFaidx;
 
-my $exit_status = 0;
+## Define FAIDXC=1 to use FastaReaderFaidxC for faster performance.
+## no critic (BuiltinFunctions::ProhibitStringyEval)
+
+my $fasta_reader = \&FastaReaderFaidx::Reader;
+
+if (exists $ENV{FAIDXC} && $ENV{FAIDXC} eq '1') {
+   local $@; eval 'require FastaReaderFaidxC';
+   if ($@) {
+      warn "Uh-oh: Inline C is missing or fasta_faidx.c failed to compile.\n";
+   } else {
+      $fasta_reader = \&FastaReaderFaidxC::Reader
+   }
+}
 
 ## Display error message.
+
+my $exit_status = 0;
 
 sub print_error {
    my ($error_msg) = @_;
@@ -78,12 +97,13 @@ sub output_iterator {
 
 print {*STDERR} "Building $file.fai\n" unless ref $file;
 
-my $ncpu = MCE::Util::get_ncpu; $ncpu = 4 if $ncpu > 4;
 my $offset_adj = FastaReaderFaidx::GetFirstOffset($file);
+my $nlimit = MCE::Util::get_ncpu; $nlimit = 4 if $nlimit > 4;
+my $nprocs = $ENV{NPROCS} || $nlimit;
 
 mce_flow_f {
+   chunk_size => "2m", max_workers => $nprocs,
    RS => "\n>", RS_prepend => ">", use_slurpio => 1,
-   chunk_size => "2m", max_workers => $ncpu,
    gather => output_iterator($output_fh, $offset_adj),
 },
 sub {
@@ -91,7 +111,7 @@ sub {
    my ($name, $len, $off, $bases, $bytes, $acc, @output);
 
    ## read from scalar reference
-   my $next_seq = FastaReaderFaidx::Reader($slurp_ref);
+   my $next_seq = $fasta_reader->($slurp_ref);
 
    ## loop through sequences in $slurp_ref
    while (my $fa = &$next_seq()) {
