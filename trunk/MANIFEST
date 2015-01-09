@@ -42,7 +42,10 @@ examples/forchunk.pl
 examples/foreach.pl
 examples/forseq.pl
 examples/include/FastaReaderFaidx.pm
+examples/include/FastaReaderFaidxC.pm
 examples/include/FastaReaderIO.pm
+examples/include/README
+examples/include/fasta_faidx.c
 examples/interval.pl
 examples/iterator.pl
 examples/matmult/README

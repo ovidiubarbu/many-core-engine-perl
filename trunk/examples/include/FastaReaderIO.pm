@@ -5,22 +5,10 @@ use warnings;
 package FastaReaderIO;
 
 ## General FASTA reader extracting header, sequence, ID, and description.
-##
+
+## The iterator format was inspired by BioUtil (line driven at the time).
 ## Created to demonstrate accessing FASTA data by records, not lines.
-## Bio authors, feel free to borrow any part of this. The iterator format
-## was an inspiration from BioUtil (line driven). I wanted something
-## faster and the reason for writing this.
-##
-## It uses "\n>" for the input record separator, thus record driven.
 ## MCE scripts must specify options; RS => "\n>", RS_prepend => ">"
-##
-## Specifying RS => "\n>" means that chunks 2 and higher will not start
-## with ">". The following hack (expensive for 250 MiB+ sequences)
-## is not needed in MCE 1.523 (zero overhead); e.g. RS_prepend => ">".
-##
-## my ($mce, $slurp_ref, $chunk_id) = @_;
-## ${ $slurp_ref } = '>' . ${ $slurp_ref } if $chunk_id > 1;
-## ...
 
 sub Reader {
    my ($file, $not_trim) = @_;

@@ -3,15 +3,19 @@
 use strict;
 use warnings;
 
+##
 ## FASTA reader for FASTA files.
 ##   https://gist.github.com/marioroy/1294672e8e3ba42cb684
 ##
 ## The original plan was to run CPAN BioUtil::Seq::FastaReader in parallel.
-## I decided to process by records ($/ = "\n>") versus lines for faster
+## I decided to process by records versus lines ($/ = "\n>") for faster
 ## performance. Created for the investigative Bioinformatics field.
 ##
 ## Synopsis
 ##   fasta_io.pl [ /path/to/fastafile.fa ]
+##
+##   NPROCS=2 fasta_faidx.pl ...  run with 2 MCE workers
+##
 
 use Cwd 'abs_path';
 use lib abs_path($0 =~ m{^(.*)[\\/]} && $1 || abs_path) . '/include';
@@ -45,11 +49,12 @@ sub output_iterator {
 
 ## Process file.
 
-my $ncpu = MCE::Util::get_ncpu; $ncpu = 4 if $ncpu > 4;
+my $nlimit = MCE::Util::get_ncpu; $nlimit = 4 if $nlimit > 4;
+my $nprocs = $ENV{NPROCS} || $nlimit;
 
 mce_flow_f {
+   chunk_size => "2m", max_workers => $nprocs,
    RS => "\n>", RS_prepend => ">", use_slurpio => 1,
-   chunk_size => "2m", max_workers => $ncpu,
    gather => output_iterator,
 },
 sub {

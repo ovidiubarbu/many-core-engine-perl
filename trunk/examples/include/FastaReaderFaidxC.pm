@@ -2,13 +2,25 @@
 use strict;
 use warnings;
 
-package FastaReaderFaidx;
+my $prog_dir;
+
+BEGIN {
+   use Cwd 'abs_path';
+   $prog_dir = ($0 =~ m{^(.*)[\\/]} && $1 || abs_path);
+
+   $ENV{PERL_INLINE_DIRECTORY} = "${prog_dir}/.Inline";
+   mkdir "${prog_dir}/.Inline" unless -d "${prog_dir}/.Inline";
+}
+
+package FastaReaderFaidxC;
 
 ## Generates output suitable for FASTA (.fai) index files.
 
 ## The iterator format was inspired by BioUtil (line driven at the time).
 ## Created to demonstrate accessing FASTA data by records, not lines.
 ## MCE scripts must specify options; RS => "\n>", RS_prepend => ">"
+
+use Inline 'C' => "${prog_dir}/include/fasta_faidx.c";
 
 sub Reader {
    my ($file) = @_;
@@ -61,28 +73,9 @@ sub Reader {
 
          $c4  = (substr($seq, $c5 - 1, 1) eq "\r") ? $c5 - 1 : $c5;
 
-         ## this scans $seq twice; index and tr :(
+         ## this scans $seq once; c code :)
 
-         my @a;  $p1 = $c5 + 1; $errcnt = 0;       ## start on 2nd bases line
-
-         while ($p1 < $c2) {                       ## collect line lengths
-            $p2 = index($seq, "\n", $p1);
-            push @a, $p2 - $p1;
-            $p1 = $p2 + 1;
-         }
-
-         if (scalar @a) {
-            pop @a while ($a[-1] == 0);            ## pop trailing blank lines
-            pop @a;                                ## pop last line w/ bases
-
-            foreach (@a) {                         ## any length mismatch?
-               $errcnt++ if $_ != $c5;
-            }
-         }
-
-         $seq =~ tr/\t\r\n //d;
-         $c2  =  length($seq);
-         $c5++;
+         ($c2, $errcnt) = @{ seqlen($seq, ++$c5) };
 
          ##
 
@@ -97,27 +90,6 @@ sub Reader {
 
       return;
    };
-}
-
-## Get 1st offset position, typically 0, but just in case.
-
-sub GetFirstOffset {
-   my ($offset, $file) = (0, @_);
-
-   local $/ = \1;                                  ## read one byte
-
-   if (ref $file eq '' || ref $file eq 'SCALAR') {
-      open my $fh, '<', $file or die "$file: open: $!\n";
-      while (<$fh>) { last if $_ eq '>'; $offset++; }
-      close $fh;
-   }
-   else {
-      my $this_offset = tell $file;
-      while (<$file>) { last if $_ eq '>'; $offset++; }
-      seek $file, $this_offset, 0;
-   }
-
-   return $offset;
 }
 
 1;
