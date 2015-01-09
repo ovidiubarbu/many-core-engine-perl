@@ -90,7 +90,7 @@ sub Reader {
             $seq =~ tr/\t\r\n //d;
             $c2  =  length($seq);
 
-            undef $seq if length($seq) > 500_000;  ## lowers mem consumption
+            undef $seq if $c2 > 2_200_000;         ## lowers mem consumption
          }
 
          return [ $c1, $c2, $c3, $c4, $c5, $acc ];
