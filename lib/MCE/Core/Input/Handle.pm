@@ -216,7 +216,7 @@ sub _worker_read_handle {
          }
       }
 
-      undef $_buffer if (length $_buffer > 500_000);
+      undef $_buffer if (length $_buffer > 2_200_000);
    }
 
    _WORKER_READ_HANDLE__LAST:
