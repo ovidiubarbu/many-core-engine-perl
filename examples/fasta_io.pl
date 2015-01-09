@@ -8,7 +8,7 @@ use warnings;
 ##   https://gist.github.com/marioroy/1294672e8e3ba42cb684
 ##
 ## The original plan was to run CPAN BioUtil::Seq::FastaReader in parallel.
-## I decided to process by records versus lines ($/ = "\n>") for faster
+## I wanted to process by records versus lines ($/ = "\n>") for faster
 ## performance. Created for the investigative Bioinformatics field.
 ##
 ## Synopsis
