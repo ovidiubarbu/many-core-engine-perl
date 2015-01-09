@@ -3,7 +3,6 @@
 use strict;
 use warnings;
 
-##
 ## FASTA reader for FASTA files.
 ##
 ## The original plan was to run CPAN BioUtil::Seq::FastaReader in parallel.
@@ -14,7 +13,6 @@ use warnings;
 ##   fasta_io.pl [ /path/to/fastafile.fa ]
 ##
 ##   NPROCS=2 fasta_faidx.pl ...  run with 2 MCE workers
-##
 
 use Cwd 'abs_path';
 use lib abs_path($0 =~ m{^(.*)[\\/]} && $1 || abs_path) . '/include';

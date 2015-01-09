@@ -3,7 +3,6 @@
 use strict;
 use warnings;
 
-##
 ## FASTA index (.fai) generation for FASTA files.
 ##
 ## The original plan was to run CPAN BioUtil::Seq::FastaReader in parallel.
@@ -15,7 +14,6 @@ use warnings;
 ##
 ##   FAIDXC=1 fasta_faidx.pl ...  use Incline C if available
 ##   NPROCS=2 fasta_faidx.pl ...  run with 2 MCE workers
-##
 
 use Cwd 'abs_path';
 use lib abs_path($0 =~ m{^(.*)[\\/]} && $1 || abs_path) . '/include';
@@ -26,7 +24,6 @@ use Time::HiRes 'time';
 use FastaReaderFaidx;
 
 ## Define FAIDXC=1 to use FastaReaderFaidxC for faster performance.
-## no critic (BuiltinFunctions::ProhibitStringyEval)
 
 my $fasta_reader = \&FastaReaderFaidx::Reader;
 
