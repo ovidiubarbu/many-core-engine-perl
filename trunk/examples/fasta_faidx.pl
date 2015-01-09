@@ -8,7 +8,7 @@ use warnings;
 ##   https://gist.github.com/marioroy/85d08fc82845f11d12b5
 ##
 ## The original plan was to run CPAN BioUtil::Seq::FastaReader in parallel.
-## I decided to process by records versus lines ($/ = "\n>") for faster
+## I wanted to process by records versus lines ($/ = "\n>") for faster
 ## performance. Created for the investigative Bioinformatics field.
 ##
 ## Synopsis
@@ -32,12 +32,8 @@ use FastaReaderFaidx;
 my $fasta_reader = \&FastaReaderFaidx::Reader;
 
 if (exists $ENV{FAIDXC} && $ENV{FAIDXC} eq '1') {
-   local $@; eval 'require FastaReaderFaidxC';
-   if ($@) {
-      warn "Uh-oh: Inline C is missing or fasta_faidx.c failed to compile.\n";
-   } else {
-      $fasta_reader = \&FastaReaderFaidxC::Reader
-   }
+   require FastaReaderFaidxC;
+   $fasta_reader = \&FastaReaderFaidxC::Reader;
 }
 
 ## Display error message.
