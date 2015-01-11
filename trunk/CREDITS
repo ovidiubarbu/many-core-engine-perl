@@ -91,10 +91,6 @@ Florian Schlichting
   For making a Debian package for MCE.
   http://pkgs.org/search/libmce-perl
 
-Wei Shen
-  For the BioUtil CPAN module. BioUtil::Seq::FastaReader inspired me to
-  create parallel examples fastareader.pl and fastaindxer.pl in MCE 1.523.
-
 Adam Sjøgren
   For reporting on running /usr/bin/time mce_script.pl and pressing Ctrl-C
   failing. The default behavior in MCE::Signal is to call setpgrp. MCE 1.403
