@@ -30,8 +30,6 @@ lib/MCE/Subs.pm
 lib/MCE/Util.pm
 examples/cat.pl
 examples/egrep.pl
-examples/fasta_faidx.pl
-examples/fasta_io.pl
 examples/files_flow.pl
 examples/files_mce.pl
 examples/files_thr.pl
@@ -41,11 +39,6 @@ examples/flow_model.pl
 examples/forchunk.pl
 examples/foreach.pl
 examples/forseq.pl
-examples/include/FastaReaderFaidx.pm
-examples/include/FastaReaderFaidxC.pm
-examples/include/FastaReaderIO.pm
-examples/include/README
-examples/include/fasta_faidx.c
 examples/interval.pl
 examples/iterator.pl
 examples/matmult/README
