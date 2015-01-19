@@ -31,11 +31,6 @@ use PDL;
 use PDL::Parallel::threads qw(retrieve_pdls);
 use PDL::Parallel::threads::SIMD qw(parallel_id parallelize);
 
-{
-   no strict 'subs'; no warnings 'void';
-   PDL::no_clone_skip_warning;
-}
-
 # Get the matrix size and croak on bad input
 my $tam = @ARGV ? shift : 512;
 die "error: $tam must be an integer greater than 1.\n"
