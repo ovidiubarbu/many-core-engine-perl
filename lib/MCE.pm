@@ -279,7 +279,7 @@ sub _clean_sessions {
       delete $_mce_spawned{$_} unless ($_ eq $_mce_sid);
    }
 
-   @_ = (); return;
+   return;
 }
 
 sub _clear_session {
@@ -288,7 +288,7 @@ sub _clear_session {
 
    delete $_mce_spawned{$_mce_sid};
 
-   @_ = (); return;
+   return;
 }
 
 ## Warnings are disabled to minimize bits of noise when user or OS signals
@@ -1412,8 +1412,6 @@ sub sync {
 
    my $x = shift; my $self = ref($x) ? $x : $MCE;
 
-   @_ = ();
-
    _croak('MCE::sync: method cannot be called by the manager process')
       unless ($self->{_wid});
 
@@ -1461,8 +1459,6 @@ sub yield {
 
    my $x = shift; my $self = ref($x) ? $x : $MCE;
 
-   @_ = ();
-
    return unless ($self->{_i_wrk_st});
    return unless ($self->{_task_wid});
 
@@ -1494,8 +1490,6 @@ sub yield {
 sub abort {
 
    my $x = shift; my $self = ref($x) ? $x : $MCE;
-
-   @_ = ();
 
    my $_QUE_R_SOCK = $self->{_que_r_sock};
    my $_QUE_W_SOCK = $self->{_que_w_sock};
@@ -1605,8 +1599,6 @@ sub last {
 
    my $x = shift; my $self = ref($x) ? $x : $MCE;
 
-   @_ = ();
-
    _croak('MCE::last: method cannot be called by the manager process')
       unless ($self->{_wid});
 
@@ -1620,8 +1612,6 @@ sub last {
 sub next {
 
    my $x = shift; my $self = ref($x) ? $x : $MCE;
-
-   @_ = ();
 
    _croak('MCE::next: method cannot be called by the manager process')
       unless ($self->{_wid});
@@ -1637,8 +1627,6 @@ sub next {
 sub status {
 
    my $x = shift; my $self = ref($x) ? $x : $MCE;
-
-   @_ = ();
 
    _croak('MCE::status: method cannot be called by the worker process')
       if ($self->{_wid});
@@ -1666,9 +1654,7 @@ sub do {
 
    $_callback = "main::$_callback" if (index($_callback, ':') < 0);
 
-   _do_callback($self, $_callback, @_);
-
-   @_ = (); return;
+   return _do_callback($self, $_callback, @_);
 }
 
 ## Gather method.
@@ -1680,9 +1666,7 @@ sub gather {
    _croak('MCE::gather: method cannot be called by the manager process')
       unless ($self->{_wid});
 
-   _do_gather($self, @_);
-
-   @_ = (); return;
+   return _do_gather($self, @_);
 }
 
 ## Sendto method.
@@ -1714,7 +1698,7 @@ sub gather {
       if (!defined $_dest) {
          if (ref $_to && defined (my $_fd = fileno($_to))) {
             my $_data_ref = (scalar @_ == 1) ? \$_[0] : \join('', @_);
-            @_ = (); return _do_send_glob($self, $_to, $_fd, $_data_ref);
+            return _do_send_glob($self, $_to, $_fd, $_data_ref);
          }
          if (defined $_to && $_to =~ /$_v2_regx/o) {
             $_dest  = (exists $_sendto_lkup{$1}) ? $_sendto_lkup{$1} : undef;
@@ -1743,9 +1727,7 @@ sub gather {
          $_dest  = SENDTO_FILEV2;
       }
 
-      _do_send($self, $_dest, $_value, @_);
-
-      @_ = (); return;
+      return _do_send($self, $_dest, $_value, @_);
    }
 }
 
@@ -1772,8 +1754,6 @@ sub print {
       $_data_ref = \$_;
    }
 
-   @_ = ();
-
    return _do_send_glob($self, $_glob, $_fd, $_data_ref) if $_fd;
    return _do_send($self, SENDTO_STDOUT, undef, $_data_ref) if $self->{_wid};
    return _do_send_glob($self, \*STDOUT, 1, $_data_ref);
@@ -1791,8 +1771,6 @@ sub printf {
    $_fmt  = shift || '%s';
    $_data = (scalar @_) ? sprintf($_fmt, @_) : sprintf($_fmt, $_);
 
-   @_ = ();
-
    return _do_send_glob($self, $_glob, $_fd, \$_data) if $_fd;
    return _do_send($self, SENDTO_STDOUT, undef, \$_data) if $self->{_wid};
    return _do_send_glob($self, \*STDOUT, 1, \$_data);
@@ -1808,8 +1786,6 @@ sub say {
    }
 
    $_data = (scalar @_) ? join("\n", @_) . "\n" : $_ . "\n";
-
-   @_ = ();
 
    return _do_send_glob($self, $_glob, $_fd, \$_data) if $_fd;
    return _do_send($self, SENDTO_STDOUT, undef, \$_data) if $self->{_wid};
@@ -1847,7 +1823,7 @@ sub _create_socket_pair {
 
    my ($self, $_r_sock, $_w_sock, $_i) = @_;
 
-   @_ = (); local $!;
+   local $!;
 
    die 'Private method called' unless (caller)[0]->isa( ref $self );
 
@@ -1889,9 +1865,9 @@ sub _create_socket_pair {
 
 sub _sync_buffer_to_array {
 
-   my $_cnt = 0; my ($_buffer_ref, $_array_ref, $_chop_str) = @_;
+   my ($_buffer_ref, $_array_ref, $_chop_str) = @_;
 
-   @_ = (); local $_;
+   local $_; my $_cnt = 0;
 
    open my $_MEM_FILE, '<', $_buffer_ref;
    binmode $_MEM_FILE;
@@ -1917,8 +1893,6 @@ sub _sync_buffer_to_array {
 sub _sync_params {
 
    my ($self, $_params_ref) = @_;
-
-   @_ = ();
 
    die 'Private method called' unless (caller)[0]->isa( ref $self );
 
@@ -1952,9 +1926,7 @@ sub _worker_wrap {
 
    $MCE = $_[0];
 
-   _worker_main(@_, \@_plugin_worker_init, $_has_threads, $_is_winenv);
-
-   @_ = (); return;
+   return _worker_main(@_, \@_plugin_worker_init, $_has_threads, $_is_winenv);
 }
 
 ###############################################################################
