@@ -26,8 +26,7 @@ use bytes;
 ## Warnings are disabled to minimize bits of noise when user or OS signals
 ## the script to exit. e.g. MCE_script.pl < infile | head
 
-no warnings 'threads';
-no warnings 'uninitialized';
+no warnings 'threads'; no warnings 'uninitialized';
 
 my $_die_msg;
 
@@ -119,9 +118,11 @@ END {
 
    sub _do_callback {
 
-      my $_buffer; my $self = shift;
+      my $_buffer; my $self = $_[0]; my $_data_ref = $_[2];
 
-      $_value = shift;
+      $_value = $_[1];
+
+      @_ = ();
 
       unless (defined wantarray) {
          $_want_id = WANTS_UNDEF;
@@ -133,35 +134,32 @@ END {
 
       ## Crossover: Send arguments
 
-      if (scalar @_ > 0) {                        ## Multiple Args >> Callback
-         if (scalar @_ > 1 || ref $_[0]) {
+      if (@{ $_data_ref } > 0) {                  ## Multiple Args >> Callback
+
+         if (@{ $_data_ref } > 1 || ref $_data_ref->[0]) {
             $_tag = OUTPUT_A_CBK;
-            $_buffer = $self->{freeze}(\@_);
+            $_buffer = $self->{freeze}($_data_ref);
             $_buffer = $_want_id . $LF . $_value . $LF .
                length($_buffer) . $LF . $_buffer;
          }
          else {                                   ## Scalar >> Callback
             $_tag = OUTPUT_S_CBK;
-            local $\ = undef if (defined $\);
-            flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
-            print {$_DAT_W_SOCK} $_tag . $LF . $_chn . $LF;
-            print {$_DAU_W_SOCK} $_want_id . $LF . $_value . $LF .
-               length($_[0]) . $LF . $_[0];
+            $_buffer = $_want_id . $LF . $_value . $LF .
+               length($_data_ref->[0]) . $LF . $_data_ref->[0];
          }
 
-         @_ = ();
+         $_data_ref = '';
       }
       else {                                      ## No Args >> Callback
          $_tag = OUTPUT_N_CBK;
          $_buffer = $_want_id . $LF . $_value . $LF;
       }
 
-      if ($_tag ne OUTPUT_S_CBK) {
-         local $\ = undef if (defined $\);
-         flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
-         print {$_DAT_W_SOCK} $_tag . $LF . $_chn . $LF;
-         print {$_DAU_W_SOCK} $_buffer;
-      }
+      local $\ = undef if (defined $\);
+
+      flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
+      print {$_DAT_W_SOCK} $_tag . $LF . $_chn . $LF;
+      print {$_DAU_W_SOCK} $_buffer;
 
       ## Crossover: Receive return value
 
@@ -173,7 +171,7 @@ END {
          local $/ = $LF if (!$/ || $/ ne $LF);
 
          chomp($_len = <$_DAU_W_SOCK>);
-         read($_DAU_W_SOCK, $_buffer, $_len || 0);
+         read $_DAU_W_SOCK, $_buffer, $_len || 0;
          flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
 
          return @{ $self->{thaw}($_buffer) };
@@ -185,7 +183,7 @@ END {
          chomp($_len     = <$_DAU_W_SOCK>);
 
          if ($_len >= 0) {
-            read($_DAU_W_SOCK, $_buffer, $_len || 0);
+            read $_DAU_W_SOCK, $_buffer, $_len || 0;
             flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
 
             return $_buffer if ($_want_id == WANTS_SCALAR);
@@ -202,34 +200,27 @@ END {
 
    sub _do_gather {
 
-      my $_buffer; my $self = shift;
+      my $_buffer; my ($self, $_data_ref) = @_;
 
-      return unless (scalar @_);
+      @_ = ();
 
-      if (scalar @_ > 1) {
+      return unless (scalar @{ $_data_ref });
+
+      if (@{ $_data_ref } > 1) {
          $_tag = OUTPUT_A_GTR;
-         $_buffer = $self->{freeze}(\@_);
+         $_buffer = $self->{freeze}($_data_ref);
          $_buffer = $_task_id . $LF . length($_buffer) . $LF . $_buffer;
       }
-      elsif (ref $_[0]) {
+      elsif (ref $_data_ref->[0]) {
          $_tag = OUTPUT_R_GTR;
-         $_buffer = $self->{freeze}($_[0]);
+         $_buffer = $self->{freeze}($_data_ref->[0]);
          $_buffer = $_task_id . $LF . length($_buffer) . $LF . $_buffer;
       }
-      else {
+      elsif (scalar @{ $_data_ref }) {
          $_tag = OUTPUT_S_GTR;
-
-         if (defined $_[0]) {
-            local $\ = undef if (defined $\);
-
-            flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
-            print {$_DAT_W_SOCK} $_tag . $LF . $_chn . $LF;
-            print {$_DAU_W_SOCK} $_task_id . $LF . length($_[0]) . $LF . $_[0];
-            flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
-
-            @_ = ();
-
-            return;
+         if (defined $_data_ref->[0]) {
+            $_buffer = $_task_id . $LF . length($_data_ref->[0]) . $LF .
+               $_data_ref->[0];
          }
          else {
             $_buffer = $_task_id . $LF . -1 . $LF;
@@ -243,8 +234,6 @@ END {
       print {$_DAU_W_SOCK} $_buffer;
       flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
 
-      @_ = ();
-
       return;
    }
 
@@ -252,36 +241,35 @@ END {
 
    sub _do_send {
 
-      my $_data_ref; my $self = shift;
+      my $_buffer; my $self = shift;
 
       $_dest = shift; $_value = shift;
 
-      if (scalar @_ > 1) {
-         $_data_ref = \join('', @_);
+      if (@_ > 1) {
+         $_buffer = join('', @_);
       }
       elsif (my $_ref = ref $_[0]) {
          if ($_ref eq 'SCALAR') {
-            $_data_ref = $_[0];
+            $_buffer = shift;
+            return $_dest_function[$_dest]($_buffer);
          }
          elsif ($_ref eq 'ARRAY') {
-            $_data_ref = \join('', @{ $_[0] });
+            $_buffer = join('', @{ $_[0] });
          }
          elsif ($_ref eq 'HASH') {
-            $_data_ref = \join('', %{ $_[0] });
+            $_buffer = join('', %{ $_[0] });
          }
          else {
-            $_data_ref = \join('', @_);
+            $_buffer = join('', @_);
          }
       }
       else {
-         $_data_ref = \$_[0];
+         $_buffer = $_[0];
       }
-
-      $_dest_function[$_dest]($_data_ref);
 
       @_ = ();
 
-      return
+      return $_dest_function[$_dest](\$_buffer);
    }
 
    sub _do_send_glob {
@@ -292,13 +280,13 @@ END {
 
       if ($self->{_wid} > 0) {
          if ($_fd == 1) {
-            _do_send($self, SENDTO_STDOUT, undef, $_data_ref);
+            $self->_do_send(SENDTO_STDOUT, undef, $_data_ref);
          }
          elsif ($_fd == 2) {
-            _do_send($self, SENDTO_STDERR, undef, $_data_ref);
+            $self->_do_send(SENDTO_STDERR, undef, $_data_ref);
          }
          else {
-            _do_send($self, SENDTO_FD, $_fd, $_data_ref);
+            $self->_do_send(SENDTO_FD, $_fd, $_data_ref);
          }
       }
       else {
@@ -376,6 +364,7 @@ sub _worker_do {
    $self->{use_slurpio} = $_params_ref->{_use_slurpio};
    $self->{parallel_io} = $_params_ref->{_parallel_io};
    $self->{RS}          = $_params_ref->{_RS};
+   $self->{RS_prepend}  = $_params_ref->{_RS_prepend};
 
    _do_user_func_init($self);
 
@@ -565,8 +554,7 @@ sub _worker_loop {
          sleep $_job_delay * $_wid;
       }
 
-      _worker_do($self, $_params_ref);
-      undef $_params_ref;
+      _worker_do($self, $_params_ref); undef $_params_ref;
    }
 
    ## Notify the main process a worker has ended. The following is executed

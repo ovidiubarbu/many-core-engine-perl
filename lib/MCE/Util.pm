@@ -126,8 +126,6 @@ sub _parse_max_workers {
 
    my ($_max_workers) = @_;
 
-   @_ = ();
-
    return $_max_workers unless (defined $_max_workers);
 
    if ($_max_workers =~ /^auto(?:$|\s*([\-\+\/\*])\s*(.+)$)/i) {
@@ -153,8 +151,6 @@ sub _parse_chunk_size {
 
    my ($_chunk_size, $_max_workers, $_params, $_input_data, $_array_size) = @_;
 
-   @_ = ();
-
    return $_chunk_size if (!defined $_chunk_size || !defined $_max_workers);
 
    if (defined $_params && exists $_params->{chunk_size}) {
@@ -169,13 +165,6 @@ sub _parse_chunk_size {
    }
 
    if ($_chunk_size eq 'auto') {
-
-      if ( (defined $_params && ref $_params->{input_data} eq 'CODE') ||
-           (defined $_input_data && ref $_input_data eq 'CODE')
-      ) {
-         return 1;
-      }
-
       my $_size = (defined $_input_data && ref $_input_data eq 'ARRAY')
          ? scalar @{ $_input_data } : $_array_size;
 
