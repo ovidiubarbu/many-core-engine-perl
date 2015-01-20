@@ -138,7 +138,7 @@ sub DESTROY {
    return if (defined $MCE::MCE && $MCE::MCE->wid);
 
    if (defined $_q->{_qr_sock}) {
-      local $!; local $?;
+      local ($!, $?);
 
       CORE::shutdown $_q->{_qw_sock}, 2;
       CORE::shutdown $_q->{_qr_sock}, 2;
@@ -827,7 +827,7 @@ sub _heap_insert_high {
                $_pending = int($_pending / $_c) if ($_c);
                if ($_pending) {
                   $_pending = MAX_DQ_DEPTH if ($_pending > MAX_DQ_DEPTH);
-                  syswrite $_q->{_qw_sock}, $LF x $_pending;
+                  syswrite $_q->{_qw_sock}, $LF for (1 .. $_pending);
                }
                $_q->{_desem} = $_pending;
             }
@@ -1184,7 +1184,7 @@ sub _mce_m_dequeue {
          $_pending = int($_pending / $_c) if (defined $_c);
          if ($_pending) {
             $_pending = MAX_DQ_DEPTH if ($_pending > MAX_DQ_DEPTH);
-            syswrite $_q->{_qw_sock}, $LF x $_pending;
+            syswrite $_q->{_qw_sock}, $LF for (1 .. $_pending);
          }
          $_q->{_desem} = $_pending;
       }
