@@ -107,7 +107,5 @@ $mce->forchunk( \@input_data, sub {
    MCE->gather($chunk_id, \@result);
 });
 
-my $end = time;
-
-printf {*STDERR} "\n## Compute time: %0.03f\n\n", $end - $start;
+printf {*STDERR} "\n## Compute time: %0.03f\n\n", time - $start;
 

@@ -31,10 +31,6 @@ sub user_func {
    return;
 }
 
-## Same thing in MCE 1.5+
-## use MCE::Flow max_workers => 4;
-## mce_flow \&user_func;
-
 my $mce = MCE->new(
    max_workers => 4, user_func => \&user_func
 )->run;
