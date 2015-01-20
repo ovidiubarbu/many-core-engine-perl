@@ -79,14 +79,12 @@ sub _worker_request_chunk {
    $self->{_next_jmp} = sub { goto _WORKER_REQUEST_CHUNK__NEXT; };
    $self->{_last_jmp} = sub { goto _WORKER_REQUEST_CHUNK__LAST; };
 
+   local $_;
+
    _WORKER_REQUEST_CHUNK__NEXT:
 
    while (1) {
-
-      ## Localizing $_ inside this while loop is intentional to ensure minimal
-      ## memory consumption. $_ is not GC'd immediately otherwise.
-
-      local $_ = '';
+      undef $_ if (length > MAX_CHUNK_SIZE); $_ = '';
 
       ## Obtain the next chunk of data.
       {
