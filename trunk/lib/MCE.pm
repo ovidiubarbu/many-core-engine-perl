@@ -63,21 +63,21 @@ BEGIN {
 
    %_valid_fields_new = map { $_ => 1 } qw(
       max_workers tmp_dir use_threads user_tasks task_end task_name freeze thaw
-      chunk_size input_data sequence job_delay spawn_delay submit_delay
+      chunk_size input_data sequence job_delay spawn_delay submit_delay RS
       flush_file flush_stderr flush_stdout stderr_file stdout_file use_slurpio
       interval user_args user_begin user_end user_func user_error user_output
-      bounds_only gather on_post_exit on_post_run parallel_io RS RS_prepend
+      bounds_only gather on_post_exit on_post_run parallel_io
    );
    %_params_allowed_args = map { $_ => 1 } qw(
-      chunk_size input_data sequence job_delay spawn_delay submit_delay
+      chunk_size input_data sequence job_delay spawn_delay submit_delay RS
       flush_file flush_stderr flush_stdout stderr_file stdout_file use_slurpio
       interval user_args user_begin user_end user_func user_error user_output
-      bounds_only gather on_post_exit on_post_run parallel_io RS RS_prepend
+      bounds_only gather on_post_exit on_post_run parallel_io
    );
    %_valid_fields_task = map { $_ => 1 } qw(
       max_workers chunk_size input_data interval sequence task_end task_name
       bounds_only gather user_args user_begin user_end user_func use_threads
-      use_slurpio parallel_io RS RS_prepend
+      RS use_slurpio parallel_io
    );
 
    $_is_cygwin  = ($^O eq 'cygwin' ) ? 1 : 0;
@@ -219,7 +219,7 @@ use constant {
 
    DATA_CHANNELS  => 8,                  ## Maximum IPC "DATA" channels
 
-   MAX_CHUNK_SIZE => 24 * 1024 * 1024,   ## Maximum chunk size allowed
+   MAX_CHUNK_SIZE => 1024 * 1024 * 64,   ## Maximum chunk size allowed
    MAX_RECS_SIZE  => 8192,               ## Reads # of records if <= value
                                          ## Reads # of bytes   if >  value
 
@@ -272,22 +272,30 @@ my %_mce_spawned  = ();
 MCE::Signal::_set_session_vars(\%_mce_sess_dir, \%_mce_spawned);
 
 sub _clean_sessions {
+
    my ($_mce_sid) = @_;
+
    foreach (keys %_mce_spawned) {
       delete $_mce_spawned{$_} unless ($_ eq $_mce_sid);
    }
-   return;
+
+   @_ = (); return;
 }
+
 sub _clear_session {
+
    my ($_mce_sid) = @_;
+
    delete $_mce_spawned{$_mce_sid};
-   return;
+
+   @_ = (); return;
 }
 
 ## Warnings are disabled to minimize bits of noise when user or OS signals
 ## the script to exit. e.g. MCE_script.pl < infile | head
 
-no warnings 'threads'; no warnings 'uninitialized';
+no warnings 'threads';
+no warnings 'uninitialized';
 
 sub DESTROY { }
 
@@ -336,12 +344,16 @@ sub _attach_plugin {
 ## modules using MCE. e.g. MCE::Map.
 
 sub _save_state {
+
    $_prev_mce = $MCE;
+
    return;
 }
 
 sub _restore_state {
+
    $MCE = $_prev_mce; $_prev_mce = undef;
+
    return;
 }
 
@@ -417,7 +429,6 @@ sub new {
    $self->{user_tasks}   = $argv{user_tasks}   if (exists $argv{user_tasks});
    $self->{task_end}     = $argv{task_end}     if (exists $argv{task_end});
    $self->{RS}           = $argv{RS}           if (exists $argv{RS});
-   $self->{RS_prepend}   = $argv{RS_prepend}   if (exists $argv{RS_prepend});
 
    $self->{flush_file}   = $argv{flush_file}   || 0;
    $self->{flush_stderr} = $argv{flush_stderr} || 0;
@@ -951,9 +962,6 @@ sub run {
 
       $self->{RS} = $self->{user_tasks}->[0]->{RS}
          if ($self->{user_tasks}->[0]->{RS});
-
-      $self->{RS_prepend} = $self->{user_tasks}->[0]->{RS_prepend}
-         if ($self->{user_tasks}->[0]->{RS_prepend});
    }
 
    $self->shutdown() if ($_requires_shutdown);
@@ -1069,7 +1077,6 @@ sub run {
    my $_total_workers = $self->{_total_workers};
    my $_send_cnt      = $self->{_send_cnt};
    my $_RS            = $self->{RS};
-   my $_RS_prepend    = $self->{RS_prepend};
 
    ## Begin processing.
    unless ($_send_cnt) {
@@ -1081,7 +1088,6 @@ sub run {
          '_sequence'    => $_sequence,     '_bounds_only' => $_bounds_only,
          '_use_slurpio' => $_use_slurpio,  '_parallel_io' => $_parallel_io,
          '_user_args'   => $_user_args,    '_RS'          => $_RS,
-         '_RS_prepend'  => $_RS_prepend,
       );
       my %_params_nodata = (
          '_abort_msg'   => undef,          '_run_mode'    => 'nodata',
@@ -1090,7 +1096,6 @@ sub run {
          '_sequence'    => $_sequence,     '_bounds_only' => $_bounds_only,
          '_use_slurpio' => $_use_slurpio,  '_parallel_io' => $_parallel_io,
          '_user_args'   => $_user_args,    '_RS'          => $_RS,
-         '_RS_prepend'  => $_RS_prepend,
       );
 
       local $\ = undef; local $/ = $LF;
@@ -1309,7 +1314,7 @@ sub shutdown {
    delete $_mce_spawned{$_mce_sid};
 
    ## Notify workers to exit loop.
-   local $\ = undef; local $/ = $LF; local $!; local $?;
+   local ($!, $?); local $\ = undef; local $/ = $LF;
 
    for (1 .. $_total_workers) {
       print {$_COM_R_SOCK} '_exit' . $LF;
@@ -1643,7 +1648,7 @@ sub status {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Methods for serializing data from workers to the main thread.
+## Methods for serializing data from workers to the main process.
 ##
 ###############################################################################
 
@@ -1661,7 +1666,9 @@ sub do {
 
    $_callback = "main::$_callback" if (index($_callback, ':') < 0);
 
-   return _do_callback($self, $_callback, \@_);
+   _do_callback($self, $_callback, @_);
+
+   @_ = (); return;
 }
 
 ## Gather method.
@@ -1673,7 +1680,9 @@ sub gather {
    _croak('MCE::gather: method cannot be called by the manager process')
       unless ($self->{_wid});
 
-   return _do_gather($self, \@_);
+   _do_gather($self, @_);
+
+   @_ = (); return;
 }
 
 ## Sendto method.
@@ -1704,9 +1713,8 @@ sub gather {
 
       if (!defined $_dest) {
          if (ref $_to && defined (my $_fd = fileno($_to))) {
-            my $_data = (scalar @_) ? join('', @_) : $_;
-            _do_send_glob($self, $_to, $_fd, \$_data);
-            @_ = (); return;
+            my $_data_ref = (scalar @_ == 1) ? \$_[0] : \join('', @_);
+            @_ = (); return _do_send_glob($self, $_to, $_fd, $_data_ref);
          }
          if (defined $_to && $_to =~ /$_v2_regx/o) {
             $_dest  = (exists $_sendto_lkup{$1}) ? $_sendto_lkup{$1} : undef;
@@ -1735,7 +1743,9 @@ sub gather {
          $_dest  = SENDTO_FILEV2;
       }
 
-      return _do_send($self, $_dest, $_value, @_);
+      _do_send($self, $_dest, $_value, @_);
+
+      @_ = (); return;
    }
 }
 
@@ -1748,7 +1758,7 @@ sub gather {
 sub print {
 
    my $x = shift; my $self = ref($x) ? $x : $MCE;
-   my ($_glob, $_fd, $_data, $_data_ref);
+   my $_fd = 0; my ($_glob, $_data_ref);
 
    if (ref $_[0] && defined ($_fd = fileno($_[0]))) {
       $_glob = shift;
@@ -1757,24 +1767,22 @@ sub print {
    if (scalar @_ == 1  ) {
       $_data_ref = \$_[0];
    } elsif (scalar @_ > 1) {
-      $_data = join('', @_); $_data_ref = \$_data;
+      $_data_ref = \join('', @_);
    } else {
       $_data_ref = \$_;
    }
 
-   if (defined $_glob) {
-      _do_send_glob($self, $_glob, $_fd, $_data_ref);
-   } else {
-      _do_send_glob($self, \*STDOUT, 1, $_data_ref);
-   }
+   @_ = ();
 
-   @_ = (); return;
+   return _do_send_glob($self, $_glob, $_fd, $_data_ref) if $_fd;
+   return _do_send($self, SENDTO_STDOUT, undef, $_data_ref) if $self->{_wid};
+   return _do_send_glob($self, \*STDOUT, 1, $_data_ref);
 }
 
 sub printf {
 
    my $x = shift; my $self = ref($x) ? $x : $MCE;
-   my ($_glob, $_fd, $_fmt, $_data);
+   my $_fd = 0; my ($_glob, $_fmt, $_data);
 
    if (ref $_[0] && defined ($_fd = fileno($_[0]))) {
       $_glob = shift;
@@ -1783,19 +1791,17 @@ sub printf {
    $_fmt  = shift || '%s';
    $_data = (scalar @_) ? sprintf($_fmt, @_) : sprintf($_fmt, $_);
 
-   if (defined $_glob) {
-      _do_send_glob($self, $_glob, $_fd, \$_data);
-   } else {
-      _do_send_glob($self, \*STDOUT, 1, \$_data);
-   }
+   @_ = ();
 
-   @_ = (); return;
+   return _do_send_glob($self, $_glob, $_fd, \$_data) if $_fd;
+   return _do_send($self, SENDTO_STDOUT, undef, \$_data) if $self->{_wid};
+   return _do_send_glob($self, \*STDOUT, 1, \$_data);
 }
 
 sub say {
 
    my $x = shift; my $self = ref($x) ? $x : $MCE;
-   my ($_glob, $_fd, $_data);
+   my $_fd = 0; my ($_glob, $_data);
 
    if (ref $_[0] && defined ($_fd = fileno($_[0]))) {
       $_glob = shift;
@@ -1803,13 +1809,11 @@ sub say {
 
    $_data = (scalar @_) ? join("\n", @_) . "\n" : $_ . "\n";
 
-   if (defined $_glob) {
-      _do_send_glob($self, $_glob, $_fd, \$_data);
-   } else {
-      _do_send_glob($self, \*STDOUT, 1, \$_data);
-   }
+   @_ = ();
 
-   @_ = (); return;
+   return _do_send_glob($self, $_glob, $_fd, \$_data) if $_fd;
+   return _do_send($self, SENDTO_STDOUT, undef, \$_data) if $self->{_wid};
+   return _do_send_glob($self, \*STDOUT, 1, \$_data);
 }
 
 ###############################################################################
@@ -1885,18 +1889,27 @@ sub _create_socket_pair {
 
 sub _sync_buffer_to_array {
 
-   my $_cnt = 0; my ($_buffer_ref, $_array_ref) = @_;
+   my $_cnt = 0; my ($_buffer_ref, $_array_ref, $_chop_str) = @_;
 
-   @_ = ();
+   @_ = (); local $_;
 
    open my $_MEM_FILE, '<', $_buffer_ref;
    binmode $_MEM_FILE;
-   $_array_ref->[$_cnt++] = $_ while (<$_MEM_FILE>);
-   close $_MEM_FILE; undef $_MEM_FILE;
 
-   if ($_cnt < @{ $_array_ref }) {
-      delete @{ $_array_ref }[$_cnt .. @{ $_array_ref } - 1];
+   unless (length $_chop_str) {
+      $_array_ref->[$_cnt++] = $_ while (<$_MEM_FILE>);
    }
+   else {
+      $_array_ref->[$_cnt++] = <$_MEM_FILE>;
+
+      while (<$_MEM_FILE>) {
+         $_array_ref->[$_cnt  ]  = $_chop_str;
+         $_array_ref->[$_cnt++] .= $_;
+      }
+   }
+
+   close $_MEM_FILE;
+   undef $_MEM_FILE;
 
    return;
 }
@@ -1939,7 +1952,9 @@ sub _worker_wrap {
 
    $MCE = $_[0];
 
-   return _worker_main(@_, \@_plugin_worker_init, $_has_threads, $_is_winenv);
+   _worker_main(@_, \@_plugin_worker_init, $_has_threads, $_is_winenv);
+
+   @_ = (); return;
 }
 
 ###############################################################################
@@ -2005,6 +2020,7 @@ sub _dispatch_child {
 
    unless ($_pid) {
       _worker_wrap($self, $_wid, $_task, $_task_id, $_task_wid, $_params);
+
       CORE::kill(9, $$) unless $_is_winenv;
       CORE::exit(0);
    }

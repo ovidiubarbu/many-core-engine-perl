@@ -27,7 +27,8 @@ use bytes;
 ## Warnings are disabled to minimize bits of noise when user or OS signals
 ## the script to exit. e.g. MCE_script.pl < infile | head
 
-no warnings 'threads'; no warnings 'uninitialized';
+no warnings 'threads';
+no warnings 'uninitialized';
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -37,7 +38,9 @@ no warnings 'threads'; no warnings 'uninitialized';
 
 sub _task_end {
 
-   my $self = $_[0]; my $_task_id = $_[1];
+   my ($self, $_task_id) = @_;
+
+   @_ = ();
 
    if (defined $self->{user_tasks}) {
       my $_task_end = (exists $self->{user_tasks}->[$_task_id]->{task_end})
@@ -79,8 +82,8 @@ sub _output_loop {
       $_callback, $_chunk_id, $_chunk_size, $_fd, $_file, $_flush_file,
       @_is_c_ref, @_is_h_ref, @_is_q_ref, $_on_post_exit, $_on_post_run,
       $_has_user_tasks, $_sess_dir, $_task_id, $_user_error, $_user_output,
-      $_input_size, $_len, $_offset_pos, $_single_dim, @_gather, $_cs_one_flag,
-      $_exit_id, $_exit_pid, $_exit_status, $_exit_wid, $_sync_cnt,
+      $_input_size, $_offset_pos, $_single_dim, @_gather, $_cs_one_flag,
+      $_exit_id, $_exit_pid, $_exit_status, $_exit_wid, $_len, $_sync_cnt,
       $_BSB_W_SOCK, $_BSE_W_SOCK, $_DAT_R_SOCK, $_DAU_R_SOCK, $_MCE_STDERR,
       $_I_FLG, $_O_FLG, $_I_SEP, $_O_SEP, $_RS, $_RS_FLG, $_MCE_STDOUT
    );
@@ -243,7 +246,7 @@ sub _output_loop {
       },
 
       OUTPUT_S_GLB.$LF => sub {                   ## Scalar << Glob FH
-         my $_buffer;
+         my $_buffer = '';
 
          ## The logic below honors ('Ctrl/Z' in Windows, 'Ctrl/D' in Unix)
          ## when reading from standard input. No output will be lost as
@@ -259,20 +262,30 @@ sub _output_loop {
             local $/ = $_RS if ($_RS_FLG);
 
             if ($_chunk_size <= MAX_RECS_SIZE) {
-               for (1 .. $_chunk_size) {
-                  if (defined($_ = <$_input_glob>)) {
-                     $_buffer .= $_; next;
+               if ($_chunk_size == 1) {
+                  $_buffer = <$_input_glob>;
+                  $_eof_flag = 1 unless (length $_buffer);
+               }
+               else {
+                  my $_last_len = 0;
+                  for (1 .. $_chunk_size) {
+                     $_buffer .= <$_input_glob>;
+                     $_len = length $_buffer;
+                     if ($_len == $_last_len) {
+                        $_eof_flag = 1;
+                        last;
+                     }
+                     $_last_len = $_len;
                   }
-                  $_eof_flag = 1; last;
                }
             }
             else {
                if (read($_input_glob, $_buffer, $_chunk_size) == $_chunk_size) {
-                  if (defined($_ = <$_input_glob>)) {
-                     $_buffer .= $_;
-                  } else {
-                     $_eof_flag = 1;
-                  }
+                  $_buffer .= <$_input_glob>;
+                  $_eof_flag = 1 if (length $_buffer == $_chunk_size);
+               }
+               else {
+                  $_eof_flag = 1;
                }
             }
          }
@@ -295,24 +308,24 @@ sub _output_loop {
             return;
          }
 
-         if (my @_ret_a = $_input_data->($_chunk_size)) {
-            if (@_ret_a > 1 || ref $_ret_a[0]) {
-               $_buffer = $self->{freeze}( [ @_ret_a ] );
-               local $\ = undef if (defined $\); $_len = length $_buffer;
+         my @_ret_a = $_input_data->($_chunk_size);
 
-               print {$_DAU_R_SOCK} $_len . '1' . $LF . (++$_chunk_id) . $LF .
-                  $_buffer;
+         if (scalar @_ret_a > 1 || ref $_ret_a[0]) {
+            $_buffer = $self->{freeze}( [ @_ret_a ] );
+            local $\ = undef if (defined $\); $_len = length $_buffer;
 
-               return;
-            }
-            elsif (defined $_ret_a[0]) {
-               local $\ = undef if (defined $\); $_len = length $_ret_a[0];
+            print {$_DAU_R_SOCK}
+               $_len . '1' . $LF . (++$_chunk_id) . $LF . $_buffer;
 
-               print {$_DAU_R_SOCK} $_len . '0' . $LF . (++$_chunk_id) . $LF .
-                  $_ret_a[0];
+            return;
+         }
+         elsif (defined $_ret_a[0]) {
+            local $\ = undef if (defined $\); $_len = length $_ret_a[0];
 
-               return;
-            }
+            print {$_DAU_R_SOCK}
+               $_len . '0' . $LF . (++$_chunk_id) . $LF . $_ret_a[0];
+
+            return;
          }
 
          local $\ = undef if (defined $\);
@@ -325,14 +338,14 @@ sub _output_loop {
       ## ----------------------------------------------------------------------
 
       OUTPUT_A_CBK.$LF => sub {                   ## Callback w/ multiple args
-         my $_buffer;
+         my ($_buffer, $_data_ref);
 
          chomp($_want_id  = <$_DAU_R_SOCK>);
          chomp($_callback = <$_DAU_R_SOCK>);
          chomp($_len      = <$_DAU_R_SOCK>);
          read $_DAU_R_SOCK, $_buffer, $_len;
 
-         my $_data_ref = $self->{thaw}($_buffer);
+         $_data_ref = $self->{thaw}($_buffer);
          undef $_buffer;
 
          local $\ = $_O_SEP if ($_O_FLG); local $/ = $_I_SEP if ($_I_FLG);
@@ -458,7 +471,7 @@ sub _output_loop {
             }
          }
          elsif ($_is_q_ref[$_task_id]) {
-            $_gather[$_task_id]->enqueue( @{ $self->{thaw}($_buffer) } );
+            $_gather[$_task_id]->enqueue(@{ $self->{thaw}($_buffer) });
          }
          else {
             push @{ $_gather[$_task_id] }, @{ $self->{thaw}($_buffer) };
@@ -483,7 +496,7 @@ sub _output_loop {
             $_gather[$_task_id]->{$_} = undef;
          }
          elsif ($_is_q_ref[$_task_id]) {
-            $_gather[$_task_id]->enqueue( $self->{thaw}($_buffer) );
+            $_gather[$_task_id]->enqueue($self->{thaw}($_buffer));
          }
          else {
             push @{ $_gather[$_task_id] }, $self->{thaw}($_buffer);
@@ -493,24 +506,23 @@ sub _output_loop {
       },
 
       OUTPUT_S_GTR.$LF => sub {                   ## Gather w/ 1 scalar arg
-         my $_buffer;
+         local $_;
 
          chomp($_task_id = <$_DAU_R_SOCK>);
          chomp($_len     = <$_DAU_R_SOCK>);
-         read $_DAU_R_SOCK, $_buffer, $_len if ($_len >= 0);
+         read $_DAU_R_SOCK, $_, $_len if ($_len >= 0);
 
          if ($_is_c_ref[$_task_id]) {
-            local $_ = $_buffer;
             $_gather[$_task_id]->($_);
          }
          elsif ($_is_h_ref[$_task_id]) {
-            $_gather[$_task_id]->{$_buffer} = undef;
+            $_gather[$_task_id]->{$_} = undef;
          }
          elsif ($_is_q_ref[$_task_id]) {
-            $_gather[$_task_id]->enqueue( $_buffer );
+            $_gather[$_task_id]->enqueue($_);
          }
          else {
-            push @{ $_gather[$_task_id] }, $_buffer;
+            push @{ $_gather[$_task_id] }, $_;
          }
 
          return;
@@ -639,7 +651,7 @@ sub _output_loop {
 
    ## -------------------------------------------------------------------------
 
-   local $!; local $_;
+   local ($!, $_);
 
    $_has_user_tasks = (defined $self->{user_tasks}) ? 1 : 0;
    $_cs_one_flag = ($self->{chunk_size} == 1) ? 1 : 0;
