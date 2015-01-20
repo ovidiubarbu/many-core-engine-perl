@@ -49,12 +49,12 @@ sub import {
       if ( $_arg eq 'type' ) {
          _croak('MCE::Queue::import: (TYPE) must be 1 or 0')
             if (!defined $_[0] || ($_[0] ne '1' && $_[0] ne '0'));
-         $TYPE   = shift ; next;
+         $TYPE = shift ; next;
       }
       if ( $_arg eq 'fast' ) {
          _croak('MCE::Queue::import: (FAST) must be 1 or 0')
             if (!defined $_[0] || ($_[0] ne '1' && $_[0] ne '0'));
-         $FAST   = shift ; next;
+         $FAST = shift ; next;
       }
 
       _croak("MCE::Queue::import: ($_argument) is not a valid module argument");
@@ -312,12 +312,10 @@ sub _dequeue {
    my ($_q, $_c) = @_;
 
    if (defined $_c && $_c ne '1') {
-      my @_e;
-
       _croak('MCE::Queue::dequeue: (count argument) is not valid')
          if (!looks_like_number($_c) || int($_c) != $_c || $_c < 1);
 
-      push(@_e, $_q->_dequeue()) for (1 .. $_c);
+      my @_e; push(@_e, $_q->_dequeue()) for (1 .. $_c);
 
       return @_e;
    }
