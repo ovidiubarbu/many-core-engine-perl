@@ -176,37 +176,45 @@ local $| = 1 if $u_flag;
 ##
 ###############################################################################
 
-my ($order_id, $lines, %result);
+my ($order_id, $lines, %tmp);
 my $exit_status = 0;
 
 sub display_chunk {
 
    ## One can have this receive 2 arguments; $chunk_id and $chunk_data.
-   ## However, I want the least overhead between worker and the manager
-   ## process. MCE->freeze is called when more than 1 argument is sent.
-   ## Thus, the reason for receiving $chunk_id at the end of $_[0].
+   ## However, MCE->freeze is called when more than 1 argument is sent.
+   ## For performance, $chunk_id is attached to the end of $_[0].
 
    my $chunk_id = substr($_[0], rindex($_[0], ':') + 1);
+   my $chop_len = length($chunk_id) + 1;
 
-   chop $_[0] for (1 .. length($chunk_id) + 1);
-
-   $result{$chunk_id} = $_[0];
+   substr($_[0], -$chop_len, $chop_len, '');
 
    if ($n_flag) {
-      while (1) {
-         last unless exists $result{$order_id};
+      $tmp{$chunk_id} = $_[0];
 
-         open my $fh, '<', \$result{$order_id};
+      while (1) {
+         last unless exists $tmp{$order_id};
+
+         open my $fh, '<', \$tmp{$order_id};
          printf "%6d\t%s", ++$lines, $_ while (<$fh>);
          close $fh;
 
-         delete $result{$order_id++};
+         delete $tmp{$order_id++};
       }
    }
    else {
-      while (1) {
-         last unless exists $result{$order_id};
-         print delete $result{$order_id++};
+      if ($chunk_id == $order_id && keys %tmp == 0) {
+         print $_[0];
+         $order_id++;
+      }
+      else {
+         $tmp{$chunk_id} = $_[0];
+
+         while (1) {
+            last unless exists $tmp{$order_id};
+            print delete $tmp{$order_id++};
+         }
       }
    }
 

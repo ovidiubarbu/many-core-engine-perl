@@ -107,7 +107,5 @@ $mce->forseq( $seq, sub {
    MCE->gather($chunk_id, $n, sqrt($n));
 });
 
-my $end = time;
-
-printf {*STDERR} "\n## Compute time: %0.03f\n\n", $end - $start;
+printf {*STDERR} "\n## Compute time: %0.03f\n\n", time - $start;
 
