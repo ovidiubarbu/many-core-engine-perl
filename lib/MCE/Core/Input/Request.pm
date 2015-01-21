@@ -84,7 +84,9 @@ sub _worker_request_chunk {
    _WORKER_REQUEST_CHUNK__NEXT:
 
    while (1) {
-      undef $_ if (length > MAX_CHUNK_SIZE); $_ = '';
+      undef $_ if (length > MAX_CHUNK_SIZE);
+
+      $_ = '';
 
       ## Obtain the next chunk of data.
       {
@@ -139,7 +141,7 @@ sub _worker_request_chunk {
                $_wuf->($self, [ $_ ], $_chunk_id);
             }
             else {
-               my @_recs = ();
+               my @_recs;
                {
                   local $/ = $_RS if ($_RS_FLG);
                   _sync_buffer_to_array(\$_, \@_recs, $_chop_str);

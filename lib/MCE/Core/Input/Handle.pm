@@ -85,13 +85,14 @@ sub _worker_read_handle {
    $self->{_next_jmp} = sub { goto _WORKER_READ_HANDLE__NEXT; };
    $self->{_last_jmp} = sub { goto _WORKER_READ_HANDLE__LAST; };
 
-   local $_; my @_recs;
+   local $_;
 
    _WORKER_READ_HANDLE__NEXT:
 
    while (1) {
-      undef $_ if (length > MAX_CHUNK_SIZE); $_ = '';
-      @_recs = () if (scalar @_recs);
+      my @_recs; undef $_ if (length > MAX_CHUNK_SIZE);
+
+      $_ = '';
 
       ## Obtain the next chunk_id and offset position.
       sysread $_QUE_R_SOCK, $_next, $_que_read_size;
@@ -258,8 +259,6 @@ sub _worker_read_handle {
    }
 
    _WORKER_READ_HANDLE__LAST:
-
-   @_recs = () if (scalar @_recs);
 
    close $_IN_FILE; undef $_IN_FILE;
 
