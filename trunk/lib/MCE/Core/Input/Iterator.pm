@@ -64,7 +64,9 @@ sub _worker_user_iterator {
    _WORKER_USER_ITERATOR__NEXT:
 
    while (1) {
-      undef $_ if (length > MAX_CHUNK_SIZE); $_ = '';
+      undef $_ if (length > MAX_CHUNK_SIZE);
+
+      $_ = '';
 
       ## Obtain the next chunk of data.
       {
