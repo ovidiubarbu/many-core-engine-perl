@@ -59,7 +59,7 @@ DESCRIPTION
           Specify number of workers for MCE   -- default: 3
 
    --chunk-size CHUNK_SIZE
-          Specify chunk size for MCE          -- default: 500K
+          Specify chunk size for MCE          -- default: 1 MiB
 
    -n     Number the output lines, starting at 1
    -u     Disable output buffering
@@ -104,7 +104,7 @@ EXAMPLES
 my $flag = sub { 1; };
 my $isOk = sub { (@ARGV == 0 or $ARGV[0] =~ /^-/) ? usage() : shift @ARGV; };
 
-my $chunk_size  = '500K';
+my $chunk_size  = '1m';
 my $max_workers = 3;
 my $skip_args   = 0;
 
