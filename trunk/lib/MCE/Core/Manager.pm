@@ -213,7 +213,7 @@ sub _output_loop {
       ## ----------------------------------------------------------------------
 
       OUTPUT_A_ARY.$LF => sub {                   ## Array << Array
-         my $_buffer;
+         my $_buf;
 
          if ($_offset_pos >= $_input_size || $_aborted) {
             local $\ = undef if (defined $\);
@@ -222,23 +222,25 @@ sub _output_loop {
          }
 
          if ($_single_dim && $_cs_one_flag) {
-            $_buffer = $_input_data->[$_offset_pos];
+            $_buf = $_input_data->[$_offset_pos];
          }
          else {
             if ($_offset_pos + $_chunk_size - 1 < $_input_size) {
-               $_buffer = $self->{freeze}( [ @{ $_input_data }[
+               $_buf = $self->{freeze}( [ @{ $_input_data }[
                   $_offset_pos .. $_offset_pos + $_chunk_size - 1
                ] ] );
             }
             else {
-               $_buffer = $self->{freeze}( [ @{ $_input_data }[
+               $_buf = $self->{freeze}( [ @{ $_input_data }[
                   $_offset_pos .. $_input_size - 1
                ] ] );
             }
          }
 
-         local $\ = undef if (defined $\); $_len = length $_buffer;
-         print {$_DAU_R_SOCK} $_len . $LF . (++$_chunk_id) . $LF . $_buffer;
+         $_len = length $_buf; local $\ = undef if (defined $\);
+
+         print {$_DAU_R_SOCK} $_len . $LF . (++$_chunk_id) . $LF;
+         print {$_DAU_R_SOCK} $_buf;
 
          $_offset_pos += $_chunk_size;
 
@@ -246,7 +248,7 @@ sub _output_loop {
       },
 
       OUTPUT_S_GLB.$LF => sub {                   ## Scalar << Glob FH
-         my $_buffer = '';
+         my $_buf = '';
 
          ## The logic below honors ('Ctrl/Z' in Windows, 'Ctrl/D' in Unix)
          ## when reading from standard input. No output will be lost as
@@ -263,14 +265,14 @@ sub _output_loop {
 
             if ($_chunk_size <= MAX_RECS_SIZE) {
                if ($_chunk_size == 1) {
-                  $_buffer = <$_input_glob>;
-                  $_eof_flag = 1 unless (length $_buffer);
+                  $_buf = <$_input_glob>;
+                  $_eof_flag = 1 unless (length $_buf);
                }
                else {
                   my $_last_len = 0;
                   for (1 .. $_chunk_size) {
-                     $_buffer .= <$_input_glob>;
-                     $_len = length $_buffer;
+                     $_buf .= <$_input_glob>;
+                     $_len  = length $_buf;
                      if ($_len == $_last_len) {
                         $_eof_flag = 1;
                         last;
@@ -280,9 +282,9 @@ sub _output_loop {
                }
             }
             else {
-               if (read($_input_glob, $_buffer, $_chunk_size) == $_chunk_size) {
-                  $_buffer .= <$_input_glob>;
-                  $_eof_flag = 1 if (length $_buffer == $_chunk_size);
+               if (read($_input_glob, $_buf, $_chunk_size) == $_chunk_size) {
+                  $_buf .= <$_input_glob>;
+                  $_eof_flag = 1 if (length $_buf == $_chunk_size);
                }
                else {
                   $_eof_flag = 1;
@@ -290,17 +292,21 @@ sub _output_loop {
             }
          }
 
-         local $\ = undef if (defined $\); $_len = length $_buffer;
+         $_len = length $_buf; local $\ = undef if (defined $\);
 
-         print {$_DAU_R_SOCK} ($_len)
-            ? $_len . $LF . (++$_chunk_id) . $LF . $_buffer
-            : '0' . $LF;
+         if ($_len) {
+            print {$_DAU_R_SOCK} $_len . $LF . (++$_chunk_id) . $LF;
+            print {$_DAU_R_SOCK} $_buf;
+         }
+         else {
+            print {$_DAU_R_SOCK} '0' . $LF;
+         }
 
          return;
       },
 
       OUTPUT_U_ITR.$LF => sub {                   ## User << Iterator
-         my $_buffer;
+         my $_buf;
 
          if ($_aborted) {
             local $\ = undef if (defined $\);
@@ -311,19 +317,19 @@ sub _output_loop {
          my @_ret_a = $_input_data->($_chunk_size);
 
          if (scalar @_ret_a > 1 || ref $_ret_a[0]) {
-            $_buffer = $self->{freeze}( [ @_ret_a ] );
-            local $\ = undef if (defined $\); $_len = length $_buffer;
+            $_buf = $self->{freeze}( [ @_ret_a ] );
+            $_len = length $_buf; local $\ = undef if (defined $\);
 
-            print {$_DAU_R_SOCK}
-               $_len . '1' . $LF . (++$_chunk_id) . $LF . $_buffer;
+            print {$_DAU_R_SOCK} $_len . '1' . $LF . (++$_chunk_id) . $LF;
+            print {$_DAU_R_SOCK} $_buf;
 
             return;
          }
          elsif (defined $_ret_a[0]) {
-            local $\ = undef if (defined $\); $_len = length $_ret_a[0];
+            $_len = length $_ret_a[0]; local $\ = undef if (defined $\);
 
-            print {$_DAU_R_SOCK}
-               $_len . '0' . $LF . (++$_chunk_id) . $LF . $_ret_a[0];
+            print {$_DAU_R_SOCK} $_len . '0' . $LF . (++$_chunk_id) . $LF;
+            print {$_DAU_R_SOCK} $_ret_a[0];
 
             return;
          }
@@ -338,15 +344,14 @@ sub _output_loop {
       ## ----------------------------------------------------------------------
 
       OUTPUT_A_CBK.$LF => sub {                   ## Callback w/ multiple args
-         my ($_buffer, $_data_ref);
+         my ($_buf, $_data_ref);
 
          chomp($_want_id  = <$_DAU_R_SOCK>);
          chomp($_callback = <$_DAU_R_SOCK>);
          chomp($_len      = <$_DAU_R_SOCK>);
-         read $_DAU_R_SOCK, $_buffer, $_len;
+         read $_DAU_R_SOCK, $_buf, $_len;
 
-         $_data_ref = $self->{thaw}($_buffer);
-         undef $_buffer;
+         $_data_ref = $self->{thaw}($_buf); undef $_buf;
 
          local $\ = $_O_SEP if ($_O_FLG); local $/ = $_I_SEP if ($_I_FLG);
          no strict 'refs';
@@ -356,21 +361,24 @@ sub _output_loop {
          }
          elsif ($_want_id == WANTS_ARRAY) {
             my @_ret_a = $_callback->(@{ $_data_ref });
-            $_buffer = $self->{freeze}(\@_ret_a);
-            local $\ = undef if (defined $\); $_len = length $_buffer;
-            print {$_DAU_R_SOCK} $_len . $LF . $_buffer;
+            $_buf = $self->{freeze}(\@_ret_a);
+            $_len = length $_buf; local $\ = undef if (defined $\);
+            print {$_DAU_R_SOCK} $_len . $LF;
+            print {$_DAU_R_SOCK} $_buf;
          }
          else {
             my $_ret_s = $_callback->(@{ $_data_ref });
             unless (ref $_ret_s) {
-               local $\ = undef if (defined $\);
                $_len = (defined $_ret_s) ? length $_ret_s : -1;
-               print {$_DAU_R_SOCK} WANTS_SCALAR . $LF . $_len . $LF . $_ret_s;
+               local $\ = undef if (defined $\);
+               print {$_DAU_R_SOCK} WANTS_SCALAR . $LF . $_len . $LF;
+               print {$_DAU_R_SOCK} $_ret_s;
             }
             else {
-               $_buffer = $self->{freeze}($_ret_s);
-               local $\ = undef if (defined $\); $_len = length $_buffer;
-               print {$_DAU_R_SOCK} WANTS_REF . $LF . $_len . $LF . $_buffer;
+               $_buf = $self->{freeze}($_ret_s);
+               $_len = length $_buf; local $\ = undef if (defined $\);
+               print {$_DAU_R_SOCK} WANTS_REF . $LF . $_len . $LF;
+               print {$_DAU_R_SOCK} $_buf;
             }
          }
 
@@ -378,36 +386,39 @@ sub _output_loop {
       },
 
       OUTPUT_S_CBK.$LF => sub {                   ## Callback w/ 1 scalar arg
-         my $_buffer;
+         my $_buf;
 
          chomp($_want_id  = <$_DAU_R_SOCK>);
          chomp($_callback = <$_DAU_R_SOCK>);
          chomp($_len      = <$_DAU_R_SOCK>);
-         read $_DAU_R_SOCK, $_buffer, $_len;
+         read $_DAU_R_SOCK, $_buf, $_len;
 
          local $\ = $_O_SEP if ($_O_FLG); local $/ = $_I_SEP if ($_I_FLG);
          no strict 'refs';
 
          if ($_want_id == WANTS_UNDEF) {
-            $_callback->($_buffer);
+            $_callback->($_buf);
          }
          elsif ($_want_id == WANTS_ARRAY) {
-            my @_ret_a = $_callback->($_buffer);
-            $_buffer = $self->{freeze}(\@_ret_a);
-            local $\ = undef if (defined $\); $_len = length $_buffer;
-            print {$_DAU_R_SOCK} $_len . $LF . $_buffer;
+            my @_ret_a = $_callback->($_buf);
+            $_buf = $self->{freeze}(\@_ret_a);
+            $_len = length $_buf; local $\ = undef if (defined $\);
+            print {$_DAU_R_SOCK} $_len . $LF;
+            print {$_DAU_R_SOCK} $_buf;
          }
          else {
-            my $_ret_s = $_callback->($_buffer);
+            my $_ret_s = $_callback->($_buf);
             unless (ref $_ret_s) {
-               local $\ = undef if (defined $\);
                $_len = (defined $_ret_s) ? length $_ret_s : -1;
-               print {$_DAU_R_SOCK} WANTS_SCALAR . $LF . $_len . $LF . $_ret_s;
+               local $\ = undef if (defined $\);
+               print {$_DAU_R_SOCK} WANTS_SCALAR . $LF . $_len . $LF;
+               print {$_DAU_R_SOCK} $_ret_s;
             }
             else {
-               $_buffer = $self->{freeze}($_ret_s);
-               local $\ = undef if (defined $\); $_len = length $_buffer;
-               print {$_DAU_R_SOCK} WANTS_REF . $LF . $_len . $LF . $_buffer;
+               $_buf = $self->{freeze}($_ret_s);
+               $_len = length $_buf; local $\ = undef if (defined $\);
+               print {$_DAU_R_SOCK} WANTS_REF . $LF . $_len . $LF;
+               print {$_DAU_R_SOCK} $_buf;
             }
          }
 
@@ -415,7 +426,7 @@ sub _output_loop {
       },
 
       OUTPUT_N_CBK.$LF => sub {                   ## Callback w/ no args
-         my $_buffer;
+         my $_buf;
 
          chomp($_want_id  = <$_DAU_R_SOCK>);
          chomp($_callback = <$_DAU_R_SOCK>);
@@ -428,21 +439,24 @@ sub _output_loop {
          }
          elsif ($_want_id == WANTS_ARRAY) {
             my @_ret_a = $_callback->();
-            $_buffer = $self->{freeze}(\@_ret_a);
-            local $\ = undef if (defined $\); $_len = length $_buffer;
-            print {$_DAU_R_SOCK} $_len . $LF . $_buffer;
+            $_buf = $self->{freeze}(\@_ret_a);
+            $_len = length $_buf; local $\ = undef if (defined $\);
+            print {$_DAU_R_SOCK} $_len . $LF;
+            print {$_DAU_R_SOCK} $_buf;
          }
          else {
             my $_ret_s = $_callback->();
             unless (ref $_ret_s) {
-               local $\ = undef if (defined $\);
                $_len = (defined $_ret_s) ? length $_ret_s : -1;
-               print {$_DAU_R_SOCK} WANTS_SCALAR . $LF . $_len . $LF . $_ret_s;
+               local $\ = undef if (defined $\);
+               print {$_DAU_R_SOCK} WANTS_SCALAR . $LF . $_len . $LF;
+               print {$_DAU_R_SOCK} $_ret_s;
             }
             else {
-               $_buffer = $self->{freeze}($_ret_s);
-               local $\ = undef if (defined $\); $_len = length $_buffer;
-               print {$_DAU_R_SOCK} WANTS_REF . $LF . $_len . $LF . $_buffer;
+               $_buf = $self->{freeze}($_ret_s);
+               $_len = length $_buf; local $\ = undef if (defined $\);
+               print {$_DAU_R_SOCK} WANTS_REF . $LF . $_len . $LF;
+               print {$_DAU_R_SOCK} $_buf;
             }
          }
 
@@ -452,18 +466,18 @@ sub _output_loop {
       ## ----------------------------------------------------------------------
 
       OUTPUT_A_GTR.$LF => sub {                   ## Gather w/ multiple args
-         my $_buffer;
+         my $_buf;
 
          chomp($_task_id = <$_DAU_R_SOCK>);
          chomp($_len     = <$_DAU_R_SOCK>);
-         read $_DAU_R_SOCK, $_buffer, $_len;
+         read $_DAU_R_SOCK, $_buf, $_len;
 
          if ($_is_c_ref[$_task_id]) {
-            local $_ = $self->{thaw}($_buffer);
+            local $_ = $self->{thaw}($_buf);
             $_gather[$_task_id]->(@{ $_ });
          }
          elsif ($_is_h_ref[$_task_id]) {
-            local $_ = $self->{thaw}($_buffer);
+            local $_ = $self->{thaw}($_buf);
             while (1) {
                my $_key = shift @{ $_ }; my $_val = shift @{ $_ };
                $_gather[$_task_id]->{$_key} = $_val;
@@ -471,35 +485,35 @@ sub _output_loop {
             }
          }
          elsif ($_is_q_ref[$_task_id]) {
-            $_gather[$_task_id]->enqueue(@{ $self->{thaw}($_buffer) });
+            $_gather[$_task_id]->enqueue(@{ $self->{thaw}($_buf) });
          }
          else {
-            push @{ $_gather[$_task_id] }, @{ $self->{thaw}($_buffer) };
+            push @{ $_gather[$_task_id] }, @{ $self->{thaw}($_buf) };
          }
 
          return;
       },
 
       OUTPUT_R_GTR.$LF => sub {                   ## Gather w/ 1 reference arg
-         my $_buffer;
+         my $_buf;
 
          chomp($_task_id = <$_DAU_R_SOCK>);
          chomp($_len     = <$_DAU_R_SOCK>);
-         read $_DAU_R_SOCK, $_buffer, $_len;
+         read $_DAU_R_SOCK, $_buf, $_len;
 
          if ($_is_c_ref[$_task_id]) {
-            local $_ = $self->{thaw}($_buffer);
+            local $_ = $self->{thaw}($_buf);
             $_gather[$_task_id]->($_);
          }
          elsif ($_is_h_ref[$_task_id]) {
-            local $_ = $self->{thaw}($_buffer);
+            local $_ = $self->{thaw}($_buf);
             $_gather[$_task_id]->{$_} = undef;
          }
          elsif ($_is_q_ref[$_task_id]) {
-            $_gather[$_task_id]->enqueue($self->{thaw}($_buffer));
+            $_gather[$_task_id]->enqueue($self->{thaw}($_buf));
          }
          else {
-            push @{ $_gather[$_task_id] }, $self->{thaw}($_buffer);
+            push @{ $_gather[$_task_id] }, $self->{thaw}($_buf);
          }
 
          return;
@@ -531,41 +545,41 @@ sub _output_loop {
       ## ----------------------------------------------------------------------
 
       OUTPUT_O_SND.$LF => sub {                   ## Send >> STDOUT
-         my $_buffer;
+         my $_buf;
 
          chomp($_len = <$_DAU_R_SOCK>);
-         read $_DAU_R_SOCK, $_buffer, $_len;
+         read $_DAU_R_SOCK, $_buf, $_len;
 
          if (defined $_user_output) {
-            $_user_output->($_buffer);
+            $_user_output->($_buf);
          } else {
-            print {$_MCE_STDOUT} $_buffer;
+            print {$_MCE_STDOUT} $_buf;
          }
 
          return;
       },
 
       OUTPUT_E_SND.$LF => sub {                   ## Send >> STDERR
-         my $_buffer;
+         my $_buf;
 
          chomp($_len = <$_DAU_R_SOCK>);
-         read $_DAU_R_SOCK, $_buffer, $_len;
+         read $_DAU_R_SOCK, $_buf, $_len;
 
          if (defined $_user_error) {
-            $_user_error->($_buffer);
+            $_user_error->($_buf);
          } else {
-            print {$_MCE_STDERR} $_buffer;
+            print {$_MCE_STDERR} $_buf;
          }
 
          return;
       },
 
       OUTPUT_F_SND.$LF => sub {                   ## Send >> File
-         my ($_buffer, $_OUT_FILE);
+         my ($_buf, $_OUT_FILE);
 
          chomp($_file = <$_DAU_R_SOCK>);
          chomp($_len  = <$_DAU_R_SOCK>);
-         read $_DAU_R_SOCK, $_buffer, $_len;
+         read $_DAU_R_SOCK, $_buf, $_len;
 
          unless (exists $_sendto_fhs{$_file}) {
             open $_sendto_fhs{$_file}, '>>', $_file
@@ -580,17 +594,17 @@ sub _output_loop {
          }
 
          $_OUT_FILE = $_sendto_fhs{$_file};
-         print {$_OUT_FILE} $_buffer;
+         print {$_OUT_FILE} $_buf;
 
          return;
       },
 
       OUTPUT_D_SND.$LF => sub {                   ## Send >> File descriptor
-         my ($_buffer, $_OUT_FILE);
+         my ($_buf, $_OUT_FILE);
 
          chomp($_fd  = <$_DAU_R_SOCK>);
          chomp($_len = <$_DAU_R_SOCK>);
-         read $_DAU_R_SOCK, $_buffer, $_len;
+         read $_DAU_R_SOCK, $_buf, $_len;
 
          unless (exists $_sendto_fhs{$_fd}) {
             require IO::Handle unless (defined $IO::Handle::VERSION);
@@ -608,7 +622,7 @@ sub _output_loop {
          }
 
          $_OUT_FILE = $_sendto_fhs{$_fd};
-         print {$_OUT_FILE} $_buffer;
+         print {$_OUT_FILE} $_buf;
 
          return;
       },

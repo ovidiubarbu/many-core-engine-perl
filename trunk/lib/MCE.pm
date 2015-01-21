@@ -1262,7 +1262,8 @@ sub send {
       print {$_COM_R_SOCK} '_data' . $LF;
       <$_COM_R_SOCK>;
 
-      print {$_COM_R_SOCK} length($_frozen_data) . $LF . $_frozen_data;
+      print {$_COM_R_SOCK} length($_frozen_data) . $LF;
+      print {$_COM_R_SOCK} $_frozen_data;
       <$_COM_R_SOCK>;
 
       if (defined $_submit_delay && $_submit_delay > 0.0) {
