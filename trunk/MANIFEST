@@ -54,6 +54,7 @@ examples/matmult/strassen_07_t.pl
 examples/matmult/strassen_49_f.pl
 examples/matmult/strassen_49_t.pl
 examples/matmult/strassen_perl.pl
+examples/mutex.pl
 examples/ping.pl
 examples/pipe1.pl
 examples/pipe2.pl
