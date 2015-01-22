@@ -61,8 +61,9 @@ The following scripts are located under the examples directory.
         MCE->forseq....:    200,000  Uses sequence of numbers as input
         MCE->forchunk..:  1,000,000  IPC overhead is greatly reduced
 
-   interval.pl
+   interval.pl, mutex.pl
         Demonstration of the interval option appearing in MCE 1.5.
+        Demonstration of Mutex locking.
 
    iterator.pl
         Similar to forseq.pl. Specifies an iterator for input_data.
