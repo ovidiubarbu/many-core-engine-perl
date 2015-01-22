@@ -40,9 +40,13 @@ Utility functions for Many-Core Engine.
 
 =head1 MCE ADDONS
 
-Currently, there are 2 addon modules.
+There are 3 addon modules.
 
 =over 3
+
+=item L<MCE::Mutex|MCE::Mutex>
+
+Provides a simple semaphore implementation supporting threads and processes.
 
 =item L<MCE::Queue|MCE::Queue>
 
