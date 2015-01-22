@@ -114,6 +114,10 @@ WriteMakefile(
                'file'    => 'lib/MCE/Map.pm',
                'version' => '1.522'
             },
+            'MCE::Mutex' => {
+               'file'    => 'lib/MCE/Mutex.pm',
+               'version' => '1.522'
+            },
             'MCE::Queue' => {
                'file'    => 'lib/MCE/Queue.pm',
                'version' => '1.522'
