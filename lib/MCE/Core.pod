@@ -124,7 +124,7 @@ Below, a new instance is configured with all available options.
 
           ## The RS option (for input record separator) applies to files
           ## and file handles. Typically, the left side is what happens
-          ## when specifing ($/ = "\n>") in Perl. MCE performs a couple
+          ## when specifying ($/ = "\n>") in Perl. MCE performs a couple
           ## steps for RS beginning with a newline character. It chops
           ## the characters following the newline and prepends them
           ## automatically to subsequent records.
