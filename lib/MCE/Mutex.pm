@@ -42,7 +42,7 @@ sub new {
 
    my ($_class, %_argv) = @_;
 
-   @_ = ();
+   @_ = (); local $!;
 
    return if (defined $MCE::MCE && $MCE::MCE->wid);
 

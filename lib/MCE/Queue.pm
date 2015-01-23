@@ -160,7 +160,7 @@ sub new {
 
    my ($_class, %_argv) = @_;
 
-   @_ = ();
+   @_ = (); local $!;
 
    my $_Q = {}; bless($_Q, ref($_class) || $_class);
 
