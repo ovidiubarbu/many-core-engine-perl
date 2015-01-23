@@ -60,24 +60,25 @@ BEGIN {
    ##
    ## _bsb_r_sock _bsb_w_sock _bse_r_sock _bse_w_sock _com_r_sock _com_w_sock
    ## _dat_r_sock _dat_w_sock _que_r_sock _que_w_sock _data_channels _lock_chn
+   ## _rla_r_sock _rla_w_sock
 
    %_valid_fields_new = map { $_ => 1 } qw(
       max_workers tmp_dir use_threads user_tasks task_end task_name freeze thaw
       chunk_size input_data sequence job_delay spawn_delay submit_delay RS
       flush_file flush_stderr flush_stdout stderr_file stdout_file use_slurpio
       interval user_args user_begin user_end user_func user_error user_output
-      bounds_only gather on_post_exit on_post_run parallel_io
+      bounds_only gather init_relay on_post_exit on_post_run parallel_io
    );
    %_params_allowed_args = map { $_ => 1 } qw(
       chunk_size input_data sequence job_delay spawn_delay submit_delay RS
       flush_file flush_stderr flush_stdout stderr_file stdout_file use_slurpio
       interval user_args user_begin user_end user_func user_error user_output
-      bounds_only gather on_post_exit on_post_run parallel_io
+      bounds_only gather init_relay on_post_exit on_post_run parallel_io
    );
    %_valid_fields_task = map { $_ => 1 } qw(
       max_workers chunk_size input_data interval sequence task_end task_name
-      bounds_only gather user_args user_begin user_end user_func use_threads
-      RS use_slurpio parallel_io
+      bounds_only gather init_relay user_args user_begin user_end user_func
+      RS use_slurpio use_threads parallel_io
    );
 
    $_is_cygwin  = ($^O eq 'cygwin' ) ? 1 : 0;
@@ -410,6 +411,7 @@ sub new {
 
    $self->{gather}       = $argv{gather}       if (exists $argv{gather});
    $self->{interval}     = $argv{interval}     if (exists $argv{interval});
+   $self->{init_relay}   = $argv{init_relay}   if (exists $argv{init_relay});
    $self->{input_data}   = $argv{input_data}   if (exists $argv{input_data});
    $self->{sequence}     = $argv{sequence}     if (exists $argv{sequence});
    $self->{bounds_only}  = $argv{bounds_only}  if (exists $argv{bounds_only});
@@ -586,6 +588,7 @@ sub spawn {
    ## -------------------------------------------------------------------------
 
    my $_data_channels = $self->{_data_channels};
+   my $_init_relay    = $self->{init_relay};
    my $_max_workers   = $self->{max_workers};
    my $_use_threads   = $self->{use_threads};
 
@@ -608,6 +611,18 @@ sub spawn {
    ## Place 1 char in one socket to ensure Perl loads the required modules
    ## prior to spawning. The last worker spawned will perform the read.
    syswrite $self->{_que_w_sock}, $LF;
+
+   ## Create sockets for relaying. Write initial value.
+   if (defined $_init_relay) {
+      if (defined $self->{user_tasks}->[0]->{max_workers}) {
+         _create_socket_pair($self, '_rla_r_sock', '_rla_w_sock', $_)
+            for (0 .. $self->{user_tasks}->[0]->{max_workers} - 1);
+      } else {
+         _create_socket_pair($self, '_rla_r_sock', '_rla_w_sock', $_)
+            for (0 .. $_max_workers - 1);
+      }
+      syswrite $self->{_rla_w_sock}->[0], "$_init_relay\n";
+   }
 
    ## Preload the input module if required.
    if (!defined $self->{user_tasks}) {
@@ -948,15 +963,16 @@ sub run {
 
    ## Shutdown workers if determined by _sync_params or if processing a
    ## scalar reference. Workers need to be restarted in order to pick up
-   ## on the new code blocks and/or scalar reference.
+   ## on the new code blocks and/or scalar reference or init_relay.
 
    if ($_has_user_tasks) {
+      $self->{init_relay} = $self->{user_tasks}->[0]->{init_relay}
+         if ($self->{user_tasks}->[0]->{init_relay});
       $self->{input_data} = $self->{user_tasks}->[0]->{input_data}
          if ($self->{user_tasks}->[0]->{input_data});
 
       $self->{use_slurpio} = $self->{user_tasks}->[0]->{use_slurpio}
          if ($self->{user_tasks}->[0]->{use_slurpio});
-
       $self->{parallel_io} = $self->{user_tasks}->[0]->{parallel_io}
          if ($self->{user_tasks}->[0]->{parallel_io});
 
@@ -964,7 +980,7 @@ sub run {
          if ($self->{user_tasks}->[0]->{RS});
    }
 
-   $self->shutdown() if ($_requires_shutdown);
+   $self->shutdown() if ($_requires_shutdown || defined $self->{init_relay});
 
    if (ref $self->{input_data} eq 'SCALAR') {
       $self->shutdown() unless $self->{_last_sref} == $self->{input_data};
@@ -1200,8 +1216,10 @@ sub run {
 
    $self->{_send_cnt} = 0;
 
-   ## Shutdown workers (shutdown as well, if any workers have exited).
-   $self->shutdown() if ($_auto_shutdown == 1 || $self->{_total_exited} > 0);
+   ## Shutdown workers (also, if any workers have exited).
+   if ($_auto_shutdown == 1 || $self->{_total_exited} > 0) {
+      $self->shutdown();
+   }
 
    return $self;
 }
@@ -1354,6 +1372,15 @@ sub shutdown {
    CORE::shutdown $self->{_dat_w_sock}->[0], 2;   ## Data channels
    CORE::shutdown $self->{_dat_r_sock}->[0], 2;
 
+   if (defined $self->{_rla_w_sock}) {            ## Relay channels
+      for (0 .. @{ $self->{_rla_w_sock} } - 1) {
+         CORE::shutdown $self->{_rla_w_sock}->[$_], 2;
+         CORE::shutdown $self->{_rla_r_sock}->[$_], 2;
+         close $self->{_rla_w_sock}->[$_];
+         undef $self->{_rla_r_sock}->[$_];
+      }
+   }
+
    for (1 .. $_data_channels) {
       CORE::shutdown $self->{_dat_w_sock}->[$_], 2;
       CORE::shutdown $self->{_dat_r_sock}->[$_], 2;
@@ -1399,6 +1426,44 @@ sub shutdown {
 
    $self->{_total_running} = $self->{_total_workers} = 0;
    $self->{_total_exited}  = $self->{_last_sref}     = 0;
+
+   return;
+}
+
+###############################################################################
+## ----------------------------------------------------------------------------
+## Relay method.
+##
+###############################################################################
+
+sub relay {
+
+   my $x = shift; my $self = ref($x) ? $x : $MCE;
+
+   _croak('MCE::relay: method cannot be called by the manager process')
+      unless ($self->{_wid});
+   _croak('MCE::relay: method cannot be called by this sub task')
+      if ($self->{_task_id} > 0);
+   _croak('MCE::relay: the init_relay option is not specified')
+      unless (defined $self->{init_relay});
+
+   my $_code = shift;
+
+   if (ref $_code eq 'CODE') {
+      my $_chunk_id    = $self->{_chunk_id};
+      my $_max_workers = $self->{max_workers};
+
+      my $_chn = ($_chunk_id - 1) % $_max_workers;
+      my $_nxt = $_chn + 1; $_nxt = 0 if ($_nxt == $_max_workers);
+
+      my $_rdr = $self->{_rla_r_sock}->[$_chn];
+      my $_wtr = $self->{_rla_w_sock}->[$_nxt];
+
+      local $_ = <$_rdr>; chomp $_; my $_val = $_code->();
+      print {$_wtr} $_val . "\n";
+
+      return $_;
+   }
 
    return;
 }
