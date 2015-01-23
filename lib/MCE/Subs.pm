@@ -78,6 +78,7 @@ sub mce_exit        (@) { return $MCE::MCE->exit(@_); }
 sub mce_gather      (@) { return $MCE::MCE->gather(@_); }
 sub mce_last        ( ) { return $MCE::MCE->last(); }
 sub mce_next        ( ) { return $MCE::MCE->next(); }
+sub mce_relay       (@) { return $MCE::MCE->relay(@_); }
 sub mce_sendto    (;*@) { return $MCE::MCE->sendto(@_); }
 sub mce_sync        ( ) { return $MCE::MCE->sync(); }
 sub mce_yield       ( ) { return $MCE::MCE->yield(); }
@@ -145,6 +146,7 @@ sub _export_subs {
       *{ $_package . '::mce_gather'      } = \&mce_gather;
       *{ $_package . '::mce_last'        } = \&mce_last;
       *{ $_package . '::mce_next'        } = \&mce_next;
+      *{ $_package . '::mce_relay'       } = \&mce_relay;
       *{ $_package . '::mce_sendto'      } = \&mce_sendto;
       *{ $_package . '::mce_sync'        } = \&mce_sync;
       *{ $_package . '::mce_yield'       } = \&mce_yield;

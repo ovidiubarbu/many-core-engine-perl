@@ -58,6 +58,7 @@ examples/mutex.pl
 examples/ping.pl
 examples/pipe1.pl
 examples/pipe2.pl
+examples/relay.pl
 examples/sampledb/README
 examples/sampledb/create.pl
 examples/sampledb/query1.pl
