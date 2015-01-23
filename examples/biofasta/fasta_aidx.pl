@@ -126,13 +126,13 @@ exit;
       my ($mce, $slurp_ref, $chunk_id) = @_;
       my @output;
 
-      ## run, appends to @output
-      ## relay next offset value
+      ## run, appends to @output; relay next offset value after running
+      ## relaying is orderly and driven by chunk_id behind the scene
 
       my $acc = $faidx->($slurp_ref, \@output);
       my $off = MCE->relay(sub { $_ + $acc });
 
-      ## update offsets; reader appends 3 items (left, $c3, right)
+      ## update offsets; reader appended 3 items (left, $c3, right)
       ## e.g. "$c1\t$c2\t", $c3, "\t$c4\t$c5\n"
 
       my $i = 1; my $cnt = scalar @output / 3;
