@@ -87,6 +87,9 @@ The following scripts are located under the examples directory.
 
 The rest are organized into various sub directories.
 
+   biofasta/fasta_aidx.pl, fasta_rdr*.pl
+        Parallel demonstration for Bioinformatics.
+
    matmult/matmult_base*.pl, matmult_mce*.pl, strassen_mce*.pl
         Various matrix multiplication demonstrations benchmarking
         PDL, PDL + MCE, as well as parallelizing Strassen's

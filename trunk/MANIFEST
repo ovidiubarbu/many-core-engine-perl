@@ -29,6 +29,17 @@ lib/MCE/Step.pm
 lib/MCE/Stream.pm
 lib/MCE/Subs.pm
 lib/MCE/Util.pm
+examples/biofasta/README
+examples/biofasta/fasta_aidx.pl
+examples/biofasta/fasta_rdr1.pl
+examples/biofasta/fasta_rdr2.pl
+examples/biofasta/fasta_rdr3.pl
+examples/biofasta/include/Fasta.pm
+examples/biofasta/include/FastaC.pm
+examples/biofasta/include/fasta_aidx.txt
+examples/biofasta/include/fasta_rdr.txt
+examples/biofasta/include/fasta_seqlen.c
+examples/biofasta/include/sample.fasta
 examples/cat.pl
 examples/egrep.pl
 examples/files_flow.pl
