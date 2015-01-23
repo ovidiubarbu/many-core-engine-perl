@@ -8,7 +8,9 @@ use lib abs_path($0 =~ m{^(.*)[\\/]} && $1 || abs_path) . '/../lib';
 
 use MCE::Flow;
 
-## Receiving and passing on information.
+## Receiving and passing on information. Relaying is orderly and driven by
+## chunk_id when processing data, otherwise wid. Only the first sub-task
+## is allowed to relay information.
 
 mce_flow {
    max_workers => 4, init_relay => 2,
