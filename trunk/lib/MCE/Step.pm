@@ -538,6 +538,8 @@ sub _validate_number {
 
    my ($_n, $_key) = @_;
 
+   _croak("$_tag: ($_key) is not valid") if (!defined $_n);
+
    $_n =~ s/K\z//i; $_n =~ s/M\z//i;
 
    if (!looks_like_number($_n) || int($_n) != $_n || $_n < 1) {
