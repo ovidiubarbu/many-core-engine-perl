@@ -1790,7 +1790,9 @@ not a glob reference.
 The relay method is for receiving and passing on information. Specify the
 initial value via the init_relay option. Each worker is configured with
 a unique socket pair when init_relay is specified. Also see the included
-(biofasta/fasta_aidx.pl) example for another use case.
+(biofasta/fasta_aidx.pl) example for another use case. Relaying is orderly
+and driven by chunk_id when processing data, otherwise wid. Only the first
+sub-task is allowed to relay information.
 
    use MCE::Flow;
 
