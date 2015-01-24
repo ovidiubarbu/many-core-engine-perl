@@ -56,7 +56,7 @@ BEGIN {
    ## _chunk_id _mce_sid _mce_tid _pids _run_mode _single_dim _thrs _tids _wid
    ## _exiting _exit_pid _total_exited _total_running _total_workers _task_wid
    ## _send_cnt _sess_dir _spawned _state _status _task _task_id _wrk_status
-   ## _last_sref _init_total_workers
+   ## _last_sref _init_total_workers _rla_lastid
    ##
    ## _bsb_r_sock _bsb_w_sock _bse_r_sock _bse_w_sock _com_r_sock _com_w_sock
    ## _dat_r_sock _dat_w_sock _que_r_sock _que_w_sock _data_channels _lock_chn
@@ -226,6 +226,7 @@ use constant {
 
    OUTPUT_W_ABT   => 'W~ABT',            ## Worker has aborted
    OUTPUT_W_DNE   => 'W~DNE',            ## Worker has completed
+   OUTPUT_W_RLA   => 'W~RLA',            ## Worker has relayed
    OUTPUT_W_EXT   => 'W~EXT',            ## Worker has exited
 
    OUTPUT_A_ARY   => 'A~ARY',            ## Array  << Array
@@ -588,7 +589,6 @@ sub spawn {
    ## -------------------------------------------------------------------------
 
    my $_data_channels = $self->{_data_channels};
-   my $_init_relay    = $self->{init_relay};
    my $_max_workers   = $self->{max_workers};
    my $_use_threads   = $self->{use_threads};
 
@@ -612,8 +612,8 @@ sub spawn {
    ## prior to spawning. The last worker spawned will perform the read.
    syswrite $self->{_que_w_sock}, $LF;
 
-   ## Create sockets for relaying. Write initial value.
-   if (defined $_init_relay) {
+   ## Create sockets for relaying.
+   if (defined $self->{init_relay}) {
       if (defined $self->{user_tasks}) {
          if (defined $self->{user_tasks}->[0]->{max_workers}) {
             _create_socket_pair($self, '_rla_r_sock', '_rla_w_sock', $_)
@@ -624,7 +624,6 @@ sub spawn {
          _create_socket_pair($self, '_rla_r_sock', '_rla_w_sock', $_)
             for (0 .. $_max_workers - 1);
       }
-      syswrite $self->{_rla_w_sock}->[0], "$_init_relay\n";
    }
 
    ## Preload the input module if required.
@@ -966,7 +965,7 @@ sub run {
 
    ## Shutdown workers if determined by _sync_params or if processing a
    ## scalar reference. Workers need to be restarted in order to pick up
-   ## on the new code blocks and/or scalar reference or init_relay.
+   ## on the new code blocks and/or scalar reference.
 
    if ($_has_user_tasks) {
       $self->{init_relay} = $self->{user_tasks}->[0]->{init_relay}
@@ -983,7 +982,7 @@ sub run {
          if ($self->{user_tasks}->[0]->{RS});
    }
 
-   $self->shutdown() if ($_requires_shutdown || defined $self->{init_relay});
+   $self->shutdown() if ($_requires_shutdown);
 
    if (ref $self->{input_data} eq 'SCALAR') {
       $self->shutdown() unless $self->{_last_sref} == $self->{input_data};
@@ -1382,6 +1381,8 @@ sub shutdown {
          close $self->{_rla_w_sock}->[$_];
          undef $self->{_rla_r_sock}->[$_];
       }
+      undef $self->{_rla_w_sock};
+      undef $self->{_rla_r_sock};
    }
 
    for (1 .. $_data_channels) {
@@ -1460,11 +1461,10 @@ sub relay (&@) {
    if (ref $_code eq 'CODE') {
       weaken $_code;
 
-      my $_max_workers = $self->{max_workers};
-      my $_chn = ($self->{_chunk_id} - 1) % $_max_workers;
+      my $_chn = ($self->{_chunk_id} - 1) % $self->{max_workers};
+      my $_nxt = $_chn + 1; $_nxt = 0 if ($_nxt == $self->{max_workers});
 
-      my $_nxt = $_chn + 1;
-         $_nxt = 0 if ($_nxt == $_max_workers);
+      $self->{_rla_lastid} = $self->{_chunk_id} .':'. $_nxt;
 
       my $_rdr = $self->{_rla_r_sock}->[$_chn];
       my $_wtr = $self->{_rla_w_sock}->[$_nxt];
@@ -1588,9 +1588,17 @@ sub abort {
          my $_chn        = $self->{_chn};
          my $_DAT_LOCK   = $self->{_dat_lock};
          my $_DAT_W_SOCK = $self->{_dat_w_sock}->[0];
+         my $_DAU_W_SOCK = $self->{_dat_w_sock}->[$_chn];
 
          flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
+
+         if (exists $self->{_rla_lastid}) {
+            print {$_DAT_W_SOCK} OUTPUT_W_RLA . $LF . $_chn . $LF;
+            print {$_DAU_W_SOCK} (delete $self->{_rla_lastid}) . $LF;
+         }
+
          print {$_DAT_W_SOCK} OUTPUT_W_ABT . $LF . $_chn . $LF;
+
          flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
       }
    }
@@ -1639,6 +1647,11 @@ sub exit {
       sleep 0.05 if ($_is_winenv);
 
       flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
+
+      if (exists $self->{_rla_lastid}) {
+         print {$_DAT_W_SOCK} OUTPUT_W_RLA . $LF . $_chn . $LF;
+         print {$_DAU_W_SOCK} (delete $self->{_rla_lastid}) . $LF;
+      }
 
       print {$_DAT_W_SOCK} OUTPUT_W_EXT . $LF . $_chn . $LF;
       print {$_DAU_W_SOCK}

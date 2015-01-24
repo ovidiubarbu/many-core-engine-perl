@@ -85,7 +85,8 @@ sub _output_loop {
       $_input_size, $_offset_pos, $_single_dim, @_gather, $_cs_one_flag,
       $_exit_id, $_exit_pid, $_exit_status, $_exit_wid, $_len, $_sync_cnt,
       $_BSB_W_SOCK, $_BSE_W_SOCK, $_DAT_R_SOCK, $_DAU_R_SOCK, $_MCE_STDERR,
-      $_I_FLG, $_O_FLG, $_I_SEP, $_O_SEP, $_RS, $_RS_FLG, $_MCE_STDOUT
+      $_I_FLG, $_O_FLG, $_I_SEP, $_O_SEP, $_RS, $_RS_FLG, $_MCE_STDOUT,
+      $_rla_chunkid, $_rla_nextid
    );
 
    ## -------------------------------------------------------------------------
@@ -118,6 +119,18 @@ sub _output_loop {
          }
 
          _task_end($self, $_task_id) unless ($_total_running);
+
+         return;
+      },
+
+      OUTPUT_W_RLA.$LF => sub {                   ## Worker has relayed
+         my ($_chunk_id, $_next_id) = split(':', <$_DAU_R_SOCK>);
+
+         if ($_chunk_id > $_rla_chunkid) {
+            chomp $_next_id;
+            $_rla_chunkid = $_chunk_id;
+            $_rla_nextid  = $_next_id;
+         }
 
          return;
       },
@@ -768,6 +781,11 @@ sub _output_loop {
    $_->($self, \$_DAU_R_SOCK) for (@{ $_plugin_loop_begin });
 
    ## Call on hash function. Exit loop when workers have completed.
+   if (defined $self->{init_relay}) {
+      print {$self->{_rla_w_sock}->[0]} $self->{init_relay} . "\n";
+      $_rla_chunkid = $_rla_nextid = 0;
+   }
+
    while (1) {
       $_func = <$_DAT_R_SOCK>;
       next unless (defined $_func);
@@ -782,6 +800,11 @@ sub _output_loop {
       }
 
       last unless ($self->{_total_running});
+   }
+
+   if (defined $self->{init_relay}) {
+      my $_RLA_R_SOCK = $self->{_rla_r_sock}->[$_rla_nextid];
+      <$_RLA_R_SOCK>;
    }
 
    ## Call module's loop_end routine for modules plugged into MCE.

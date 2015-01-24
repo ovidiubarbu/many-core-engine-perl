@@ -462,8 +462,15 @@ sub _worker_do {
    local $\ = undef if (defined $\);
 
    flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
+
+   if (exists $self->{_rla_lastid}) {
+      print {$_DAT_W_SOCK} OUTPUT_W_RLA . $LF . $_chn . $LF;
+      print {$_DAU_W_SOCK} (delete $self->{_rla_lastid}) . $LF;
+   }
+
    print {$_DAT_W_SOCK} OUTPUT_W_DNE . $LF . $_chn . $LF;
    print {$_DAU_W_SOCK} $_task_id . $LF;
+
    flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
 
    return;

@@ -59,7 +59,7 @@ DESCRIPTION
           Specify number of workers for MCE   -- default: 3
 
    --chunk-size CHUNK_SIZE
-          Specify chunk size for MCE          -- default: 1 MiB
+          Specify chunk size for MCE          -- default: 2 MiB
 
    -n     Number the output lines, starting at 1
    -u     Disable output buffering
@@ -104,7 +104,7 @@ EXAMPLES
 my $flag = sub { 1; };
 my $isOk = sub { (@ARGV == 0 or $ARGV[0] =~ /^-/) ? usage() : shift @ARGV; };
 
-my $chunk_size  = '1m';
+my $chunk_size  = '2m';
 my $max_workers = 3;
 my $skip_args   = 0;
 
@@ -156,12 +156,27 @@ while ( my $arg = shift @ARGV ) {
 my $mce = MCE->new(
 
    chunk_size  => $chunk_size, max_workers => $max_workers,
+   init_relay  => ($n_flag) ? 0 : undef,
    use_slurpio => 1,
 
    user_func => sub {
       my ($mce, $chunk_ref, $chunk_id) = @_;
 
-      MCE->do('display_chunk', $$chunk_ref .':'. $chunk_id);
+      if ($n_flag) {
+         my $output = ''; my $line_count = ($$chunk_ref =~ tr/\n//);
+         my $lines_read = MCE::relay { $_ + $line_count };
+
+         open my $fh, '<', $chunk_ref;
+         $output .= sprintf "%6d\t%s", ++$lines_read, $_ while (<$fh>);
+         close $fh;
+
+         $output .= ":$chunk_id";
+         MCE->do('display_chunk', $output);
+      }
+      else {
+         $$chunk_ref .= ":$chunk_id";
+         MCE->do('display_chunk', $$chunk_ref);
+      }
 
       return;
    }
@@ -190,31 +205,17 @@ sub display_chunk {
 
    substr($_[0], -$chop_len, $chop_len, '');
 
-   if ($n_flag) {
-      $tmp{$chunk_id} = $_[0];
-
-      while (1) {
-         last unless exists $tmp{$order_id};
-
-         open my $fh, '<', \$tmp{$order_id};
-         printf "%6d\t%s", ++$lines, $_ while (<$fh>);
-         close $fh;
-
-         delete $tmp{$order_id++};
-      }
+   if ($chunk_id == $order_id && keys %tmp == 0) {
+      ## no need to save in cache if orderly
+      print $_[0];
+      $order_id++;
    }
    else {
-      if ($chunk_id == $order_id && keys %tmp == 0) {
-         print $_[0];
-         $order_id++;
-      }
-      else {
-         $tmp{$chunk_id} = $_[0];
-
-         while (1) {
-            last unless exists $tmp{$order_id};
-            print delete $tmp{$order_id++};
-         }
+      ## hold temporarily otherwise
+      $tmp{$chunk_id} = $_[0];
+      while (1) {
+         last unless exists $tmp{$order_id};
+         print delete $tmp{$order_id++};
       }
    }
 
