@@ -6,21 +6,7 @@
    At the time, BioUtil processed by lines. I thought (not knowing what
    I was getting into) why not process by records instead via $/ = "\n>".
 
-   There are four folks whom have inspired me along the way.
-
-   Demian Riccardi  He mentioned on making an annoucement to BioPerl.
-                    But, I had nothing to offer as far as examples.
-
-   Hisham ElDai     He made a suggestion on downloading hg19.fa. Thus, the
-                    reason for this release in lowering memory consumption.
-
-   Jillian Rowe     Mentioning Scientist using MCE every day. This inspired
-                    me to not give up, especially with this release.
-
-   Wei Shen         Author of BioUtil. The FastaReader function
-                    inspired me to write parallel examples using MCE.
-
-## Directory Content
+   -- Directory contents
 
    README              This readme file
    fasta_aidx.pl       FASTA Indexer : Parallel FASTA index generation
@@ -36,7 +22,9 @@
       fasta_seqlen.c   C code for better performance
       sample.fasta     Sample FASTA file
 
-## FASTA Index Generator
+## Synopsis
+
+   -- FASTA Aidx
 
    fasta_aidx.pl [ /path/to/fastafile.fa ]
    fasta_aidx.pl < include/sample.fasta     ## output sent to STDOUT
@@ -47,11 +35,27 @@
    NPROCS=4 CKSIZE=4m  FAIDXC=1 perl fasta_aidx.pl uniref.fa  ## Inline C
    NPROCS=4 CKSIZE=64m FAIDXC=1 perl fasta_aidx.pl hg19.fa
 
-## FASTA Reader
+   -- FASTA Reader
 
    fasta_rdr3.pl [ /path/to/fastafile.fa [ trim_seq ] ]
    fasta_rdr3.pl < include/sample.fasta     ## output sent to STDOUT
 
    NPROCS=4 CKSIZE=4m perl fasta_rdr3.pl uniref.fa 0 | wc -l
    NPROCS=4 CKSIZE=4m perl fasta_rdr3.pl uniref.fa 1 | wc -l
+
+## History
+
+   -- Four folks have inspired me along the way
+
+   Demian Riccardi  Mentioned on making an annoucement to BioPerl.
+                    I had nothing to offer as far as examples until now.
+
+   Hisham ElDai     Made a suggestion on downloading hg19.fa. Thus, the
+                    reason for lowering memory consumption.
+
+   Jillian Rowe     Mentioned Scientist using MCE every day. This inspired
+                    me to not give up, especially with this release.
+
+   Wei Shen         Author of BioUtil. The FastaReader function inspired
+                    me to write parallel examples.
 
