@@ -56,7 +56,7 @@ DESCRIPTION
           Specify number of workers for MCE   -- default: 'auto'
 
    --chunk-size CHUNK_SIZE
-          Specify chunk size for MCE          -- default: 2M
+          Specify chunk size for MCE          -- default: 2 MiB
 
    -l     Display the number of lines for the file
 
@@ -158,7 +158,7 @@ sub preserve_order {
       my ($chunk_id, $line_count, $output_ref) = @_;
 
       if ($chunk_id == $order_id && keys %tmp == 0) {
-         ## no need to save in cache if already orderly
+         ## no need to save in cache if orderly
          print STDERR ${ $output_ref };
          $order_id++;
       }

@@ -97,10 +97,12 @@ exit;
          substr($_[0], -$chop_len, $chop_len, '');
 
          if ($chunk_id == $order_id && keys %tmp == 0) {
+            ## no need to save in cache if orderly
             print {$output_fh} $_[0];
             $order_id++;
          }
          else {
+            ## hold temporarily otherwise
             $tmp{$chunk_id} = $_[0];
             while (1) {
                last unless exists $tmp{$order_id};
