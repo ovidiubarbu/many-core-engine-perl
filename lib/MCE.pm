@@ -28,7 +28,7 @@ use Socket qw( :crlf PF_UNIX PF_UNSPEC SOCK_STREAM );
 use Symbol qw( qualify_to_ref );
 use Storable qw( );
 
-use Scalar::Util qw( looks_like_number );
+use Scalar::Util qw( looks_like_number weaken );
 use Time::HiRes qw( sleep time );
 use MCE::Signal;
 use bytes;
@@ -1439,33 +1439,44 @@ sub shutdown {
 ##
 ###############################################################################
 
-sub relay {
+sub relay (&@) {
 
-   my $x = shift; my $self = ref($x) ? $x : $MCE;
+   my ($self, $_code);
+
+   if (ref $_[0] eq 'CODE') {
+      ($self, $_code) = ($MCE, shift);
+   } else {
+      my $x = shift; $self = ref($x) ? $x : $MCE;
+      $_code = shift;
+   }
 
    _croak('MCE::relay: method cannot be called by the manager process')
       unless ($self->{_wid});
    _croak('MCE::relay: method cannot be called by this sub task')
       if ($self->{_task_id} > 0);
-   _croak('MCE::relay: the init_relay option is not specified')
+   _croak('MCE::relay: init_relay is not specified')
       unless (defined $self->{init_relay});
 
-   my $_code = shift;
-
    if (ref $_code eq 'CODE') {
-      my $_chunk_id    = $self->{_chunk_id};
-      my $_max_workers = $self->{max_workers};
+      weaken $_code;
 
-      my $_chn = ($_chunk_id - 1) % $_max_workers;
-      my $_nxt = $_chn + 1; $_nxt = 0 if ($_nxt == $_max_workers);
+      my $_max_workers = $self->{max_workers};
+      my $_chn = ($self->{_chunk_id} - 1) % $_max_workers;
+
+      my $_nxt = $_chn + 1;
+         $_nxt = 0 if ($_nxt == $_max_workers);
 
       my $_rdr = $self->{_rla_r_sock}->[$_chn];
       my $_wtr = $self->{_rla_w_sock}->[$_nxt];
 
       local $_ = <$_rdr>; chomp $_; my $_val = $_code->();
+
       print {$_wtr} $_val . "\n";
 
       return $_;
+   }
+   else {
+      _croak('MCE::relay: the first argument is not a code block');
    }
 
    return;
