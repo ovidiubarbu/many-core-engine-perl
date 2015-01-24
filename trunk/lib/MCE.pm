@@ -614,10 +614,13 @@ sub spawn {
 
    ## Create sockets for relaying. Write initial value.
    if (defined $_init_relay) {
-      if (defined $self->{user_tasks}->[0]->{max_workers}) {
-         _create_socket_pair($self, '_rla_r_sock', '_rla_w_sock', $_)
-            for (0 .. $self->{user_tasks}->[0]->{max_workers} - 1);
-      } else {
+      if (defined $self->{user_tasks}) {
+         if (defined $self->{user_tasks}->[0]->{max_workers}) {
+            _create_socket_pair($self, '_rla_r_sock', '_rla_w_sock', $_)
+               for (0 .. $self->{user_tasks}->[0]->{max_workers} - 1);
+         }
+      }
+      unless (defined $self->{_rla_r_sock}) {
          _create_socket_pair($self, '_rla_r_sock', '_rla_w_sock', $_)
             for (0 .. $_max_workers - 1);
       }
