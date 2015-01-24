@@ -78,7 +78,7 @@ sub mce_exit        (@) { return $MCE::MCE->exit(@_); }
 sub mce_gather      (@) { return $MCE::MCE->gather(@_); }
 sub mce_last        ( ) { return $MCE::MCE->last(); }
 sub mce_next        ( ) { return $MCE::MCE->next(); }
-sub mce_relay       (@) { return $MCE::MCE->relay(@_); }
+sub mce_relay      (&@) { return $MCE::MCE->relay(@_); }
 sub mce_sendto    (;*@) { return $MCE::MCE->sendto(@_); }
 sub mce_sync        ( ) { return $MCE::MCE->sync(); }
 sub mce_yield       ( ) { return $MCE::MCE->yield(); }

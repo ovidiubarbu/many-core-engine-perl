@@ -1,16 +1,11 @@
 #!/usr/bin/env perl
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## This script will report line numbers containing null values.
+## This script outputs line numbers containing null values.
 ## Matches on regular expressions:  /\|\|/, /\|\t\s*\|/, or /\| \s*\|/
 ## Null value findings are reported to STDERR.
 ##
-## Another use case of MCE chunking away at a use case scenario in which
-## one wants to determine if any lines contain null fields, excluding
-## the first and last fields. Think of a large file with very long lines.
-##
-## MCE does very well and runs much faster than the binary egrep can.
-## Slurp IO with MCE is extremely fast. So, no matter how many workers
+## Slurp IO in MCE is extremely fast. So, no matter how many workers
 ## you give to the problem, only a single worker slurps the next chunk
 ## at a given time. You get "sustained" sequential IO plus the workers
 ## for parallel processing.
@@ -34,6 +29,7 @@ sub INIT {
 }
 
 use MCE;
+use MCE::Subs;
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -58,7 +54,7 @@ DESCRIPTION
    The following options are available:
 
    --max-workers MAX_WORKERS
-          Specify number of workers for MCE   -- default: 8
+          Specify number of workers for MCE   -- default: 'auto'
 
    --chunk-size CHUNK_SIZE
           Specify chunk size for MCE          -- default: 2M
@@ -83,11 +79,11 @@ my $flag = sub { 1; };
 my $isOk = sub { (@ARGV == 0 or $ARGV[0] =~ /^-/) ? usage() : shift @ARGV; };
 
 my $chunk_size  = 2097152;  ## 2M
-my $max_workers = 8;
+my $max_workers = 'auto';
 my $skip_args   = 0;
 
 my $l_flag = 0;
-my $file   = ();
+my $file;
 
 while ( my $arg = shift @ARGV ) {
    unless ($skip_args) {
@@ -129,7 +125,7 @@ if (-d $file) {
 ##
 ###############################################################################
 
-## It's actually faster to check them separately versus combining them
+## It is actually faster to check them separately versus combining them
 ## into one regex delimited by |.
 
 my @patterns = ('\|\|', '\|\t\s*\|', '\| \s*\|');
@@ -142,7 +138,8 @@ sub user_func {
    my ($mce, $chunk_ref, $chunk_id) = @_;
    my ($found_match, $line_count, @lines);
 
-   ## Check each one individually -- it's faster than doing (?:...|...|...)
+   ## Check each regex individually -- faster than (?:...|...|...)
+   ## This is optional, was done to quickly determine for any patterns.
 
    for (0 .. @patterns - 1) {
       if ($$chunk_ref =~ /$patterns[$_]/) {
@@ -152,35 +149,40 @@ sub user_func {
    }
 
    ## Slurp IO is enabled. $chunk_ref points to the raw scalar chunk.
-   ## Each worker receives a chunk relatively fast. Worker processes
-   ## chunk from memory.
+   ## Each worker receives a chunk relatively fast.
 
    open my $_MEM_FH, '<', $chunk_ref;
    binmode $_MEM_FH;
 
    if ($found_match) {
-      while (<$_MEM_FH>) {
-         push @lines, $. if (/$re/);
+      while (<$_MEM_FH>) {                ## append line numbers containing
+         push @lines, $. if (/$re/);      ## any matches
       }
    }
    else {
-      1 while (<$_MEM_FH>);
+      1 while (<$_MEM_FH>);               ## otherwise, read quickly
    }
 
-   ## All workers report the last line count read regardless on
-   ## whether matching lines were found. The reason is that other
-   ## workers may find matching lines and the callback function
-   ## needs to accurately report line numbers.
-
-   $line_count = $.;
+   $line_count = $.;                      ## obtain the number of lines
    close $_MEM_FH;
 
-   my %result = (
-      'found_match' => $found_match, 'line_count' => $line_count,
-      'lines' => \@lines
-   );
+   ## Relaying is orderly and driven by chunk_id when processing data, otherwise
+   ## task_wid. Only the first sub-task is allowed to relay information.
+   ##
+   ## Relay the total lines read. $_ is same as $_total_lines inside the block.
+   ## my $total_lines = MCE->relay( sub { $_ + $line_count } );
 
-   MCE->gather($chunk_id, \%result);
+   my $total_lines = MCE::relay { $_ + $line_count };
+
+   ## Gather output.
+
+   my $output = '';
+
+   for (@lines) {
+      $output .= "NULL value at line " . ($_ + $total_lines) . " in $file\n";
+   }
+
+   MCE->gather($chunk_id, \$output, $line_count);
 
    return;
 }
@@ -199,35 +201,26 @@ sub preserve_order {
    my %tmp; my $order_id = 1;
 
    return sub {
-      my ($chunk_id, $data_ref) = @_;
-      $tmp{$chunk_id} = $data_ref;
+      my ($chunk_id, $output_ref) = (shift, shift);
+
+      $total_lines += shift;
+      $tmp{$chunk_id} = $output_ref;
 
       while (1) {
          last unless exists $tmp{$order_id};
-         my $r = $tmp{$order_id}; my $e;
-
-         if ($r->{found_match}) {
-            for (@{ $r->{lines} }) {
-               $e = "NULL value at line " . ($_ + $total_lines) . " in $file";
-               print {*STDERR} "Warning: ", $e, "\n";
-            }
-         }
-
-         $total_lines += $r->{line_count};
-         delete $tmp{$order_id++};
+         print STDERR ${ delete $tmp{$order_id++} };
       }
    };
 }
 
-## Configure MCE and run. Display total lines read if specified.
+## Configure MCE and run. Display the total lines read if specified.
 
 my $mce = MCE->new(
    chunk_size => $chunk_size, max_workers => $max_workers,
    input_data => $file, gather => preserve_order,
-   user_func => \&user_func, use_slurpio => 1
-);
-
-$mce->run;
+   user_func  => \&user_func, use_slurpio => 1,
+   init_relay => 0
+)->run;
 
 print "$total_lines $file\n" if ($l_flag);
 
