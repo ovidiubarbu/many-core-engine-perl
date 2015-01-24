@@ -29,7 +29,6 @@ sub INIT {
 }
 
 use MCE;
-use MCE::Subs;
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -78,7 +77,7 @@ EXIT STATUS
 my $flag = sub { 1; };
 my $isOk = sub { (@ARGV == 0 or $ARGV[0] =~ /^-/) ? usage() : shift @ARGV; };
 
-my $chunk_size  = 2097152;  ## 2M
+my $chunk_size  = '2m';
 my $max_workers = 'auto';
 my $skip_args   = 0;
 
@@ -119,19 +118,72 @@ if (-d $file) {
    exit 1;
 }
 
-###############################################################################
-## ----------------------------------------------------------------------------
-## Configure regex variables and define user_func for MCE.
-##
-###############################################################################
-
-## It is actually faster to check them separately versus combining them
-## into one regex delimited by |.
+## It is faster to pattern match separately versus combining them
+## into one regex delimited by '|'.
 
 my @patterns = ('\|\|', '\|\t\s*\|', '\| \s*\|');
 my $re = '(?:' . join('|', @patterns) . ')';
 
 $re = qr/$re/;
+
+## Report line numbers containing null values.
+## Display the total lines read.
+
+my $total_lines = 0;
+
+my $mce = MCE->new(
+   chunk_size => $chunk_size, max_workers => $max_workers,
+   input_data => $file, gather => preserve_order(),
+   user_func  => \&user_func, use_slurpio => 1,
+   init_relay => 0
+)->run;
+
+print "$total_lines $file\n" if ($l_flag);
+
+exit;
+
+###############################################################################
+## ----------------------------------------------------------------------------
+## Manager function(s).
+##
+###############################################################################
+
+## Output iterator for gather for preserving output order.
+
+sub preserve_order {
+
+   my %tmp; my $order_id = 1;
+
+   return sub {
+      my ($chunk_id, $line_count, $output_ref) = @_;
+
+      if ($chunk_id == $order_id && keys %tmp == 0) {
+         ## no need to save in cache if already orderly
+         print STDERR ${ $output_ref };
+         $order_id++;
+      }
+      else {
+         ## hold temporarily otherwise
+         $tmp{$chunk_id} = $output_ref;
+         while (1) {
+            last unless exists $tmp{$order_id};
+            print STDERR ${ delete $tmp{$order_id++} };
+         }
+      }
+
+      $total_lines += $line_count;
+
+      return;
+   };
+}
+
+###############################################################################
+## ----------------------------------------------------------------------------
+## Worker function(s).
+##
+###############################################################################
+
+## The user_func block is called once per each input_data chunk.
 
 sub user_func {
 
@@ -154,73 +206,38 @@ sub user_func {
    open my $_MEM_FH, '<', $chunk_ref;
    binmode $_MEM_FH;
 
-   if ($found_match) {
-      while (<$_MEM_FH>) {                ## append line numbers containing
-         push @lines, $. if (/$re/);      ## any matches
+   if ($found_match) {               ## append line number(s) if found match
+      my ($re1, $re2, $re3) = @patterns;
+      while (<$_MEM_FH>) {
+       # push @lines, $. if (/$re/);
+         push @lines, $. if /$re1/ or /$re2/ or /$re3/;
       }
    }
-   else {
-      1 while (<$_MEM_FH>);               ## otherwise, read quickly
+   else {                            ## read quickly otherwise
+      1 while (<$_MEM_FH>);
    }
 
-   $line_count = $.;                      ## obtain the number of lines
+   $line_count = $.;                 ## obtain number of lines read
    close $_MEM_FH;
 
    ## Relaying is orderly and driven by chunk_id when processing data, otherwise
    ## task_wid. Only the first sub-task is allowed to relay information.
-   ##
-   ## Relay the total lines read. $_ is same as $_total_lines inside the block.
-   ## my $total_lines = MCE->relay( sub { $_ + $line_count } );
 
-   my $total_lines = MCE::relay { $_ + $line_count };
+   ## Relay the total lines read. $_ is same as $lines_read inside the block.
+   ## my $lines_read = MCE->relay( sub { $_ + $line_count } );
+
+   my $lines_read = MCE::relay { $_ + $line_count };
 
    ## Gather output.
 
    my $output = '';
 
    for (@lines) {
-      $output .= "NULL value at line " . ($_ + $total_lines) . " in $file\n";
+      $output .= "NULL value at line ".($_ + $lines_read)." in $file\n";
    }
 
-   MCE->gather($chunk_id, \$output, $line_count);
+   MCE->gather($chunk_id, $line_count, \$output);
 
    return;
 }
-
-###############################################################################
-## ----------------------------------------------------------------------------
-## Report line numbers containing null values.
-##
-###############################################################################
-
-## Make an output iterator for gather. Output order is preserved.
-
-my $total_lines = 0;
-
-sub preserve_order {
-   my %tmp; my $order_id = 1;
-
-   return sub {
-      my ($chunk_id, $output_ref) = (shift, shift);
-
-      $total_lines += shift;
-      $tmp{$chunk_id} = $output_ref;
-
-      while (1) {
-         last unless exists $tmp{$order_id};
-         print STDERR ${ delete $tmp{$order_id++} };
-      }
-   };
-}
-
-## Configure MCE and run. Display the total lines read if specified.
-
-my $mce = MCE->new(
-   chunk_size => $chunk_size, max_workers => $max_workers,
-   input_data => $file, gather => preserve_order,
-   user_func  => \&user_func, use_slurpio => 1,
-   init_relay => 0
-)->run;
-
-print "$total_lines $file\n" if ($l_flag);
 
