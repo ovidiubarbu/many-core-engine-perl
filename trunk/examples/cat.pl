@@ -164,7 +164,7 @@ my $mce = MCE->new(
 
       if ($n_flag) {
          my $output = ''; my $line_count = ($$chunk_ref =~ tr/\n//);
-         my $lines_read = MCE::relay { $_ + $line_count };
+         my $lines_read = MCE::relay { $_ += $line_count };
 
          open my $fh, '<', $chunk_ref;
          $output .= sprintf "%6d\t%s", ++$lines_read, $_ while (<$fh>);

@@ -388,6 +388,10 @@ sub go (&@) {
 
    MCE::_restore_state;
 
+   if (exists $_MCE->{_rla_return}) {
+      $MCE::MCE->{_rla_return} = delete $_MCE->{_rla_return};
+   }
+
    if ($_wantarray) {
       return map { @{ $_ } } delete @_tmp{ 1 .. $_total_chunks };
    }

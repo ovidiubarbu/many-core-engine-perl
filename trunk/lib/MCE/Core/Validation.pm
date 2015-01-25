@@ -153,6 +153,12 @@ sub _validate_args_s {
               $_ref ne 'ARRAY' && $_ref ne 'HASH' && $_ref ne 'CODE' );
    }
 
+   if (defined $_s->{init_relay}) {
+      my $_ref = ref $_s->{init_relay};
+      _croak("$_tag: (init_relay) is not valid")
+         if ($_ref ne '' && $_ref ne 'ARRAY' && $_ref ne 'HASH');
+   }
+
    if (defined $_s->{sequence}) {
       my $_seq = $_s->{sequence};
 

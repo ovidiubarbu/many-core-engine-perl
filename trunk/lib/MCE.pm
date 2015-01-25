@@ -56,7 +56,7 @@ BEGIN {
    ## _chunk_id _mce_sid _mce_tid _pids _run_mode _single_dim _thrs _tids _wid
    ## _exiting _exit_pid _total_exited _total_running _total_workers _task_wid
    ## _send_cnt _sess_dir _spawned _state _status _task _task_id _wrk_status
-   ## _last_sref _init_total_workers _rla_lastid
+   ## _last_sref _init_total_workers _rla_return
    ##
    ## _bsb_r_sock _bsb_w_sock _bse_r_sock _bse_w_sock _com_r_sock _com_w_sock
    ## _dat_r_sock _dat_w_sock _que_r_sock _que_w_sock _data_channels _lock_chn
@@ -1436,7 +1436,7 @@ sub shutdown {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Relay method.
+## Relay methods.
 ##
 ###############################################################################
 
@@ -1463,20 +1463,65 @@ sub relay (&@) {
 
       my $_chn = ($self->{_chunk_id} - 1) % $self->{max_workers};
       my $_nxt = $_chn + 1; $_nxt = 0 if ($_nxt == $self->{max_workers});
-
-      $self->{_rla_lastid} = $self->{_chunk_id} .':'. $_nxt;
-
       my $_rdr = $self->{_rla_r_sock}->[$_chn];
       my $_wtr = $self->{_rla_w_sock}->[$_nxt];
 
-      local $_ = <$_rdr>; chomp $_; my $_val = $_code->();
+      $self->{_rla_return} = $self->{_chunk_id} .':'. $_nxt;
+      my ($_len, $_ref); local $_;
 
-      print {$_wtr} $_val . "\n";
+      chomp($_len = <$_rdr>);  read $_rdr, $_, $_len;  $_ref = chop $_;
 
-      return $_;
+      if ($_ref == 0) {                              ## scalar value
+         my $_ret = $_;  $_code->();
+         my $_tmp = $_ . '0';
+         print {$_wtr} length($_tmp) . $LF . $_tmp;
+         return unless defined wantarray;
+         return $_ret;
+      }
+      elsif ($_ref == 1) {                           ## hash reference
+         my %_ret = %{ $self->{thaw}($_) };
+         local $_ = { %_ret };  $_code->();
+         my $_tmp = $self->{freeze}($_) . '1';
+         print {$_wtr} length($_tmp) . $LF . $_tmp;
+         return unless defined wantarray;
+         return %_ret;
+      }
+      elsif ($_ref == 2) {                           ## array reference
+         my @_ret = @{ $self->{thaw}($_) };
+         local $_ = [ @_ret ];  $_code->();
+         my $_tmp = $self->{freeze}($_) . '2';
+         print {$_wtr} length($_tmp) . $LF . $_tmp;
+         return unless defined wantarray;
+         return @_ret;
+      }
+      else {
+         ## should never reach here due to validation prior to running
+      }
    }
    else {
       _croak('MCE::relay: the first argument is not a code block');
+   }
+
+   return;
+}
+
+sub relay_final {
+
+   my $x = shift; my $self = ref($x) ? $x : $MCE;
+
+   _croak('MCE::relay_final: method cannot be called by the worker process')
+      if ($self->{_wid});
+
+   if (exists $self->{_rla_return}) {
+      if (ref $self->{_rla_return} eq '') {
+         return delete $self->{_rla_return};
+      }
+      elsif (ref $self->{_rla_return} eq 'HASH') {
+         return %{ delete $self->{_rla_return} };
+      }
+      elsif (ref $self->{_rla_return} eq 'ARRAY') {
+         return @{ delete $self->{_rla_return} };
+      }
    }
 
    return;
@@ -1592,9 +1637,9 @@ sub abort {
 
          flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
 
-         if (exists $self->{_rla_lastid}) {
+         if (exists $self->{_rla_return}) {
             print {$_DAT_W_SOCK} OUTPUT_W_RLA . $LF . $_chn . $LF;
-            print {$_DAU_W_SOCK} (delete $self->{_rla_lastid}) . $LF;
+            print {$_DAU_W_SOCK} (delete $self->{_rla_return}) . $LF;
          }
 
          print {$_DAT_W_SOCK} OUTPUT_W_ABT . $LF . $_chn . $LF;
@@ -1648,9 +1693,9 @@ sub exit {
 
       flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
 
-      if (exists $self->{_rla_lastid}) {
+      if (exists $self->{_rla_return}) {
          print {$_DAT_W_SOCK} OUTPUT_W_RLA . $LF . $_chn . $LF;
-         print {$_DAU_W_SOCK} (delete $self->{_rla_lastid}) . $LF;
+         print {$_DAU_W_SOCK} (delete $self->{_rla_return}) . $LF;
       }
 
       print {$_DAT_W_SOCK} OUTPUT_W_EXT . $LF . $_chn . $LF;

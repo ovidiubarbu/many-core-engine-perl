@@ -413,6 +413,10 @@ sub go (@) {
 
    MCE::_restore_state;
 
+   if (exists $_MCE->{_rla_return}) {
+      $MCE::MCE->{_rla_return} = delete $_MCE->{_rla_return};
+   }
+
    return ((defined $_wa) ? @_a : ());
 }
 

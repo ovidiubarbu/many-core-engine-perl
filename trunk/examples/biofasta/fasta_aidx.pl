@@ -132,7 +132,7 @@ exit;
       ## relaying is orderly and driven by chunk_id behind the scene
 
       my $acc = $faidx->($slurp_ref, \@output);
-      my $off = MCE->relay(sub { $_ + $acc });
+      my $off = MCE::relay { $_ += $acc };
 
       ## update offsets; reader appended 3 items (left, $c3, right)
       ## e.g. "$c1\t$c2\t", $c3, "\t$c4\t$c5\n"

@@ -501,6 +501,10 @@ sub go (@) {
 
    MCE::_restore_state;
 
+   if (exists $_MCE->{_rla_return}) {
+      $MCE::MCE->{_rla_return} = delete $_MCE->{_rla_return};
+   }
+
    return map { @{ $_ } } delete @_tmp{ 1 .. $_order_id - 1 }
       unless (defined $_aref);
 
