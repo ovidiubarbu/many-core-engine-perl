@@ -6,6 +6,19 @@
    At the time, BioUtil processed by lines. I thought (not knowing what
    I was getting into) why not process by records instead via $/ = "\n>".
 
+   The installation of Inline::C is optional unless running with FAIDXC=1.
+
+      apt-get install \   (Debian/Ubuntu)
+         gcc perl-modules libinline-perl libparse-recdescent-perl
+
+      pkg install \       (FreeBSD/PC-BSD/TrueOS)
+         gcc p5-ExtUtils-MakeMaker p5-Inline p5-Parse-RecDescent
+
+      yum install \       (Red Hat/CentOS/Fedora)
+         gcc perl-ExtUtils-MakeMaker perl-Inline perl-Parse-RecDescent
+
+      FAIDXC=1 perl fasta_aidx.pl < include/sample.fasta
+
    -- Directory contents
 
    README              This readme file
@@ -24,7 +37,10 @@
 
 ## Synopsis
 
-   -- FASTA Aidx
+   The examples were created to demonstrate parallelism in MCE;
+   fasta_aidx.pl is not an official indexer by any means.
+
+   -- FASTA Indexer
 
    fasta_aidx.pl [ /path/to/fastafile.fa ]
    fasta_aidx.pl < include/sample.fasta     ## output sent to STDOUT
@@ -50,8 +66,8 @@
    Demian Riccardi  Mentioned on making an annoucement to BioPerl.
                     I had nothing to offer as far as examples until now.
 
-   Hisham ElDai     Made a suggestion on downloading hg19.fa. Thus, the
-                    reason for lowering memory consumption.
+   Hisham ElDai     Made a suggestion on downloading hg19.fa. This release
+                    consumes lesser memory for processing input data.
 
    Jillian Rowe     Mentioned Scientist using MCE every day. This inspired
                     me to not give up, especially with this release.
