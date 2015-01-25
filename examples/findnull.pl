@@ -129,8 +129,6 @@ $re = qr/$re/;
 ## Report line numbers containing null values.
 ## Display the total lines read.
 
-my $total_lines = 0;
-
 my $mce = MCE->new(
    chunk_size => $chunk_size, max_workers => $max_workers,
    input_data => $file, gather => preserve_order(),
@@ -138,7 +136,10 @@ my $mce = MCE->new(
    init_relay => 0
 )->run;
 
-print "$total_lines $file\n" if ($l_flag);
+if ($l_flag) {
+   my $total_lines = MCE->relay_final;
+   print "$total_lines $file\n" if ($l_flag);
+}
 
 exit;
 
@@ -155,7 +156,7 @@ sub preserve_order {
    my %tmp; my $order_id = 1;
 
    return sub {
-      my ($chunk_id, $line_count, $output_ref) = @_;
+      my ($chunk_id, $output_ref) = @_;
 
       if ($chunk_id == $order_id && keys %tmp == 0) {
          ## no need to save in cache if orderly
@@ -170,8 +171,6 @@ sub preserve_order {
             print STDERR ${ delete $tmp{$order_id++} };
          }
       }
-
-      $total_lines += $line_count;
 
       return;
    };
@@ -224,9 +223,9 @@ sub user_func {
    ## task_wid. Only the first sub-task is allowed to relay information.
 
    ## Relay the total lines read. $_ is same as $lines_read inside the block.
-   ## my $lines_read = MCE->relay( sub { $_ + $line_count } );
+   ## my $lines_read = MCE->relay( sub { $_ += $line_count } );
 
-   my $lines_read = MCE::relay { $_ + $line_count };
+   my $lines_read = MCE::relay { $_ += $line_count };
 
    ## Gather output.
 
@@ -236,7 +235,7 @@ sub user_func {
       $output .= "NULL value at line ".($_ + $lines_read)." in $file\n";
    }
 
-   MCE->gather($chunk_id, $line_count, \$output);
+   MCE->gather($chunk_id, \$output);
 
    return;
 }

@@ -65,6 +65,7 @@ sub mce_forchunk    (@) { return $MCE::MCE->forchunk(@_); }
 sub mce_foreach     (@) { return $MCE::MCE->foreach(@_); }
 sub mce_forseq      (@) { return $MCE::MCE->forseq(@_); }
 sub mce_process     (@) { return $MCE::MCE->process(@_); }
+sub mce_relay_final ( ) { return $MCE::MCE->relay_final(); }
 sub mce_run         (@) { return $MCE::MCE->run(@_); }
 sub mce_send        (@) { return $MCE::MCE->send(@_); }
 sub mce_shutdown    ( ) { return $MCE::MCE->shutdown(); }
@@ -131,6 +132,7 @@ sub _export_subs {
       *{ $_package . '::mce_foreach'     } = \&mce_foreach;
       *{ $_package . '::mce_forseq'      } = \&mce_forseq;
       *{ $_package . '::mce_process'     } = \&mce_process;
+      *{ $_package . '::mce_relay_final' } = \&mce_relay_final;
       *{ $_package . '::mce_run'         } = \&mce_run;
       *{ $_package . '::mce_send'        } = \&mce_send;
       *{ $_package . '::mce_shutdown'    } = \&mce_shutdown;
@@ -162,8 +164,6 @@ sub _export_subs {
       *{ $_package . '::mce_say'         } = \&mce_say;
       *{ $_package . '::mce_thaw'        } = \&mce_thaw;
    }
-
-   ## Callable by both the manager and worker processes.
 
    if ($_g_flg) {
       *{ $_package . '::mce_chunk_id'    } = \&mce_chunk_id;
@@ -282,6 +282,8 @@ MCE methods are described in L<MCE::Core|MCE::Core>.
 
 =item mce_process
 
+=item mce_relay_final
+
 =item mce_restart_worker
 
 =item mce_run
@@ -327,6 +329,8 @@ MCE methods are described in L<MCE::Core|MCE::Core>.
 =item mce_print
 
 =item mce_printf
+
+=item mce_relay
 
 =item mce_say
 

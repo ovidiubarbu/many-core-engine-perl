@@ -780,12 +780,28 @@ sub _output_loop {
    ## Call module's loop_begin routine for modules plugged into MCE.
    $_->($self, \$_DAU_R_SOCK) for (@{ $_plugin_loop_begin });
 
-   ## Call on hash function. Exit loop when workers have completed.
+   ## Write initial values for relaying.
    if (defined $self->{init_relay}) {
-      print {$self->{_rla_w_sock}->[0]} $self->{init_relay} . "\n";
+      my $_RLA_W_SOCK = $self->{_rla_w_sock}->[0];
+      my $_init_relay;
+
+      if (ref $self->{init_relay} eq '') {
+         $_init_relay = $self->{init_relay} . '0';
+      }
+      elsif (ref $self->{init_relay} eq 'HASH') {
+         $_init_relay = $self->{freeze}($self->{init_relay}) . '1';
+      }
+      elsif (ref $self->{init_relay} eq 'ARRAY') {
+         $_init_relay = $self->{freeze}($self->{init_relay}) . '2';
+      }
+
+      print {$_RLA_W_SOCK} length($_init_relay) . $LF . $_init_relay;
+      delete $self->{_rla_return} if (exists $self->{_rla_return});
+
       $_rla_chunkid = $_rla_nextid = 0;
    }
 
+   ## Call on hash function. Exit loop when workers have completed.
    while (1) {
       $_func = <$_DAT_R_SOCK>;
       next unless (defined $_func);
@@ -802,9 +818,18 @@ sub _output_loop {
       last unless ($self->{_total_running});
    }
 
+   ## Obtain final relay values.
    if (defined $self->{init_relay}) {
       my $_RLA_R_SOCK = $self->{_rla_r_sock}->[$_rla_nextid];
-      <$_RLA_R_SOCK>;
+      my ($_len, $_ret); chomp($_len = <$_RLA_R_SOCK>);
+
+      read $_RLA_R_SOCK, $_ret, $_len;
+
+      if (chop $_ret) {
+         $self->{_rla_return} = $self->{thaw}($_ret);
+      } else {
+         $self->{_rla_return} = $_ret;
+      }
    }
 
    ## Call module's loop_end routine for modules plugged into MCE.

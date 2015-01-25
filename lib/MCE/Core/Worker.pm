@@ -463,9 +463,9 @@ sub _worker_do {
 
    flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
 
-   if (exists $self->{_rla_lastid}) {
+   if (exists $self->{_rla_return}) {
       print {$_DAT_W_SOCK} OUTPUT_W_RLA . $LF . $_chn . $LF;
-      print {$_DAU_W_SOCK} (delete $self->{_rla_lastid}) . $LF;
+      print {$_DAU_W_SOCK} (delete $self->{_rla_return}) . $LF;
    }
 
    print {$_DAT_W_SOCK} OUTPUT_W_DNE . $LF . $_chn . $LF;

@@ -1399,6 +1399,37 @@ Do the following if wanting workers to persist between jobs.
 
    $mce->shutdown;
 
+=item ->relay_final ( void )
+
+Call this method to obtain the final relay values after running. See included
+example findnull.pl for other use case.
+
+   use MCE max_workers => 4;
+
+   my $mce = MCE->new(
+      init_relay => [ 0, 100 ],       ## two counters; initial values
+
+      user_func => sub {
+         my ($mce) = @_;
+
+         ## do work ...
+         my ($acc1, $acc2) = (10, 20);
+
+         ## relay counters to next worker
+         ## $mce->relay( sub { $_->[0] += $acc1; $_->[1] += $acc2 } );
+
+         MCE::relay { $_->[0] += $acc1; $_->[1] += $acc2 };
+      }
+   )->run;
+
+   my ($cnt1, $cnt2) = $mce->relay_final;
+
+   print "$cnt1 : $cnt2\n";
+
+   -- Output
+
+   40 : 180
+
 =item ->restart_worker ( void )
 
 One can restart a worker who has died or exited. The job never ends below
@@ -1791,38 +1822,98 @@ not a glob reference.
 
 The relay method is for receiving and passing on information. Specify the
 initial value via the init_relay option. Each worker is configured with a
-unique socket pair when init_relay is specified. Also see included examples
-(findnull.pl and biofasta/fasta_aidx.pl) for other use cases.
+unique socket pair when init_relay is specified. See included examples
+(findnull.pl, cat.pl, and biofasta/fasta_aidx.pl) for other use cases.
 
 Relaying is orderly and driven by chunk_id when processing data, otherwise
 task_wid. Only the first sub-task is allowed to relay information.
 
-   use MCE::Flow;
+Below, relaying multiple values (HASH reference);
+
+   use MCE::Flow max_workers => 4;
 
    mce_flow {
-      max_workers => 4, init_relay => 2,
+      init_relay => { a => 0, b => 10 },
    },
    sub {
-      my $wid = MCE->wid;
+      ## do work ...
+      my ($a, $b) = (1, 2);
 
-      ## Do work
+      ## my %prior_val = MCE->relay( sub { $_->{a} += $a; $_->{b} += $b } );
+      my %prior_val = MCE::relay { $_->{a} += $a; $_->{b} += $b };
 
-      my $num = $wid * 2;
-
-      ## Relay the next value. $_ is same as $val inside the block.
-      ## my $val = MCE->relay( sub { $_ * $num } );
-
-      my $val = MCE::relay { $_ * $num };
-
-      print "$wid : $num : $val\n";
+      MCE->print("$prior_val{a} : $prior_val{b}\n");
    };
+
+   my %final_val = MCE->relay_final;
+
+   print "$final_val{a} : $final_val{b} final\n\n";
 
    -- Output
 
-   1 : 2 : 2
-   2 : 4 : 4
-   3 : 6 : 16
-   4 : 8 : 96
+   0 : 10
+   1 : 12
+   2 : 14
+   3 : 16
+   4 : 18 final
+
+or multiple values (ARRAY reference);
+
+   use MCE::Flow max_workers => 4;
+
+   mce_flow {
+      init_relay => [ 0, 10 ],
+   },
+   sub {
+      ## do work ...
+      my ($a, $b) = (1, 2);
+
+      ## my @prior_val = MCE->relay( sub { $_->[0] += $a; $_->[1] += $b } );
+      my @prior_val = MCE::relay { $_->[0] += $a; $_->[1] += $b };
+
+      MCE->print("$prior_val[0] : $prior_val[1]\n");
+   };
+
+   my @final_val = MCE->relay_final;
+
+   print "$final_val[0] : $final_val[1] final\n\n";
+
+   -- Output
+
+   0 : 10
+   1 : 12
+   2 : 14
+   3 : 16
+   4 : 18 final
+
+or simply a single value.
+
+   use MCE::Flow max_workers => 4;
+
+   mce_flow {
+      init_relay => 100,
+   },
+   sub {
+      ## do work ...
+      my $a = 3;
+
+      ## my $prior_val = MCE->relay( sub { $_ += $a } );
+      my $prior_val = MCE::relay { $_ += $a };
+
+      MCE->print("$prior_val\n");
+   };
+
+   my $final_val = MCE->relay_final;
+
+   print "$final_val final\n\n";
+
+   -- Output
+
+   100
+   103
+   106
+   109
+   112 final
 
 =item ->sendto ( $to, $arg1, ... )
 
