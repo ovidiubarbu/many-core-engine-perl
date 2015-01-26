@@ -1,6 +1,6 @@
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## MCE::Mutex - Simple semaphore for Many-Core Engine.
+## MCE::Mutex - Simple semaphore for Many-core Engine.
 ##
 ###############################################################################
 
@@ -123,7 +123,7 @@ __END__
 
 =head1 NAME
 
-MCE::Mutex - Simple semaphore for Many-Core Engine
+MCE::Mutex - Simple semaphore for Many-core Engine
 
 =head1 VERSION
 

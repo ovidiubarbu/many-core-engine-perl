@@ -5,7 +5,7 @@
 
 This document describes MCE version 1.522.
 
- Many-Core Engine (MCE) for Perl helps enable a new level of performance by
+ Many-core Engine (MCE) for Perl helps enable a new level of performance by
  maximizing all available cores. MCE spawns a pool of workers and therefore
  does not fork a new process per each element of data. Instead, MCE follows
  a bank queuing model. Imagine the line being the data and bank-tellers the
@@ -115,7 +115,7 @@ DEPENDENCIES
 
 COPYRIGHT AND LICENCE
 
- Copyright (C) 2012-2014 by Mario E. Roy <marioeroy AT gmail DOT com>
+ Copyright (C) 2012-2015 by Mario E. Roy <marioeroy AT gmail DOT com>
 
  This program is free software; you can redistribute it and/or modify it
  under the terms of either: the GNU General Public License as published

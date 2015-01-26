@@ -373,7 +373,7 @@ This document describes MCE::Loop version 1.522
 
 =head1 DESCRIPTION
 
-This module provides a parallel loop implementation through Many-Core Engine.
+This module provides a parallel loop implementation through Many-core Engine.
 MCE::Loop is not MCE::Map but more along the lines of an easy way to spin up a
 MCE instance and have user_func pointing to your code block. If you want
 something similar to map, then see L<MCE::Map|MCE::Map>.

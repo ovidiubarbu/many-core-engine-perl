@@ -470,7 +470,7 @@ This document describes MCE::Map version 1.522
 
 =head1 DESCRIPTION
 
-This module provides a parallel map implementation via Many-Core Engine.
+This module provides a parallel map implementation via Many-core Engine.
 MCE incurs a small overhead due to passing of data. A fast code block will
 run faster natively. However, the overhead will likely diminish as the
 complexity increases for the code.
