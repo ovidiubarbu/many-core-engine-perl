@@ -1402,12 +1402,12 @@ Do the following if wanting workers to persist between jobs.
 =item ->relay_final ( void )
 
 Call this method to obtain the final relay values after running. See included
-example findnull.pl for other use case.
+example findnull.pl for another use case.
 
    use MCE max_workers => 4;
 
    my $mce = MCE->new(
-      init_relay => [ 0, 100 ],       ## two counters; initial values
+      init_relay => [ 0, 100 ],       ## initial values (two counters)
 
       user_func => sub {
          my ($mce) = @_;
@@ -1809,9 +1809,9 @@ Say is like print, but implicitly appends a newline.
    MCE->say($fh, $log_msg);
    MCE->say($output_msg);
 
-Caveat: Use the following syntax when passing a reference not a glob or
-file handle. Otherwise, MCE will error indicating the first argument is
-not a glob reference.
+Caveat: Use the following syntax when passing a reference not a glob or file
+handle. Otherwise, MCE will error indicating the first argument is not a glob
+reference.
 
    MCE->print(\*STDOUT, \@array, "\n");
    MCE->print("", \@array, "\n");          ## ok
@@ -1820,13 +1820,17 @@ not a glob reference.
 
 =item relay { ... }
 
-The relay method is for receiving and passing on information. Specify the
-initial value via the init_relay option. Each worker is configured with a
-unique socket pair when init_relay is specified. See included examples
+The relay method is for receiving and passing on information. Relay is enabled
+by specifing the init_relay option which takes a hash or array reference, or a
+scalar value. MCE configures each worker with a unique socket pair. Also see
 (findnull.pl, cat.pl, and biofasta/fasta_aidx.pl) for other use cases.
 
 Relaying is orderly and driven by chunk_id when processing data, otherwise
 task_wid. Only the first sub-task is allowed to relay information.
+
+Inside the code block, $_ points to the hash or array reference, or contains
+the scalar value. Basically, one updates in place. Omitting the code block
+(e.g. MCE::relay) will simply relay without any updates.
 
 Below, relaying multiple values (HASH reference);
 
@@ -1886,7 +1890,7 @@ or multiple values (ARRAY reference);
    3 : 16
    4 : 18 final
 
-or simply a single value.
+or simply a scalar value.
 
    use MCE::Flow max_workers => 4;
 
@@ -1914,6 +1918,49 @@ or simply a single value.
    106
    109
    112 final
+
+=item ->relay_recv ( void )
+
+The relay_recv method allows one to perform an exclusive action prior to
+relaying. Below, the user_func is taken from the cat.pl example. Think of
+obtaining exclusive locking in an orderly fashion. Relaying is chunk_id
+driven (or task_wid when not processing input), thus orderly.
+
+   user_func => sub {
+      my ($mce, $chunk_ref, $chunk_id) = @_;
+
+      if ($n_flag) {
+         my $output = ''; my $line_count = ($$chunk_ref =~ tr/\n//);
+         my $lines_read = MCE::relay { $_ += $line_count };
+
+         open my $fh, '<', $chunk_ref;
+         $output .= sprintf "%6d\t%s", ++$lines_read, $_ while (<$fh>);
+         close $fh;
+
+         $output .= ":$chunk_id";
+         MCE->do('display_chunk', $output);
+      }
+      else {
+         ## The following is another way to have ordered output. Workers
+         ## write directly to STDOUT exclusively without any involvement
+         ## from the manager process. The statements between relay_recv
+         ## and relay run serially and most important orderly.
+         ##
+         ## (This is not recommended for sprintf above requiring extra CPU
+         ## time. Thus, better to run in parallel and send the output to
+         ## the manager process.)
+
+         MCE->relay_recv;             ## my $val = MCE->relay_recv;
+                                      ## should be 0, relay simply forwards
+
+         $| = 1; print $$chunk_ref;   ## exclusive access to STDOUT
+                                      ## important, flush immediately
+
+         MCE->relay;
+      }
+
+      return;
+   } 
 
 =item ->sendto ( $to, $arg1, ... )
 

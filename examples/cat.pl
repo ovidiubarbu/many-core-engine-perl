@@ -156,7 +156,7 @@ while ( my $arg = shift @ARGV ) {
 my $mce = MCE->new(
 
    chunk_size  => $chunk_size, max_workers => $max_workers,
-   init_relay  => ($n_flag) ? 0 : undef,
+   init_relay  => 0,
    use_slurpio => 1,
 
    user_func => sub {
@@ -174,8 +174,22 @@ my $mce = MCE->new(
          MCE->do('display_chunk', $output);
       }
       else {
-         $$chunk_ref .= ":$chunk_id";
-         MCE->do('display_chunk', $$chunk_ref);
+         ## The following is another way to have ordered output. Workers
+         ## write directly to STDOUT exclusively without any involvement
+         ## from the manager process. The statements between relay_recv
+         ## and relay run serially and most important orderly.
+         ##
+         ## (This is not recommended for sprintf above requiring extra CPU
+         ## time. Thus, better to run in parallel and send the output to
+         ## the manager process.)
+
+         MCE->relay_recv;             ## my $val = MCE->relay_recv;
+                                      ## should be 0, relay simply forwards
+
+         $| = 1; print $$chunk_ref;   ## exclusive access to STDOUT
+                                      ## important, flush immediately
+
+         MCE->relay;
       }
 
       return;
