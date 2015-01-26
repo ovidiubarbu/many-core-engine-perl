@@ -79,9 +79,9 @@ sub import {
    no strict 'refs'; no warnings 'redefine';
    my $_pkg = caller;
 
-   *{ $_pkg.'::mce_loop_f' } = \&go_f;
-   *{ $_pkg.'::mce_loop_s' } = \&go_s;
-   *{ $_pkg.'::mce_loop'   } = \&go;
+   *{ $_pkg.'::mce_loop_f' } = \&run_file;
+   *{ $_pkg.'::mce_loop_s' } = \&run_seq;
+   *{ $_pkg.'::mce_loop'   } = \&run;
 
    return;
 }
@@ -132,7 +132,7 @@ sub finish () {
 ##
 ###############################################################################
 
-sub go_f (&@) {
+sub run_file (&@) {
 
    shift if (defined $_[0] && $_[0] eq 'MCE::Loop');
 
@@ -161,7 +161,7 @@ sub go_f (&@) {
 
    @_ = ();
 
-   return go($_code);
+   return run($_code);
 }
 
 ###############################################################################
@@ -170,7 +170,7 @@ sub go_f (&@) {
 ##
 ###############################################################################
 
-sub go_s (&@) {
+sub run_seq (&@) {
 
    shift if (defined $_[0] && $_[0] eq 'MCE::Loop');
 
@@ -208,11 +208,11 @@ sub go_s (&@) {
    _croak("$_tag: (end) is not specified for sequence")
       unless (defined $_end);
 
-   $_params->{sequence_go} = 1;
+   $_params->{sequence_run} = 1;
 
    @_ = ();
 
-   return go($_code);
+   return run($_code);
 }
 
 ###############################################################################
@@ -221,7 +221,7 @@ sub go_s (&@) {
 ##
 ###############################################################################
 
-sub go (&@) {
+sub run (&@) {
 
    shift if (defined $_[0] && $_[0] eq 'MCE::Loop');
 
@@ -276,7 +276,7 @@ sub go (&@) {
 
       if (defined $_params) {
          foreach (keys %{ $_params }) {
-            next if ($_ eq 'sequence_go');
+            next if ($_ eq 'sequence_run');
             next if ($_ eq 'input_data');
             next if ($_ eq 'chunk_size');
 
@@ -308,8 +308,8 @@ sub go (&@) {
          $_MCE->run({
             chunk_size => $_chunk_size, sequence => $_params->{sequence}
          }, 0);
-         if (exists $_params->{sequence_go}) {
-            delete $_params->{sequence_go};
+         if (exists $_params->{sequence_run}) {
+            delete $_params->{sequence_run};
             delete $_params->{sequence};
          }
          delete $_MCE->{sequence};
@@ -595,7 +595,7 @@ possibilities of passing input data into the code block.
 
 =over 3
 
-=item MCE::Loop->go ( sub { code }, iterator )
+=item MCE::Loop->run ( sub { code }, iterator )
 
 =item mce_loop { code } iterator
 
@@ -604,7 +604,7 @@ under "SYNTAX for INPUT_DATA" at L<MCE::Core|MCE::Core>.
 
    mce_loop { $_ } make_iterator(10, 30, 2);
 
-=item MCE::Loop->go ( sub { code }, list )
+=item MCE::Loop->run ( sub { code }, list )
 
 =item mce_loop { code } list
 
@@ -613,7 +613,7 @@ Input data can be defined using a list.
    mce_loop { $_ } 1..1000;
    mce_loop { $_ } [ 1..1000 ];
 
-=item MCE::Loop->go_f ( sub { code }, file )
+=item MCE::Loop->run_file ( sub { code }, file )
 
 =item mce_loop_f { code } file
 
@@ -624,7 +624,7 @@ position among themselves without any interaction from the manager process.
    mce_loop_f { $_ } $file_handle;
    mce_loop_f { $_ } \$scalar;
 
-=item MCE::Loop->go_s ( sub { code }, $beg, $end [, $step, $fmt ] )
+=item MCE::Loop->run_seq ( sub { code }, $beg, $end [, $step, $fmt ] )
 
 =item mce_loop_s { code } $beg, $end [, $step, $fmt ]
 
