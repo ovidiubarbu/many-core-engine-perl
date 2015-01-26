@@ -80,9 +80,9 @@ sub import {
    no strict 'refs'; no warnings 'redefine';
    my $_pkg = caller;
 
-   *{ $_pkg.'::mce_flow_f' } = \&go_f;
-   *{ $_pkg.'::mce_flow_s' } = \&go_s;
-   *{ $_pkg.'::mce_flow'   } = \&go;
+   *{ $_pkg.'::mce_flow_f' } = \&run_file;
+   *{ $_pkg.'::mce_flow_s' } = \&run_seq;
+   *{ $_pkg.'::mce_flow'   } = \&run;
 
    return;
 }
@@ -133,7 +133,7 @@ sub finish () {
 ##
 ###############################################################################
 
-sub go_f (@) {
+sub run_file (@) {
 
    shift if (defined $_[0] && $_[0] eq 'MCE::Flow');
 
@@ -172,7 +172,7 @@ sub go_f (@) {
       pop @_ for ($_pos .. @_ - 1);
    }
 
-   return go(@_);
+   return run(@_);
 }
 
 ###############################################################################
@@ -181,7 +181,7 @@ sub go_f (@) {
 ##
 ###############################################################################
 
-sub go_s (@) {
+sub run_seq (@) {
 
    shift if (defined $_[0] && $_[0] eq 'MCE::Flow');
 
@@ -230,13 +230,13 @@ sub go_s (@) {
    _croak("$_tag: (end) is not specified for sequence")
       unless (defined $_end);
 
-   $_params->{sequence_go} = 1;
+   $_params->{sequence_run} = 1;
 
    if (defined $_pos) {
       pop @_ for ($_pos .. @_ - 1);
    }
 
-   return go(@_);
+   return run(@_);
 }
 
 ###############################################################################
@@ -245,7 +245,7 @@ sub go_s (@) {
 ##
 ###############################################################################
 
-sub go (@) {
+sub run (@) {
 
    shift if (defined $_[0] && $_[0] eq 'MCE::Flow');
 
@@ -351,7 +351,7 @@ sub go (@) {
          my $_p = $_params;
 
          foreach (keys %{ $_p }) {
-            next if ($_ eq 'sequence_go');
+            next if ($_ eq 'sequence_run');
             next if ($_ eq 'max_workers' && ref $_p->{max_workers} eq 'ARRAY');
             next if ($_ eq 'task_name' && ref $_p->{task_name} eq 'ARRAY');
             next if ($_ eq 'input_data');
@@ -398,8 +398,8 @@ sub go (@) {
          $_MCE->run({
             chunk_size => $_chunk_size, sequence => $_params->{sequence}
          }, 0);
-         if (exists $_params->{sequence_go}) {
-            delete $_params->{sequence_go};
+         if (exists $_params->{sequence_run}) {
+            delete $_params->{sequence_run};
             delete $_params->{sequence};
          }
          delete $_MCE->{sequence};
@@ -894,7 +894,7 @@ into the code block.
 
 =over 3
 
-=item MCE::Flow->go ( { input_data => iterator }, sub { code } )
+=item MCE::Flow->run ( { input_data => iterator }, sub { code } )
 
 =item mce_flow { input_data => iterator }, sub { code }
 
@@ -910,7 +910,7 @@ Iterators are described under "SYNTAX for INPUT_DATA" at L<MCE::Core|MCE::Core>.
 
    mce_flow sub { $_ };
 
-=item MCE::Flow->go ( sub { code }, list )
+=item MCE::Flow->run ( sub { code }, list )
 
 =item mce_flow sub { code }, list
 
@@ -919,7 +919,7 @@ Input data can be defined using a list.
    mce_flow sub { $_ }, 1..1000;
    mce_flow sub { $_ }, [ 1..1000 ];
 
-=item MCE::Flow->go_f ( sub { code }, file )
+=item MCE::Flow->run_file ( sub { code }, file )
 
 =item mce_flow_f sub { code }, file
 
@@ -930,7 +930,7 @@ position among themselves without any interaction from the manager process.
    mce_flow_f sub { $_ }, $file_handle;
    mce_flow_f sub { $_ }, \$scalar;
 
-=item MCE::Flow->go_s ( sub { code }, $beg, $end [, $step, $fmt ] )
+=item MCE::Flow->run_seq ( sub { code }, $beg, $end [, $step, $fmt ] )
 
 =item mce_flow_s sub { code }, $beg, $end [, $step, $fmt ]
 

@@ -79,9 +79,9 @@ sub import {
    no strict 'refs'; no warnings 'redefine';
    my $_pkg = caller;
 
-   *{ $_pkg.'::mce_grep_f' } = \&go_f;
-   *{ $_pkg.'::mce_grep_s' } = \&go_s;
-   *{ $_pkg.'::mce_grep'   } = \&go;
+   *{ $_pkg.'::mce_grep_f' } = \&run_file;
+   *{ $_pkg.'::mce_grep_s' } = \&run_seq;
+   *{ $_pkg.'::mce_grep'   } = \&run;
 
    return;
 }
@@ -150,7 +150,7 @@ sub finish () {
 ##
 ###############################################################################
 
-sub go_f (&@) {
+sub run_file (&@) {
 
    shift if (defined $_[0] && $_[0] eq 'MCE::Grep');
 
@@ -179,7 +179,7 @@ sub go_f (&@) {
 
    @_ = ();
 
-   return go($_code);
+   return run($_code);
 }
 
 ###############################################################################
@@ -188,7 +188,7 @@ sub go_f (&@) {
 ##
 ###############################################################################
 
-sub go_s (&@) {
+sub run_seq (&@) {
 
    shift if (defined $_[0] && $_[0] eq 'MCE::Grep');
 
@@ -226,11 +226,11 @@ sub go_s (&@) {
    _croak("$_tag: (end) is not specified for sequence")
       unless (defined $_end);
 
-   $_params->{sequence_go} = 1;
+   $_params->{sequence_run} = 1;
 
    @_ = ();
 
-   return go($_code);
+   return run($_code);
 }
 
 ###############################################################################
@@ -239,7 +239,7 @@ sub go_s (&@) {
 ##
 ###############################################################################
 
-sub go (&@) {
+sub run (&@) {
 
    shift if (defined $_[0] && $_[0] eq 'MCE::Grep');
 
@@ -340,7 +340,7 @@ sub go (&@) {
 
       if (defined $_params) {
          foreach (keys %{ $_params }) {
-            next if ($_ eq 'sequence_go');
+            next if ($_ eq 'sequence_run');
             next if ($_ eq 'input_data');
             next if ($_ eq 'chunk_size');
 
@@ -378,8 +378,8 @@ sub go (&@) {
          $_MCE->run({
             chunk_size => $_chunk_size, sequence => $_params->{sequence}
          }, 0);
-         if (exists $_params->{sequence_go}) {
-            delete $_params->{sequence_go};
+         if (exists $_params->{sequence_run}) {
+            delete $_params->{sequence_run};
             delete $_params->{sequence};
          }
          delete $_MCE->{sequence};
@@ -609,7 +609,7 @@ specified, is ignored due to being used internally by the module.
 
 =over 3
 
-=item MCE::Grep->go ( sub { code }, iterator )
+=item MCE::Grep->run ( sub { code }, iterator )
 
 =item mce_grep { code } iterator
 
@@ -618,7 +618,7 @@ under "SYNTAX for INPUT_DATA" at L<MCE::Core|MCE::Core>.
 
    my @a = mce_grep { $_ % 3 == 0 } make_iterator(10, 30, 2);
 
-=item MCE::Grep->go ( sub { code }, list )
+=item MCE::Grep->run ( sub { code }, list )
 
 =item mce_grep { code } list
 
@@ -627,7 +627,7 @@ Input data can be defined using a list.
    my @a = mce_grep { /[2357]/ } 1..1000;
    my @b = mce_grep { /[2357]/ } [ 1..1000 ];
 
-=item MCE::Grep->go_f ( sub { code }, file )
+=item MCE::Grep->run_file ( sub { code }, file )
 
 =item mce_grep_f { code } file
 
@@ -638,7 +638,7 @@ position among themselves without any interaction from the manager process.
    my @d = mce_grep_f { /pattern/ } $file_handle;
    my @e = mce_grep_f { /pattern/ } \$scalar;
 
-=item MCE::Grep->go_s ( sub { code }, $beg, $end [, $step, $fmt ] )
+=item MCE::Grep->run_seq ( sub { code }, $beg, $end [, $step, $fmt ] )
 
 =item mce_grep_s { code } $beg, $end [, $step, $fmt ]
 

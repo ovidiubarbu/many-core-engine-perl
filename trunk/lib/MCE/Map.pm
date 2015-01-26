@@ -79,9 +79,9 @@ sub import {
    no strict 'refs'; no warnings 'redefine';
    my $_pkg = caller;
 
-   *{ $_pkg.'::mce_map_f' } = \&go_f;
-   *{ $_pkg.'::mce_map_s' } = \&go_s;
-   *{ $_pkg.'::mce_map'   } = \&go;
+   *{ $_pkg.'::mce_map_f' } = \&run_file;
+   *{ $_pkg.'::mce_map_s' } = \&run_seq;
+   *{ $_pkg.'::mce_map'   } = \&run;
 
    return;
 }
@@ -150,7 +150,7 @@ sub finish () {
 ##
 ###############################################################################
 
-sub go_f (&@) {
+sub run_file (&@) {
 
    shift if (defined $_[0] && $_[0] eq 'MCE::Map');
 
@@ -179,7 +179,7 @@ sub go_f (&@) {
 
    @_ = ();
 
-   return go($_code);
+   return run($_code);
 }
 
 ###############################################################################
@@ -188,7 +188,7 @@ sub go_f (&@) {
 ##
 ###############################################################################
 
-sub go_s (&@) {
+sub run_seq (&@) {
 
    shift if (defined $_[0] && $_[0] eq 'MCE::Map');
 
@@ -226,11 +226,11 @@ sub go_s (&@) {
    _croak("$_tag: (end) is not specified for sequence")
       unless (defined $_end);
 
-   $_params->{sequence_go} = 1;
+   $_params->{sequence_run} = 1;
 
    @_ = ();
 
-   return go($_code);
+   return run($_code);
 }
 
 ###############################################################################
@@ -239,7 +239,7 @@ sub go_s (&@) {
 ##
 ###############################################################################
 
-sub go (&@) {
+sub run (&@) {
 
    shift if (defined $_[0] && $_[0] eq 'MCE::Map');
 
@@ -340,7 +340,7 @@ sub go (&@) {
 
       if (defined $_params) {
          foreach (keys %{ $_params }) {
-            next if ($_ eq 'sequence_go');
+            next if ($_ eq 'sequence_run');
             next if ($_ eq 'input_data');
             next if ($_ eq 'chunk_size');
 
@@ -378,8 +378,8 @@ sub go (&@) {
          $_MCE->run({
             chunk_size => $_chunk_size, sequence => $_params->{sequence}
          }, 0);
-         if (exists $_params->{sequence_go}) {
-            delete $_params->{sequence_go};
+         if (exists $_params->{sequence_run}) {
+            delete $_params->{sequence_run};
             delete $_params->{sequence};
          }
          delete $_MCE->{sequence};
@@ -600,7 +600,7 @@ specified, is ignored due to being used internally by the module.
 
 =over 3
 
-=item MCE::Map->go ( sub { code }, iterator )
+=item MCE::Map->run ( sub { code }, iterator )
 
 =item mce_map { code } iterator
 
@@ -609,7 +609,7 @@ under "SYNTAX for INPUT_DATA" at L<MCE::Core|MCE::Core>.
 
    my @a = mce_map { $_ * 2 } make_iterator(10, 30, 2);
 
-=item MCE::Map->go ( sub { code }, list )
+=item MCE::Map->run ( sub { code }, list )
 
 =item mce_map { code } list
 
@@ -618,7 +618,7 @@ Input data can be defined using a list.
    my @a = mce_map { $_ * 2 } 1..1000;
    my @b = mce_map { $_ * 2 } [ 1..1000 ];
 
-=item MCE::Map->go_f ( sub { code }, file )
+=item MCE::Map->run_file ( sub { code }, file )
 
 =item mce_map_f { code } file
 
@@ -629,7 +629,7 @@ position among themselves without any interaction from the manager process.
    my @d = mce_map_f { chomp; $_ . "\r\n" } $file_handle;
    my @e = mce_map_f { chomp; $_ . "\r\n" } \$scalar;
 
-=item MCE::Map->go_s ( sub { code }, $beg, $end [, $step, $fmt ] )
+=item MCE::Map->run_seq ( sub { code }, $beg, $end [, $step, $fmt ] )
 
 =item mce_map_s { code } $beg, $end [, $step, $fmt ]
 
