@@ -1,6 +1,6 @@
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## MCE::Util - Utility functions for Many-Core Engine.
+## MCE::Util - Utility functions for Many-core Engine.
 ##
 ###############################################################################
 
@@ -250,7 +250,7 @@ __END__
 
 =head1 NAME
 
-MCE::Util - Utility functions for Many-Core Engine
+MCE::Util - Utility functions for Many-core Engine
 
 =head1 VERSION
 
