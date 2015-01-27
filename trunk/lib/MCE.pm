@@ -1876,7 +1876,11 @@ sub relay (;&) {
    _croak('MCE::relay: init_relay is not specified')
       unless (defined $self->{init_relay});
 
-   weaken $_code if ref ($_code eq 'CODE');
+   if (ref $_code ne 'CODE') {
+      _croak('MCE::relay: argument is not a code block') if (defined $_code);
+   } else {
+      weaken $_code;
+   }
 
    my $_chn = ($self->{_chunk_id} - 1) % $self->{max_workers};
    my $_nxt = $_chn + 1; $_nxt = 0 if ($_nxt == $self->{max_workers});
