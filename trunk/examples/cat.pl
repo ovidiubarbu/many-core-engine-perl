@@ -56,7 +56,7 @@ DESCRIPTION
    The following options are available:
 
    --max-workers MAX_WORKERS
-          Specify number of workers for MCE   -- default: 3
+          Specify number of workers for MCE   -- default: auto
 
    --chunk-size CHUNK_SIZE
           Specify chunk size for MCE          -- default: 2 MiB
@@ -105,7 +105,7 @@ my $flag = sub { 1; };
 my $isOk = sub { (@ARGV == 0 or $ARGV[0] =~ /^-/) ? usage() : shift @ARGV; };
 
 my $chunk_size  = '2m';
-my $max_workers = 3;
+my $max_workers = 'auto';
 my $skip_args   = 0;
 
 my $n_flag = 0;
@@ -145,6 +145,10 @@ while ( my $arg = shift @ARGV ) {
    }
 
    push @files, $arg;
+}
+
+if ($n_flag == 0 && $max_workers eq 'auto') {
+   $max_workers = 2;
 }
 
 ###############################################################################
