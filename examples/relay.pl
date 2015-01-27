@@ -1,9 +1,16 @@
 #!/usr/bin/env perl
 
-## Relaying is orderly and driven by chunk_id when processing data, otherwise
-## task_wid. Only the first sub-task is allowed to relay information.
+## The relay method is for receiving and passing on information. Relay is
+## enabled by specifing the init_relay option which takes a hash or array
+## reference, or a scalar value. Relaying is orderly and driven by chunk_id
+## when processing data, otherwise task_wid. Omitting the code block
+## (e.g. MCE::relay) relays forward.
 ##
-## See findnull.pl, cat.pl, and biofasta/fasta_aidx.pl for other use cases.
+## Relaying is not met for passing big data. The last worker will likely
+## stall if exceeding the buffer size for the socket. Not exceeding 8 KiB
+## is safe across all platforms.
+##
+## Also see examples findnull.pl, cat.pl, or biofasta/fasta_aidx.pl.
 
 use strict;
 use warnings;
@@ -18,57 +25,72 @@ print "\n";
 ###############################################################################
 
 mce_flow {
-   init_relay => { a => 0, b => 10 },     ## Relaying multiple values (HASH)
+   init_relay => { p => 0, e => 0 },      ## Relaying multiple values (HASH)
 },
 sub {
-   ## do work ...
-   my ($a, $b) = (1, 2);
+   my $wid = MCE->wid;
 
-   ## my %prior_val = MCE->relay( sub { $_->{a} += $a; $_->{b} += $b } );
-   my %prior_val = MCE::relay { $_->{a} += $a; $_->{b} += $b };
+   ## do work
+   my $pass = $wid % 3;
+   my $errs = $wid % 2;
 
-   MCE->print("$prior_val{a} : $prior_val{b}\n");
+   ## relay
+   my %last_rpt = MCE::relay { $_->{p} += $pass; $_->{e} += $errs };
+
+   MCE->print("$wid: passed $pass, errors $errs\n");
+
+   return;
 };
 
-my %final_val = MCE->relay_final;
+my %results = MCE->relay_final;
 
-print "$final_val{a} : $final_val{b} final\n\n";
+print "   passed $results{p}, errors $results{e} final\n\n";
 
 ###############################################################################
 
 mce_flow {
-   init_relay => [ 0, 10 ],               ## Relaying multiple values (ARRAY)
+   init_relay => [ 0, 0 ],                ## Relaying multiple values (ARRAY)
 },
 sub {
-   ## do work ...
-   my ($a, $b) = (1, 2);
+   my $wid = MCE->wid;
 
-   ## my @prior_val = MCE->relay( sub { $_->[0] += $a; $_->[1] += $b } );
-   my @prior_val = MCE::relay { $_->[0] += $a; $_->[1] += $b };
+   ## do work
+   my $pass = $wid % 3;
+   my $errs = $wid % 2;
 
-   MCE->print("$prior_val[0] : $prior_val[1]\n");
+   ## relay
+   my @last_rpt = MCE::relay { $_->[0] += $pass; $_->[1] += $errs };
+
+   MCE->print("$wid: passed $pass, errors $errs\n");
+
+   return;
 };
 
-my @final_val = MCE->relay_final;
+my ($pass, $errs) = MCE->relay_final;
 
-print "$final_val[0] : $final_val[1] final\n\n";
+print "   passed $pass, errors $errs final\n\n";
 
 ###############################################################################
 
 mce_flow {
-   init_relay => 100,                     ## Relaying a single value
+   init_relay => 0,                       ## Relaying a single value
 },
 sub {
-   ## do work ...
-   my $a = 3;
+   my $wid = MCE->wid;
 
-   ## my $prior_val = MCE->relay( sub { $_ += $a } );
-   my $prior_val = MCE::relay { $_ += $a };
+   ## do work
+   my $bytes_read = 1000 + ((MCE->wid % 3) * 3);
 
-   MCE->print("$prior_val\n");
+   ## relay
+   my $last_offset = MCE::relay { $_ += $bytes_read };
+
+   ## output
+   MCE->print("$wid: $bytes_read\n");
+
+   return;
 };
 
-my $final_val = MCE->relay_final;
+my $total = MCE->relay_final;
 
-print "$final_val final\n\n";
+print "   $total size\n\n";
 

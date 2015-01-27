@@ -1349,7 +1349,7 @@ sub shutdown {
    )) {
       if (defined $self->{$_}) {
          if (ref $self->{$_} eq 'ARRAY') {
-            for my $_s (@{ $self->{$_} }) { close $_s; undef $_s; }
+            for my $_s (@{ $self->{$_} }) { close $_s; }
             undef $self->{$_};
          } else {
             close $self->{$_}; undef $self->{$_};
