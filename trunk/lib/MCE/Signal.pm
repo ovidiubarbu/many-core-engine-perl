@@ -264,7 +264,7 @@ sub sys_cmd {
                }
 
                ## Display error message.
-               if ($_err_msg && $_no_sigmsg == 0) {
+               if ($_err_msg && $_no_sigmsg == 0 && ! $^S) {
                   print {*STDERR} "\n## $prog_name: $_err_msg\n";
                }
 
@@ -275,9 +275,9 @@ sub sys_cmd {
 
                ## Pause a bit.
                if ($_sig_name ne 'PIPE') {
-                  sleep 0.066 for (1..3);
+                  sleep 0.05 for (1..3);
                } else {
-                  sleep 0.011 for (1..2);
+                  sleep 0.01 for (1..2);
                }
             }
 
@@ -309,7 +309,7 @@ sub sys_cmd {
                   print {*STDERR} "\n";
                }
 
-               if ($_no_kill9 == 1 || $_sig_name eq 'PIPE') {
+               if ($_no_kill9 == 1 || $_sig_name eq 'PIPE' || $^S) {
                   kill('TERM', $_is_mswin32 ? -$$ : -getpgrp, $main_proc_id);
                }
                else {
@@ -360,7 +360,7 @@ sub sys_cmd {
 
       ## Exit thread/process with status.
       if ($_is_sig == 1 && $_no_kill9 == 0) {
-         sleep 0.066 for (1..6);
+         sleep 0.05 for (1..6);
       }
 
       if ($has_threads && threads->can('exit')) {
@@ -419,7 +419,7 @@ sub _die_handler {
 
    if (!defined $^S || $^S) {                             ## Perl state
       my $_lmsg = Carp::longmess();
-      if ($_lmsg =~ /^[^\n]+\n\teval /) {                 ## Inside eval?
+      if ($_lmsg =~ /^[^\n]+\n\teval /) {                 ## In eval?
          CORE::die(@_);
       }
    }
@@ -438,9 +438,8 @@ sub _die_handler {
    }
 
    MCE::Signal->stop_and_exit('__DIE__');
-   CORE::exit;
 
-   return;
+   CORE::exit;
 }
 
 sub _warn_handler {
@@ -454,7 +453,8 @@ sub _warn_handler {
    return if (
       $_[0] =~ /^A thread exited while \d+ threads were running/ ||
       $_[0] =~ /^Attempt to free unreferenced scalar/            ||
-      $_[0] =~ /^Perl exited with active threads/
+      $_[0] =~ /^Perl exited with active threads/                ||
+      $_[0] =~ /^Thread \d+ terminated abnormally/
    );
 
    local $\ = undef;
