@@ -19,6 +19,7 @@ our ($has_threads, $main_proc_id, $prog_name);
 our ($display_die_with_localtime, $display_warn_with_localtime);
 
 BEGIN {
+   require Carp;
    require File::Path;
 
    $main_proc_id =  $$;
@@ -40,7 +41,7 @@ our %EXPORT_TAGS = (
 ##
 ###############################################################################
 
-sub _croak { require Carp; goto &Carp::croak; }
+sub _croak { goto &Carp::croak; }
 sub _usage { return _croak "MCE::Signal error: $_[0] is not a valid option"; }
 sub _flag  { return 1; }
 
@@ -209,6 +210,8 @@ sub sys_cmd {
       __DIE__ __WARN__ HUP INT PIPE QUIT TERM CHLD XCPU XFSZ
    );
 
+   sub _NOOP { }
+
    sub stop_and_exit {
 
       shift @_ if (defined $_[0] && $_[0] eq 'MCE::Signal');
@@ -219,15 +222,16 @@ sub sys_cmd {
 
       if (exists $_sig_name_lkup{$_sig_name}) {
          $_mce_spawned_ref = undef;
-         $SIG{$_sig_name} = sub { };
          $_exit_status = $_is_sig = 1;
       }
       else {
          $_exit_status = $_sig_name if ($_sig_name ne '0');
       }
 
-      $SIG{TERM} = sub { } if ($_sig_name ne 'TERM');
-      $SIG{__DIE__} = $SIG{__WARN__} = sub { };
+      local $SIG{$_sig_name} = \&_NOOP if ($_is_sig == 1);
+      local $SIG{TERM}       = \&_NOOP if ($_sig_name ne 'TERM');
+      local $SIG{__DIE__}    = \&_NOOP;
+      local $SIG{__WARN__}   = \&_NOOP;
 
       ## ----------------------------------------------------------------------
 
@@ -339,7 +343,11 @@ sub sys_cmd {
                local $@; eval {
                   open my $_FH, '>', "$tmp_dir/killed"; close $_FH;
                };
-               kill('TERM', $main_proc_id, -$$);
+               if ($_sig_name eq 'PIPE') {
+                  kill('PIPE', $main_proc_id, -$$);
+               } else {
+                  kill('TERM', $main_proc_id, -$$);
+               }
             }
 
             ## Release lock.
@@ -407,7 +415,14 @@ sub _die_handler {
 
    shift @_ if (defined $_[0] && $_[0] eq 'MCE::Signal');
 
-   CORE::die(@_) if $^S;      ## Direct to CORE::die if executing an eval
+   local $SIG{__DIE__} = sub { };
+
+   if (!defined $^S || $^S) {                             ## Perl state
+      my $_lmsg = Carp::longmess();
+      if ($_lmsg =~ /^[^\n]+\n\teval /) {                 ## Inside eval?
+         CORE::die(@_);
+      }
+   }
 
    local $\ = undef;
 
@@ -431,6 +446,8 @@ sub _die_handler {
 sub _warn_handler {
 
    shift @_ if (defined $_[0] && $_[0] eq 'MCE::Signal');
+
+   local $SIG{__WARN__} = sub { };
 
    ## Ignore thread warnings during exiting.
 
