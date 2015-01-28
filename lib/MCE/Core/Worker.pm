@@ -599,7 +599,7 @@ sub _worker_main {
       local $SIG{__DIE__} = sub { };
       if (!defined $^S || $^S) {                          ## Perl state
          my $_lmsg = Carp::longmess();
-         if ($_lmsg =~ /^[^\n]+\n\teval /) {              ## Inside eval?
+         if ($_lmsg =~ /^[^\n]+\n\teval /) {              ## In eval?
             CORE::die(@_);
          }
       }
