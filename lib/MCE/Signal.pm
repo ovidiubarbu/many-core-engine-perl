@@ -229,6 +229,7 @@ sub sys_cmd {
       }
 
       local $SIG{$_sig_name} = \&_NOOP if ($_is_sig == 1);
+      local $SIG{INT}        = \&_NOOP if ($_sig_name ne 'INT');
       local $SIG{TERM}       = \&_NOOP if ($_sig_name ne 'TERM');
       local $SIG{__DIE__}    = \&_NOOP;
       local $SIG{__WARN__}   = \&_NOOP;
@@ -271,7 +272,7 @@ sub sys_cmd {
                open my $_FH, '>', "$tmp_dir/killed"; close $_FH;
 
                ## Signal process group to terminate.
-               kill('TERM', $_is_mswin32 ? -$$ : -getpgrp);
+               kill('TERM', ($_is_mswin32 || $^S) ? -$$ : -getpgrp);
 
                ## Pause a bit.
                if ($_sig_name ne 'PIPE') {
@@ -310,7 +311,7 @@ sub sys_cmd {
                }
 
                if ($_no_kill9 == 1 || $_sig_name eq 'PIPE' || $^S) {
-                  kill('TERM', $_is_mswin32 ? -$$ : -getpgrp, $main_proc_id);
+                  kill($^S ? 'INT' : 'TERM', $_is_mswin32 ? -$$ : -getpgrp);
                }
                else {
                   kill('KILL', $_is_mswin32 ? -$$ : -getpgrp, $main_proc_id);
