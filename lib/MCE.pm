@@ -532,8 +532,8 @@ sub spawn {
 
    lock $_MCE_LOCK if ($_has_threads);            ## Obtain MCE lock.
 
-   my $_die_handler  = $SIG{__DIE__};  $SIG{__DIE__}  = \&_die;
-   my $_warn_handler = $SIG{__WARN__}; $SIG{__WARN__} = \&_warn;
+   local $SIG{__DIE__}  = \&_die;
+   local $SIG{__WARN__} = \&_warn;
 
    ## Configure tid/sid for this instance here, not in the new method above.
    ## We want the actual thread id in which spawn was called under.
@@ -702,9 +702,6 @@ sub spawn {
 
    ## Release lock.
    flock $_COM_LOCK, LOCK_UN;
-
-   $SIG{__DIE__}  = $_die_handler;
-   $SIG{__WARN__} = $_warn_handler;
 
    $MCE = $self;
    return $self;
@@ -1572,7 +1569,8 @@ sub exit {
    }
 
    ## Exit thread/child process.
-   $SIG{__DIE__} = $SIG{__WARN__} = sub { };
+   local $SIG{__DIE__}  = sub { };
+   local $SIG{__WARN__} = sub { };
 
    select STDERR; $| = 1;
    select STDOUT; $| = 1;
@@ -1947,17 +1945,24 @@ sub relay (;&) {
 ##
 ###############################################################################
 
+sub _NOOP { }
+
 sub _die  { return MCE::Signal->_die_handler(@_); }
 sub _warn { return MCE::Signal->_warn_handler(@_); }
 
 sub _croak {
 
-   $SIG{__DIE__}  = \&MCE::_die;
-   $SIG{__WARN__} = \&MCE::_warn;
+   local $\ = undef;
 
-   $\ = undef; require Carp;
+   if (MCE->wid) {
+      Carp::croak(@_);
+   }
+   else {
+      local $SIG{__DIE__}  = \&MCE::_die;
+      local $SIG{__WARN__} = \&MCE::_warn;
 
-   goto &Carp::croak;
+      Carp::croak(@_);
+   }
 }
 
 sub _get_max_workers {
@@ -1972,8 +1977,6 @@ sub _get_max_workers {
 
    return $self->{max_workers};
 }
-
-sub _NOOP { }
 
 ###############################################################################
 ## ----------------------------------------------------------------------------

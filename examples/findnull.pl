@@ -53,7 +53,7 @@ DESCRIPTION
    The following options are available:
 
    --max-workers MAX_WORKERS
-          Specify number of workers for MCE   -- default: 'auto'
+          Specify number of workers for MCE   -- default: auto
 
    --chunk-size CHUNK_SIZE
           Specify chunk size for MCE          -- default: 2 MiB

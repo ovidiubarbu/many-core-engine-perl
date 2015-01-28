@@ -29,12 +29,6 @@ use bytes;
 no warnings 'threads';
 no warnings 'uninitialized';
 
-my $_die_msg;
-
-END {
-   MCE->exit(255, $_die_msg) if (defined $_die_msg);
-}
-
 ###############################################################################
 ## ----------------------------------------------------------------------------
 ## Internal do, gather and send related functions for serializing data to
@@ -456,8 +450,6 @@ sub _worker_do {
       $self->{user_end}($self, $_task_id, $_task_name);
    }
 
-   $_die_msg = undef;
-
    ## Notify the main process a worker has completed.
    local $\ = undef if (defined $\);
 
@@ -602,20 +594,18 @@ sub _worker_main {
       $self->{_exit_pid} = 'PID_' . $$;
    }
 
-   ## Define handlers.
-   $SIG{PIPE} = \&MCE::_NOOP;
-
-   $SIG{__DIE__} = sub {
-      unless ($_has_threads && $_use_threads) {
-         $_die_msg = (defined $_[0]) ? $_[0] : '';
-         CORE::die(@_);
+   ## Define DIE handler.
+   local $SIG{__DIE__} = sub {
+      local $SIG{__DIE__} = sub { };
+      if (!defined $^S || $^S) {                          ## Perl state
+         my $_lmsg = Carp::longmess();
+         if ($_lmsg =~ /^[^\n]+\n\teval /) {              ## Inside eval?
+            CORE::die(@_);
+         }
       }
-      else {
-         CORE::die(@_) unless (defined $^S);
-         local $SIG{__DIE__} = sub { };
-         local $\ = undef; print {*STDERR} $_[0];
-         $self->exit(255, $_[0]);
-      }
+      my $_die_msg = (defined $_[0]) ? $_[0] : '';
+      local $\ = undef; print {*STDERR} $_die_msg;
+      $self->exit(255, $_die_msg);
    };
 
    ## Use options from user_tasks if defined.
@@ -704,7 +694,8 @@ sub _worker_main {
    MCE::_clear_session($_mce_sid);
 
    ## Wait until MCE completes exit notification.
-   $SIG{__DIE__} = $SIG{__WARN__} = sub { };
+   local $SIG{__DIE__}  = sub { };
+   local $SIG{__WARN__} = sub { };
 
    select STDERR; $| = 1;
    select STDOUT; $| = 1;
