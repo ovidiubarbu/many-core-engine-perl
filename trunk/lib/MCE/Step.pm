@@ -170,7 +170,7 @@ sub init (@) {
 
 sub finish () {
 
-   if (defined $_MCE) {
+   if (defined $_MCE && $_MCE->{_spawned}) {
       MCE::_save_state; $_MCE->shutdown(); MCE::_restore_state;
    }
 
@@ -478,6 +478,8 @@ sub run (@) {
    if (exists $_MCE->{_rla_return}) {
       $MCE::MCE->{_rla_return} = delete $_MCE->{_rla_return};
    }
+
+   finish() if ($^S);   ## shutdown if in eval state
 
    return ((defined $_wa) ? @_a : ());
 }

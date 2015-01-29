@@ -1183,8 +1183,8 @@ sub run {
 
    $self->{_send_cnt} = 0;
 
-   ## Shutdown workers (also, if any workers have exited).
-   if ($_auto_shutdown == 1 || $self->{_total_exited} > 0) {
+   ## Shutdown workers (also, if any workers have exited or in eval state).
+   if ($_auto_shutdown == 1 || $self->{_total_exited} > 0 || $^S) {
       $self->shutdown();
    }
 
