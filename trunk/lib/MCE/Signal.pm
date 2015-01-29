@@ -222,17 +222,15 @@ sub sys_cmd {
 
       if (exists $_sig_name_lkup{$_sig_name}) {
          $_mce_spawned_ref = undef;
+         $SIG{$_sig_name} = \&_NOOP;
          $_exit_status = $_is_sig = 1;
       }
       else {
          $_exit_status = $_sig_name if ($_sig_name ne '0');
       }
 
-      local $SIG{$_sig_name} = \&_NOOP if ($_is_sig == 1);
-      local $SIG{INT}        = \&_NOOP if ($_sig_name ne 'INT');
-      local $SIG{TERM}       = \&_NOOP if ($_sig_name ne 'TERM');
-      local $SIG{__DIE__}    = \&_NOOP;
-      local $SIG{__WARN__}   = \&_NOOP;
+      $SIG{INT} = \&_NOOP if ($_sig_name ne 'INT');
+      $SIG{__DIE__} = $SIG{__WARN__} = \&_NOOP;
 
       ## ----------------------------------------------------------------------
 
@@ -254,7 +252,7 @@ sub sys_cmd {
                elsif ($_sig_name eq 'XFSZ') {
                   $_err_msg = 'exceeded file size limit, exiting';
                }
-               elsif ($_sig_name eq 'TERM' && -f "$tmp_dir/died") {
+               elsif ($_sig_name eq 'INT' && -f "$tmp_dir/died") {
                   $_err_msg = 'caught signal (__DIE__), exiting';
                }
                elsif ($_sig_name eq '__DIE__') {
@@ -265,20 +263,20 @@ sub sys_cmd {
                }
 
                ## Display error message.
-               if ($_err_msg && $_no_sigmsg == 0 && ! $^S) {
+               if ($_err_msg && $_no_sigmsg == 0) {
                   print {*STDERR} "\n## $prog_name: $_err_msg\n";
                }
 
                open my $_FH, '>', "$tmp_dir/killed"; close $_FH;
 
                ## Signal process group to terminate.
-               kill('TERM', ($_is_mswin32 || $^S) ? -$$ : -getpgrp);
+               kill('INT', $_is_mswin32 ? -$$ : -getpgrp);
 
                ## Pause a bit.
                if ($_sig_name ne 'PIPE') {
-                  sleep 0.05 for (1..3);
+                  sleep 0.065 for (1..3);
                } else {
-                  sleep 0.01 for (1..2);
+                  sleep 0.015 for (1..2);
                }
             }
 
@@ -309,12 +307,10 @@ sub sys_cmd {
                if ($_sig_name ne 'PIPE' && $_no_sigmsg == 0) {
                   print {*STDERR} "\n";
                }
-
-               if ($_no_kill9 == 1 || $_sig_name eq 'PIPE' || $^S) {
-                  kill($^S ? 'INT' : 'TERM', $_is_mswin32 ? -$$ : -getpgrp);
-               }
-               else {
-                  kill('KILL', $_is_mswin32 ? -$$ : -getpgrp, $main_proc_id);
+               if ($_no_kill9 == 1 || $_sig_name eq 'PIPE') {
+                  kill('INT', $_is_mswin32 ? -$$ : -getpgrp);
+               } else {
+                  kill('KILL', -$$, $main_proc_id);
                }
             }
          }
@@ -347,7 +343,7 @@ sub sys_cmd {
                if ($_sig_name eq 'PIPE') {
                   kill('PIPE', $main_proc_id, -$$);
                } else {
-                  kill('TERM', $main_proc_id, -$$);
+                  kill('INT', $main_proc_id, -$$);
                }
             }
 
@@ -361,7 +357,7 @@ sub sys_cmd {
 
       ## Exit thread/process with status.
       if ($_is_sig == 1 && $_no_kill9 == 0) {
-         sleep 0.05 for (1..6);
+         sleep 0.065 for (1..6);
       }
 
       if ($has_threads && threads->can('exit')) {
@@ -369,8 +365,6 @@ sub sys_cmd {
       }
 
       CORE::exit($_exit_status);
-
-      return;
    }
 }
 
@@ -416,8 +410,6 @@ sub _die_handler {
 
    shift @_ if (defined $_[0] && $_[0] eq 'MCE::Signal');
 
-   local $SIG{__DIE__} = sub { };
-
    if (!defined $^S || $^S) {                             ## Perl state
       my $_lmsg = Carp::longmess();
       if ($_lmsg =~ /^[^\n]+\n\teval /) {                 ## In eval?
@@ -430,12 +422,14 @@ sub _die_handler {
    ## Set $MCE::Signal::display_die_with_localtime = 1;
    ## when wanting the output to contain the localtime.
 
-   if ($MCE::Signal::display_die_with_localtime) {
-      my $_time_stamp = localtime;
-      print {*STDERR} "## $_time_stamp: $prog_name: ERROR:\n", $_[0];
-   }
-   else {
-      print {*STDERR} $_[0];
+   if (defined $_[0]) {
+      if ($MCE::Signal::display_die_with_localtime) {
+         my $_time_stamp = localtime;
+         print {*STDERR} "## $_time_stamp: $prog_name: ERROR:\n", $_[0];
+      }
+      else {
+         print {*STDERR} $_[0];
+      }
    }
 
    MCE::Signal->stop_and_exit('__DIE__');
@@ -446,8 +440,6 @@ sub _die_handler {
 sub _warn_handler {
 
    shift @_ if (defined $_[0] && $_[0] eq 'MCE::Signal');
-
-   local $SIG{__WARN__} = sub { };
 
    ## Ignore thread warnings during exiting.
 
@@ -463,12 +455,14 @@ sub _warn_handler {
    ## Set $MCE::Signal::display_warn_with_localtime = 1;
    ## when wanting the output to contain the localtime.
 
-   if ($MCE::Signal::display_warn_with_localtime) {
-      my $_time_stamp = localtime;
-      print {*STDERR} "## $_time_stamp: $prog_name: WARNING:\n", $_[0];
-   }
-   else {
-      print {*STDERR} $_[0];
+   if (defined $_[0]) {
+      if ($MCE::Signal::display_warn_with_localtime) {
+         my $_time_stamp = localtime;
+         print {*STDERR} "## $_time_stamp: $prog_name: WARNING:\n", $_[0];
+      }
+      else {
+         print {*STDERR} $_[0];
+      }
    }
 
    return;
