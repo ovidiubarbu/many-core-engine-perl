@@ -532,8 +532,8 @@ sub spawn {
 
    lock $_MCE_LOCK if ($_has_threads);            ## Obtain MCE lock.
 
-   local $SIG{__DIE__}  = \&_die;
-   local $SIG{__WARN__} = \&_warn;
+   my $_die_handler  = $SIG{__DIE__};  $SIG{__DIE__}  = \&_die;
+   my $_warn_handler = $SIG{__WARN__}; $SIG{__WARN__} = \&_warn;
 
    ## Configure tid/sid for this instance here, not in the new method above.
    ## We want the actual thread id in which spawn was called under.
@@ -702,6 +702,9 @@ sub spawn {
 
    ## Release lock.
    flock $_COM_LOCK, LOCK_UN;
+
+   $SIG{__DIE__}  = $_die_handler;
+   $SIG{__WARN__} = $_warn_handler;
 
    $MCE = $self;
    return $self;
@@ -1569,8 +1572,8 @@ sub exit {
    }
 
    ## Exit thread/child process.
-   local $SIG{__DIE__}  = sub { };
-   local $SIG{__WARN__} = sub { };
+   $SIG{__DIE__}  = sub { };
+   $SIG{__WARN__} = sub { };
 
    select STDERR; $| = 1;
    select STDOUT; $| = 1;
