@@ -1,6 +1,6 @@
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## MCE::Queue - Hybrid (normal and priority) queues for Many-core Engine.
+## MCE::Queue - Hybrid (normal and priority) queues for Many-Core Engine.
 ##
 ###############################################################################
 
@@ -1675,7 +1675,7 @@ __END__
 
 =head1 NAME
 
-MCE::Queue - Hybrid (normal and priority) queues for Many-core Engine
+MCE::Queue - Hybrid (normal and priority) queues for Many-Core Engine
 
 =head1 VERSION
 

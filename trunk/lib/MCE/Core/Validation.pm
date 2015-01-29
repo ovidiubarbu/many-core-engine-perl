@@ -1,6 +1,6 @@
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## MCE::Core::Validation - Core validation methods for Many-core Engine.
+## MCE::Core::Validation - Core validation methods for Many-Core Engine.
 ##
 ## This package provides validation methods used internally by the manager
 ## process.

@@ -1,7 +1,7 @@
 
 =head1 NAME
 
-MCE::Examples - A list of examples demonstrating Many-core Engine
+MCE::Examples - A list of examples demonstrating Many-Core Engine
 
 =head1 VERSION
 
