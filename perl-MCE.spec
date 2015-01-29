@@ -1,7 +1,7 @@
 Name:           perl-MCE
 Version:        1.522
 Release:        1%{?dist}
-Summary:        Many-core Engine for Perl providing parallel processing capabilities
+Summary:        Many-Core Engine for Perl providing parallel processing capabilities
 License:        GPL+ or Artistic
 Group:          Development/Libraries
 URL:            http://search.cpan.org/dist/MCE/
@@ -28,7 +28,7 @@ Requires:       perl(Time::HiRes)
 Autoreq:        no
 
 %description
-Many-core Engine (MCE) for Perl helps enable a new level of performance by
+Many-Core Engine (MCE) for Perl helps enable a new level of performance by
 maximizing all available cores. MCE spawns a pool of workers and therefore
 does not fork a new process per each element of data. Instead, MCE follows
 a bank queuing model. Imagine the line being the data and bank-tellers the
