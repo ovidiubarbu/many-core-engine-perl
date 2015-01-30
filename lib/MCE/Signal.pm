@@ -9,14 +9,8 @@ package MCE::Signal;
 use strict;
 use warnings;
 
-use Time::HiRes qw( sleep time );
-use Fcntl qw( :flock O_RDONLY );
-use base qw( Exporter );
-
-our $VERSION = '1.522';
-
-our ($has_threads, $main_proc_id, $prog_name);
 our ($display_die_with_localtime, $display_warn_with_localtime);
+our ($has_threads, $main_proc_id, $prog_name, $tmp_dir);
 
 BEGIN {
    require Carp;
@@ -27,7 +21,11 @@ BEGIN {
    $prog_name    =~ s{^.*[\\/]}{}g;
 }
 
-our $tmp_dir = undef;
+use Time::HiRes qw( sleep time );
+use Fcntl qw( :flock O_RDONLY );
+use base qw( Exporter );
+
+our $VERSION = '1.522';
 
 our @EXPORT_OK = qw( $tmp_dir sys_cmd stop_and_exit );
 our %EXPORT_TAGS = (
@@ -41,8 +39,8 @@ our %EXPORT_TAGS = (
 ##
 ###############################################################################
 
-sub _croak { goto &Carp::croak; }
-sub _usage { return _croak "MCE::Signal error: $_[0] is not a valid option"; }
+sub _croak { $\ = undef; goto &Carp::croak; }
+sub _usage { return _croak "MCE::Signal error: ($_[0]) is not a valid option"; }
 sub _flag  { return 1; }
 
 my $_is_mswin32   = ($^O eq 'MSWin32') ? 1 : 0;
