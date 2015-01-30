@@ -123,16 +123,24 @@ Below, a new instance is configured with all available options.
           ## input_data => \&iterator       user specified iterator
 
           ## The RS option (for input record separator) applies to files
-          ## and file handles. Typically, the left side is what happens
-          ## when specifying ($/ = "\n>") in Perl. MCE performs a couple
-          ## steps for RS beginning with a newline character. It chops
-          ## the characters following the newline and prepends them
-          ## automatically to subsequent records.
+          ## and file handles. MCE applies extra logic for RS beginning
+          ## with a newline character; e.g. RS => "\n>". It chops the
+          ## characters following the newline and prepends them to
+          ## subsequent records. This is automatic when not slurping.
+          ## Otherwise, the logic is applied to the first and last
+          ## records only.
           ##
-          ## Record 1:  >seq1 ... \n>   (to)   >seq1 ... \n
-          ## Record 2:  seq2  ... \n>          >seq2 ... \n
-          ## Record 3:  seq3  ... \n>          >seq3 ... \n
-          ## Last Rec:  seqN  ... \n           >seqN ... \n
+          ## use_slurpio => 0
+          ##    Record 1:  >seq1 ... \n>   (to)   >seq1 ... \n
+          ##    Record 2:  seq2  ... \n>          >seq2 ... \n
+          ##    Record 3:  seq3  ... \n>          >seq3 ... \n
+          ##    Last Rec:  seqN  ... \n           >seqN ... \n
+          ##
+          ## use_slurpio => 1 (chunks begin with > and end with \n)
+          ##    Record 1:  >seq1 ... \n>   (to)   >seq1 ... \n>
+          ##    Record 2:  seq2  ... \n>          seq2  ... \n>
+          ##    Record 3:  seq3  ... \n>          seq3  ... \n>
+          ##    Last Rec:  seqN  ... \n           seqN  ... \n
 
       use_slurpio => 1,                  ## Default 0
       parallel_io => 1,                  ## Default 0
