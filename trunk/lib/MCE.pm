@@ -38,10 +38,9 @@ use bytes;
 
 our $VERSION = '1.522';
 
-our (%_valid_fields_new, %_params_allowed_args, %_valid_fields_task);
-our ($MCE, $_que_read_size, $_que_template);
-
+our ($MCE, $_que_read_size, $_que_template, %_valid_fields_new);
 my  ($_is_cygwin, $_is_mswin32, $_is_winenv, $_prev_mce);
+my  (%_params_allowed_args, %_valid_fields_task);
 
 BEGIN {
    ## Configure pack/unpack template for writing to and reading from
@@ -132,10 +131,8 @@ our $TMP_DIR = $MCE::Signal::tmp_dir;
 our $FREEZE  = \&Storable::freeze;
 our $THAW    = \&Storable::thaw;
 
-my  $MAX_WORKERS = 1;
-my  $CHUNK_SIZE  = 1;
-my  $_has_threads;
-my  $_loaded;
+my ($MAX_WORKERS, $CHUNK_SIZE) = (1, 1);
+my ($_has_threads, $_loaded);
 
 sub import {
 
@@ -355,158 +352,135 @@ sub _restore_state {
 
 sub new {
 
-   my ($class, %argv) = @_;
+   my ($class, %self) = @_;
 
    @_ = ();
 
-   my $self = {}; bless($self, ref($class) || $class);
+   bless(\%self, ref($class) || $class);
 
    ## Public options.
-   $self->{max_workers} = (exists $argv{max_workers})
-      ? $argv{max_workers} : $MAX_WORKERS;
+   $self{max_workers} ||= $MAX_WORKERS;
+   $self{chunk_size}  ||= $CHUNK_SIZE;
+   $self{tmp_dir}     ||= $TMP_DIR;
+   $self{freeze}      ||= $FREEZE;
+   $self{thaw}        ||= $THAW;
+   $self{task_name}   ||= 'MCE';
 
-   $self->{chunk_size}   = $argv{chunk_size}   || $CHUNK_SIZE;
-   $self->{tmp_dir}      = $argv{tmp_dir}      || $TMP_DIR;
-   $self->{freeze}       = $argv{freeze}       || $FREEZE;
-   $self->{thaw}         = $argv{thaw}         || $THAW;
-   $self->{task_name}    = $argv{task_name}    || 'MCE';
+   if (exists $self{_module_instance}) {
+      $self{_spawned} = $self{_task_id} = $self{_task_wid} = 0;
+      $self{_chunk_id} = $self{_wid} = $self{_wrk_status} = 0;
+      delete $self{_module_instance};
 
-   if (exists $argv{_module_instance}) {
-      $self->{_spawned} = $self->{_task_id} = $self->{_task_wid} =
-         $self->{_chunk_id} = $self->{_wid} = $self->{_wrk_status} = 0;
-
-      return $MCE = $self;
+      return $MCE = \%self;
    }
 
-   if (exists $argv{use_threads} and defined $argv{use_threads}) {
-      $self->{use_threads} = $argv{use_threads};
-      if (!$_has_threads && $argv{use_threads} ne '0') {
+   for (keys %self) {
+      _croak("MCE::new: ($_) is not a valid constructor argument")
+         unless (exists $_valid_fields_new{$_});
+   }
+
+   if (defined $self{use_threads}) {
+      if (!$_has_threads && $self{use_threads} ne '0') {
          my $_msg  = "\n";
             $_msg .= "## Please include threads support prior to loading MCE\n";
-            $_msg .= "## when specifying use_threads => $argv{use_threads}\n";
+            $_msg .= "## when specifying use_threads => $self{use_threads}\n";
             $_msg .= "\n";
 
          _croak($_msg);
       }
    }
    else {
-      $self->{use_threads} = ($_has_threads) ? 1 : 0;
+      $self{use_threads} = ($_has_threads) ? 1 : 0;
    }
 
-   if ($self->{use_threads} && !$MCE::Signal::has_threads) {
+   if ($self{use_threads} && !$MCE::Signal::has_threads) {
       $MCE::Signal::has_threads = 1;
    }
 
-   $self->{gather}       = $argv{gather}       if (exists $argv{gather});
-   $self->{interval}     = $argv{interval}     if (exists $argv{interval});
-   $self->{init_relay}   = $argv{init_relay}   if (exists $argv{init_relay});
-   $self->{input_data}   = $argv{input_data}   if (exists $argv{input_data});
-   $self->{sequence}     = $argv{sequence}     if (exists $argv{sequence});
-   $self->{bounds_only}  = $argv{bounds_only}  if (exists $argv{bounds_only});
-   $self->{job_delay}    = $argv{job_delay}    if (exists $argv{job_delay});
-   $self->{spawn_delay}  = $argv{spawn_delay}  if (exists $argv{spawn_delay});
-   $self->{submit_delay} = $argv{submit_delay} if (exists $argv{submit_delay});
-   $self->{on_post_exit} = $argv{on_post_exit} if (exists $argv{on_post_exit});
-   $self->{on_post_run}  = $argv{on_post_run}  if (exists $argv{on_post_run});
-   $self->{user_args}    = $argv{user_args}    if (exists $argv{user_args});
-   $self->{user_begin}   = $argv{user_begin}   if (exists $argv{user_begin});
-   $self->{user_func}    = $argv{user_func}    if (exists $argv{user_func});
-   $self->{user_end}     = $argv{user_end}     if (exists $argv{user_end});
-   $self->{user_error}   = $argv{user_error}   if (exists $argv{user_error});
-   $self->{user_output}  = $argv{user_output}  if (exists $argv{user_output});
-   $self->{stderr_file}  = $argv{stderr_file}  if (exists $argv{stderr_file});
-   $self->{stdout_file}  = $argv{stdout_file}  if (exists $argv{stdout_file});
-   $self->{user_tasks}   = $argv{user_tasks}   if (exists $argv{user_tasks});
-   $self->{task_end}     = $argv{task_end}     if (exists $argv{task_end});
-   $self->{RS}           = $argv{RS}           if (exists $argv{RS});
-
-   $self->{flush_file}   = $argv{flush_file}   || 0;
-   $self->{flush_stderr} = $argv{flush_stderr} || 0;
-   $self->{flush_stdout} = $argv{flush_stdout} || 0;
-   $self->{use_slurpio}  = $argv{use_slurpio}  || 0;
-   $self->{parallel_io}  = $argv{parallel_io}  || 0;
+   $self{flush_file}   ||= 0;
+   $self{flush_stderr} ||= 0;
+   $self{flush_stdout} ||= 0;
+   $self{use_slurpio}  ||= 0;
+   $self{parallel_io}  ||= 0;
 
    ## -------------------------------------------------------------------------
    ## Validation.
 
-   for (keys %argv) {
-      _croak("MCE::new: ($_) is not a valid constructor argument")
-         unless (exists $_valid_fields_new{$_});
-   }
+   _croak("MCE::new: ($self{tmp_dir}) is not a directory or does not exist")
+      unless (-d $self{tmp_dir});
+   _croak("MCE::new: ($self{tmp_dir}) is not writeable")
+      unless (-w $self{tmp_dir});
 
-   _croak("MCE::new: ($self->{tmp_dir}) is not a directory or does not exist")
-      unless (-d $self->{tmp_dir});
-   _croak("MCE::new: ($self->{tmp_dir}) is not writeable")
-      unless (-w $self->{tmp_dir});
-
-   if (defined $self->{user_tasks}) {
+   if (defined $self{user_tasks}) {
       _croak('MCE::new: (user_tasks) is not an ARRAY reference')
-         unless (ref $self->{user_tasks} eq 'ARRAY');
+         unless (ref $self{user_tasks} eq 'ARRAY');
 
-      $self->{max_workers} = _parse_max_workers($self->{max_workers});
+      $self{max_workers} = _parse_max_workers($self{max_workers});
 
-      for my $_task (@{ $self->{user_tasks} }) {
+      for my $_task (@{ $self{user_tasks} }) {
          for (keys %{ $_task }) {
             _croak("MCE::new: ($_) is not a valid task constructor argument")
                unless (exists $_valid_fields_task{$_});
          }
-         $_task->{max_workers} = $self->{max_workers}
+         $_task->{max_workers} = $self{max_workers}
             unless (defined $_task->{max_workers});
-         $_task->{use_threads} = $self->{use_threads}
+         $_task->{use_threads} = $self{use_threads}
             unless (defined $_task->{use_threads});
 
-         bless($_task, ref($self) || $self);
+         bless($_task, ref(\%self) || \%self);
       }
 
       ## File locking fails under Cygwin among children and threads.
       ## Must be all children or all threads, not intermixed.
-      my (%_values, $_value);
+      if ($_is_cygwin) {
+         my (%_values, $_value);
 
-      for my $_task (@{ $self->{user_tasks} }) {
-         $_value = (defined $_task->{use_threads})
-            ? $_task->{use_threads} : $self->{use_threads};
-         $_values{$_value} = '';
+         for my $_task (@{ $self{user_tasks} }) {
+            $_value = (defined $_task->{use_threads})
+               ? $_task->{use_threads} : $self{use_threads};
+            $_values{$_value} = '';
+         }
+
+         _croak('MCE::new: (cannot mix) use_threads => 0/1 under Cygwin')
+            if (keys %_values > 1);
       }
-
-      _croak('MCE::new: (cannot mix) use_threads => 0/1 under Cygwin')
-         if ($_is_cygwin && keys %_values > 1);
    }
 
-   _validate_args($self); %argv = ();
+   _validate_args(\%self);
 
    ## -------------------------------------------------------------------------
    ## Private options. Limit chunk_size.
 
-   $self->{_chunk_id}   = 0;     ## Chunk ID
-   $self->{_send_cnt}   = 0;     ## Number of times data was sent via send
-   $self->{_spawned}    = 0;     ## Have workers been spawned
-   $self->{_task_id}    = 0;     ## Task ID, starts at 0 (array index)
-   $self->{_task_wid}   = 0;     ## Task Worker ID, starts at 1 per task
-   $self->{_wid}        = 0;     ## MCE Worker ID, starts at 1 per MCE instance
-   $self->{_wrk_status} = 0;     ## For saving exit status when worker exits
+   $self{_chunk_id}   = 0;       ## Chunk ID
+   $self{_send_cnt}   = 0;       ## Number of times data was sent via send
+   $self{_spawned}    = 0;       ## Have workers been spawned
+   $self{_task_id}    = 0;       ## Task ID, starts at 0 (array index)
+   $self{_task_wid}   = 0;       ## Task Worker ID, starts at 1 per task
+   $self{_wid}        = 0;       ## MCE Worker ID, starts at 1 per MCE instance
+   $self{_wrk_status} = 0;       ## For saving exit status when worker exits
 
-   if ($self->{chunk_size} > MAX_CHUNK_SIZE) {
-      $self->{chunk_size} = MAX_CHUNK_SIZE;
+   if ($self{chunk_size} > MAX_CHUNK_SIZE) {
+      $self{chunk_size} = MAX_CHUNK_SIZE;
    }
 
    my $_total_workers = 0;
 
-   if (defined $self->{user_tasks}) {
-      $_total_workers += $_->{max_workers} for (@{ $self->{user_tasks} });
+   if (defined $self{user_tasks}) {
+      $_total_workers += $_->{max_workers} for (@{ $self{user_tasks} });
    } else {
-      $_total_workers  = $self->{max_workers};
+      $_total_workers  = $self{max_workers};
    }
 
-   $self->{_last_sref} = (ref $self->{input_data} eq 'SCALAR')
-      ? $self->{input_data} : 0;
+   $self{_last_sref} = (ref $self{input_data} eq 'SCALAR')
+      ? $self{input_data} : 0;
 
-   $self->{_data_channels} = ($_total_workers < DATA_CHANNELS)
+   $self{_data_channels} = ($_total_workers < DATA_CHANNELS)
       ? $_total_workers : DATA_CHANNELS;
 
-   $self->{_lock_chn} = ($_total_workers > DATA_CHANNELS)
+   $self{_lock_chn} = ($_total_workers > DATA_CHANNELS)
       ? 1 : 0;
 
-   return $MCE = $self;
+   return $MCE = \%self;
 }
 
 ###############################################################################
@@ -581,7 +555,6 @@ sub spawn {
    _create_socket_pair($self, '_bse_r_sock', '_bse_w_sock');      ## sync
    _create_socket_pair($self, '_com_r_sock', '_com_w_sock');      ## core
    _create_socket_pair($self, '_que_r_sock', '_que_w_sock');      ## core
-
    _create_socket_pair($self, '_dat_r_sock', '_dat_w_sock', 0);   ## core
    _create_socket_pair($self, '_dat_r_sock', '_dat_w_sock', $_)
       for (1 .. $_data_channels);
@@ -591,32 +564,9 @@ sub spawn {
          for (0 .. $_max_workers - 1);
    }
 
-   ## Place 1 char in one socket to ensure Perl loads the required modules
+   ## Place 1 char in one socket to ensure Perl loads required socket modules
    ## prior to spawning. The last worker spawned will perform the read.
    syswrite $self->{_que_w_sock}, $LF;
-
-   ## Preload the input module if required.
-   if (!defined $self->{user_tasks}) {
-      if (defined $self->{input_data}) {
-         my $_ref = ref $self->{input_data};
-         if ($_ref eq '' || $_ref eq 'SCALAR') {
-            require MCE::Core::Input::Handle
-               unless (defined $MCE::Core::Input::Handle::VERSION);
-         }
-         elsif ($_ref eq 'CODE') {
-            require MCE::Core::Input::Iterator
-               unless (defined $MCE::Core::Input::Iterator::VERSION);
-         }
-         else {
-            require MCE::Core::Input::Request
-               unless (defined $MCE::Core::Input::Request::VERSION);
-         }
-      }
-      elsif (defined $self->{sequence}) {
-         require MCE::Core::Input::Sequence
-            unless (defined $MCE::Core::Input::Sequence::VERSION);
-      }
-   }
 
    ## -------------------------------------------------------------------------
 
@@ -1955,17 +1905,14 @@ sub _warn { return MCE::Signal->_warn_handler(@_); }
 
 sub _croak {
 
-   local $\ = undef;
+   $\ = undef;
 
-   if (MCE->wid) {
-      Carp::croak(@_);
+   unless (MCE->wid) {
+      $SIG{__DIE__}  = \&MCE::_die;
+      $SIG{__WARN__} = \&MCE::_warn;
    }
-   else {
-      local $SIG{__DIE__}  = \&MCE::_die;
-      local $SIG{__WARN__} = \&MCE::_warn;
 
-      Carp::croak(@_);
-   }
+   goto &Carp::croak;
 }
 
 sub _get_max_workers {

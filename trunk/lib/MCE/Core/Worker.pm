@@ -596,7 +596,6 @@ sub _worker_main {
 
    ## Define DIE handler.
    local $SIG{__DIE__} = sub {
-      local $SIG{__DIE__} = sub { };
       if (!defined $^S || $^S) {                          ## Perl state
          my $_lmsg = Carp::longmess();
          if ($_lmsg =~ /^[^\n]+\n\teval /) {              ## In eval?
@@ -604,7 +603,8 @@ sub _worker_main {
          }
       }
       my $_die_msg = (defined $_[0]) ? $_[0] : '';
-      local $\ = undef; print {*STDERR} $_die_msg;
+      local $SIG{__DIE__} = sub { }; local $\ = undef;
+      print {*STDERR} $_die_msg;
       $self->exit(255, $_die_msg);
    };
 

@@ -113,12 +113,11 @@ sub _validate_args_s {
 
    my $_tag = 'MCE::_validate_args_s';
 
-   $_s->{max_workers} = _parse_max_workers($_s->{max_workers});
-
-   _croak("$_tag: (max_workers) is not valid")
-      if (defined $_s->{max_workers} && (
-         $_s->{max_workers} !~ /\A\d+\z/
-      ));
+   if (defined $_s->{max_workers}) {
+      $_s->{max_workers} = _parse_max_workers($_s->{max_workers});
+      _croak("$_tag: (max_workers) is not valid")
+         if ($_s->{max_workers} !~ /\A\d+\z/);
+   }
 
    if (defined $_s->{chunk_size}) {
       if ($_s->{chunk_size} =~ /([0-9\.]+)K\z/i) {
