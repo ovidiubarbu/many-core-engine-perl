@@ -6,92 +6,102 @@ alphabetical order by last name.
  # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * #
 ###############################################################################
 
-George Bouras
+Berger, Joel
+  The inspiration for the sixth model (MCE::Step) came from reading a blog
+  "Writing Non-Blocking Applications with Mojolicious: Part 3" by Joel at
+  http://blogs.perl.org/users/joel_berger/2014/01/
+         writing-non-blocking-applications-with-mojolicious-part-3.html
+
+Bouras, George
   For reporting sockets failing under the Windows enviroment due to a
   period of inactivity. An example is when workers execute an external
   command taking beyond 4 minutes to complete. On returning, the sockets
   have gone stale with a CPU core going 100% at this point.
 
-David Cantrell (DrHyde on perlmonks.org)
+Cantrell, David (DrHyde on perlmonks.org)
   For reporting on MCE hanging with cpan -t MCE under his environment. Also,
   thank you for providing me a guest account. I was able to reproduce the
   issue. Added writeable check and croak if tmp dir is not writeable.
   One cannot assume that /dev/shm is writeable by everyone. :)
 
-Eric Collet
-  For the inspiration to many-core the tre-agrep binary.
+Collet, Eric
+  For the inspiration to the tre-agrep binary.
   * I first learned of tre-agrep from Eric. He emailed me running times for
     a couple scenarios utilizing a single core. Thus increasing the need to
-    have a MCE-driven wrapper script to run tre-agrep.
+    have a MCE-driven wrapper to run tre-agrep in parallel.
   * The bin/mce_grep script was created to show folks how one may go about
     chunking data between Perl and an external C binary efficiently without
     invoking the shell. The script supports grep, egrep, fgrep, agrep and
     tre-agrep.
 
-Oliver Gorwits
+Gorwits, Oliver
   For reporting on a couple issues with MCE along with a solution for each.
   * Pointed me in the right direction for improving the logic for the die
     handler. Basically, eval { die 'this should not cause MCE to die' };
   * Changed INIT { ... } to sub import { ... } inside MCE.pm.
+  * This has reached 100% (all cases, threads and processes) in MCE 1.600.
 
-Shawn Halpenny
+Halpenny, Shawn
   For reporting an issue (bug RT#94706) with signal handling in MCE::Signal.
   Also, thank you for tip on getpgrp.
 
-Dana Jacobsen
+Jacobsen, Dana
   For reporting an issue with get_ncpu on AIX. In addition, suggesting
   various solutions.
 
-Stephan Kulow
+Kulow, Stephan
   For making an OpenSUSE package for MCE.
   https://build.opensuse.org/package/show/devel:languages:perl:CPAN-M/perl-MCE
 
-Henry Lu
+Lu, Henry
   For listening during our walks on numerous occasions while I talked about
   how ridiculously hard to provide support for the Windows environmemnt.
   For encouraging me to hang in there when I wanted to give up.
 
-Philip Mabon
+Mabon, Philip
   For reporting on a couple issues with MCE in particular bug RT#92627.
 
-David Mertens
+Mertens, David
   I am thankful for the tip on making PDL + MCE a possibility. Workers were
   crashing during exiting. Adding "sub PDL::CLONE_SKIP { 1 }" inside MCE.pm
   solved this issue entirely. Also, for pointers on how to effectively use PDL
   from his example matmult_pdl_thr.pl utilizing PDL::Parallel::threads::SIMD
   at https://gist.github.com/run4flat/4942132.
 
-Joseph Ogulin
+Ogulin, Joseph
   For providing the initial perl-MCE.spec file.
   For the cool remarks at work about MCE being really big :)
 
-Demian Riccardi
-  I received a message from Demian asking for mce_map. His message contained a
-  cool example which looked so elegant as far as ease of use. Five models were
-  created; MCE::Flow, MCE::Grep, MCE::Loop, MCE::Map, and MCE::Stream.
-  Thus, MCE 1.5 takes on new form without breaking backwards compatibility.
+Riccardi, Demian
+  I received a message from Demian asking for mce_map. His message requested
+  ( my @a = mce_map { ... } 1..100 ). Five models were introduced in v1.500;
+  MCE::Flow, MCE::Grep, MCE::Loop, MCE::Map, and MCE::Stream.
 
-Jillian Rowe
+Rowe, Jillian
   For reporting on IO::File handles not working with MCE. Fixed in 1.515.
   For believing in possibilities beyond text-book thinking.
 
-Sylvia Roy
+Roy, Sylvia
   For driving on long trips while I worked in the passenger seat further
   developing MCE. Not to forget, locally around town as well. Gosh, a lot
-  of MCE was done while in the car and not to forget Panera Bread.
+  of MCE was developed on the road not to forget Panera Bread.
 
-Petr Šabata
+Šabata, Petr
   For initial package submission at Red Hat.
   https://bugzilla.redhat.com/show_bug.cgi?id=1162531
 
-Tom Sasser
-  For reporting bin/mce_grep failing with Perl 5.8.x.
+Sasser, Tom
+  For reporting on bin/mce_grep failing with Perl 5.8.x.
 
-Florian Schlichting
-  For making a Debian package for MCE.
-  http://pkgs.org/search/libmce-perl
+Schlichting, Florian
+  For making a Debian package for MCE: http://pkgs.org/search/libmce-perl.
 
-Adam Sjøgren
+Shen, Wei
+  For the BioUtil CPAN module. BioUtil::Seq::FastaReader inspired me to
+  create parallel examples (biofasta folder) in MCE 1.600. We tried to
+  make FastaReader even faster.
+
+Sjøgren, Adam
   For reporting on running /usr/bin/time mce_script.pl and pressing Ctrl-C
   failing. The default behavior in MCE::Signal is to call setpgrp. MCE 1.403
   adds a new option to MCE::Signal to not call setpgrp. This also gives the
@@ -101,12 +111,12 @@ Adam Sjøgren
     use MCE::Signal qw(-no_setpgrp);
     use MCE;
 
-Marcus Smith
+Smith, Marcus
   For reporting a problem with MCE including a sample script demonstrating
   MCE not 100% UTF-8 safe. All this time, totally overlooked the fact that
   the length function deals in logical characters, not physical bytes. :)
 
-Jeffrey Ryan Thalhammer
+Thalhammer, Jeffrey Ryan
   For submitting a feature request on support for lazy arrays.
   * Although a lazy array cannot be used directly for input_data, support for
     iterator objects was added to MCE 1.505; e.g. input_data => $iterator_ref;

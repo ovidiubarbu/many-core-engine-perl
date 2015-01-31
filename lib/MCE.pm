@@ -1907,7 +1907,7 @@ sub _croak {
 
    $\ = undef;
 
-   unless (MCE->wid) {
+   if (MCE->wid == 0 || ! $^S) {
       $SIG{__DIE__}  = \&MCE::_die;
       $SIG{__WARN__} = \&MCE::_warn;
    }

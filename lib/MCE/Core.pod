@@ -50,254 +50,265 @@ Below, a new instance is configured with all available options.
 
    my $mce = MCE->new(
 
-      max_workers => 8,                  ## Default $MCE::MAX_WORKERS
+      max_workers => 8,                   ## Default $MCE::MAX_WORKERS
 
-          ## Number of workers to spawn. This can be set automatically
-          ## with MCE 1.412 and later releases.
+         # Number of workers to spawn. This can be set automatically
+         # with MCE 1.412 and later releases.
 
-          ## MCE 1.521 sets an upper-limit of 8 for 'auto'.
-          ## See MCE::Util::get_ncpu for more info.
+         # MCE 1.521 sets an upper-limit of 8 for 'auto'.
+         # See MCE::Util::get_ncpu for more info.
 
-          ## max_workers => 'auto',      ## # of lcores, 8 maximum
-          ## max_workers => 'auto-1',    ## 7 on HW with 16-lcores
-          ## max_workers => 'auto-1',    ## 3 on HW with  4-lcores
+         # max_workers => 'auto',         ## # of lcores, 8 maximum
+         # max_workers => 'auto-1',       ## 7 on HW with 16-lcores
+         # max_workers => 'auto-1',       ## 3 on HW with  4-lcores
 
-          ## max_workers => MCE::Util::get_ncpu, # run on all lcores
+         # max_workers => MCE::Util::get_ncpu, # run on all lcores
 
-      chunk_size => 2000,                ## Default $MCE::CHUNK_SIZE
+      chunk_size => 2000,                 ## Default $MCE::CHUNK_SIZE
 
-          ## Can also take a suffix; K (Kilobytes) or M (Megabytes).
-          ## Smaller than or equal to 8192 is number of records.
-          ## Greater than 8192 is number of bytes. MCE reads until
-          ## the end of record before calling user_func. A value
-          ## above 64M will be set to 64M (the maximum).
+         # Can also take a suffix; K (Kilobytes) or M (Megabytes).
+         # Smaller than or equal to 8192 is number of records.
+         # Greater than 8192 is number of bytes. MCE reads until
+         # the end of record before calling user_func. A value
+         # above 64M will be set to 64M (the maximum).
 
-          ## chunk_size => 1,            ## Consists of 1 record
-          ## chunk_size => 1000,         ## Consists of 1000 records
-          ## chunk_size => '16K',        ## Approximate 16 kilobytes
-          ## chunk_size => '20M',        ## Approximate 20 megabytes
+         # chunk_size => 1,               ## Consists of 1 record
+         # chunk_size => 1000,            ## Consists of 1000 records
+         # chunk_size => '16K',           ## Approximate 16 kilobytes
+         # chunk_size => '20M',           ## Approximate 20 megabytes
 
-      tmp_dir => $tmp_dir,               ## Default $MCE::TMP_DIR
+      tmp_dir => $tmp_dir,                ## Default $MCE::TMP_DIR
 
-          ## Default is $MCE::Signal::tmp_dir which points to
-          ## $ENV{TEMP} if defined. Otherwise, tmp_dir points
-          ## to a location under /tmp.
+         # Default is $MCE::Signal::tmp_dir which points to
+         # $ENV{TEMP} if defined. Otherwise, tmp_dir points
+         # to a location under /tmp.
 
-      freeze => \&encode_sereal,         ## Default $MCE::FREEZE
-      thaw => \&decode_sereal,           ## Default $MCE::THAW
+      freeze => \&encode_sereal,          ## Default $MCE::FREEZE
+      thaw   => \&decode_sereal,          ## Default $MCE::THAW
 
-          ## Release 1.412 allows freeze and thaw to be overridden.
-          ## Simply include a serialization module prior to loading
-          ## MCE. Configure freeze/thaw options.
+         # Release 1.412 allows freeze and thaw to be overridden.
+         # Simply include a serialization module prior to loading
+         # MCE. Configure freeze/thaw options.
 
-          ## use Sereal qw( encode_sereal decode_sereal );
-          ## use CBOR::XS qw( encode_cbor decode_cbor );
-          ## use JSON::XS qw( encode_json decode_json );
-          ##
-          ## use MCE;
+         # use Sereal qw( encode_sereal decode_sereal );
+         # use CBOR::XS qw( encode_cbor decode_cbor );
+         # use JSON::XS qw( encode_json decode_json );
+         #
+         # use MCE;
 
-      gather => \@a,                     ## Default undef
+      gather => \@a,                      ## Default undef
 
-          ## Release 1.5 allows for gathering of data to an array or
-          ## hash reference, a MCE::Queue/Thread::Queue object, or code
-          ## reference. One invokes gathering by calling the gather
-          ## method as often as needed.
+         # Release 1.5 allows for gathering of data to an array or
+         # hash reference, a MCE::Queue/Thread::Queue object, or code
+         # reference. One invokes gathering by calling the gather
+         # method as often as needed.
 
-          ## gather => \@array,
-          ## gather => \%hash,
-          ## gather => $queue,
-          ## gather => \&order,
+         # gather => \@array,
+         # gather => \%hash,
+         # gather => $queue,
+         # gather => \&order,
 
-      init_relay => 0,                   ## Default undef
+      init_relay => 0,                    ## Default undef
 
-          ## For specifying the initial relay value. Used with the
-          ## relay method for receiving and passing on information.
+         # For specifying the initial relay value. Used with the
+         # relay method for receiving and passing on information.
 
-      input_data => $input_file,         ## Default undef
-      RS         => "\n>",               ## Default undef
+      input_data => $input_file,          ## Default undef
+      RS         => "\n>",                ## Default undef
 
-          ## input_data => '/path/to/file'  process file
-          ## input_data => \@array          process array
-          ## input_data => \*FILE_HNDL      process file handle
-          ## input_data => \$scalar         treated like a file
-          ## input_data => \&iterator       user specified iterator
+         # input_data => '/path/to/file'  ## Process file
+         # input_data => \@array          ## Process array
+         # input_data => \*FILE_HNDL      ## Process file handle
+         # input_data => \$scalar         ## Treated like a file
+         # input_data => \&iterator       ## User specified iterator
 
-          ## The RS option (for input record separator) applies to files
-          ## and file handles. MCE applies extra logic for RS beginning
-          ## with a newline character; e.g. RS => "\n>". It chops the
-          ## characters following the newline and prepends them to
-          ## subsequent records. This is automatic when not slurping.
-          ## Otherwise, the logic is applied to the first and last
-          ## records only.
-          ##
-          ## use_slurpio => 0
-          ##    Record 1:  >seq1 ... \n>   (to)   >seq1 ... \n
-          ##    Record 2:  seq2  ... \n>          >seq2 ... \n
-          ##    Record 3:  seq3  ... \n>          >seq3 ... \n
-          ##    Last Rec:  seqN  ... \n           >seqN ... \n
-          ##
-          ## use_slurpio => 1 (chunks begin with > and end with \n)
-          ##    Record 1:  >seq1 ... \n>   (to)   >seq1 ... \n>
-          ##    Record 2:  seq2  ... \n>          seq2  ... \n>
-          ##    Record 3:  seq3  ... \n>          seq3  ... \n>
-          ##    Last Rec:  seqN  ... \n           seqN  ... \n
+         # The RS option (for input record separator) applies to files
+         # and file handles.
 
-      use_slurpio => 1,                  ## Default 0
-      parallel_io => 1,                  ## Default 0
+         # MCE applies additional logic when RS begins with a newline
+         # character; e.g. RS => "\n>". It trims away characters after
+         # the newline and prepends them to the next record.
+         # This happens automatically when not slurping. Otherwise,
+         # the logic is applied to the first and last records only.
+         #
+         # Typically, the left side is what happens for $/ = "\n>".
+         # The right side is what user_func receives.
+         #
+         # use_slurpio => 0  (all records begin with > and end with \n)
+         #    Record 1:  >seq1 ... \n>   (to)   >seq1 ... \n
+         #    Record 2:  seq2  ... \n>          >seq2 ... \n
+         #    Record 3:  seq3  ... \n>          >seq3 ... \n
+         #    Last Rec:  seqN  ... \n           >seqN ... \n
+         #
+         # use_slurpio => 1  (all chunks begin with > and end with \n)
+         # 1  Record 1:  >seq1 ... \n>   (to)   >seq1 ... \n>
+         #    Record 2:  seq2  ... \n>          seq2  ... \n>
+         #    Record 3:  seq3  ... \n>          seq3  ... \n
+         #
+         # 2  Record 4:  seq4  ... \n>   (to)   >seq4 ... \n>
+         #    Record 5:  seq5  ... \n>          seq5  ... \n>
+         #    Record 6:  seq6  ... \n>          seq6  ... \n
+         #
+         # 3  Record 7:  seq7  ... \n>   (to)   >seq7 ... \n>
+         #    Record 8:  seq8  ... \n>          seq8  ... \n>
+         #    Last Rec:  seqN  ... \n           seqN  ... \n
 
-          ## Whether to enable slurpio when reading files.
-          ## Passes raw chunk (scalar ref) to user function.
+      use_slurpio => 1,                   ## Default 0
+      parallel_io => 1,                   ## Default 0
 
-          ## The parallel_io option enables parallel reads during
-          ## large slurpio. Useful when reading from fast storage.
-          ## Do not enable parallel_io when running MCE on many
-          ## blades and input coming from shared storage.
+         # Whether to enable slurpio when reading files.
+         # Passes raw chunk (scalar ref) to user function.
 
-      use_threads => 1,                  ## Auto 0 or 1
+         # The parallel_io option enables parallel reads during
+         # large slurpio. Useful when reading from fast storage.
+         # Do not enable parallel_io when running MCE on many
+         # blades and input coming from shared storage.
 
-          ## MCE spawns child processes by default, not threads.
-          ##
-          ## However, MCE supports threads via 2 threading
-          ## libraries if threads is desired.
+      use_threads => 1,                   ## Auto 0 or 1
 
-          ## The use of threads in MCE requires that you include
-          ## threads support prior to loading MCE. The use_threads
-          ## option defaults to 1 when a thread library is loaded.
-          ## Threads is loaded automatically for $^O eq 'MSWin32'.
-          ##
-          ## use threads;                use forks;
-          ## use threads::shared;  (or)  use forks::shared;
-          ## use MCE                     use MCE;
+         # MCE spawns child processes by default, not threads.
+         #
+         # However, MCE supports threads via 2 threading
+         # libraries if threads is desired.
 
-      spawn_delay  => 0.035,             ## Default undef
-      submit_delay => 0.002,             ## Default undef
-      job_delay    => 0.150,             ## Default undef
+         # The use of threads in MCE requires that you include
+         # threads support prior to loading MCE. The use_threads
+         # option defaults to 1 when a thread library is loaded.
+         # Threads is loaded automatically for $^O eq 'MSWin32'.
+         #
+         #   use threads;                use forks;
+         #   use threads::shared;  (or)  use forks::shared;
+         #   use MCE                     use MCE;
 
-          ## Time to wait, in fractional seconds, after spawning
-          ## a worker, parameters submission to a worker, and
-          ## job commencement (running, staggered delay).
+      spawn_delay  => 0.035,              ## Default undef
+      submit_delay => 0.002,              ## Default undef
+      job_delay    => 0.150,              ## Default undef
 
-          ## Specify job_delay when wanting to stagger
-          ## workers connecting to a database.
+         # Time to wait, in fractional seconds, after spawning
+         # a worker, parameters submission to a worker, and
+         # job commencement (running, staggered delay).
 
-      on_post_exit => \&on_post_exit,    ## Default undef
-      on_post_run => \&on_post_run,      ## Default undef
+         # Specify job_delay when wanting to stagger
+         # workers connecting to a database.
 
-          ## Execute code block after a worker exits.
-          ## exit, MCE->exit, or die
+      on_post_exit => \&on_post_exit,     ## Default undef
+      on_post_run => \&on_post_run,       ## Default undef
 
-          ## Execute code block after running a job.
-          ## MCE->process or MCE->run
+         # Execute code block after a worker exits.
+         # exit, MCE->exit, or die
 
-      user_args => { env => 'test' },    ## Default undef
+         # Execute code block after running a job.
+         # MCE->process or MCE->run
 
-          ## MCE release 1.4 added a new parameter to allow one to
-          ## specify arbitrary arguments such as a string, an ARRAY
-          ## or a HASH reference. Workers can access this directly:
-          ## my $args = $mce->{user_args} or MCE->user_args;
+      user_args => { env => 'test' },     ## Default undef
 
-      user_begin => \&user_begin,        ## Default undef
-      user_func => \&user_func,          ## Default undef
-      user_end => \&user_end,            ## Default undef
+         # MCE release 1.4 added a new parameter to allow one to
+         # specify arbitrary arguments such as a string, an ARRAY
+         # or a HASH reference. Workers can access this directly:
+         # my $args = $mce->{user_args} or MCE->user_args;
 
-          ## Think of user_begin, user_func, and user_end as in
-          ## the awk scripting language:
-          ## awk 'BEGIN { begin } { func } { func } ... END { end }'
+      user_begin => \&user_begin,         ## Default undef
+      user_func => \&user_func,           ## Default undef
+      user_end => \&user_end,             ## Default undef
 
-          ## MCE workers call user_begin once at the start of a job,
-          ## then user_func repeatedly until no chunks remain.
-          ## Afterwards, user_end is called.
+         # Think of user_begin, user_func, and user_end as in
+         # the awk scripting language:
+         # awk 'BEGIN { begin } { func } { func } ... END { end }'
 
-      user_error => \&user_error,        ## Default undef
-      user_output => \&user_output,      ## Default undef
+         # MCE workers call user_begin once at the start of a job,
+         # then user_func repeatedly until no chunks remain.
+         # Afterwards, user_end is called.
 
-          ## MCE will forward data to user_error/user_output,
-          ## when defined, for the following methods.
+      user_error => \&user_error,         ## Default undef
+      user_output => \&user_output,       ## Default undef
 
-          ## MCE->sendto(\*STDERR, "sent to user_error\n");
-          ## MCE->printf(\*STDERR, "%s\n", "sent to user_error");
-          ## MCE->print(\*STDERR, "sent to user_error\n");
-          ## MCE->say(\*STDERR, "sent to user_error");
+         # MCE will forward data to user_error/user_output,
+         # when defined, for the following methods.
 
-          ## MCE->sendto(\*STDOUT, "sent to user_output\n");
-          ## MCE->printf("%s\n", "sent to user_output");
-          ## MCE->print("sent to user_output\n");
-          ## MCE->say("sent to user_output");
+         # MCE->sendto(\*STDERR, "sent to user_error\n");
+         # MCE->printf(\*STDERR, "%s\n", "sent to user_error");
+         # MCE->print(\*STDERR, "sent to user_error\n");
+         # MCE->say(\*STDERR, "sent to user_error");
 
-      stderr_file => 'err_file',         ## Default STDERR
-      stdout_file => 'out_file',         ## Default STDOUT
+         # MCE->sendto(\*STDOUT, "sent to user_output\n");
+         # MCE->printf("%s\n", "sent to user_output");
+         # MCE->print("sent to user_output\n");
+         # MCE->say("sent to user_output");
 
-          ## Or to file; user_error and user_output take precedence.
+      stderr_file => 'err_file',          ## Default STDERR
+      stdout_file => 'out_file',          ## Default STDOUT
 
-      flush_file   => 1,                 ## Default 0
-      flush_stderr => 1,                 ## Default 0
-      flush_stdout => 1,                 ## Default 0
+         # Or to file; user_error and user_output take precedence.
 
-          ## Flush sendto file, standard error, or standard output.
+      flush_file   => 1,                  ## Default 0
+      flush_stderr => 1,                  ## Default 0
+      flush_stdout => 1,                  ## Default 0
+
+         # Flush sendto file, standard error, or standard output.
 
       interval => {
           delay => 0.007 [, max_nodes => 4, node_id => 1 ]
       },
 
-          ## For use with the yield method introduced in MCE 1.5.
-          ## Both max_nodes & node_id are optional and default to 1.
-          ## Delay is the amount of time between intervals.
+         # For use with the yield method introduced in MCE 1.5.
+         # Both max_nodes & node_id are optional and default to 1.
+         # Delay is the amount of time between intervals.
 
-          ## interval => 0.007           ## Shorter; MCE 1.506+
+         # interval => 0.007              ## Shorter; MCE 1.506+
 
-      sequence => {                      ## Default undef
+      sequence => {                       ## Default undef
           begin => -1, end => 1 [, step => 0.1 [, format => "%4.1f" ] ]
       },
 
-      bounds_only => 1,                  ## Default undef
+      bounds_only => 1,                   ## Default undef
 
-          ## For looping through a sequence of numbers in parallel.
-          ## STEP, if omitted, defaults to 1 if BEGIN is smaller than
-          ## END or -1 if BEGIN is greater than END. The FORMAT string
-          ## is passed to sprintf behind the scene (% may be omitted).
-          ## e.g. $seq_n_formated = sprintf("%4.1f", $seq_n);
+         # For looping through a sequence of numbers in parallel.
+         # STEP, if omitted, defaults to 1 if BEGIN is smaller than
+         # END or -1 if BEGIN is greater than END. The FORMAT string
+         # is passed to sprintf behind the scene (% may be omitted).
+         # e.g. $seq_n_formated = sprintf("%4.1f", $seq_n);
 
-          ## Do not specify both options; input_data and sequence.
-          ## Release 1.4 allows one to specify an array reference.
-          ## e.g. sequence => [ -1, 1, 0.1, "%4.1f" ]
+         # Do not specify both options; input_data and sequence.
+         # Release 1.4 allows one to specify an array reference.
+         # e.g. sequence => [ -1, 1, 0.1, "%4.1f" ]
 
-          ## The bounds_only => 1 option will compute the 'begin' and
-          ## 'end' items only for the chunk and not the items in between
-          ## (hence boundaries only). This option has no effect when
-          ## sequence is not specified or chunk_size equals 1.
+         # The bounds_only => 1 option will compute the 'begin' and
+         # 'end' items only for the chunk and not the items in between
+         # (hence boundaries only). This option has no effect when
+         # sequence is not specified or chunk_size equals 1.
 
-          ## my $begin = $chunk_ref->[0]; my $end = $chunk_ref->[1];
+         # my $begin = $chunk_ref->[0]; my $end = $chunk_ref->[1];
 
-      task_end => \&task_end,            ## Default undef
+      task_end => \&task_end,             ## Default undef
 
-          ## This is called by the manager process after the task
-          ## has completed processing. MCE 1.5 allows this option
-          ## to be specified at the top level.
+         # This is called by the manager process after the task
+         # has completed processing. MCE 1.5 allows this option
+         # to be specified at the top level.
 
-      task_name => 'string',             ## Default 'MCE'
+      task_name => 'string',              ## Default 'MCE'
 
-          ## Added in MCE 1.5 and mainly beneficial for user_tasks.
-          ## One may specify a unique name per each sub-task.
-          ## The string is passed as the 3rd arg to task_end.
+         # Added in MCE 1.5 and mainly beneficial for user_tasks.
+         # One may specify a unique name per each sub-task.
+         # The string is passed as the 3rd arg to task_end.
 
-      user_tasks => [                    ## Default undef
-         { ... },                        ## Options for task 0
-         { ... },                        ## Options for task 1
-         { ... },                        ## Options for task 2
+      user_tasks => [                     ## Default undef
+         { ... },                         ## Options for task 0
+         { ... },                         ## Options for task 1
+         { ... },                         ## Options for task 2
       ],
 
-          ## Takes a list of hash references, each allowing up to 17
-          ## options. All other MCE options are ignored. The init_relay,
-          ## input_data, RS, and use_slurpio options are applicable to
-          ## the first task only.
+         # Takes a list of hash references, each allowing up to 17
+         # options. All other MCE options are ignored. The init_relay,
+         # input_data, RS, and use_slurpio options are applicable to
+         # the first task only.
 
-          ## max_workers, chunk_size, input_data, interval, sequence,
-          ## bounds_only, user_args, user_begin, user_end, user_func,
-          ## gather, task_end, task_name, use_slurpio, use_threads,
-          ## init_relay, RS
+         # max_workers, chunk_size, input_data, interval, sequence,
+         # bounds_only, user_args, user_begin, user_end, user_func,
+         # gather, task_end, task_name, use_slurpio, use_threads,
+         # init_relay, RS
 
-          ## Options not specified here will default to same option
-          ## specified at the top level.
+         # Options not specified here will default to same option
+         # specified at the top level.
    );
 
 =head2 EXPORT_CONST, CONST
@@ -310,7 +321,7 @@ There are 3 constants which are exportable. Using the constants in lieu of
 Exports SELF => 0, CHUNK => 1, and CID => 2.
 
    use MCE export_const => 1;
-   use MCE const => 1;                   ## Shorter; MCE 1.415+
+   use MCE const => 1;                    ## Shorter; MCE 1.415+
 
    user_func => sub {
     # my ($mce, $chunk_ref, $chunk_id) = @_;
@@ -335,11 +346,11 @@ The following list 5 options which may be overridden when loading the module.
    use JSON::XS qw( encode_json decode_json );
 
    use MCE
-         max_workers => 4,               ## Default 1
-         chunk_size => 100,              ## Default 1
-         tmp_dir => "/path/to/app/tmp",  ## $MCE::Signal::tmp_dir
-         freeze => \&encode_sereal,      ## \&Storable::freeze
-         thaw => \&decode_sereal         ## \&Storable::thaw
+         max_workers => 4,                ## Default 1
+         chunk_size => 100,               ## Default 1
+         tmp_dir => "/path/to/app/tmp",   ## $MCE::Signal::tmp_dir
+         freeze => \&encode_sereal,       ## \&Storable::freeze
+         thaw => \&decode_sereal          ## \&Storable::thaw
    ;
 
    my $mce = MCE->new( ... );
@@ -359,22 +370,22 @@ Run calls spawn, submits the job; workers call user_begin, user_func, and
 user_end. Run shuts down workers afterwards. Call spawn whenever the need
 arises for large data structures prior to running.
 
-   $mce->spawn;                          ## Call early if desired
+   $mce->spawn;                           ## Call early if desired
 
-   $mce->run;                            ## Call run or process below
+   $mce->run;                             ## Call run or process below
 
    ## Acquire data arrays and/or input_files. Workers persist after
    ## processing.
 
-   $mce->process(\@input_data_1);        ## Process arrays
+   $mce->process(\@input_data_1);         ## Process arrays
    $mce->process(\@input_data_2);
    $mce->process(\@input_data_n);
 
-   $mce->process('input_file_1');        ## Process files
+   $mce->process('input_file_1');         ## Process files
    $mce->process('input_file_2');
    $mce->process('input_file_n');
 
-   $mce->shutdown;                       ## Shutdown workers
+   $mce->shutdown;                        ## Shutdown workers
 
 =head2 SYNTAX for ON_POST_EXIT
 
@@ -484,8 +495,8 @@ reference.
    input_data  => \@array,          ## process array
    input_data  => \*FILE_HNDL,      ## process file handle
    input_data  => $fh,              ## open $fh, "<", "file"
-   input_data  => $fh,              ## new IO::File "file", "r"
-   input_data  => $fh,              ## new IO::Uncompress::Gunzip "file.gz"
+   input_data  => $fh,              ## IO::File "file", "r"
+   input_data  => $fh,              ## IO::Uncompress::Gunzip "file.gz"
    input_data  => \$scalar,         ## treated like a file
    input_data  => \&iterator,       ## user specified iterator
 
@@ -1110,8 +1121,8 @@ user_func for input_data and sequence of numbers. The following applies.
       print $_, "\n";   ## Same as $n_seq
    });
 
-Sequence can also be specified using an array reference. The below is the same
-as the example afterwards.
+Sequence can also be specified using an array reference. The below is the
+same as the example afterwards.
 
    $mce->forseq( { begin => 10, end => 40, step => 2 }, ... );
 
@@ -1138,8 +1149,8 @@ The methods listed below are callable by the main process and workers.
 
 =item ->abort ( void )
 
-The 'abort' method is applicable when processing input_data only. This causes
-all workers to abort after processing the current chunk.
+The 'abort' method is applicable when processing input_data only. This
+causes all workers to abort after processing the current chunk.
 
 Workers write the next offset position to the queue socket for the next
 available worker. In essence, the 'abort' method writes the last offset
@@ -1392,7 +1403,7 @@ Do the following if wanting workers to persist between jobs.
       user_end   => sub { ## close handle to DB },
    );
 
-   $mce->spawn;      ## Spawn early if desired
+   $mce->spawn;           ## Spawn early if desired
 
    $mce->process("/one/very_big_file/_mce_/will_chunk_in_parallel");
    $mce->process(\@array_of_files_to_grep);
@@ -1454,8 +1465,8 @@ Press [ctrl-c] to terminate the script.
       on_post_exit => sub {
          my ($mce, $e) = @_;
          print "$e->{wid}: $e->{pid}: status $e->{status}: $e->{msg}";
-       # $mce->restart_worker($e->{wid});  ## MCE-1.415 and below
-         $mce->restart_worker;             ## MCE-1.500 and above
+       # $mce->restart_worker($e->{wid});    ## MCE-1.415 and below
+         $mce->restart_worker;               ## MCE-1.500 and above
       },
 
       user_begin => sub {
@@ -1579,13 +1590,13 @@ needed or prior to exiting.
 
    $mce->spawn;
 
-   $mce->process(\@input_data_1);        ## Processing multiple arrays
+   $mce->process(\@input_data_1);         ## Processing multiple arrays
    $mce->process(\@input_data_2);
    $mce->process(\@input_data_n);
 
    $mce->shutdown;
 
-   $mce->process('input_file_1');        ## Processing multiple files
+   $mce->process('input_file_1');         ## Processing multiple files
    $mce->process('input_file_2');
    $mce->process('input_file_n');
 
@@ -1822,7 +1833,7 @@ handle. Otherwise, MCE will error indicating the first argument is not a glob
 reference.
 
    MCE->print(\*STDOUT, \@array, "\n");
-   MCE->print("", \@array, "\n");          ## ok
+   MCE->print("", \@array, "\n");         ## ok
 
 =item ->relay ( sub { ... } )
 
@@ -1968,12 +1979,12 @@ driven (or task_wid when not processing input), thus orderly.
          ## from the manager process. The statements between relay_recv
          ## and relay run serially and most important orderly.
          ##
-         ## (This is not recommended for sprintf above requiring extra CPU
-         ## time. Thus, better to run in parallel and send the output to
-         ## the manager process.)
+         ## (This is not recommended for sprintf above requiring extra
+         ## CPU time. Thus, better to run in parallel and send the
+         ## output to the manager process.)
 
          MCE->relay_recv;             ## my $val = MCE->relay_recv;
-                                      ## should be 0, relay simply forwards
+                                      ## 0, relay below simply forwards
 
          $| = 1; print $$chunk_ref;   ## exclusive access to STDOUT
                                       ## important, flush immediately
@@ -2017,13 +2028,13 @@ To retain 1.00x compatibility, sendto outputs the content when a single data
 reference is specified. Otherwise, the reference for \@array or \$scalar is
 shown in 1.500, not the content.
 
-   MCE->sendto('STDERR', \@array);         ## 1.00x behavior, content
+   MCE->sendto('STDERR', \@array);        ## 1.00x behavior, content
    MCE->sendto('STDOUT', \$scalar);
    MCE->sendto('file:/path/to/file', \@array);
 
    ## Output matches the print statement
 
-   MCE->sendto(\*STDERR, \@array);         ## 1.500 behavior, reference
+   MCE->sendto(\*STDERR, \@array);        ## 1.500 behavior, reference
    MCE->sendto(\*STDOUT, \$scalar);
    MCE->sendto($fh, \@array);
 
@@ -2121,7 +2132,6 @@ MCE->sync with MCE->do or output serialization methods inside a loop.
 
          MCE->sync;
 
-
          MCE->do('aggregate_result', \@result);  ## or MCE->sendto
 
          MCE->sync;      ## The sync operation is also needed here to
@@ -2195,9 +2205,9 @@ uses 2 workers to minimize the output size. Input is from the sequence option.
 
       my ($mce, $task_id, $task_name) = @_;
 
-      ## The yield method causes this worker to wait for its next
-      ## time interval slot before running. Yield has no effect
-      ## without the "interval" option.
+      ## The yield method causes this worker to wait for its next time
+      ## interval slot before running. Yield has no effect without the
+      ## 'interval' option.
 
       ## Yielding is beneficial inside a user_begin block. A use case
       ## is staggering database connections among workers in order

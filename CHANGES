@@ -1,6 +1,50 @@
 
 Revision history for MCE
 
+1.599 Thu Jan 30 20:00:00 EST 2014
+
+  [BUG FIXES]
+
+  * Die handlers (in MCE::Signal and MCE::Core::Worker) are finally 100%.
+    Furthermore, eval { die ... } statements behave correctly while running
+    MCE itself inside an eval block. Thus, MCE on iPerl on top of iPython
+    is possible via Devel::IPerl.
+
+  * MCE Models now set $MCE::FREEZE, $MCE::THAW, and $MCE::TMP_DIR when
+    overridding freeze, thaw, and tmp_dir respectively at load time.
+
+  [ENHANCEMENTS]
+
+  * Added 3 names to CREDITS; Demian Riccardi, Joel Berger, and Wei Shen.
+
+  * Removed globalness for several variables in MCE, Models, and Queue.
+  * Refactored ->print, ->printf, and ->say. Optimized ->print some more.
+  * The init method in MCE Models can now take an array of options.
+  * Memory optimization applied to Handle.pm, Iterator.pm, and Request.pm.
+  * Memory optimization applied to ->sendto, ->do, and ->gather.
+  * Memory optimization applied to Core IPC in general.
+  * Shorten $_queue to $_Q in MCE::Queue.
+  * Optimized the MCE->new method.
+
+  [NEW FEATURES]
+
+  * Added a new module; MCE::Mutex for simple semaphore.
+
+  * Added ->relay_recv, ->relay, and ->relay_final methods to the Core API.
+    Refreshed cat.pl and findnull.pl examples to relay the number of lines
+    read. Workers output exclusively and orderly to STDOUT in cat.pl.
+
+  * Added several examples; biofasta (folder), mutex.pl, and relay.pl.
+    The FASTA examples process by records "\n>", not by lines.
+
+  * MCE applies additional logic when RS begins with a newline character;
+    e.g. RS => "\n>". It trims away characters after the newline and
+    prepends them to the next record. This happens automatically when not
+    slurping. Otherwise, the logic is applied to the first and last records
+    only. This is illustrated in the Core API documentation.
+
+  * Updated the Core API documentation (RS, added relay methods).
+
 1.522 Thu Dec 25 16:00:00 EST 2014
 
   [BUG FIXES]
@@ -10,7 +54,7 @@ Revision history for MCE
 
   * Optimization for MCE->print, MCE->printf, MCE->say and MCE->sendto.
     This was calling fileno unnecessarily. MCE->print('STDERR', ...)
-    is not supported. Do this instead; MCE->print(\*STDERR, ...)
+    is not supported. This works; MCE->print(\*STDERR, ...)
 
   [ENHANCEMENTS]
 
