@@ -1,7 +1,7 @@
 
 Revision history for MCE
 
-1.599 Thu Jan 30 20:00:00 EST 2014
+1.599 Sat Jan 31 09:00:00 EST 2014
 
   [BUG FIXES]
 
@@ -9,6 +9,8 @@ Revision history for MCE
     Furthermore, eval { die ... } statements behave correctly while running
     MCE itself inside an eval block. Thus, MCE on iPerl on top of iPython
     is possible via Devel::IPerl.
+
+  * Fixed queues stalling from running (MCE::Queue fast => 1) on Linux.
 
   * MCE Models now set $MCE::FREEZE, $MCE::THAW, and $MCE::TMP_DIR when
     overridding freeze, thaw, and tmp_dir respectively at load time.

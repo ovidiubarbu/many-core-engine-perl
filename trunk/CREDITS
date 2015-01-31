@@ -9,20 +9,20 @@ alphabetical order by last name.
 # Beijen, Michiel
 
   For quoting "MCE eats really big log files for breakfast" on twitter.
-  However, MCE v1.600 eats files even faster due to new relay capabilities
-  introduced in v1.600. Below, comparing cat.pl from v1.522 and v1.600.
+  Well, MCE v1.600 is even better due to new relay capabilities added to
+  v1.600. Below, comparing cat.pl from v1.522 and v1.600. For cat.pl -n,
+  the more cores the better in v1.600.
 
-  time ./v1.522/examples/cat.pl    3gb_63mil_lines.fa >/dev/null ;  3.072s
-  time ./v1.600/examples/cat.pl    3gb_63mil_lines.fa >/dev/null ;  0.653s
+     time v1.522/cat.pl    3gb_63mil_lines.fa >/dev/null ;  3.072s
+     time v1.600/cat.pl    3gb_63mil_lines.fa >/dev/null ;  0.653s
 
-  time ./v1.522/examples/cat.pl  < 3gb_63mil_lines.fa >/dev/null ;  6.746s
-  time ./v1.600/examples/cat.pl  < 3gb_63mil_lines.fa >/dev/null ;  3.363s
+     time v1.522/cat.pl  < 3gb_63mil_lines.fa >/dev/null ;  6.746s
+     time v1.600/cat.pl  < 3gb_63mil_lines.fa >/dev/null ;  3.363s
 
-  time ./v1.522/examples/cat.pl -n 3gb_63mil_lines.fa >/dev/null ; 43.123s
-  time ./v1.600/examples/cat.pl -n 3gb_63mil_lines.fa >/dev/null ;  6.710s
+     time v1.522/cat.pl -n 3gb_63mil_lines.fa >/dev/null ; 43.123s
+     time v1.600/cat.pl -n 3gb_63mil_lines.fa >/dev/null ;  6.710s
 
-  Although MCE can chunk swiftly, input_data is not required to run MCE.
-  For the cat.pl -n timings above, the more cores the better for v1.600.
+  Btw, input data is not a requirement for running MCE.
 
 # Berger, Joel
 
