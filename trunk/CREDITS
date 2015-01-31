@@ -9,27 +9,27 @@ alphabetical order by last name.
 # Beijen, Michiel
 
   For quoting "MCE eats really big log files for breakfast" on twitter.
-  The thing is that MCE v1.600 eats faster due to new relay capabilities
-  introduced in v1.600. Below, comparing cat.pl from v1.522 and v1.600.
+  MCE v1.600 eats files even faster due to new relay capabilities introduced
+  in v1.600. Below, comparing cat.pl from v1.522 and v1.600.
 
-  time ./MCE-1.522/examples/cat.pl   3gb_63mil_lines.log >/dev/null  ( 3.072s )
-  time ./MCE-1.600/examples/cat.pl   3gb_63mil_lines.log >/dev/null  ( 0.653s )
+  time ./MCE-1.522/examples/cat.pl   3gb_63mil_lines.log >/dev/null  ; 3.072s
+  time ./MCE-1.600/examples/cat.pl   3gb_63mil_lines.log >/dev/null  ; 0.653s
 
-  time ./MCE-1.522/examples/cat.pl < 3gb_63mil_lines.log >/dev/null  ( 6.746s )
-  time ./MCE-1.600/examples/cat.pl < 3gb_63mil_lines.log >/dev/null  ( 3.363s )
+  time ./MCE-1.522/examples/cat.pl < 3gb_63mil_lines.log >/dev/null  ; 6.746s
+  time ./MCE-1.600/examples/cat.pl < 3gb_63mil_lines.log >/dev/null  ; 3.363s
 
   Although MCE can chunk swiftly, input_data is not required to run MCE.
 
 # Berger, Joel
 
   The inspiration for the sixth model (MCE::Step) came from reading a blog
-  by Joel "Writing Non-Blocking Applications with Mojolicious: Part 3" at
+  by Joel, "Writing Non-Blocking Applications with Mojolicious: Part 3":
 
   http://blogs.perl.org/users/joel_berger/2014/01/writing-non-blocking-applications-with-mojolicious-part-3.html
 
 # Bouras, George
 
-  For reporting sockets failing under the Windows enviroment due to a
+  For reporting sockets failing under the Windows environment due to a
   period of inactivity. An example is when workers execute an external
   command taking beyond 4 minutes to complete. On returning, the sockets
   have gone stale with a CPU core going 100% at this point.
@@ -59,8 +59,9 @@ alphabetical order by last name.
 # Eldai, Hisham
 
   While working on the biofasta examples, Hisham introduced me to hg19.fa.
-  A couple records in hg19 (driven by $/ = "\n>") are 250 MiB in size.
-  Memory optimization came from running against hg19.fa and RS => "\n>".
+  A couple records inside hg19 (driven by $/ = "\n>") are 250 MiB in size.
+  Memory optimizations in v1.600 came about by running against hg19.fa
+  hundreds of times.
 
 ###############################################################################
 #  * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # *  #
@@ -68,12 +69,13 @@ alphabetical order by last name.
 
 # Farrell, David
 
-  Davide wrote a nice article about MCE (love the picture). What stood out was
-  his example. I never thought aobut using mce_grep { ... } <$fileHandle>
-  without _f (mce_grep_f). At this time, updated MCE::Grep and MCE::Map to be
-  fully aware of wantarray.
+  David wrote a nice article about MCE (love the picture). What stood out was
+  his example. I never thought about using mce_grep { ... } <$fileHandle>
+  without the _f (mce_grep_f). At the time, updated MCE::Grep and MCE::Map
+  to be fully aware of wantarray.
 
-  The blog: "Make your code run faster with Perl's secret turbo module"
+  The blog "Make your code run faster with Perl's secret turbo module" is
+  located at:
 
   http://perltricks.com/article/61/2014/1/21/Make-your-code-run-faster-with-Perl-s-secret-turbo-module
 
@@ -90,14 +92,14 @@ alphabetical order by last name.
   For reporting an issue (bug RT#94706) with signal handling in MCE::Signal.
   Also, thank you for tip on getpgrp.
 
-###############################################################################
-#  * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # *  #
-###############################################################################
-
 # Jacobsen, Dana
 
   For reporting an issue with get_ncpu on AIX. In addition, suggesting
   various solutions.
+
+###############################################################################
+#  * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # *  #
+###############################################################################
 
 # Kharchenko, Oleksandr
 
@@ -105,7 +107,7 @@ alphabetical order by last name.
   on CPAN, Parallel::DataPipe and Parallel::parallel_map. I used his example
   heavily in comparing IPC between pipe-driven and socket-driven. Not pleased
   with MCE's performance with chunk_size => 1, although 2 was as fast if not
-  faster, I tried variouos things to include IO::Select. Finally, realized
+  faster, I tried various things to include IO::Select. Finally, realized
   increasing the number of data channels was all that was needed (v1.500).
 
 # Kulow, Stephan
@@ -113,19 +115,19 @@ alphabetical order by last name.
   For making an OpenSUSE package for MCE.
   https://build.opensuse.org/package/show/devel:languages:perl:CPAN-M/perl-MCE
 
-###############################################################################
-#  * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # *  #
-###############################################################################
-
 # Lu, Henry
 
   For listening during our walks on numerous occasions while I talked about
-  how ridiculously hard to provide support for the Windows environmemnt.
+  how ridiculously hard to provide support for the Windows environment.
   For encouraging me to hang in there when I wanted to give up.
 
 # Mabon, Philip
 
   For reporting on a couple issues with MCE in particular bug RT#92627.
+
+###############################################################################
+#  * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # *  #
+###############################################################################
 
 # Mertens, David
 
@@ -137,9 +139,12 @@ alphabetical order by last name.
     Perl module; PDL::Parallel::threads::SIMD. Barrier synchronization in MCE
     is unbelievably fast (did not expect this at the time).
 
-###############################################################################
-#  * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # *  #
-###############################################################################
+# Mughal, Zakariyya
+
+  First, Demian Riccardi introduced me to Devel::IPerl by Zakariyya. The die
+  handlers in MCE brake the user experience. It seems that looking at $^S
+  (for Perl state) is not enough. MCE v1.600 fixes this once and for all.
+  The answer is in perl-5.20.1/cpan/CGI/lib/CGI/Carp.pm (Carp::longmess).
 
 # Ogulin, Joseph
 
@@ -184,7 +189,7 @@ alphabetical order by last name.
 
   For the BioUtil CPAN module. BioUtil::Seq::FastaReader inspired me to
   create parallel examples (biofasta folder) in MCE 1.600. We tried to
-  make FastaReader BioUtil::Seq even faster.
+  make FastaReader in BioUtil::Seq even faster.
 
 ###############################################################################
 #  * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # *  #
