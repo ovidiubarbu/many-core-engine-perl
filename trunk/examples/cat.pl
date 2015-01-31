@@ -183,12 +183,12 @@ my $mce = MCE->new(
          ## from the manager process. The statements between relay_recv
          ## and relay run serially and most important orderly.
          ##
-         ## (This is not recommended for sprintf above requiring extra CPU
-         ## time. Thus, better to run in parallel and send the output to
-         ## the manager process.)
+         ## (This is not recommended for sprintf above requiring extra
+         ## CPU time. Thus, better to run in parallel and send the
+         ## output to the manager process.)
 
          MCE->relay_recv;             ## my $val = MCE->relay_recv;
-                                      ## should be 0, relay simply forwards
+                                      ## 0, relay below simply forwards
 
          $| = 1; print $$chunk_ref;   ## exclusive access to STDOUT
                                       ## important, flush immediately
