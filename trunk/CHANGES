@@ -15,7 +15,8 @@ Revision history for MCE
 
   [ENHANCEMENTS]
 
-  * Added 3 names to CREDITS; Demian Riccardi, Joel Berger, and Wei Shen.
+  * Added seven names to CREDITS; David Farrell, Demian Riccardi, Hisham Eldai,
+    Joel Berger, Michiel Beijen, Oleksandr Kharchenko, and Wei Shen.
 
   * Removed globalness for several variables in MCE, Models, and Queue.
   * Refactored ->print, ->printf, and ->say. Optimized ->print some more.
