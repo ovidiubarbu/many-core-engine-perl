@@ -9,7 +9,7 @@
 ## in 1 second. Output was directed to >/dev/null during testing.
 ##
 ## Parallel::Loops:        800  Forking each @input is expensive
-## MCE->foreach...:     70,000  Workers persist between each @input
+## MCE->foreach...:     80,000  Workers persist between each @input
 ## MCE->forseq....:    200,000  Uses sequence of numbers as input
 ## MCE->forchunk..:  1,000,000  IPC overhead is greatly reduced
 ##
