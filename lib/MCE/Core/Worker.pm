@@ -694,8 +694,7 @@ sub _worker_main {
    MCE::_clear_session($_mce_sid);
 
    ## Wait until MCE completes exit notification.
-   $SIG{__DIE__}  = sub { };
-   $SIG{__WARN__} = sub { };
+   $SIG{__DIE__} = $SIG{__WARN__} = sub { };
 
    select STDERR; $| = 1;
    select STDOUT; $| = 1;

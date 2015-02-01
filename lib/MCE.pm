@@ -220,7 +220,9 @@ use constant {
 
    DATA_CHANNELS  => 8,                  ## Maximum IPC "DATA" channels
 
+   FAST_SEND_SIZE => 1024 * 64 + 128,    ## Use one print call if <  size
    MAX_CHUNK_SIZE => 1024 * 1024 * 64,   ## Maximum chunk size allowed
+
    MAX_RECS_SIZE  => 8192,               ## Reads # of records if <= value
                                          ## Reads # of bytes   if >  value
 
@@ -1195,13 +1197,19 @@ sub send {
       my $_sess_dir     = $self->{_sess_dir};
       my $_submit_delay = $self->{submit_delay};
       my $_frozen_data  = $self->{freeze}($_data_ref);
+      my $_len          = length $_frozen_data;
 
       ## Submit data to worker.
       print {$_COM_R_SOCK} '_data' . $LF;
       <$_COM_R_SOCK>;
 
-      print {$_COM_R_SOCK} length($_frozen_data) . $LF;
-      print {$_COM_R_SOCK} $_frozen_data;
+      if ($_len < FAST_SEND_SIZE) {
+         print {$_COM_R_SOCK} $_len . $LF . $_frozen_data;
+      } else {
+         print {$_COM_R_SOCK} $_len . $LF;
+         print {$_COM_R_SOCK} $_frozen_data;
+      }
+
       <$_COM_R_SOCK>;
 
       if (defined $_submit_delay && $_submit_delay > 0.0) {
@@ -1522,8 +1530,7 @@ sub exit {
    }
 
    ## Exit thread/child process.
-   $SIG{__DIE__}  = sub { };
-   $SIG{__WARN__} = sub { };
+   $SIG{__DIE__} = $SIG{__WARN__} = sub { };
 
    select STDERR; $| = 1;
    select STDOUT; $| = 1;
