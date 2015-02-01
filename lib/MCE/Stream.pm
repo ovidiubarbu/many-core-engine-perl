@@ -18,7 +18,7 @@ use Scalar::Util qw( looks_like_number );
 use MCE;
 use MCE::Queue;
 
-our $VERSION = '1.522';
+our $VERSION = '1.600';
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -660,7 +660,7 @@ MCE::Stream - Parallel stream model for chaining multiple maps and greps
 
 =head1 VERSION
 
-This document describes MCE::Stream version 1.522
+This document describes MCE::Stream version 1.600
 
 =head1 SYNOPSIS
 

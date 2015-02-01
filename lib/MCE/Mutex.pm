@@ -11,7 +11,7 @@ use warnings;
 
 use Socket qw( :crlf PF_UNIX PF_UNSPEC SOCK_STREAM );
 
-our $VERSION = '1.522';
+our $VERSION = '1.600';
 
 sub DESTROY {
 
@@ -127,7 +127,7 @@ MCE::Mutex - Simple semaphore for Many-Core Engine
 
 =head1 VERSION
 
-This document describes MCE::Mutex version 1.522
+This document describes MCE::Mutex version 1.600
 
 =head1 SYNOPSIS
 

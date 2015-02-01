@@ -5,14 +5,14 @@ MCE::Examples - A list of examples demonstrating Many-Core Engine
 
 =head1 VERSION
 
-This document describes MCE::Examples version 1.522
+This document describes MCE::Examples version 1.600
 
 =head1 DESCRIPTION
 
 MCE comes with various examples showing real-world scenarios on parallelizing
 something as small as cat (try with -n) to searching for patterns and word
 count aggregation. MCE 1.522 adds sampledb to the list demonstrating DBI
-with MCE.
+with MCE. MCE 1.600 adds biofasta (folder), mutex.pl, and relay.pl.
 
 =head1 INCLUDED WITH THE DISTRIBUTION
 
