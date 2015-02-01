@@ -15,24 +15,27 @@ Revision history for MCE
   * MCE Models now set $MCE::FREEZE, $MCE::THAW, and $MCE::TMP_DIR when
     overridding freeze, thaw, and tmp_dir respectively at load time.
 
+  * Pressing CTRL-D now ends STDIN. Sometimes required two key presses.
+
   [ENHANCEMENTS]
 
-  * Added eight names to CREDITS; David Farrell, Demian Riccardi,
-    Hisham Eldai, Joel Berger, Michiel Beijen, Oleksandr Kharchenko,
-    Wei Shen, and Zakariyya Mughal.
+  * Added seven names to CREDITS; David Farrell, Demian Riccardi,
+    Hisham Eldai, Joel Berger, Oleksandr Kharchenko, Wei Shen, and
+    Zakariyya Mughal.
 
   * Removed globalness for several variables in MCE, Models, and Queue.
   * Refactored ->print, ->printf, and ->say. Optimized ->print some more.
+  * Shorten $_queue to $_Q in Queue. ID is always sent first during IPC.
   * The init method in MCE Models can now take an array of options.
-  * Memory optimization applied to Handle.pm, Iterator.pm, and Request.pm.
-  * Memory optimization applied to ->sendto, ->do, and ->gather.
-  * Memory optimization applied to Core IPC in general.
-  * Shorten $_queue to $_Q in MCE::Queue.
-  * Optimized the MCE->new method.
+
+  * Optimized memory consumption in Handle.pm, Iterator.pm, and Request.pm.
+  * Optimized memory consumption for ->sendto, ->do, and ->gather.
+  * Optimized memory consumption for overall IPC in general.
+  * Refreshed the MCE->new method.
 
   [NEW FEATURES]
 
-  * Added a new module; MCE::Mutex for simple semaphore.
+  * Added a new addon; MCE::Mutex for simple semaphore.
 
   * Added ->relay_recv, ->relay, and ->relay_final methods to the Core API.
     Refreshed cat.pl and findnull.pl examples to relay the number of lines
