@@ -90,6 +90,54 @@ sub _output_loop {
    );
 
    ## -------------------------------------------------------------------------
+   ## Callback return.
+
+   my $_cb_ret_a = sub {                          ## CBK return array
+
+      my $_buf = $self->{freeze}($_[0]);
+         $_len = length $_buf; local $\ = undef if (defined $\);
+
+      if ($_len < FAST_SEND_SIZE) {
+         print {$_DAU_R_SOCK} $_len . $LF . $_buf;
+      } else {
+         print {$_DAU_R_SOCK} $_len . $LF;
+         print {$_DAU_R_SOCK} $_buf;
+      }
+
+      return;
+   };
+
+   my $_cb_ret_r = sub {                          ## CBK return reference
+
+      my $_buf = $self->{freeze}($_[0]);
+         $_len = length $_buf; local $\ = undef if (defined $\);
+
+      if ($_len < FAST_SEND_SIZE) {
+         print {$_DAU_R_SOCK} WANTS_REF . $LF . $_len . $LF . $_buf;
+      } else {
+         print {$_DAU_R_SOCK} WANTS_REF . $LF . $_len . $LF;
+         print {$_DAU_R_SOCK} $_buf;
+      }
+
+      return;
+   };
+
+   my $_cb_ret_s = sub {                          ## CBK return scalar
+
+      $_len = (defined $_[0]) ? length $_[0] : -1;
+      local $\ = undef if (defined $\);
+
+      if ($_len < FAST_SEND_SIZE) {
+         print {$_DAU_R_SOCK} WANTS_SCALAR . $LF . $_len . $LF . $_[0];
+      } else {
+         print {$_DAU_R_SOCK} WANTS_SCALAR . $LF . $_len . $LF;
+         print {$_DAU_R_SOCK} $_[0];
+      }
+
+      return;
+   };
+
+   ## -------------------------------------------------------------------------
    ## Create hash structure containing various output functions.
 
    my %_core_output_function = (
@@ -252,8 +300,12 @@ sub _output_loop {
 
          $_len = length $_buf; local $\ = undef if (defined $\);
 
-         print {$_DAU_R_SOCK} $_len . $LF . (++$_chunk_id) . $LF;
-         print {$_DAU_R_SOCK} $_buf;
+         if ($_len < FAST_SEND_SIZE) {
+            print {$_DAU_R_SOCK} $_len . $LF . (++$_chunk_id) . $LF . $_buf;
+         } else {
+            print {$_DAU_R_SOCK} $_len . $LF . (++$_chunk_id) . $LF;
+            print {$_DAU_R_SOCK} $_buf;
+         }
 
          $_offset_pos += $_chunk_size;
 
@@ -308,8 +360,12 @@ sub _output_loop {
          $_len = length $_buf; local $\ = undef if (defined $\);
 
          if ($_len) {
-            print {$_DAU_R_SOCK} $_len . $LF . (++$_chunk_id) . $LF;
-            print {$_DAU_R_SOCK} $_buf;
+            if ($_len < FAST_SEND_SIZE) {
+               print {$_DAU_R_SOCK} $_len . $LF . (++$_chunk_id) . $LF . $_buf;
+            } else {
+               print {$_DAU_R_SOCK} $_len . $LF . (++$_chunk_id) . $LF;
+               print {$_DAU_R_SOCK} $_buf;
+            }
          }
          else {
             print {$_DAU_R_SOCK} '0' . $LF;
@@ -333,16 +389,26 @@ sub _output_loop {
             $_buf = $self->{freeze}( [ @_ret_a ] );
             $_len = length $_buf; local $\ = undef if (defined $\);
 
-            print {$_DAU_R_SOCK} $_len . '1' . $LF . (++$_chunk_id) . $LF;
-            print {$_DAU_R_SOCK} $_buf;
+            if ($_len < FAST_SEND_SIZE) {
+               print {$_DAU_R_SOCK}
+                  $_len . '1' . $LF . (++$_chunk_id) . $LF . $_buf;
+            } else {
+               print {$_DAU_R_SOCK} $_len . '1' . $LF . (++$_chunk_id) . $LF;
+               print {$_DAU_R_SOCK} $_buf;
+            }
 
             return;
          }
          elsif (defined $_ret_a[0]) {
             $_len = length $_ret_a[0]; local $\ = undef if (defined $\);
 
-            print {$_DAU_R_SOCK} $_len . '0' . $LF . (++$_chunk_id) . $LF;
-            print {$_DAU_R_SOCK} $_ret_a[0];
+            if ($_len < FAST_SEND_SIZE) {
+               print {$_DAU_R_SOCK}
+                  $_len . '0' . $LF . (++$_chunk_id) . $LF . $_ret_a[0];
+            } else {
+               print {$_DAU_R_SOCK} $_len . '0' . $LF . (++$_chunk_id) . $LF;
+               print {$_DAU_R_SOCK} $_ret_a[0];
+            }
 
             return;
          }
@@ -374,25 +440,11 @@ sub _output_loop {
          }
          elsif ($_want_id == WANTS_ARRAY) {
             my @_ret_a = $_callback->(@{ $_data_ref });
-            $_buf = $self->{freeze}(\@_ret_a);
-            $_len = length $_buf; local $\ = undef if (defined $\);
-            print {$_DAU_R_SOCK} $_len . $LF;
-            print {$_DAU_R_SOCK} $_buf;
+            $_cb_ret_a->(\@_ret_a);
          }
          else {
-            my $_ret_s = $_callback->(@{ $_data_ref });
-            unless (ref $_ret_s) {
-               $_len = (defined $_ret_s) ? length $_ret_s : -1;
-               local $\ = undef if (defined $\);
-               print {$_DAU_R_SOCK} WANTS_SCALAR . $LF . $_len . $LF;
-               print {$_DAU_R_SOCK} $_ret_s;
-            }
-            else {
-               $_buf = $self->{freeze}($_ret_s);
-               $_len = length $_buf; local $\ = undef if (defined $\);
-               print {$_DAU_R_SOCK} WANTS_REF . $LF . $_len . $LF;
-               print {$_DAU_R_SOCK} $_buf;
-            }
+            my  $_ret_s = $_callback->(@{ $_data_ref });
+            ref $_ret_s ? $_cb_ret_r->($_ret_s) : $_cb_ret_s->($_ret_s);
          }
 
          return;
@@ -414,32 +466,17 @@ sub _output_loop {
          }
          elsif ($_want_id == WANTS_ARRAY) {
             my @_ret_a = $_callback->($_buf);
-            $_buf = $self->{freeze}(\@_ret_a);
-            $_len = length $_buf; local $\ = undef if (defined $\);
-            print {$_DAU_R_SOCK} $_len . $LF;
-            print {$_DAU_R_SOCK} $_buf;
+            $_cb_ret_a->(\@_ret_a);
          }
          else {
-            my $_ret_s = $_callback->($_buf);
-            unless (ref $_ret_s) {
-               $_len = (defined $_ret_s) ? length $_ret_s : -1;
-               local $\ = undef if (defined $\);
-               print {$_DAU_R_SOCK} WANTS_SCALAR . $LF . $_len . $LF;
-               print {$_DAU_R_SOCK} $_ret_s;
-            }
-            else {
-               $_buf = $self->{freeze}($_ret_s);
-               $_len = length $_buf; local $\ = undef if (defined $\);
-               print {$_DAU_R_SOCK} WANTS_REF . $LF . $_len . $LF;
-               print {$_DAU_R_SOCK} $_buf;
-            }
+            my  $_ret_s = $_callback->($_buf);
+            ref $_ret_s ? $_cb_ret_r->($_ret_s) : $_cb_ret_s->($_ret_s);
          }
 
          return;
       },
 
       OUTPUT_N_CBK.$LF => sub {                   ## Callback w/ no args
-         my $_buf;
 
          chomp($_want_id  = <$_DAU_R_SOCK>);
          chomp($_callback = <$_DAU_R_SOCK>);
@@ -452,25 +489,11 @@ sub _output_loop {
          }
          elsif ($_want_id == WANTS_ARRAY) {
             my @_ret_a = $_callback->();
-            $_buf = $self->{freeze}(\@_ret_a);
-            $_len = length $_buf; local $\ = undef if (defined $\);
-            print {$_DAU_R_SOCK} $_len . $LF;
-            print {$_DAU_R_SOCK} $_buf;
+            $_cb_ret_a->(\@_ret_a);
          }
          else {
-            my $_ret_s = $_callback->();
-            unless (ref $_ret_s) {
-               $_len = (defined $_ret_s) ? length $_ret_s : -1;
-               local $\ = undef if (defined $\);
-               print {$_DAU_R_SOCK} WANTS_SCALAR . $LF . $_len . $LF;
-               print {$_DAU_R_SOCK} $_ret_s;
-            }
-            else {
-               $_buf = $self->{freeze}($_ret_s);
-               $_len = length $_buf; local $\ = undef if (defined $\);
-               print {$_DAU_R_SOCK} WANTS_REF . $LF . $_len . $LF;
-               print {$_DAU_R_SOCK} $_buf;
-            }
+            my  $_ret_s = $_callback->();
+            ref $_ret_s ? $_cb_ret_r->($_ret_s) : $_cb_ret_s->($_ret_s);
          }
 
          return;
