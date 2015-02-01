@@ -17,7 +17,7 @@ use Scalar::Util qw( looks_like_number );
 
 use MCE;
 
-our $VERSION = '1.522';
+our $VERSION = '1.600';
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -481,7 +481,7 @@ MCE::Flow - Parallel flow model for building creative applications
 
 =head1 VERSION
 
-This document describes MCE::Flow version 1.522
+This document describes MCE::Flow version 1.600
 
 =head1 DESCRIPTION
 

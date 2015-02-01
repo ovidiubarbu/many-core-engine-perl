@@ -1,7 +1,7 @@
 
 Revision history for MCE
 
-1.599 Sat Jan 31 09:00:00 EST 2014
+1.600 Sat Jan 31 20:00:00 EST 2015
 
   [BUG FIXES]
 
@@ -13,9 +13,9 @@ Revision history for MCE
   * Fixed queues stalling from running (MCE::Queue fast => 1) on Linux.
 
   * MCE Models now set $MCE::FREEZE, $MCE::THAW, and $MCE::TMP_DIR when
-    overridding freeze, thaw, and tmp_dir respectively at load time.
+    overriding freeze, thaw, and tmp_dir respectively at load time.
 
-  * Pressing CTRL-D now ends STDIN. Sometimes required two key presses.
+  * Pressing CTRL-D now ends STDIN the first time.
 
   [ENHANCEMENTS]
 
@@ -23,7 +23,6 @@ Revision history for MCE
     Hisham Eldai, Joel Berger, Oleksandr Kharchenko, Wei Shen, and
     Zakariyya Mughal.
 
-  * Removed globalness for several variables in MCE, Models, and Queue.
   * Refactored ->print, ->printf, and ->say. Optimized ->print some more.
   * Shorten $_queue to $_Q in Queue. ID is always sent first during IPC.
   * The init method in MCE Models can now take an array of options.
@@ -35,7 +34,7 @@ Revision history for MCE
 
   [NEW FEATURES]
 
-  * Added a new addon; MCE::Mutex for simple semaphore.
+  * Added a new module; MCE::Mutex providing simple semaphore.
 
   * Added ->relay_recv, ->relay, and ->relay_final methods to the Core API.
     Refreshed cat.pl and findnull.pl examples to relay the number of lines

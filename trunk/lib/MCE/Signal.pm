@@ -25,7 +25,7 @@ use Time::HiRes qw( sleep time );
 use Fcntl qw( :flock O_RDONLY );
 use base qw( Exporter );
 
-our $VERSION = '1.522';
+our $VERSION = '1.600';
 
 our @EXPORT_OK = qw( $tmp_dir sys_cmd stop_and_exit );
 our %EXPORT_TAGS = (
@@ -482,7 +482,7 @@ MCE::Signal - Temporary directory creation/cleanup and signal handling
 
 =head1 VERSION
 
-This document describes MCE::Signal version 1.522
+This document describes MCE::Signal version 1.600
 
 =head1 SYNOPSIS
 

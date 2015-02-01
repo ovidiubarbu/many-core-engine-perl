@@ -18,7 +18,7 @@ use Scalar::Util qw( looks_like_number );
 use MCE;
 use MCE::Queue;
 
-our $VERSION = '1.522';
+our $VERSION = '1.600';
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -571,7 +571,7 @@ MCE::Step - Parallel step model for building creative steps
 
 =head1 VERSION
 
-This document describes MCE::Step version 1.522
+This document describes MCE::Step version 1.600
 
 =head1 DESCRIPTION
 
