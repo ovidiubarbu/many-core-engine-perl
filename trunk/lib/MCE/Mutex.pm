@@ -163,8 +163,6 @@ This document describes MCE::Mutex version 1.600
 This module implements locking methods that can be used to coordinate access
 to shared data from multiple workers spawned as threads or processes.
 
-=back
-
 =head1 API DOCUMENTATION
 
 =over 3
