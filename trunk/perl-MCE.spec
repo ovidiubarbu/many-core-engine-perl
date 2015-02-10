@@ -37,31 +37,19 @@ the next n elements from the input stream to the next available worker.
 
 %prep
 %setup -q -n MCE-%{version}
+chmod -c a-x examples/*.pl
 
 %build
 %{__perl} Makefile.PL INSTALLDIRS=vendor
 make %{?_smp_mflags}
 
-%check
-make test
-
 %install
 make pure_install PERL_INSTALL_ROOT=%{buildroot}
-
 find %{buildroot} -type f -name .packlist -exec rm -f {} \;
-find %{buildroot} -depth -type d -exec rmdir {} 2>/dev/null \;
-
-mkdir -p %{buildroot}/%{_bindir}
-cp bin/* %{buildroot}/%{_bindir}
-chmod 0755 %{buildroot}/%{_bindir}/*
-
-for f in examples/*; do
-  if [ ! -d $f ]; then
-    install -D -p -m 0755 $f %{buildroot}%{_datadir}/doc/%{name}-%{version}/$f
-  fi
-done
-
 %{_fixperms} %{buildroot}/*
+
+%check
+make test
 
 %clean
 rm -rf %{buildroot}
@@ -69,8 +57,8 @@ rm -rf %{buildroot}
 %files
 %defattr(-,root,root,-)
 %doc CHANGES CREDITS LICENSE README examples
-%{_bindir}/*
 %{perl_vendorlib}/*
+%{_bindir}/mce_grep
 %{_mandir}/man3/*
 
 %changelog
