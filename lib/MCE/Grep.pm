@@ -61,12 +61,12 @@ sub import {
          $MCE::TMP_DIR = $MCE::MCE->{tmp_dir} = shift;
          my $_e1 = 'is not a directory or does not exist';
          my $_e2 = 'is not writeable';
-         _croak("$_tag::import: ($MCE::TMP_DIR) $_e1") unless -d $MCE::TMP_DIR;
-         _croak("$_tag::import: ($MCE::TMP_DIR) $_e2") unless -w $MCE::TMP_DIR;
+         _croak($_tag."::import: ($MCE::TMP_DIR) $_e1") unless -d $MCE::TMP_DIR;
+         _croak($_tag."::import: ($MCE::TMP_DIR) $_e2") unless -w $MCE::TMP_DIR;
          next;
       }
 
-      _croak("$_tag::import: ($_argument) is not a valid module argument");
+      _croak($_tag."::import: ($_argument) is not a valid module argument");
    }
 
    $MAX_WORKERS = MCE::Util::_parse_max_workers($MAX_WORKERS);
