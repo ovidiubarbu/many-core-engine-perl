@@ -8,6 +8,27 @@ use warnings;
 
 use ExtUtils::MakeMaker;
 
+my @exe_files;
+
+if ($^O eq 'MSWin32') {
+   my $cmd_name = 'grep.exe';
+   for ( split ';', $ENV{'PATH'} ) {
+      if (-x "$_\\$cmd_name") {
+         push @exe_files, 'bin/mce_grep';
+         last;
+      }
+   }
+}
+else {
+   my $cmd_name = ($^O eq 'cygwin') ? 'grep.exe' : 'grep';
+   for ( split ':', $ENV{'PATH'} ) {
+      if (-x "$_/$cmd_name") {
+         push @exe_files, 'bin/mce_grep';
+         last;
+      }
+   }
+}
+
 WriteMakefile(
 
    ABSTRACT       => 'Many-Core Engine for Perl providing parallel processing capabilities',
@@ -33,7 +54,7 @@ WriteMakefile(
 
    VERSION        => '1.600',
 
-   EXE_FILES      => [],
+   EXE_FILES      => [ @exe_files ],
 
    (($ExtUtils::MakeMaker::VERSION lt '6.25') ?
       (PL_FILES => { }) : ()),
