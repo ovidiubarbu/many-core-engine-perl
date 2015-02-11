@@ -40,7 +40,7 @@ the next n elements from the input stream to the next available worker.
 chmod -c a-x examples/*.pl
 
 %build
-%{__perl} Makefile.PL INSTALLDIRS=vendor
+MCE_INSTALL_TOOLS=1 %{__perl} Makefile.PL INSTALLDIRS=vendor
 make %{?_smp_mflags}
 
 %install

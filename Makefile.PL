@@ -10,27 +10,11 @@ use ExtUtils::MakeMaker;
 
 my @exe_files;
 
-if ($^O eq 'MSWin32') {
-   my $cmd_name = 'grep.exe';
-   for ( split ';', $ENV{'PATH'} ) {
-      if (-x "$_\\$cmd_name") {
-         push @exe_files, 'bin/mce_grep';
-         last;
-      }
-   }
-}
-else {
-   my $cmd_name = ($^O eq 'cygwin') ? 'grep.exe' : 'grep';
-   for ( split ':', $ENV{'PATH'} ) {
-      if (-x "$_/$cmd_name") {
-         push @exe_files, 'bin/mce_grep';
-         last;
-      }
-   }
+if ($ENV{MCE_INSTALL_TOOLS}) {
+   push @exe_files, 'bin/mce_grep';
 }
 
 WriteMakefile(
-
    ABSTRACT       => 'Many-Core Engine for Perl providing parallel processing capabilities',
 
    AUTHOR         => 'Mario E. Roy <marioeroy AT gmail DOT com>',
