@@ -135,7 +135,8 @@ sub DESTROY {
    undef $_Q->{_datp}; undef $_Q->{_datq}; undef $_Q->{_heap};
    delete $_all->{ $_Q->{_id} } if (exists $_Q->{_id});
 
-   return if (defined $MCE::MCE && $MCE::MCE->wid);
+   return if (defined $MCE::VERSION && !defined $MCE::MCE->{_wid});
+   return if (defined $MCE::MCE && $MCE::MCE->{_wid});
 
    if (defined $_Q->{_qr_sock}) {
       local ($!, $?);
@@ -534,7 +535,7 @@ sub _get_aref {
 
    my ($_Q, $_p) = @_;
 
-   return if (defined $MCE::MCE && $MCE::MCE->wid);
+   return if (defined $MCE::MCE && $MCE::MCE->{_wid});
 
    if (defined $_p) {
       _croak('MCE::Queue::_get_aref: (priority) is not an integer')
