@@ -17,7 +17,8 @@ sub DESTROY {
 
    my ($_mutex) = @_;
 
-   return if (defined $MCE::MCE && $MCE::MCE->wid);
+   return if (defined $MCE::VERSION && !defined $MCE::MCE->{_wid});
+   return if (defined $MCE::MCE && $MCE::MCE->{_wid});
 
    if (defined $_mutex->{_r_sock}) {
       local ($!, $?);
@@ -44,7 +45,7 @@ sub new {
 
    @_ = (); local $!;
 
-   return if (defined $MCE::MCE && $MCE::MCE->wid);
+   return if (defined $MCE::MCE && $MCE::MCE->{_wid});
 
    my $_mutex = {}; bless($_mutex, ref($_class) || $_class);
 
