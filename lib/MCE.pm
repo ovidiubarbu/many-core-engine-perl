@@ -190,7 +190,7 @@ sub import {
          }
          $_has_threads = 1;
       }
-      $_has_threads = $_has_threads || 0;
+      $MCE::Signal::has_threads = $_has_threads = $_has_threads || 0;
    }
 
    ## Preload essential modules early on.
@@ -393,10 +393,6 @@ sub new {
    }
    else {
       $self{use_threads} = ($_has_threads) ? 1 : 0;
-   }
-
-   if ($self{use_threads} && !$MCE::Signal::has_threads) {
-      $MCE::Signal::has_threads = 1;
    }
 
    $self{flush_file}   ||= 0;
