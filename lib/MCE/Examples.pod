@@ -49,17 +49,17 @@ The following scripts are located under the examples directory.
         Demonstrates MCE::Flow, MCE::Queue, and MCE->gather.
 
    foreach.pl, forseq.pl, forchunk.pl
-        These examples demonstrate the sqrt example from Parallel::Loops.
-        Parallel::Loops utilizes Parallel::ForkManager.
+        These examples demonstrate the sqrt example from Parallel::Loops
+        (Parallel::Loops v0.07 utilizing Parallel::ForkManager v1.07).
 
-        Tested on Mac OS X 10.9.5; with Perl 5.16.2; 2.6 GHz Core i7;
-        1600 MHz RAM. The number indicates the size of input displayed
-        in 1 second. Output was directed to >/dev/null during testing.
+        Testing was on a Linux VM; Perl v5.20.1; Haswell i7 at 2.6 GHz.
+        The number indicates the size of input displayed in 1 second.
+        Output was directed to >/dev/null.
 
-        Parallel::Loops:        800  Forking each @input is expensive
-        MCE->foreach...:     80,000  Workers persist between each @input
-        MCE->forseq....:    200,000  Uses sequence of numbers as input
-        MCE->forchunk..:  1,000,000  IPC overhead is greatly reduced
+        Parallel::Loops:     1,600  Forking each @input is expensive
+        MCE->foreach...:    23,000  Workers persist between each @input
+        MCE->forseq....:   200,000  Uses sequence of numbers as input
+        MCE->forchunk..:   800,000  IPC overhead is greatly reduced
 
    interval.pl, mutex.pl, relay.pl
         Demonstration of the interval option appearing in MCE 1.5.

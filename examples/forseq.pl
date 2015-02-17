@@ -1,23 +1,24 @@
 #!/usr/bin/env perl
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## This example demonstrates the sqrt example from Parallel::Loops.
-## Parallel::Loops utilizes Parallel::ForkManager.
+## This example demonstrates the sqrt example from Parallel::Loops
+## (Parallel::Loops v0.07 utilizing Parallel::ForkManager v1.07).
 ##
-## Tested on Mac OS X 10.9.5; with Perl 5.16.2; 2.6 GHz Core i7;
-## 1600 MHz RAM. The number indicates the size of input displayed
-## in 1 second. Output was directed to >/dev/null during testing.
+## Testing was on a Linux VM; Perl v5.20.1; Haswell i7 at 2.6 GHz.
+## The number indicates the size of input displayed in 1 second.
+## Output was directed to >/dev/null.
 ##
-## Parallel::Loops:        800  Forking each @input is expensive
-## MCE->foreach...:     80,000  Workers persist between each @input
-## MCE->forseq....:    200,000  Uses sequence of numbers as input
-## MCE->forchunk..:  1,000,000  IPC overhead is greatly reduced
+## Parallel::Loops:     1,600  Forking each @input is expensive
+## MCE->foreach...:    23,000  Workers persist between each @input
+## MCE->forseq....:   200,000  Uses sequence of numbers as input
+## MCE->forchunk..:   800,000  IPC overhead is greatly reduced
 ##
 ## usage: forseq.pl [ size ]
 ## usage: forseq.pl [ begin end [ step [ format ] ] ]
 ##
-##   For format arg, think as if passing to sprintf (without the %)
-##   forseq.pl 20 30 0.2 4.1f
+##   The % character is optional for format.
+##   forseq.pl 20 30 0.2 %4.1f
+##   forseq.pl 20 30 0.2  4.1f
 ##
 ###############################################################################
 
@@ -81,10 +82,14 @@ sub preserve_order {
 
 ## Configure MCE.
 
+my $seq = {
+   begin => $s_begin, end => $s_end, step => $s_step, format => $s_format
+};
+
 ## use MCE::Flow;    ## Same thing in MCE 1.5+
 ##
 ## mce_flow_s {
-##    max_workers => 3, chunk_size => 1, gather => preserve_order
+##    max_workers => 'auto', chunk_size => 1, gather => preserve_order
 ## },
 ## sub {
 ##    my ($mce, $n, $chunk_id) = @_;
@@ -93,12 +98,10 @@ sub preserve_order {
 ## }, $s_begin, $s_end, $s_step;
 
 my $mce = MCE->new(
-   max_workers => 3, chunk_size => 1, gather => preserve_order
+   max_workers => 'auto', chunk_size => 1, gather => preserve_order
 );
 
-my $seq = {
-   begin => $s_begin, end => $s_end, step => $s_step, format => $s_format
-};
+## Use $n or $_ to retrieve the single element.
 
 my $start = time;
 
