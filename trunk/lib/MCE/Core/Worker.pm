@@ -111,9 +111,7 @@ no warnings 'uninitialized';
 
    sub _do_callback {
 
-      my $_buf; my $self = shift;
-
-      $_value = shift;
+      my ($self, $_buf, $_aref);  ($self, $_value, $_aref) = @_;
 
       unless (defined wantarray) {
          $_want_id = WANTS_UNDEF;
@@ -125,10 +123,10 @@ no warnings 'uninitialized';
 
       ## Crossover: Send arguments
 
-      if (scalar @_ > 0) {                        ## Multiple Args >> Callback
-         if (scalar @_ > 1 || ref $_[0]) {
+      if (scalar @{ $_aref } > 0) {               ## Multiple Args >> Callback
+         if (scalar @{ $_aref } > 1 || ref $_aref->[0]) {
             $_tag = OUTPUT_A_CBK;
-            $_buf = $self->{freeze}(\@_);
+            $_buf = $self->{freeze}($_aref);
             $_len = length $_buf; local $\ = undef if (defined $\);
 
             flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
@@ -139,15 +137,13 @@ no warnings 'uninitialized';
          }
          else {                                   ## Scalar >> Callback
             $_tag = OUTPUT_S_CBK;
-            $_len = length $_[0]; local $\ = undef if (defined $\);
+            $_len = length $_aref->[0]; local $\ = undef if (defined $\);
 
             flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
             print {$_DAT_W_SOCK} $_tag . $LF . $_chn . $LF;
             print {$_DAU_W_SOCK} $_want_id . $LF . $_value . $LF . $_len . $LF;
-            print {$_DAU_W_SOCK} $_[0];
+            print {$_DAU_W_SOCK} $_aref->[0];
          }
-
-         @_ = ();
       }
       else {                                      ## No Args >> Callback
          $_tag = OUTPUT_N_CBK;
@@ -196,29 +192,29 @@ no warnings 'uninitialized';
 
    sub _do_gather {
 
-      my $_buf; my $self = shift;
+      my $_buf; my ($self, $_aref) = @_;
 
-      return unless (scalar @_);
+      return unless (scalar @{ $_aref });
 
-      if (scalar @_ > 1) {
+      if (scalar @{ $_aref } > 1) {
          $_tag = OUTPUT_A_GTR;
-         $_buf = $self->{freeze}(\@_);
+         $_buf = $self->{freeze}($_aref);
          $_len = length $_buf;
       }
-      elsif (ref $_[0]) {
+      elsif (ref $_aref->[0]) {
          $_tag = OUTPUT_R_GTR;
-         $_buf = $self->{freeze}($_[0]);
+         $_buf = $self->{freeze}($_aref->[0]);
          $_len = length $_buf;
       }
       else {
          $_tag = OUTPUT_S_GTR;
-         if (defined $_[0]) {
-            $_len = length $_[0]; local $\ = undef if (defined $\);
+         if (defined $_aref->[0]) {
+            $_len = length $_aref->[0]; local $\ = undef if (defined $\);
 
             flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
             print {$_DAT_W_SOCK} $_tag . $LF . $_chn . $LF;
             print {$_DAU_W_SOCK} $_task_id . $LF . $_len . $LF;
-            print {$_DAU_W_SOCK} $_[0];
+            print {$_DAU_W_SOCK} $_aref->[0];
             flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
 
             return;
