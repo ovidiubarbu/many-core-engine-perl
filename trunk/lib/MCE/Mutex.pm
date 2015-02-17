@@ -10,6 +10,7 @@ use strict;
 use warnings;
 
 use Socket qw( :crlf PF_UNIX PF_UNSPEC SOCK_STREAM );
+use bytes;
 
 our $VERSION = '1.600';
 
