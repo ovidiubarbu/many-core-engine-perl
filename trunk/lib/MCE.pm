@@ -1518,9 +1518,6 @@ sub exit {
    ## Exit thread/child process.
    $SIG{__DIE__} = $SIG{__WARN__} = sub { };
 
-   select STDERR; $| = 1;
-   select STDOUT; $| = 1;
-
    if ($_lock_chn) {
       close $_DAT_LOCK; undef $_DAT_LOCK;
    }
