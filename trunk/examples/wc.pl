@@ -52,10 +52,10 @@ DESCRIPTION
    The following options are available:
 
    --max-workers MAX_WORKERS
-          Specify number of workers for MCE   -- default: 8
+          Specify number of workers for MCE   -- default: auto
 
    --chunk-size CHUNK_SIZE
-          Specify chunk size for MCE          -- default: 2M
+          Specify chunk size for MCE          -- default: 2 MiB
 
    -c     Display the number of bytes
    -l     Display the number of lines
@@ -98,8 +98,8 @@ EXAMPLES
 my $flag = sub { 1; };
 my $isOk = sub { (@ARGV == 0 or $ARGV[0] =~ /^-/) ? usage() : shift @ARGV; };
 
-my $chunk_size  = 2097152;  ## 2M
-my $max_workers = 8;
+my $chunk_size  = '2m';
+my $max_workers = 'auto';
 my $skip_args   = 0;
 
 my $c_flag = 0;

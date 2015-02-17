@@ -1,17 +1,17 @@
 #!/usr/bin/env perl
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## This example demonstrates the sqrt example from Parallel::Loops.
-## Parallel::Loops utilizes Parallel::ForkManager.
+## This example demonstrates the sqrt example from Parallel::Loops
+## (Parallel::Loops v0.07 utilizing Parallel::ForkManager v1.07).
 ##
-## Tested on Mac OS X 10.9.5; with Perl 5.16.2; 2.6 GHz Core i7;
-## 1600 MHz RAM. The number indicates the size of input displayed
-## in 1 second. Output was directed to >/dev/null during testing.
+## Testing was on a Linux VM; Perl v5.20.1; Haswell i7 at 2.6 GHz.
+## The number indicates the size of input displayed in 1 second.
+## Output was directed to >/dev/null.
 ##
-## Parallel::Loops:        800  Forking each @input is expensive
-## MCE->foreach...:     80,000  Workers persist between each @input
-## MCE->forseq....:    200,000  Uses sequence of numbers as input
-## MCE->forchunk..:  1,000,000  IPC overhead is greatly reduced
+## Parallel::Loops:     1,600  Forking each @input is expensive
+## MCE->foreach...:    23,000  Workers persist between each @input
+## MCE->forseq....:   200,000  Uses sequence of numbers as input
+## MCE->forchunk..:   800,000  IPC overhead is greatly reduced
 ##
 ## usage: foreach.pl [ size ]
 ##
@@ -67,7 +67,7 @@ sub preserve_order {
 ## use MCE::Flow;    ## Same thing in MCE 1.5+
 ##
 ## mce_flow {
-##    max_workers => 3, chunk_size => 1, gather => preserve_order
+##    max_workers => 'auto', chunk_size => 1, gather => preserve_order
 ## },
 ## sub {
 ##    my ($mce, $chunk_ref, $chunk_id) = @_;
@@ -76,7 +76,7 @@ sub preserve_order {
 ## }, @input_data;
 
 my $mce = MCE->new(
-   max_workers => 3, chunk_size => 1, gather => preserve_order
+   max_workers => 'auto', chunk_size => 1, gather => preserve_order
 );
 
 ## Use $chunk_ref->[0] or $_ to retrieve the single element.
