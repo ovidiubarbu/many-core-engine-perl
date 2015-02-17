@@ -13,9 +13,9 @@ use warnings;
 ## no critic (Subroutines::ProhibitSubroutinePrototypes)
 ## no critic (TestingAndDebugging::ProhibitNoStrict)
 
-BEGIN {
-   require Carp;
+use Carp;
 
+BEGIN {
    ## Forking is emulated under the Windows enviornment (excluding Cygwin).
    ## MCE 1.514+ will load the 'threads' module by default on Windows.
    ## Folks may specify use_threads => 0 if threads is not desired.
@@ -264,9 +264,7 @@ use constant {
    WANTS_REF      => 3                   ## Callee wants H/A/S ref
 };
 
-my $_mce_count    = 0;
-my %_mce_sess_dir = ();
-my %_mce_spawned  = ();
+my (%_mce_sess_dir, %_mce_spawned); my $_mce_count = 0;
 
 MCE::Signal::_set_session_vars(\%_mce_sess_dir, \%_mce_spawned);
 
@@ -313,19 +311,19 @@ sub _attach_plugin {
       my $_ext_output_loop_end    = $_[2];
       my $_ext_worker_init        = $_[3];
 
-      return unless (ref $_ext_output_function   eq 'HASH');
-      return unless (ref $_ext_output_loop_begin eq 'CODE');
-      return unless (ref $_ext_output_loop_end   eq 'CODE');
-      return unless (ref $_ext_worker_init       eq 'CODE');
+      return unless (ref $_ext_output_function eq 'HASH');
 
       for (keys %{ $_ext_output_function }) {
          $_plugin_function{$_} = $_ext_output_function->{$_}
             unless (exists $_plugin_function{$_});
       }
 
-      push @_plugin_loop_begin, $_ext_output_loop_begin;
-      push @_plugin_loop_end, $_ext_output_loop_end;
-      push @_plugin_worker_init, $_ext_worker_init;
+      push @_plugin_loop_begin, $_ext_output_loop_begin
+         if (ref $_ext_output_loop_begin eq 'CODE');
+      push @_plugin_loop_end, $_ext_output_loop_end
+         if (ref $_ext_output_loop_end eq 'CODE');
+      push @_plugin_worker_init, $_ext_worker_init
+         if (ref $_ext_worker_init eq 'CODE');
    }
 
    @_ = ();
@@ -369,9 +367,8 @@ sub new {
    $self{task_name}   ||= 'MCE';
 
    if (exists $self{_module_instance}) {
-      $self{_spawned} = $self{_task_id} = $self{_task_wid} = 0;
-      $self{_chunk_id} = $self{_wid} = $self{_wrk_status} = 0;
-      delete $self{_module_instance};
+      $self{_chunk_id} = $self{_task_wid} = $self{_wrk_status} = 0;
+      $self{_spawned}  = $self{_task_id}  = $self{_wid} = 0;
 
       return $MCE = \%self;
    }
@@ -414,6 +411,8 @@ sub new {
          unless (ref $self{user_tasks} eq 'ARRAY');
 
       $self{max_workers} = _parse_max_workers($self{max_workers});
+      $self{init_relay}  = $self{user_tasks}->[0]->{init_relay}
+         if ($self{user_tasks}->[0]->{init_relay});
 
       for my $_task (@{ $self{user_tasks} }) {
          for (keys %{ $_task }) {
@@ -454,12 +453,10 @@ sub new {
    $self{_spawned}    = 0;       ## Have workers been spawned
    $self{_task_id}    = 0;       ## Task ID, starts at 0 (array index)
    $self{_task_wid}   = 0;       ## Task Worker ID, starts at 1 per task
-   $self{_wid}        = 0;       ## MCE Worker ID, starts at 1 per MCE instance
+   $self{_wid}        = 0;       ## Worker ID, starts at 1 per MCE instance
    $self{_wrk_status} = 0;       ## For saving exit status when worker exits
 
-   if ($self{chunk_size} > MAX_CHUNK_SIZE) {
-      $self{chunk_size} = MAX_CHUNK_SIZE;
-   }
+   $self{chunk_size} = MAX_CHUNK_SIZE if ($self{chunk_size} > MAX_CHUNK_SIZE);
 
    my $_total_workers = 0;
 
@@ -469,12 +466,10 @@ sub new {
       $_total_workers  = $self{max_workers};
    }
 
-   $self{_last_sref} = (ref $self{input_data} eq 'SCALAR')
-      ? $self{input_data} : 0;
-
    $self{_data_channels} = ($_total_workers < DATA_CHANNELS)
       ? $_total_workers : DATA_CHANNELS;
-
+   $self{_last_sref} = (ref $self{input_data} eq 'SCALAR')
+      ? $self{input_data} : 0;
    $self{_lock_chn} = ($_total_workers > DATA_CHANNELS)
       ? 1 : 0;
 
@@ -884,16 +879,12 @@ sub run {
    ## on the new code blocks and/or scalar reference.
 
    if ($_has_user_tasks) {
-      $self->{init_relay} = $self->{user_tasks}->[0]->{init_relay}
-         if ($self->{user_tasks}->[0]->{init_relay});
       $self->{input_data} = $self->{user_tasks}->[0]->{input_data}
          if ($self->{user_tasks}->[0]->{input_data});
-
       $self->{use_slurpio} = $self->{user_tasks}->[0]->{use_slurpio}
          if ($self->{user_tasks}->[0]->{use_slurpio});
       $self->{parallel_io} = $self->{user_tasks}->[0]->{parallel_io}
          if ($self->{user_tasks}->[0]->{parallel_io});
-
       $self->{RS} = $self->{user_tasks}->[0]->{RS}
          if ($self->{user_tasks}->[0]->{RS});
    }
@@ -902,7 +893,6 @@ sub run {
 
    if (ref $self->{input_data} eq 'SCALAR') {
       $self->shutdown() unless $self->{_last_sref} == $self->{input_data};
-
       $self->{_last_sref} = $self->{input_data};
    }
 
@@ -1537,8 +1527,7 @@ sub exit {
 
    close $_COM_LOCK; undef $_COM_LOCK;
 
-   threads->exit($_exit_status)
-      if ($_has_threads && threads->can('exit'));
+   threads->exit($_exit_status) if ($_has_threads && threads->can('exit'));
 
    CORE::kill(9, $$) unless $_is_winenv;
    CORE::exit($_exit_status);
@@ -1908,14 +1897,12 @@ sub _warn { return MCE::Signal->_warn_handler(@_); }
 
 sub _croak {
 
-   $\ = undef;
-
    if (MCE->wid == 0 || ! $^S) {
       $SIG{__DIE__}  = \&MCE::_die;
       $SIG{__WARN__} = \&MCE::_warn;
    }
 
-   goto &Carp::croak;
+   $\ = undef; goto &Carp::croak;
 }
 
 sub _get_max_workers {

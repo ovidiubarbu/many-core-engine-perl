@@ -12,6 +12,7 @@ use warnings;
 ## no critic (Subroutines::ProhibitExplicitReturnUndef)
 ## no critic (TestingAndDebugging::ProhibitNoStrict)
 
+use Carp;
 use Fcntl qw( :flock O_RDONLY );
 use Socket qw( :crlf PF_UNIX PF_UNSPEC SOCK_STREAM );
 use Scalar::Util qw( looks_like_number );
@@ -520,7 +521,7 @@ sub _heap {
 sub _croak {
 
    unless (defined $MCE::VERSION) {
-      $\ = undef; require Carp; goto &Carp::croak;
+      $\ = undef; goto &Carp::croak;
    } else {
       goto &MCE::_croak;
    }
@@ -633,7 +634,7 @@ sub _heap_insert_high {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Output routines for the MCE manager process.
+## Output routines for the manager process.
 ##
 ###############################################################################
 
@@ -1090,7 +1091,7 @@ sub _heap_insert_high {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Wrapper methods for the MCE manager process.
+## Wrapper methods for the manager process.
 ##
 ###############################################################################
 
@@ -1235,7 +1236,7 @@ sub _mce_m_insertp {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Wrapper methods for the MCE worker process.
+## Wrapper methods for the worker process.
 ##
 ###############################################################################
 

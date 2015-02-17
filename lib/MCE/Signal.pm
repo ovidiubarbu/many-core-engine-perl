@@ -9,23 +9,22 @@ package MCE::Signal;
 use strict;
 use warnings;
 
-our ($display_die_with_localtime, $display_warn_with_localtime);
-our ($has_threads, $main_proc_id, $prog_name, $tmp_dir);
-
-BEGIN {
-   require Carp;
-   require File::Path;
-
-   $main_proc_id =  $$;
-   $prog_name    =  $0;
-   $prog_name    =~ s{^.*[\\/]}{}g;
-}
-
+use Carp;
 use Time::HiRes qw( sleep time );
 use Fcntl qw( :flock O_RDONLY );
 use base qw( Exporter );
 
 our $VERSION = '1.600';
+
+our ($display_die_with_localtime, $display_warn_with_localtime);
+our ($has_threads, $main_proc_id, $prog_name, $tmp_dir);
+
+BEGIN {
+   require File::Path;
+   $main_proc_id =  $$;
+   $prog_name    =  $0;
+   $prog_name    =~ s{^.*[\\/]}{}g;
+}
 
 our @EXPORT_OK = qw( $tmp_dir sys_cmd stop_and_exit );
 our %EXPORT_TAGS = (
