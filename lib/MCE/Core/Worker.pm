@@ -311,6 +311,11 @@ no warnings 'uninitialized';
       $_lock_chn   = $self->{_lock_chn};
       $_task_id    = $self->{_task_id};
 
+      local ($!, $@);
+
+      eval { select STDERR; $| = 1 };
+      eval { select STDOUT; $| = 1 };
+
       return;
    }
 
@@ -695,9 +700,6 @@ sub _worker_main {
 
    ## Wait until MCE completes exit notification.
    $SIG{__DIE__} = $SIG{__WARN__} = sub { };
-
-   select STDERR; $| = 1;
-   select STDOUT; $| = 1;
 
    local $@; eval {
       my $_c; sysread $self->{_bse_r_sock}, $_c, 1;

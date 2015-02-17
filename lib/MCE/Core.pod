@@ -1963,6 +1963,8 @@ driven (or task_wid when not processing input), thus orderly.
       my ($mce, $chunk_ref, $chunk_id) = @_;
 
       if ($n_flag) {
+         ## Relays the total lines read.
+
          my $output = ''; my $line_count = ($$chunk_ref =~ tr/\n//);
          my $lines_read = MCE::relay { $_ += $line_count };
 
@@ -1978,15 +1980,13 @@ driven (or task_wid when not processing input), thus orderly.
          ## write directly to STDOUT exclusively without any involvement
          ## from the manager process. The statements between relay_recv
          ## and relay run serially and most important orderly.
-         ##
-         ## (This is not recommended for sprintf above requiring extra
-         ## CPU time. Thus, better to run in parallel and send the
-         ## output to the manager process.)
+
+         ## STDERR and STDOUT are flushed automatically inside workers.
 
          MCE->relay_recv;             ## my $val = MCE->relay_recv;
-                                      ## 0, relay below simply forwards
+                                      ## relay simply forwards 0 below
 
-         $| = 1; print $$chunk_ref;   ## exclusive access to STDOUT
+         print $$chunk_ref;           ## exclusive access to STDOUT
                                       ## important, flush immediately
 
          MCE->relay;
