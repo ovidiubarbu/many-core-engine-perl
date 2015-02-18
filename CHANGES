@@ -11,6 +11,9 @@ Revision history for MCE
   * Fixed a rare condition where socket handles for MCE::Mutex and
     MCE::Queue were closing pre-maturely when using threads.
 
+  * Fixed an undefined variable inside croak statements in MCE Models'
+    import subroutine.
+
   * Fixed automatic shutdown due to loading threads and specifying
     use_threads => 0 with workers persisting before exiting the script.
 
