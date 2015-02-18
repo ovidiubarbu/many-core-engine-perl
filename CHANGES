@@ -1,32 +1,34 @@
 
 Revision history for MCE
 
-1.60x Wed Feb 18 02:00:00 EST 2015
+1.60x Wed Feb 18 09:00:00 EST 2015
 
   [BUG FIXES]
 
-  * Fixed a rare bug where socket handles tied to MCE::Mutex or MCE::Queue
-    were closed pre-maturely due to exiting thread.
+  * Updated Makefile.PL allowing installation of bin/mce_grep (RT#102040).
+    Running (MCE_INSTALL_TOOLS=1 perl Makefile.PL) installs bin/mce_grep.
 
-  * Fixed a bug with automatic shutdown when loading threads and setting
-    use_threads to 0 and workers persisting after running.
+  * Fixed a rare condition where socket handles for MCE::Mutex and
+    MCE::Queue were closing pre-maturely when using threads.
+
+  * Fixed automatic shutdown due to loading threads and specifying
+    use_threads => 0 with workers persisting before exiting the script.
 
   * Fixed a pod error in MCE::Mutex.
 
   [ENHANCEMENTS]
 
-  * Captured metrics from Linux (previously OS X) in forchunk.pl,
+  * Moved all relay methods, introduced in 1.600, from MCE to MCE::Relay.
+    MCE::Relay is an addon module loaded automatically via init_relay.
+
+  * Captured metrics from Linux (previously OS X) for forchunk.pl,
     foreach.pl, and forseq.pl. Updated Examples.pod.
 
   * Default to 'auto' for max_workers in bin/mce_grep, examples/egrep.pl,
     forchunk.pl, foreach.pl, forseq.pl, iterator.pl, and wc.pl.
 
-  * Moved all relay methods, introduced in 1.600, from MCE to MCE::Relay.
-    MCE::Relay is loaded automatically when init_relay is specified.
-
-  * Load Carp by default since also needed by the Socket module.
   * Reverted a small change applied in 1.600 to ->do and ->gather.
-  * Updated Makefile.PL allowing easy installation of bin/mce_grep.
+  * Load Carp going forward since also needed by the Socket module.
   * Workers now set STDERR and STDOUT to flush automatically.
 
   [NEW FEATURES]
