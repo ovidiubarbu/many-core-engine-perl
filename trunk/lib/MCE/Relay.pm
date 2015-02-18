@@ -380,12 +380,10 @@ all platforms.
 
 =item MCE::relay { code }
 
-Relay is enabled by specifing the init_relay option which takes a hash or array
+Relay is enabled by specifying the init_relay option which takes a hash or array
 reference, or a scalar value. Relaying is orderly and driven by chunk_id when
 processing data, otherwise task_wid. Omitting the code block (e.g. MCE::relay)
 relays forward.
-
-Also see examples findnull.pl, cat.pl, or biofasta/fasta_aidx.pl.
 
 Below, relaying multiple values via a HASH reference.
 
@@ -548,8 +546,8 @@ is chunk_id driven (or task_wid when not processing input), thus orderly.
          ## from the manager process. The statements between relay_recv
          ## and relay run serially and most important orderly.
 
-         ## STDERR and STDOUT flush automatically inside worker threads
-         ## and processes. Disable buffering on file handles otherwise.
+         ## STDERR/OUT flush automatically inside worker threads and
+         ## processes. Disable buffering on file handles otherwise.
 
          MCE->relay_recv;             ## my $val = MCE->relay_recv;
                                       ## relay simply forwards 0 below

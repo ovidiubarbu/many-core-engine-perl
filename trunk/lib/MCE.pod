@@ -38,9 +38,9 @@ Utility functions for Many-Core Engine.
 
 =back
 
-=head1 MCE ADDONS
+=head1 MCE EXTRAS
 
-There are 4 addon modules.
+There are 4 add-on modules.
 
 =over 3
 
@@ -118,7 +118,7 @@ A placeholder for the examples included with the distribution.
 
 =item L<MCE::Examples|MCE::Examples>
 
-Describes various demonstations for MCE including a Monte Carlo simulation.
+Describes various demonstrations for MCE including a Monte Carlo simulation.
 
 =back
 
