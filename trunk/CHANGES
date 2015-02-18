@@ -19,7 +19,7 @@ Revision history for MCE
   [ENHANCEMENTS]
 
   * Moved all relay methods, introduced in 1.600, from MCE to MCE::Relay.
-    MCE::Relay is an addon module loaded automatically via init_relay.
+    The MCE init_relay option enables and loads MCE::Relay automatically.
 
   * Captured metrics from Linux (previously OS X) for forchunk.pl,
     foreach.pl, and forseq.pl. Updated Examples.pod.
