@@ -13,6 +13,7 @@ use warnings;
 ## no critic (TestingAndDebugging::ProhibitNoStrict)
 
 use MCE;
+use MCE::Relay;
 
 our $VERSION = '1.600';
 

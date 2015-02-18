@@ -127,6 +127,10 @@ WriteMakefile(
                'file'    => 'lib/MCE/Queue.pm',
                'version' => '1.600'
             },
+            'MCE::Relay' => {
+               'file'    => 'lib/MCE/Relay.pm',
+               'version' => '1.600'
+            },
             'MCE::Signal' => {
                'file'    => 'lib/MCE/Signal.pm',
                'version' => '1.600'

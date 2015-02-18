@@ -185,7 +185,8 @@ my $mce = MCE->new(
          ## from the manager process. The statements between relay_recv
          ## and relay run serially and most important orderly.
 
-         ## STDERR and STDOUT are flushed automatically inside workers.
+         ## STDERR and STDOUT flush automatically inside worker threads
+         ## and processes. Disable buffering on file handles otherwise.
 
          MCE->relay_recv;             ## my $val = MCE->relay_recv;
                                       ## relay simply forwards 0 below

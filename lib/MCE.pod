@@ -40,7 +40,7 @@ Utility functions for Many-Core Engine.
 
 =head1 MCE ADDONS
 
-There are 3 addon modules.
+There are 4 addon modules.
 
 =over 3
 
@@ -54,6 +54,11 @@ Provides a hybrid queuing implementation for MCE supporting normal queues and
 priority queues from a single module. MCE::Queue exchanges data via the core
 engine to enable queueing to work for both children (spawned from fork) and
 threads.
+
+=item L<MCE::Relay|MCE::Relay>
+
+Enables workers to receive and pass on information orderly with zero
+involvement from the manager process while running.
 
 =item L<MCE::Subs|MCE::Subs>
 
