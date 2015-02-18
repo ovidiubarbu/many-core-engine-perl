@@ -63,7 +63,7 @@ The following scripts are located under the examples directory.
 
    interval.pl, mutex.pl, relay.pl
         Demonstration of the interval option appearing in MCE 1.5.
-        Mutex locking and receiving and passing on information.
+        Mutex locking and relaying data among workers.
 
    iterator.pl
         Similar to forseq.pl. Specifies an iterator for input_data.

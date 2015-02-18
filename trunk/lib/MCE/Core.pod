@@ -110,8 +110,13 @@ Below, a new instance is configured with all available options.
 
       init_relay => 0,                    ## Default undef
 
-         # For specifying the initial relay value. Used with the
-         # relay method for receiving and passing on information.
+         # For specifying the initial relay value. Allowed values
+         # are array_ref, hash_ref, or scalar. The MCE::Relay module
+         # is loaded automatically when specified.
+
+         # init_relay => \@array,
+         # init_relay => \%hash,
+         # init_relay => scalar,
 
       input_data => $input_file,          ## Default undef
       RS         => "\n>",                ## Default undef
@@ -1418,37 +1423,6 @@ Do the following if wanting workers to persist between jobs.
 
    $mce->shutdown;
 
-=item ->relay_final ( void )
-
-Call this method to obtain the final relay values after running. See included
-example findnull.pl for another use case.
-
-   use MCE max_workers => 4;
-
-   my $mce = MCE->new(
-      init_relay => [ 0, 100 ],       ## initial values (two counters)
-
-      user_func => sub {
-         my ($mce) = @_;
-
-         ## do work
-         my ($acc1, $acc2) = (10, 20);
-
-         ## relay to next worker
-         MCE::relay { $_->[0] += $acc1; $_->[1] += $acc2 };
-
-         return;
-      }
-   )->run;
-
-   my ($cnt1, $cnt2) = $mce->relay_final;
-
-   print "$cnt1 : $cnt2\n";
-
-   -- Output
-
-   40 : 180
-
 =item ->restart_worker ( void )
 
 One can restart a worker who has died or exited. The job never ends below
@@ -1834,166 +1808,6 @@ reference.
 
    MCE->print(\*STDOUT, \@array, "\n");
    MCE->print("", \@array, "\n");         ## ok
-
-=item ->relay ( sub { ... } )
-
-=item relay { ... }
-
-The relay method is for receiving and passing on information. Relay is enabled
-by specifing the init_relay option which takes a hash or array reference, or a
-scalar value. Relaying is orderly and driven by chunk_id when processing data,
-otherwise task_wid. Omitting the code block (e.g. MCE::relay) relays forward.
-
-Relaying is not met for passing big data. The last worker will likely stall if
-exceeding the buffer size for the socket. Not exceeding 8 KiB is safe across
-all platforms.
-
-Also see examples findnull.pl, cat.pl, or biofasta/fasta_aidx.pl.
-
-Below, relaying multiple values (HASH reference);
-
-   use MCE::Flow max_workers => 4;
-
-   mce_flow {
-      init_relay => { p => 0, e => 0 },
-   },
-   sub {
-      my $wid = MCE->wid;
-
-      ## do work
-      my $pass = $wid % 3;
-      my $errs = $wid % 2;
-
-      ## relay
-      my %last_rpt = MCE::relay { $_->{p} += $pass; $_->{e} += $errs };
-
-      MCE->print("$wid: passed $pass, errors $errs\n");
-
-      return;
-   };
-
-   my %results = MCE->relay_final;
-
-   print "   passed $results{p}, errors $results{e} final\n\n";
-
-   -- Output
-
-   1: passed 1, errors 1
-   2: passed 2, errors 0
-   3: passed 0, errors 1
-   4: passed 1, errors 0
-      passed 4, errors 2 final
-
-or multiple values (ARRAY reference);
-
-   use MCE::Flow max_workers => 4;
-
-   mce_flow {
-      init_relay => [ 0, 0 ],
-   },
-   sub {
-      my $wid = MCE->wid;
-
-      ## do work
-      my $pass = $wid % 3;
-      my $errs = $wid % 2;
-
-      ## relay
-      my @last_rpt = MCE::relay { $_->[0] += $pass; $_->[1] += $errs };
-
-      MCE->print("$wid: passed $pass, errors $errs\n");
-
-      return;
-   };
-
-   my ($pass, $errs) = MCE->relay_final;
-
-   print "   passed $pass, errors $errs final\n\n";
-
-   -- Output
-
-   1: passed 1, errors 1
-   2: passed 2, errors 0
-   3: passed 0, errors 1
-   4: passed 1, errors 0
-      passed 4, errors 2 final
-
-or simply a scalar value.
-
-   use MCE::Flow max_workers => 4;
-
-   mce_flow {
-      init_relay => 0,
-   },
-   sub {
-      my $wid = MCE->wid;
-
-      ## do work
-      my $bytes_read = 1000 + ((MCE->wid % 3) * 3);
-
-      ## relay
-      my $last_offset = MCE::relay { $_ += $bytes_read };
-
-      ## output
-      MCE->print("$wid: $bytes_read\n");
-
-      return;
-   };
-
-   my $total = MCE->relay_final;
-
-   print "   $total size\n\n";
-
-   -- Output
-
-   1: 1003
-   2: 1006
-   3: 1000
-   4: 1003
-      4012 size
-
-=item ->relay_recv ( void )
-
-The relay_recv method allows one to perform an exclusive action prior to
-relaying. Below, the user_func is taken from the cat.pl example. Think of
-obtaining exclusive locking in an orderly fashion. Relaying is chunk_id
-driven (or task_wid when not processing input), thus orderly.
-
-   user_func => sub {
-      my ($mce, $chunk_ref, $chunk_id) = @_;
-
-      if ($n_flag) {
-         ## Relays the total lines read.
-
-         my $output = ''; my $line_count = ($$chunk_ref =~ tr/\n//);
-         my $lines_read = MCE::relay { $_ += $line_count };
-
-         open my $fh, '<', $chunk_ref;
-         $output .= sprintf "%6d\t%s", ++$lines_read, $_ while (<$fh>);
-         close $fh;
-
-         $output .= ":$chunk_id";
-         MCE->do('display_chunk', $output);
-      }
-      else {
-         ## The following is another way to have ordered output. Workers
-         ## write directly to STDOUT exclusively without any involvement
-         ## from the manager process. The statements between relay_recv
-         ## and relay run serially and most important orderly.
-
-         ## STDERR and STDOUT are flushed automatically inside workers.
-
-         MCE->relay_recv;             ## my $val = MCE->relay_recv;
-                                      ## relay simply forwards 0 below
-
-         print $$chunk_ref;           ## exclusive access to STDOUT
-                                      ## important, flush immediately
-
-         MCE->relay;
-      }
-
-      return;
-   } 
 
 =item ->sendto ( $to, $arg1, ... )
 

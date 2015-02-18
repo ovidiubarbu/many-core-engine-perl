@@ -553,6 +553,9 @@ sub spawn {
       for (1 .. $_data_channels);
 
    if (defined $self->{init_relay}) {                             ## relay
+      unless (defined $MCE::Relay::VERSION) {
+         require MCE::Relay; MCE::Relay->import();
+      }
       _create_socket_pair($self, '_rla_r_sock', '_rla_w_sock', $_)
          for (0 .. $_max_workers - 1);
    }
@@ -1733,152 +1736,22 @@ sub say {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Relay methods.
+## Relay stubs. The actual methods reside inside MCE::Relay.
 ##
 ###############################################################################
 
-sub relay_final {
-
-   my $x = shift; my $self = ref($x) ? $x : $MCE;
-
-   _croak('MCE::relay_final: method cannot be called by the worker process')
-      if ($self->{_wid});
-
-   if (exists $self->{_rla_return}) {
-      if (ref $self->{_rla_return} eq '') {
-         return delete $self->{_rla_return};
-      }
-      elsif (ref $self->{_rla_return} eq 'HASH') {
-         return %{ delete $self->{_rla_return} };
-      }
-      elsif (ref $self->{_rla_return} eq 'ARRAY') {
-         return @{ delete $self->{_rla_return} };
-      }
-   }
-
-   return;
-}
+sub relay_final { }
 
 sub relay_recv {
 
-   my $x = shift; my $self = ref($x) ? $x : $MCE;
-
-   _croak('MCE::relay: method cannot be called by the manager process')
-      unless ($self->{_wid});
-   _croak('MCE::relay: method cannot be called by this sub task')
-      if ($self->{_task_id} > 0);
-   _croak('MCE::relay: init_relay is not specified')
-      unless (defined $self->{init_relay});
-
-   my $_chn = ($self->{_chunk_id} - 1) % $self->{max_workers};
-   my $_rdr = $self->{_rla_r_sock}->[$_chn];
-
-   my ($_len, $_ref); local $_;
-
-   chomp($_len = <$_rdr>);
-   read $_rdr, $_, $_len;
-   $_ref = chop $_;
-
-   if ($_ref == 0) {                                 ## scalar value
-      $self->{_rla_data} = $_;
-      return unless defined wantarray;
-      return $self->{_rla_data};
-   }
-   elsif ($_ref == 1) {                              ## hash reference
-      $self->{_rla_data} = $self->{thaw}($_);
-      return unless defined wantarray;
-      return %{ $self->{_rla_data} };
-   }
-   elsif ($_ref == 2) {                              ## array reference
-      $self->{_rla_data} = $self->{thaw}($_);
-      return unless defined wantarray;
-      return @{ $self->{_rla_data} };
-   }
-
-   return;
+   _croak('MCE::relay: (init_relay) is not specified')
+      unless (defined $MCE->{init_relay});
 }
 
 sub relay (;&) {
 
-   my ($self, $_code);
-
-   if (ref $_[0] eq 'CODE') {
-      ($self, $_code) = ($MCE, shift);
-   } else {
-      my $x = shift; $self = ref($x) ? $x : $MCE;
-      $_code = shift;
-   }
-
-   _croak('MCE::relay: method cannot be called by the manager process')
-      unless ($self->{_wid});
-   _croak('MCE::relay: method cannot be called by this sub task')
-      if ($self->{_task_id} > 0);
-   _croak('MCE::relay: init_relay is not specified')
-      unless (defined $self->{init_relay});
-
-   if (ref $_code ne 'CODE') {
-      _croak('MCE::relay: argument is not a code block') if (defined $_code);
-   } else {
-      weaken $_code;
-   }
-
-   my $_chn = ($self->{_chunk_id} - 1) % $self->{max_workers};
-   my $_nxt = $_chn + 1; $_nxt = 0 if ($_nxt == $self->{max_workers});
-   my $_rdr = $self->{_rla_r_sock}->[$_chn];
-   my $_wtr = $self->{_rla_w_sock}->[$_nxt];
-
-   $self->{_rla_return} = $self->{_chunk_id} .':'. $_nxt;
-
-   if (exists $self->{_rla_data}) {
-      local $_ = delete $self->{_rla_data};
-      $_code->() if (ref $_code eq 'CODE');
-
-      if (ref $_ eq '') {                         ## scalar value
-         my $_tmp = $_ . '0';
-         print {$_wtr} length($_tmp) . $LF . $_tmp;
-      }
-      elsif (ref $_ eq 'HASH') {                  ## hash reference
-         my $_tmp = $self->{freeze}($_) . '1';
-         print {$_wtr} length($_tmp) . $LF . $_tmp;
-      }
-      elsif (ref $_ eq 'ARRAY') {                 ## array reference
-         my $_tmp = $self->{freeze}($_) . '2';
-         print {$_wtr} length($_tmp) . $LF . $_tmp;
-      }
-   }
-   else {
-      my ($_len, $_ref); local $_;
-
-      chomp($_len = <$_rdr>);
-      read $_rdr, $_, $_len;
-      $_ref = chop $_;
-
-      if ($_ref == 0) {                              ## scalar value
-         my $_ret = $_;         $_code->() if (ref $_code eq 'CODE');
-         my $_tmp = $_ . '0';
-         print {$_wtr} length($_tmp) . $LF . $_tmp;
-         return unless defined wantarray;
-         return $_ret;
-      }
-      elsif ($_ref == 1) {                           ## hash reference
-         my %_ret = %{ $self->{thaw}($_) };
-         local $_ = { %_ret };  $_code->() if (ref $_code eq 'CODE');
-         my $_tmp = $self->{freeze}($_) . '1';
-         print {$_wtr} length($_tmp) . $LF . $_tmp;
-         return unless defined wantarray;
-         return %_ret;
-      }
-      elsif ($_ref == 2) {                           ## array reference
-         my @_ret = @{ $self->{thaw}($_) };
-         local $_ = [ @_ret ];  $_code->() if (ref $_code eq 'CODE');
-         my $_tmp = $self->{freeze}($_) . '2';
-         print {$_wtr} length($_tmp) . $LF . $_tmp;
-         return unless defined wantarray;
-         return @_ret;
-      }
-   }
-
-   return;
+   _croak('MCE::relay: (init_relay) is not specified')
+      unless (defined $MCE->{init_relay});
 }
 
 ###############################################################################

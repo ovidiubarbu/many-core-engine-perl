@@ -85,8 +85,7 @@ sub _output_loop {
       $_input_size, $_offset_pos, $_single_dim, @_gather, $_cs_one_flag,
       $_exit_id, $_exit_pid, $_exit_status, $_exit_wid, $_len, $_sync_cnt,
       $_BSB_W_SOCK, $_BSE_W_SOCK, $_DAT_R_SOCK, $_DAU_R_SOCK, $_MCE_STDERR,
-      $_I_FLG, $_O_FLG, $_I_SEP, $_O_SEP, $_RS, $_RS_FLG, $_MCE_STDOUT,
-      $_rla_chunkid, $_rla_nextid
+      $_I_FLG, $_O_FLG, $_I_SEP, $_O_SEP, $_RS, $_RS_FLG, $_MCE_STDOUT
    );
 
    ## -------------------------------------------------------------------------
@@ -167,18 +166,6 @@ sub _output_loop {
          }
 
          _task_end($self, $_task_id) unless ($_total_running);
-
-         return;
-      },
-
-      OUTPUT_W_RLA.$LF => sub {                   ## Worker has relayed
-         my ($_chunk_id, $_next_id) = split(':', <$_DAU_R_SOCK>);
-
-         if ($_chunk_id > $_rla_chunkid) {
-            chomp $_next_id;
-            $_rla_chunkid = $_chunk_id;
-            $_rla_nextid  = $_next_id;
-         }
 
          return;
       },
@@ -803,27 +790,6 @@ sub _output_loop {
    ## Call module's loop_begin routine for modules plugged into MCE.
    $_->($self, \$_DAU_R_SOCK) for (@{ $_plugin_loop_begin });
 
-   ## Write initial values for relaying.
-   if (defined $self->{init_relay}) {
-      my $_RLA_W_SOCK = $self->{_rla_w_sock}->[0];
-      my $_init_relay;
-
-      if (ref $self->{init_relay} eq '') {
-         $_init_relay = $self->{init_relay} . '0';
-      }
-      elsif (ref $self->{init_relay} eq 'HASH') {
-         $_init_relay = $self->{freeze}($self->{init_relay}) . '1';
-      }
-      elsif (ref $self->{init_relay} eq 'ARRAY') {
-         $_init_relay = $self->{freeze}($self->{init_relay}) . '2';
-      }
-
-      print {$_RLA_W_SOCK} length($_init_relay) . $LF . $_init_relay;
-      delete $self->{_rla_return} if (exists $self->{_rla_return});
-
-      $_rla_chunkid = $_rla_nextid = 0;
-   }
-
    ## Call on hash function. Exit loop when workers have completed.
    while (1) {
       $_func = <$_DAT_R_SOCK>;
@@ -839,20 +805,6 @@ sub _output_loop {
       }
 
       last unless ($self->{_total_running});
-   }
-
-   ## Obtain final relay values.
-   if (defined $self->{init_relay}) {
-      my $_RLA_R_SOCK = $self->{_rla_r_sock}->[$_rla_nextid];
-      my ($_len, $_ret); chomp($_len = <$_RLA_R_SOCK>);
-
-      read $_RLA_R_SOCK, $_ret, $_len;
-
-      if (chop $_ret) {
-         $self->{_rla_return} = $self->{thaw}($_ret);
-      } else {
-         $self->{_rla_return} = $_ret;
-      }
    }
 
    ## Call module's loop_end routine for modules plugged into MCE.
