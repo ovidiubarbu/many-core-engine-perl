@@ -1,12 +1,14 @@
 
 Revision history for MCE
 
-1.60x Wed Feb 18 09:00:00 EST 2015
+1.60x Wed Feb 23 02:00:00 EST 2015
 
   [BUG FIXES]
 
   * Updated Makefile.PL allowing installation of bin/mce_grep (RT#102040).
     Running (MCE_INSTALL_TOOLS=1 perl Makefile.PL) installs bin/mce_grep.
+
+  * Ensure MCE instances spawned by workers have shutdown before leaving.
 
   * Fixed a rare condition where socket handles for MCE::Mutex and
     MCE::Queue were closing pre-maturely when using threads.
@@ -22,7 +24,7 @@ Revision history for MCE
   [ENHANCEMENTS]
 
   * Moved all relay methods, introduced in 1.600, from MCE to MCE::Relay.
-    The MCE init_relay option enables and loads MCE::Relay automatically.
+    The MCE init_relay option loads and enables MCE::Relay automatically.
 
   * Captured metrics from Linux (previously OS X) for forchunk.pl,
     foreach.pl, and forseq.pl. Updated Examples.pod.

@@ -12,7 +12,7 @@ use warnings;
 ## no critic (Subroutines::ProhibitExplicitReturnUndef)
 ## no critic (TestingAndDebugging::ProhibitNoStrict)
 
-use Carp;
+use Carp ();
 use Fcntl qw( :flock O_RDONLY );
 use Socket qw( :crlf PF_UNIX PF_UNSPEC SOCK_STREAM );
 use Scalar::Util qw( looks_like_number );

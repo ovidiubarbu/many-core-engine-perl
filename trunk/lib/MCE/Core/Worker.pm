@@ -527,7 +527,7 @@ sub _worker_loop {
             ## Return to caller if instructed to exit.
             if ($_response eq '_exit') {
                flock $_COM_LOCK, LOCK_UN;
-               return 0;
+               return;
             }
 
             ## Retrieve params data.
@@ -553,6 +553,7 @@ sub _worker_loop {
       }
 
       _worker_do($self, $_params_ref);
+
       undef $_params_ref;
    }
 
@@ -691,7 +692,8 @@ sub _worker_main {
    }
 
    ## Enter worker loop.
-   my $_status = _worker_loop($self);
+   _worker_loop($self);
+
    MCE::_clear_session($_mce_sid);
 
    ## Wait until MCE completes exit notification.
