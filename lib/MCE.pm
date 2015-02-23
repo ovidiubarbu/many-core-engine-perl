@@ -13,7 +13,7 @@ use warnings;
 ## no critic (Subroutines::ProhibitSubroutinePrototypes)
 ## no critic (TestingAndDebugging::ProhibitNoStrict)
 
-use Carp;
+use Carp ();
 
 BEGIN {
    ## Forking is emulated under the Windows enviornment (excluding Cygwin).
@@ -279,6 +279,7 @@ sub _clean_sessions {
 sub _clear_session {
    my ($_mce_sid) = @_;
    delete $_mce_spawned{$_mce_sid};
+  (delete $_mce_spawned{$_})->shutdown(1) foreach (keys %_mce_spawned);
    return;
 }
 
@@ -1127,8 +1128,8 @@ sub run {
 
    $self->{_send_cnt} = 0;
 
-   ## Shutdown workers (also, if any workers have exited or in eval state).
-   if ($_auto_shutdown == 1 || $self->{_total_exited} > 0 || $^S) {
+   ## Shutdown workers (also, if any workers have exited).
+   if ($_auto_shutdown == 1 || $self->{_total_exited} > 0) {
       $self->shutdown();
    }
 
@@ -1222,6 +1223,7 @@ sub send {
 sub shutdown {
 
    my $x = shift; my $self = ref($x) ? $x : $MCE;
+   my $_no_lock = shift || 0;
 
    @_ = ();
 
@@ -1236,7 +1238,7 @@ sub shutdown {
    local $SIG{__DIE__}  = \&_die;
    local $SIG{__WARN__} = \&_warn;
 
-   lock $_MCE_LOCK if ($_has_threads);            ## Obtain MCE lock.
+   lock $_MCE_LOCK if ($_has_threads && ! $_no_lock);
 
    my $_is_mce_thr     = ($self->{_mce_tid} ne '' && $self->{_mce_tid} ne '0');
    my $_COM_R_SOCK     = $self->{_com_r_sock};
@@ -1257,7 +1259,7 @@ sub shutdown {
       <$_COM_R_SOCK>;
    }
 
-   CORE::shutdown $self->{_bse_w_sock}, 2;        ## Barrier end channels
+   CORE::shutdown $self->{_bse_w_sock}, 2;
    CORE::shutdown $self->{_bse_r_sock}, 2;
 
    ## Reap children/threads.
@@ -1901,7 +1903,9 @@ sub _worker_wrap {
 
    $MCE = $_[0];
 
-   return _worker_main(@_, \@_plugin_worker_init, $_has_threads, $_is_winenv);
+   _worker_main(@_, \@_plugin_worker_init, $_has_threads, $_is_winenv);
+
+   return;
 }
 
 ###############################################################################

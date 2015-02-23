@@ -9,7 +9,8 @@ package MCE::Signal;
 use strict;
 use warnings;
 
-use Carp;
+use Carp ();
+use File::Path ();
 use Time::HiRes qw( sleep time );
 use Fcntl qw( :flock O_RDONLY );
 use base qw( Exporter );
@@ -20,7 +21,6 @@ our ($display_die_with_localtime, $display_warn_with_localtime);
 our ($has_threads, $main_proc_id, $prog_name, $tmp_dir);
 
 BEGIN {
-   require File::Path;
    $main_proc_id =  $$;
    $prog_name    =  $0;
    $prog_name    =~ s{^.*[\\/]}{}g;
