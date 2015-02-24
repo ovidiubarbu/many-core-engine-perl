@@ -394,7 +394,8 @@ sub new {
    }
 
    if ($self{use_threads} && !defined $forks::VERSION) {
-      $self{_mutex} = 1; share(\$self{_mutex});
+      $self{_mutex} = 1; local $@; eval { share(\$self{_mutex}) };
+      eval { threads::shared::share($self{_mutex}) } if $@;
    }
    elsif (defined $MCE::Mutex::VERSION) {
       $self{_mutex} = MCE::Mutex->new;
