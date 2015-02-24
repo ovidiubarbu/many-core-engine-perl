@@ -24,6 +24,12 @@ BEGIN {
       local $@; local $SIG{__DIE__} = \&_NOOP;
       eval 'use threads; use threads::shared';
    }
+   elsif (defined $threads::VERSION) {
+      unless (defined $threads::shared::VERSION) {
+         local $@; local $SIG{__DIE__} = \&_NOOP;
+         eval 'use threads::shared';
+      }
+   }
 }
 
 use Fcntl qw( :flock O_RDONLY );
@@ -183,14 +189,8 @@ sub import {
 
    ## Will spawn threads when threads is present, otherwise processes.
    unless (defined $_has_threads) {
-      if (defined $threads::VERSION) {
-         unless (defined $threads::shared::VERSION) {
-            local $@; local $SIG{__DIE__} = \&_NOOP;
-            eval 'use threads::shared; threads::shared::share($_MCE_LOCK)';
-         }
-         $_has_threads = 1;
-      }
-      $MCE::Signal::has_threads = $_has_threads = $_has_threads || 0;
+      $_has_threads = (defined $threads::VERSION) ? 1 : 0;
+      $MCE::Signal::has_threads = $_has_threads;
    }
 
    ## Preload essential modules early on.
@@ -394,8 +394,7 @@ sub new {
    }
 
    if ($self{use_threads} && !defined $forks::VERSION) {
-      $self{_mutex} = 1; local $@; eval { share(\$self{_mutex}) };
-      eval { threads::shared::share($self{_mutex}) } if $@;
+      $self{_mutex} = 1; threads::shared::share($self{_mutex});
    }
    elsif (defined $MCE::Mutex::VERSION) {
       $self{_mutex} = MCE::Mutex->new;
