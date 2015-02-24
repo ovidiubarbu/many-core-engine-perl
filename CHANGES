@@ -1,7 +1,7 @@
 
 Revision history for MCE
 
-1.60x Wed Feb 23 02:00:00 EST 2015
+1.60x Wed Feb 23 20:00:00 EST 2015
 
   [BUG FIXES]
 
@@ -37,6 +37,8 @@ Revision history for MCE
   * Workers now set STDERR and STDOUT to flush automatically.
 
   [NEW FEATURES]
+
+  * Added ->pid method to Core API.
 
 1.600 Sat Jan 31 20:00:00 EST 2015
 
