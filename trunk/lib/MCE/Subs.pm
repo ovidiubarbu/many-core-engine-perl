@@ -100,6 +100,7 @@ sub mce_thaw        (@) { return $MCE::MCE->{thaw}(@_); }
 sub mce_chunk_id    ( ) { return $MCE::MCE->chunk_id(); }
 sub mce_chunk_size  ( ) { return $MCE::MCE->chunk_size(); }
 sub mce_max_workers ( ) { return $MCE::MCE->max_workers(); }
+sub mce_pid         ( ) { return $MCE::MCE->pid(); }
 sub mce_sess_dir    ( ) { return $MCE::MCE->sess_dir(); }
 sub mce_task_id     ( ) { return $MCE::MCE->task_id(); }
 sub mce_task_name   ( ) { return $MCE::MCE->task_name(); }
@@ -172,6 +173,7 @@ sub _export_subs {
       *{ $_package . '::mce_chunk_id'    } = \&mce_chunk_id;
       *{ $_package . '::mce_chunk_size'  } = \&mce_chunk_size;
       *{ $_package . '::mce_max_workers' } = \&mce_max_workers;
+      *{ $_package . '::mce_pid'         } = \&mce_pid;
       *{ $_package . '::mce_sess_dir'    } = \&mce_sess_dir;
       *{ $_package . '::mce_task_id'     } = \&mce_task_id;
       *{ $_package . '::mce_task_name'   } = \&mce_task_name;
@@ -360,6 +362,8 @@ MCE methods are described in L<MCE::Core|MCE::Core>.
 =item mce_chunk_size
 
 =item mce_max_workers
+
+=item mce_pid
 
 =item mce_sess_dir
 

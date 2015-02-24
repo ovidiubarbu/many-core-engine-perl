@@ -1416,7 +1416,7 @@ sub yield {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Miscellaneous methods: abort exit last next status.
+## Miscellaneous methods: abort exit last next pid status.
 ##
 ###############################################################################
 
@@ -1563,6 +1563,19 @@ sub next {
    $self->{_next_jmp}() if (defined $self->{_next_jmp});
 
    return;
+}
+
+## Return the process ID. Attach the thread ID for threads.
+
+sub pid {
+
+ # my $x = shift; my $self = ref($x) ? $x : $MCE;
+
+   if ($_has_threads && $_use_threads) {
+      return $$ .'.'. threads->tid();
+   } else {
+      return $$;
+   }
 }
 
 ## Return the exit status. "_wrk_status" holds the greatest exit status

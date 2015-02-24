@@ -1196,6 +1196,13 @@ Returns the value for max_workers used by MCE.
    my $max_workers = $mce->max_workers;
    my $max_workers = MCE->max_workers;
 
+=item ->pid ( void )
+
+Returns the Process ID. Threads have thread ID attached to the value.
+
+   my $pid = $mce->pid;   ## Non-threads 16180 ; Threads 16180.2
+   my $pid = MCE->pid;
+
 =item ->sess_dir ( void )
 
 Returns the session directory used by the MCE instance. This is defined

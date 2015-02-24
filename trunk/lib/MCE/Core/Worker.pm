@@ -644,16 +644,9 @@ sub _worker_main {
       }
    }
 
-   my ($_COM_LOCK, $_DAT_LOCK);
-   my $_lock_chn = $self->{_lock_chn};
-   my $_chn      = $self->{_chn};
+   my ($_COM_LOCK, $_DAT_LOCK); my $_chn = $self->{_chn};
 
-   for (1 .. $self->{_data_channels}) {
-      $self->{_dat_r_sock}->[$_] = $self->{_dat_w_sock}->[$_] = undef
-         unless ($_ == $_chn);
-   }
-
-   if ($_lock_chn) {
+   if ($self->{_lock_chn}) {
       open $_DAT_LOCK, '+>>:raw:stdio', "$_sess_dir/_dat.lock.$_chn"
          or die "(W) open error $_sess_dir/_dat.lock.$_chn: $!\n";
    }
@@ -681,9 +674,7 @@ sub _worker_main {
    ## Begin processing if worker was added during processing. Otherwise,
    ## respond back to the main process if the last worker spawned.
    if (defined $_params) {
-      sleep 0.002;
-      _worker_do($self, $_params);
-      undef $_params;
+      sleep 0.002; _worker_do($self, $_params); undef $_params;
    }
    elsif ($self->{_wid} == $self->{_total_workers}) {
       my $_buf; my $_COM_W_SOCK = $self->{_com_w_sock};
@@ -705,7 +696,7 @@ sub _worker_main {
 
    sleep 0.005 if ($_is_winenv);
 
-   if ($_lock_chn) {
+   if ($self->{_lock_chn}) {
       close $_DAT_LOCK; undef $_DAT_LOCK;
    }
 
