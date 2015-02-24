@@ -1960,6 +1960,25 @@ MCE->sync with MCE->do or output serialization methods inside a loop.
       }
    }
 
+=item ->synchronize ( sub { ... }, @_ )
+
+Obtains a lock, runs the code block, and releases the lock after the block
+completes. This requires MCE::Mutex or MCE::Shared or threads. Otherwise,
+croaks with error.
+
+   use MCE::Flow;
+   use MCE::Mutex;
+
+   mce_flow sub {
+      my ($mce) = @_;
+      my ($wid) = MCE->wid;
+
+      MCE->synchronize( sub {
+         ## access shared resource
+         MCE->say($wid); sleep 1;
+      });
+   };
+
 =item ->yield ( void )
 
 There may be on occasion when the MCE driven app is too fast. The interval

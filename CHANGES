@@ -1,7 +1,7 @@
 
 Revision history for MCE
 
-1.60x Wed Feb 23 20:00:00 EST 2015
+1.60x Wed Feb 23 23:00:00 EST 2015
 
   [BUG FIXES]
 
@@ -38,7 +38,7 @@ Revision history for MCE
 
   [NEW FEATURES]
 
-  * Added ->pid method to Core API.
+  * Added ->pid and ->synchronize methods to MCE.
 
 1.600 Sat Jan 31 20:00:00 EST 2015
 
