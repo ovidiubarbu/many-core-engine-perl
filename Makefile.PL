@@ -131,6 +131,22 @@ WriteMakefile(
                'file'    => 'lib/MCE/Relay.pm',
                'version' => '1.600'
             },
+            'MCE::Shared' => {
+               'file'    => 'lib/MCE/Shared.pm',
+               'version' => '1.600'
+            },
+            'MCE::Shared::Array' => {
+               'file'    => 'lib/MCE/Shared/Array.pm',
+               'version' => '1.600'
+            },
+            'MCE::Shared::Hash' => {
+               'file'    => 'lib/MCE/Shared/Hash.pm',
+               'version' => '1.600'
+            },
+            'MCE::Shared::Scalar' => {
+               'file'    => 'lib/MCE/Shared/Scalar.pm',
+               'version' => '1.600'
+            },
             'MCE::Signal' => {
                'file'    => 'lib/MCE/Signal.pm',
                'version' => '1.600'
