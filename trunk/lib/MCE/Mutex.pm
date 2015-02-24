@@ -68,7 +68,7 @@ sub new {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Lock method.
+## Lock, unlock, and synchronize methods. Supports threads and processes.
 ##
 ###############################################################################
 
@@ -81,12 +81,6 @@ sub lock {
    return;
 }
 
-###############################################################################
-## ----------------------------------------------------------------------------
-## Unlock method.
-##
-###############################################################################
-
 sub unlock {
 
    my ($_mutex) = @_;
@@ -95,12 +89,6 @@ sub unlock {
 
    return;
 }
-
-###############################################################################
-## ----------------------------------------------------------------------------
-## Synchronize method.
-##
-###############################################################################
 
 sub synchronize {
 
@@ -164,6 +152,8 @@ This document describes MCE::Mutex version 1.600
 
 This module implements locking methods that can be used to coordinate access
 to shared data from multiple workers spawned as threads or processes.
+
+The inspiration for this module came from reading Mutex for Ruby.
 
 =head1 API DOCUMENTATION
 
