@@ -81,6 +81,9 @@ The following scripts are located under the examples directory.
 
         Transparent use of MCE::Queue with MCE::Step.
 
+   shared_mce.pl, shared_thr.pl
+        Data sharing via MCE::Shared and threads::shared.
+
    sync.pl, utf8.pl
         Barrier synchronization demonstration.
         Process input containing unicode data.

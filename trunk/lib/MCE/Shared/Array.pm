@@ -380,9 +380,15 @@ sub _mce_w_init {
 
    ($_MCE) = @_;
 
-   if (defined $MCE::Shared::_HDLR &&
+   unless (defined $MCE::Shared::_HDLR &&
          refaddr($_MCE) != refaddr($MCE::Shared::_HDLR)) {
 
+      ($_chn, $_lock_chn) = ($_MCE->{_chn}, $_MCE->{_lock_chn});
+
+      $_DAT_LOCK = $_MCE->{_dat_lock};
+   }
+   else {
+      ## running separate MCE instances simultaneously
       ($_MCE, $_chn, $_lock_chn) = ($MCE::Shared::_HDLR, 1, 1);
 
       unless (defined $MCE::Shared::_LOCK) {
@@ -392,10 +398,6 @@ sub _mce_w_init {
       }
 
       $_DAT_LOCK = $MCE::Shared::_LOCK;
-   }
-   else {
-      ($_chn, $_lock_chn) = ($_MCE->{_chn}, $_MCE->{_lock_chn});
-      $_DAT_LOCK = $_MCE->{_dat_lock};
    }
 
    $_DAT_W_SOCK = $_MCE->{_dat_w_sock}->[0];

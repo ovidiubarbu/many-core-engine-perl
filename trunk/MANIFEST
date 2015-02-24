@@ -84,6 +84,8 @@ examples/sampledb/update1.pl
 examples/sampledb/update2.pl
 examples/sampledb/update3.pl
 examples/seq_demo.pl
+examples/shared_mce.pl
+examples/shared_thr.pl
 examples/step_demo.pl
 examples/sync.pl
 examples/tbray/README
@@ -129,4 +131,7 @@ t/05_mce_step.t
 t/05_mce_stream.t
 t/06_nodata_flow.t
 t/06_nodata_step.t
+t/07_shared_array.t
+t/07_shared_hash.t
+t/07_shared_scalar.t
 META.yml
