@@ -62,52 +62,53 @@ sub mce_restart_worker (@) {
    return $MCE::MCE->restart_worker(@_);
 }
 
-sub mce_forchunk    (@) { return $MCE::MCE->forchunk(@_); }
-sub mce_foreach     (@) { return $MCE::MCE->foreach(@_); }
-sub mce_forseq      (@) { return $MCE::MCE->forseq(@_); }
-sub mce_process     (@) { return $MCE::MCE->process(@_); }
-sub mce_relay_final ( ) { return $MCE::MCE->relay_final(); }
-sub mce_run         (@) { return $MCE::MCE->run(@_); }
-sub mce_send        (@) { return $MCE::MCE->send(@_); }
-sub mce_shutdown    ( ) { return $MCE::MCE->shutdown(); }
-sub mce_spawn       ( ) { return $MCE::MCE->spawn(); }
-sub mce_status      ( ) { return $MCE::MCE->status(); }
+sub mce_forchunk     (@) { return $MCE::MCE->forchunk(@_); }
+sub mce_foreach      (@) { return $MCE::MCE->foreach(@_); }
+sub mce_forseq       (@) { return $MCE::MCE->forseq(@_); }
+sub mce_process      (@) { return $MCE::MCE->process(@_); }
+sub mce_relay_final  ( ) { return $MCE::MCE->relay_final(); }
+sub mce_run          (@) { return $MCE::MCE->run(@_); }
+sub mce_send         (@) { return $MCE::MCE->send(@_); }
+sub mce_shutdown     ( ) { return $MCE::MCE->shutdown(); }
+sub mce_spawn        ( ) { return $MCE::MCE->spawn(); }
+sub mce_status       ( ) { return $MCE::MCE->status(); }
 
 ## Callable by the worker process only.
 
-sub mce_do          (@) { return $MCE::MCE->do(@_); }
-sub mce_exit        (@) { return $MCE::MCE->exit(@_); }
-sub mce_gather      (@) { return $MCE::MCE->gather(@_); }
-sub mce_last        ( ) { return $MCE::MCE->last(); }
-sub mce_next        ( ) { return $MCE::MCE->next(); }
-sub mce_relay      (;&) { return $MCE::MCE->relay(@_); }
-sub mce_relay_recv  ( ) { return $MCE::MCE->relay_recv(); }
-sub mce_sendto    (;*@) { return $MCE::MCE->sendto(@_); }
-sub mce_sync        ( ) { return $MCE::MCE->sync(); }
-sub mce_yield       ( ) { return $MCE::MCE->yield(); }
+sub mce_do           (@) { return $MCE::MCE->do(@_); }
+sub mce_exit         (@) { return $MCE::MCE->exit(@_); }
+sub mce_gather       (@) { return $MCE::MCE->gather(@_); }
+sub mce_last         ( ) { return $MCE::MCE->last(); }
+sub mce_next         ( ) { return $MCE::MCE->next(); }
+sub mce_relay       (;&) { return $MCE::MCE->relay(@_); }
+sub mce_relay_recv   ( ) { return $MCE::MCE->relay_recv(); }
+sub mce_sendto     (;*@) { return $MCE::MCE->sendto(@_); }
+sub mce_sync         ( ) { return $MCE::MCE->sync(); }
+sub mce_synchronize (;&) { return $MCE::MCE->synchronize(@_); }
+sub mce_yield        ( ) { return $MCE::MCE->yield(); }
 
 ## Callable by both the manager and worker processes.
 
-sub mce_abort       ( ) { return $MCE::MCE->abort(); }
-sub mce_freeze      (@) { return $MCE::MCE->{freeze}(@_); }
-sub mce_print     (;*@) { return $MCE::MCE->print(@_); }
-sub mce_printf    (;*@) { return $MCE::MCE->printf(@_); }
-sub mce_say       (;*@) { return $MCE::MCE->say(@_); }
-sub mce_thaw        (@) { return $MCE::MCE->{thaw}(@_); }
+sub mce_abort        ( ) { return $MCE::MCE->abort(); }
+sub mce_freeze       (@) { return $MCE::MCE->{freeze}(@_); }
+sub mce_print      (;*@) { return $MCE::MCE->print(@_); }
+sub mce_printf     (;*@) { return $MCE::MCE->printf(@_); }
+sub mce_say        (;*@) { return $MCE::MCE->say(@_); }
+sub mce_thaw         (@) { return $MCE::MCE->{thaw}(@_); }
 
 ## Callable by both the manager and worker processes.
 
-sub mce_chunk_id    ( ) { return $MCE::MCE->chunk_id(); }
-sub mce_chunk_size  ( ) { return $MCE::MCE->chunk_size(); }
-sub mce_max_workers ( ) { return $MCE::MCE->max_workers(); }
-sub mce_pid         ( ) { return $MCE::MCE->pid(); }
-sub mce_sess_dir    ( ) { return $MCE::MCE->sess_dir(); }
-sub mce_task_id     ( ) { return $MCE::MCE->task_id(); }
-sub mce_task_name   ( ) { return $MCE::MCE->task_name(); }
-sub mce_task_wid    ( ) { return $MCE::MCE->task_wid(); }
-sub mce_tmp_dir     ( ) { return $MCE::MCE->tmp_dir(); }
-sub mce_user_args   ( ) { return $MCE::MCE->user_args(); }
-sub mce_wid         ( ) { return $MCE::MCE->wid(); }
+sub mce_chunk_id     ( ) { return $MCE::MCE->chunk_id(); }
+sub mce_chunk_size   ( ) { return $MCE::MCE->chunk_size(); }
+sub mce_max_workers  ( ) { return $MCE::MCE->max_workers(); }
+sub mce_pid          ( ) { return $MCE::MCE->pid(); }
+sub mce_sess_dir     ( ) { return $MCE::MCE->sess_dir(); }
+sub mce_task_id      ( ) { return $MCE::MCE->task_id(); }
+sub mce_task_name    ( ) { return $MCE::MCE->task_name(); }
+sub mce_task_wid     ( ) { return $MCE::MCE->task_wid(); }
+sub mce_tmp_dir      ( ) { return $MCE::MCE->tmp_dir(); }
+sub mce_user_args    ( ) { return $MCE::MCE->user_args(); }
+sub mce_wid          ( ) { return $MCE::MCE->wid(); }
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -155,6 +156,7 @@ sub _export_subs {
       *{ $_package . '::mce_relay_recv'  } = \&mce_relay_recv;
       *{ $_package . '::mce_sendto'      } = \&mce_sendto;
       *{ $_package . '::mce_sync'        } = \&mce_sync;
+      *{ $_package . '::mce_synchronize' } = \&mce_synchronize;
       *{ $_package . '::mce_yield'       } = \&mce_yield;
    }
 
@@ -344,6 +346,8 @@ MCE methods are described in L<MCE::Core|MCE::Core>.
 =item mce_sendto
 
 =item mce_sync
+
+=item mce_synchronize
 
 =item mce_thaw
 

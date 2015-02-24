@@ -58,7 +58,7 @@ BEGIN {
    ## _chunk_id _mce_sid _mce_tid _pids _run_mode _single_dim _thrs _tids _wid
    ## _exiting _exit_pid _total_exited _total_running _total_workers _task_wid
    ## _send_cnt _sess_dir _spawned _state _status _task _task_id _wrk_status
-   ## _last_sref _init_total_workers _rla_data _rla_return
+   ## _init_total_workers _last_sref _mutex _rla_data _rla_return
    ##
    ## _bsb_r_sock _bsb_w_sock _bse_r_sock _bse_w_sock _com_r_sock _com_w_sock
    ## _dat_r_sock _dat_w_sock _que_r_sock _que_w_sock _rla_r_sock _rla_w_sock
@@ -391,6 +391,13 @@ sub new {
    }
    else {
       $self{use_threads} = ($_has_threads) ? 1 : 0;
+   }
+
+   if ($self{use_threads} && !defined $forks::VERSION) {
+      $self{_mutex} = 1; share(\$self{_mutex});
+   }
+   elsif (defined $MCE::Mutex::VERSION) {
+      $self{_mutex} = MCE::Mutex->new;
    }
 
    $self{flush_file}   ||= 0;
@@ -1416,7 +1423,7 @@ sub yield {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Miscellaneous methods: abort exit last next pid status.
+## Miscellaneous methods: abort exit last next pid status synchronize.
 ##
 ###############################################################################
 
@@ -1589,6 +1596,37 @@ sub status {
       if ($self->{_wid});
 
    return (defined $self->{_wrk_status}) ? $self->{_wrk_status} : 0;
+}
+
+## Obtains a lock, runs the code block, and releases the lock after the
+## block completes.
+
+sub synchronize {
+
+   my ($self, $_code);
+
+   if (ref $_[0] eq 'CODE') {
+      ($self, $_code) = ($MCE, shift);
+   } else {
+      my $x = shift; $self = ref($x) ? $x : $MCE;  $_code = shift;
+   }
+
+   _croak('MCE::synchronize: method cannot be called by the manager process')
+      unless ($self->{_wid});
+
+   if (ref $_code eq 'CODE') {
+      if ($self->{use_threads} && !defined $forks::VERSION) {
+         lock $self->{_mutex}; $_code->(@_);
+      }
+      elsif (defined $MCE::Mutex::VERSION) {
+         $self->{_mutex}->lock; $_code->(@_); $self->{_mutex}->unlock;
+      }
+      else {
+         _croak('Synchronize requires MCE::Mutex or MCE::Shared or threads');
+      }
+   }
+
+   return;
 }
 
 ###############################################################################
