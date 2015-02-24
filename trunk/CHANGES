@@ -1,7 +1,7 @@
 
 Revision history for MCE
 
-1.60x Wed Feb 23 23:00:00 EST 2015
+1.60x Wed Feb 24 01:00:00 EST 2015
 
   [BUG FIXES]
 
@@ -37,6 +37,8 @@ Revision history for MCE
   * Workers now set STDERR and STDOUT to flush automatically.
 
   [NEW FEATURES]
+
+  * Added MCE::Shared, MCE::Shared::Array, Hash, and Scalar.
 
   * Added ->pid and ->synchronize methods to MCE.
 

@@ -25,6 +25,10 @@ lib/MCE/Map.pm
 lib/MCE/Mutex.pm
 lib/MCE/Queue.pm
 lib/MCE/Relay.pm
+lib/MCE/Shared.pm
+lib/MCE/Shared/Scalar.pm
+lib/MCE/Shared/Array.pm
+lib/MCE/Shared/Hash.pm
 lib/MCE/Signal.pm
 lib/MCE/Step.pm
 lib/MCE/Stream.pm
