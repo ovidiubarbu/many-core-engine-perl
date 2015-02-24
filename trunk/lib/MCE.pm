@@ -1569,9 +1569,9 @@ sub next {
 
 sub pid {
 
- # my $x = shift; my $self = ref($x) ? $x : $MCE;
+   my $x = shift; my $self = ref($x) ? $x : $MCE;
 
-   if ($_has_threads && $_use_threads) {
+   if ($_has_threads && $self->{use_threads}) {
       return $$ .'.'. threads->tid();
    } else {
       return $$;
