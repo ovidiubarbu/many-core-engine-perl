@@ -30,7 +30,7 @@ my $MAX_WORKERS = 'auto';
 my $CHUNK_SIZE  = 'auto';
 my $FAST        = 0;
 
-my ($_params, @_prev_c, @_prev_n, @_prev_w, @_user_tasks, @_queue);
+my ($_params, @_prev_c, @_prev_n, @_prev_w, @_user_tasks, @_queue, %_lkup);
 my ($_MCE, $_loaded, $_last_task_id); my $_tag = 'MCE::Step';
 
 sub import {
@@ -103,7 +103,7 @@ END {
 ###############################################################################
 ## ----------------------------------------------------------------------------
 ## The task end callback for when a task completes.
-## Also, the step method for MCE is defined here.
+## Also, the step and step_to methods for MCE are defined here.
 ##
 ###############################################################################
 
@@ -143,6 +143,29 @@ sub _task_end {
 
       return;
    }
+
+   sub MCE::step_to {
+
+      my $x = shift; my $self = ref($x) ? $x : $_MCE; my $_to = shift;
+
+      _croak('MCE::step_to: method cannot be called by the manager process')
+         unless ($self->{_wid});
+      _croak('MCE::step_to: (to argument) is not specified or valid')
+         if (!defined $_to || !exists $_lkup{$_to});
+      _croak('MCE::step_to: stepping backwards is not allowed')
+         if ($_lkup{$_to} <= $self->{_task_id});
+
+      my $_task_id = $_lkup{$_to} - 1;
+
+      if ($_task_id < $_last_task_id) {
+         $_queue[$_task_id]->enqueue($self->freeze([ @_ ]));
+      }
+      else {
+         _croak('MCE::step_to: method cannot be called by the last task');
+      }
+
+      return;
+   }
 }
 
 ###############################################################################
@@ -174,7 +197,7 @@ sub finish () {
       MCE::_save_state; $_MCE->shutdown(); MCE::_restore_state;
    }
 
-   @_user_tasks = (); @_prev_w = (); @_prev_n = (); @_prev_c = ();
+   @_user_tasks = (); @_prev_w = (); @_prev_n = (); @_prev_c = (); %_lkup = ();
 
    $_->DESTROY() foreach (@_queue); @_queue = ();
 
@@ -320,6 +343,8 @@ sub run (@) {
 
    my (@_code, @_name, @_wrks); my $_init_mce = 0; my $_pos = 0;
 
+   %_lkup = ();
+
    while (ref $_[0] eq 'CODE') {
       push @_code, $_[0];
 
@@ -327,6 +352,8 @@ sub run (@) {
          ? $_params->{task_name}->[$_pos] : undef;
       push @_wrks, (defined $_params && ref $_params->{max_workers} eq 'ARRAY')
          ? $_params->{max_workers}->[$_pos] : undef;
+
+      $_lkup{ $_name[ $_pos ] } = $_pos if (defined $_name[ $_pos ]);
 
       $_init_mce = 1
          if (!defined $_prev_c[$_pos] || $_prev_c[$_pos] != $_code[$_pos]);
