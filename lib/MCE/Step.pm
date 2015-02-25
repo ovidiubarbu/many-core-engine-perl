@@ -103,7 +103,6 @@ END {
 ###############################################################################
 ## ----------------------------------------------------------------------------
 ## The task end callback for when a task completes.
-## Also, the step and step_to methods for MCE are defined here.
 ##
 ###############################################################################
 
@@ -121,6 +120,12 @@ sub _task_end {
 
    return;
 }
+
+###############################################################################
+## ----------------------------------------------------------------------------
+## Methods for MCE; step, step_to, and await.
+##
+###############################################################################
 
 {
    no warnings 'redefine';
@@ -146,16 +151,16 @@ sub _task_end {
 
    sub MCE::step_to {
 
-      my $x = shift; my $self = ref($x) ? $x : $_MCE; my $_to = shift;
+      my $x = shift; my $self = ref($x) ? $x : $_MCE; my $_task = shift;
 
       _croak('MCE::step_to: method cannot be called by the manager process')
          unless ($self->{_wid});
-      _croak('MCE::step_to: (to argument) is not specified or valid')
-         if (!defined $_to || !exists $_lkup{$_to});
+      _croak('MCE::step_to: (task argument) is not specified or valid')
+         if (!defined $_task || !exists $_lkup{$_task});
       _croak('MCE::step_to: stepping backwards is not allowed')
-         if ($_lkup{$_to} <= $self->{_task_id});
+         if ($_lkup{$_task} <= $self->{_task_id});
 
-      my $_task_id = $_lkup{$_to} - 1;
+      my $_task_id = $_lkup{$_task} - 1;
 
       if ($_task_id < $_last_task_id) {
          $_queue[$_task_id]->enqueue($self->freeze([ @_ ]));
@@ -166,6 +171,32 @@ sub _task_end {
 
       return;
    }
+
+   sub MCE::await {
+
+      my $x = shift; my $self = ref($x) ? $x : $_MCE; my $_task = shift;
+
+      _croak('MCE::await: method cannot be called by the manager process')
+         unless ($self->{_wid});
+      _croak('MCE::await: (task argument) is not specified or valid')
+         if (!defined $_task || !exists $_lkup{$_task});
+      _croak('MCE::await: awaiting backwards is not allowed')
+         if ($_lkup{$_task} <= $self->{_task_id});
+
+      my $_task_id = $_lkup{$_task} - 1;  my $_t = shift || 0;
+
+      _croak('MCE::await: (threshold) is not an integer')
+         if (!looks_like_number($_t) || int($_t) != $_t);
+
+      if ($_task_id < $_last_task_id) {
+         $_queue[$_task_id]->await($_t);
+      } else {
+         _croak('MCE::await: method cannot be called by the last task');
+      }
+
+      return;
+   }
+
 }
 
 ###############################################################################
@@ -424,7 +455,7 @@ sub run (@) {
 
       pop( @_queue )->DESTROY for (@_code .. @_queue);
 
-      push @_queue, MCE::Queue->new(fast => $FAST)
+      push @_queue, MCE::Queue->new(fast => $FAST, wait => 1)
          for (@_queue .. @_code - 2);
 
       _gen_user_tasks(\@_queue, \@_code, \@_name, \@_wrks, $_chunk_size);
