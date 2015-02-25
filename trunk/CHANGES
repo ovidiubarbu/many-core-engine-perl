@@ -1,7 +1,14 @@
 
 Revision history for MCE
 
-1.60x Wed Feb 24 20:00:00 EST 2015
+1.60x Wed Feb 25 00:30:00 EST 2015
+
+  [TODO; before releasing MCE 1.601]
+
+  * Document ->step_to and ->await methods in MCE::Step.
+  * Document ->await method in MCE::Queue.
+  * Complete MCE::Shared documentation.
+  * Add MCE::Tutorial documentation.
 
   [BUG FIXES]
 
@@ -38,12 +45,13 @@ Revision history for MCE
 
   [NEW FEATURES]
 
+  * Added ->await method to MCE::Queue.
   * Added ->pid and ->synchronize methods to MCE.
-  * Added ->step_to method to MCE::Step.
+  * Added ->step_to and ->await methods to MCE::Step.
 
-  * Added MCE::Shared, MCE::Shared::Array, Hash, and Scalar.
-    Includes two examples; shared_mce.pl and shared_thr.pl.
-    Test scripts for MCE::Shared.
+  * Added MCE::Shared, MCE::Shared::Array / Hash / Scalar.
+    Added test scripts; 07_shared_array.t / hash / scalar.
+    Added two examples; shared_mce.pl and shared_thr.pl.
 
 1.600 Sat Jan 31 20:00:00 EST 2015
 
