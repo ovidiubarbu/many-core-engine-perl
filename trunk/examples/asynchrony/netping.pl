@@ -9,7 +9,7 @@ use strict;
 use warnings;
 
 use Cwd 'abs_path'; ## Insert lib-path at the head of @INC.
-use lib abs_path($0 =~ m{^(.*)[\\/]} && $1 || abs_path) . '/../lib';
+use lib abs_path($0 =~ m{^(.*)[\\/]} && $1 || abs_path) . '/../../lib';
 
 my $prog_name = $0; $prog_name =~ s{^.*[\\/]}{}g;
 
@@ -45,7 +45,7 @@ DESCRIPTION
    The following options are available:
 
    --max-workers MAX_WORKERS
-          Specify number of workers for MCE      Default: 4
+          Specify number of workers for MCE      Default: auto
 
    --chunk-size CHUNK_SIZE
           Specify chunk size for MCE             Default: 100
@@ -68,8 +68,8 @@ EXAMPLES
 my $flag = sub { 1; };
 my $isOk = sub { (@ARGV == 0 or $ARGV[0] =~ /^-/) ? usage() : shift @ARGV; };
 
+my $max_workers = 'auto';
 my $chunk_size  = 100;
-my $max_workers = 4;
 my $skip_args   = 0;
 
 my $listfile;
