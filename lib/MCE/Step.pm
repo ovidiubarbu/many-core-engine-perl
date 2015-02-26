@@ -455,7 +455,7 @@ sub run (@) {
 
       pop( @_queue )->DESTROY for (@_code .. @_queue);
 
-      push @_queue, MCE::Queue->new(fast => $FAST, wait => 1)
+      push @_queue, MCE::Queue->new(fast => $FAST, await => 1)
          for (@_queue .. @_code - 2);
 
       _gen_user_tasks(\@_queue, \@_code, \@_name, \@_wrks, $_chunk_size);

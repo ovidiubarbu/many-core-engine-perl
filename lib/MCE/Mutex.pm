@@ -157,26 +157,22 @@ The inspiration for this module came from reading Mutex for Ruby.
 
 =head1 API DOCUMENTATION
 
-=over 3
-
-=item ->new ( void )
+=head2 MCE::Mutex->new ( void )
 
 Creates a new mutex.
 
-=item ->lock ( void )
+=head2 $mutex->lock ( void )
 
 Attempts to grab the lock and waits if not available.
 
-=item ->unlock ( void )
+=head2 $mutex->unlock ( void )
 
 Releases the lock.
 
-=item ->synchronize ( sub { ... }, @_ )
+=head2 $mutex->synchronize ( sub { ... }, @_ )
 
 Obtains a lock, runs the code block, and releases the lock after the block
 completes.
-
-=back
 
 =head1 INDEX
 

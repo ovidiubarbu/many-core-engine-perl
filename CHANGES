@@ -1,7 +1,7 @@
 
 Revision history for MCE
 
-1.60x Thu Feb 26 06:00:00 EST 2015
+1.60x Thu Feb 26 12:30:00 EST 2015
 
   [TODO; before releasing MCE 1.601]
 
@@ -39,7 +39,8 @@ Revision history for MCE
     forchunk.pl, foreach.pl, forseq.pl, iterator.pl, and wc.pl.
 
   * Reverted a small change applied in 1.600 to ->do and ->gather.
-  * Load Carp going forward since also needed by the Socket module.
+  * Loads Carp going forward since also needed by the Socket module.
+  * Updated POD header lines for method names; from =item to =head2.
   * Workers now set STDERR and STDOUT to flush automatically.
 
   [NEW FEATURES]
