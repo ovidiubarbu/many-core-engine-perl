@@ -679,7 +679,7 @@ for the 2nd run and beyond.
 Well, there you have it. MCE is able to complete the same simulation many
 times faster.
 
-=head1 MULTIPLE WORKERS RUNNING IN PARALLEL
+=head1 MANY WORKERS RUNNING IN PARALLEL
 
 There are occasions when one wants several workers to run in parallel without
 having to specify input_data or seqeunce. These two options are optional in

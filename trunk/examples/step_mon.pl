@@ -86,7 +86,7 @@ sub Scheduler
          sleep $seconds;
 
          ## Wait until processing has completed for submitted work
-         MCE->await($mon, 10);  ## waits until 10 or less remaining
+         MCE->await($mon, 10);  # blocks until 10 or less remaining
       }
    }
 
