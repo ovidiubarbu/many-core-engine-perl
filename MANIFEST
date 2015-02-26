@@ -34,6 +34,14 @@ lib/MCE/Step.pm
 lib/MCE/Stream.pm
 lib/MCE/Subs.pm
 lib/MCE/Util.pm
+examples/asynchrony/README
+examples/asynchrony/dnslookup_ae.pl
+examples/asynchrony/dnslookup_ioa.pl
+examples/asynchrony/echoserver_ae.pl
+examples/asynchrony/echoserver_ioa.pl
+examples/asynchrony/echoserver_mojo.pl
+examples/asynchrony/echoserver_poe.pl
+examples/asynchrony/netping.pl
 examples/biofasta/README
 examples/biofasta/fasta_aidx.pl
 examples/biofasta/fasta_rdr1.pl
@@ -71,7 +79,6 @@ examples/matmult/strassen_49_f.pl
 examples/matmult/strassen_49_t.pl
 examples/matmult/strassen_perl.pl
 examples/mutex.pl
-examples/ping.pl
 examples/pipe1.pl
 examples/pipe2.pl
 examples/relay.pl
@@ -87,6 +94,7 @@ examples/seq_demo.pl
 examples/shared_mce.pl
 examples/shared_thr.pl
 examples/step_demo.pl
+examples/step_mon.pl
 examples/sync.pl
 examples/tbray/README
 examples/tbray/tbray_baseline1.pl
