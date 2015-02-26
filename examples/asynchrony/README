@@ -1,10 +1,21 @@
-
 ###############################################################################
 ##
 ## Parallel Concurrency, Asynchrony, and Shared Data (threads or processes).
 ##
-## Add (use threads) above MCE::Flow if threads is desired on Unix-based OS.
-## EV does not work with ithreads; dnslookup_ae.pl and echo_server_mojo.pl
+## This folder came about from wanting to show-case parallelism for various
+## concurrency modules with MCE. I search the web for echo servers and came
+## across a site by Frew Schmidt.
+##
+## https://blog.afoolishmanifesto.com/posts/concurrency-and-async-in-perl/
+##
+## That inspired me to give AnyEvent, IO::Async::Loop, Mojo::IOLoop, and POE
+## a try. The examples were updated so to have consistent output between
+## them; e.g. both dnslookup_ae.pl and dnslookup_ioa.pl acquire IPv4 and
+## IPv6 addresses.
+##
+## One may add (use threads) above MCE::Flow if threads is desired on any
+## Unix-based OS. EV does not work with ithreads. Thus, dnslookup_ae.pl
+## and echo_server_mojo.pl cannot run with threads.
 ##
 ###############################################################################
 
