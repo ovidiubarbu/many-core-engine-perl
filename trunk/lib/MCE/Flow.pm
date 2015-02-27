@@ -147,10 +147,10 @@ sub run_file (@) {
       $_params = {};
    }
 
-   for ($_start_pos .. @_ - 1) {
-      my $_r = ref $_[$_];
+   for my $_i ($_start_pos .. @_ - 1) {
+      my $_r = ref $_[$_i];
       if ($_r eq '' || $_r eq 'GLOB' || $_r eq 'SCALAR' || $_r =~ /^IO::/) {
-         $_file = $_[$_]; $_pos = $_;
+         $_file = $_[$_i]; $_pos = $_i;
          last;
       }
    }
@@ -196,11 +196,11 @@ sub run_seq (@) {
       $_params = {};
    }
 
-   for ($_start_pos .. @_ - 1) {
-      my $_ref = ref $_[$_];
+   for my $_i ($_start_pos .. @_ - 1) {
+      my $_ref = ref $_[$_i];
 
       if ($_ref eq '' || $_ref eq 'HASH' || $_ref eq 'ARRAY') {
-         $_pos = $_;
+         $_pos = $_i;
 
          if ($_ref eq '') {
             $_begin = $_[$_pos]; $_end = $_[$_pos + 1];
@@ -257,7 +257,9 @@ sub run (@) {
 
    if (ref $_[0] eq 'HASH') {
       $_params = {} unless defined $_params;
-      $_params->{$_} = $_[0]->{$_} foreach (keys %{ $_[0] });
+      for my $_p (keys %{ $_[0] }) {
+         $_params->{$_p} = $_[0]->{$_p};
+      }
 
       shift;
    }
@@ -317,7 +319,7 @@ sub run (@) {
       delete $_p->{user_tasks} if (exists $_p->{user_tasks});
    }
 
-   if (@_code > 1) {
+   if (@_code > 1 && $_max_workers > 1) {
       $_max_workers = int($_max_workers / @_code + 0.5) + 1;
    }
 
@@ -348,9 +350,9 @@ sub run (@) {
       );
 
       if (defined $_params) {
-         my $_p = $_params;
+         local $_; my $_p = $_params;
 
-         foreach (keys %{ $_p }) {
+         for (keys %{ $_p }) {
             next if ($_ eq 'sequence_run');
             next if ($_ eq 'max_workers' && ref $_p->{max_workers} eq 'ARRAY');
             next if ($_ eq 'task_name' && ref $_p->{task_name} eq 'ARRAY');
@@ -370,12 +372,12 @@ sub run (@) {
       ## Workers may persist after running. Thus, updating the MCE instance.
       ## These options do not require respawning.
       if (defined $_params) {
-         for (qw(
+         for my $_p (qw(
             RS interval stderr_file stdout_file user_error user_output
             job_delay submit_delay on_post_exit on_post_run user_args
             flush_file flush_stderr flush_stdout gather
          )) {
-            $_MCE->{$_} = $_params->{$_} if (exists $_params->{$_});
+            $_MCE->{$_p} = $_params->{$_p} if (exists $_params->{$_p});
          }
       }
    }

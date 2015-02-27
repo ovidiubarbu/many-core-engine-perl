@@ -275,15 +275,15 @@ sub run (&@) {
       );
 
       if (defined $_params) {
-         foreach (keys %{ $_params }) {
-            next if ($_ eq 'sequence_run');
-            next if ($_ eq 'input_data');
-            next if ($_ eq 'chunk_size');
+         for my $_p (keys %{ $_params }) {
+            next if ($_p eq 'sequence_run');
+            next if ($_p eq 'input_data');
+            next if ($_p eq 'chunk_size');
 
-            _croak("MCE::Loop: ($_) is not a valid constructor argument")
-               unless (exists $MCE::_valid_fields_new{$_});
+            _croak("MCE::Loop: ($_p) is not a valid constructor argument")
+               unless (exists $MCE::_valid_fields_new{$_p});
 
-            $_options{$_} = $_params->{$_};
+            $_options{$_p} = $_params->{$_p};
          }
       }
 

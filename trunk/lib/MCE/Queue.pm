@@ -146,11 +146,11 @@ sub DESTROY {
 
    local ($!, $?);
 
-   for (qw( _aw_sock _ar_sock _qw_sock _qr_sock )) {
-      CORE::shutdown $_Q->{$_}, 2 if (defined $_Q->{$_});
+   for my $_p (qw( _aw_sock _ar_sock _qw_sock _qr_sock )) {
+      CORE::shutdown $_Q->{$_p}, 2 if (defined $_Q->{$_p});
    }
-   for (qw( _aw_sock _ar_sock _qw_sock _qr_sock )) {
-      if (defined $_Q->{$_}) { close $_Q->{$_}; undef $_Q->{$_}; }
+   for my $_p (qw( _aw_sock _ar_sock _qw_sock _qr_sock )) {
+      if (defined $_Q->{$_p}) { close $_Q->{$_p}; undef $_Q->{$_p}; }
    }
 
    return;
@@ -170,9 +170,9 @@ sub new {
 
    my $_Q = {}; bless($_Q, ref($_class) || $_class);
 
-   for (keys %_argv) {
-      _croak("MCE::Queue::new: ($_) is not a valid constructor argument")
-         unless (exists $_valid_fields_new{$_});
+   for my $_p (keys %_argv) {
+      _croak("MCE::Queue::new: ($_p) is not a valid constructor argument")
+         unless (exists $_valid_fields_new{$_p});
    }
 
    $_Q->{_asem} =  0;  ## Semaphore count variable for the ->await method
@@ -373,7 +373,10 @@ sub _pending {
 
    my $_pending = 0; my ($_Q) = @_;
 
-   $_pending += @{ $_Q->{_datp}->{$_} } for (@{ $_Q->{_heap} });
+   for my $_h (@{ $_Q->{_heap} }) {
+      $_pending += @{ $_Q->{_datp}->{$_h} };
+   }
+
    $_pending += @{ $_Q->{_datq} };
 
    return $_pending;
@@ -1323,10 +1326,10 @@ sub _mce_m_insertp {
       $_DAU_W_SOCK = $_MCE->{_dat_w_sock}->[$_chn];
       $_lock_chn   = $_MCE->{_lock_chn};
 
-      for (keys %{ $_all }) {
-         undef $_all->{$_}->{_datp}; delete $_all->{$_}->{_datp};
-         undef $_all->{$_}->{_datq}; delete $_all->{$_}->{_datq};
-         undef $_all->{$_}->{_heap}; delete $_all->{$_}->{_heap};
+      for my $_p (keys %{ $_all }) {
+         undef $_all->{$_p}->{_datp}; delete $_all->{$_p}->{_datp};
+         undef $_all->{$_p}->{_datq}; delete $_all->{$_p}->{_datq};
+         undef $_all->{$_p}->{_heap}; delete $_all->{$_p}->{_heap};
       }
 
       no strict 'refs'; no warnings 'redefine';

@@ -128,10 +128,10 @@ sub _worker_sequence_generator {
                   );
                   $_start = 1 if ($_start < 1);
 
-                  for ($_start .. $_chunk_size) {
+                  for my $_i ($_start .. $_chunk_size) {
                      last if ($_next > $_end);
                      $_tmp_e = $_next;
-                     $_next  = $_step * $_ + $_n_begin;
+                     $_next  = $_step * $_i + $_n_begin;
                   }
                }
             }
@@ -145,10 +145,10 @@ sub _worker_sequence_generator {
                   );
                   $_start = 1 if ($_start < 1);
 
-                  for ($_start .. $_chunk_size) {
+                  for my $_i ($_start .. $_chunk_size) {
                      last if ($_next < $_end);
                      $_tmp_e = $_next;
-                     $_next  = $_step * $_ + $_n_begin;
+                     $_next  = $_step * $_i + $_n_begin;
                   }
                }
             }
@@ -174,24 +174,24 @@ sub _worker_sequence_generator {
                   }
                }
                else {
-                  for (1 .. $_chunk_size) {
+                  for my $_i (1 .. $_chunk_size) {
                      last if ($_next > $_end);
 
                      push @_n, (defined $_fmt)
                         ? sprintf("%$_fmt", $_next) : $_next;
 
-                     $_next = $_step * $_ + $_n_begin;
+                     $_next = $_step * $_i + $_n_begin;
                   }
                }
             }
             else {
-               for (1 .. $_chunk_size) {
+               for my $_i (1 .. $_chunk_size) {
                   last if ($_next < $_end);
 
                   push @_n, (defined $_fmt)
                      ? sprintf("%$_fmt", $_next) : $_next;
 
-                  $_next = $_step * $_ + $_n_begin;
+                  $_next = $_step * $_i + $_n_begin;
                }
             }
 

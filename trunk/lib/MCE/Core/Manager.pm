@@ -708,16 +708,16 @@ sub _output_loop {
    }
 
    if ($_has_user_tasks) {
-      foreach (0 .. @{ $self->{user_tasks} } - 1) {
-         $_gather[$_] = (defined $self->{user_tasks}->[$_]->{gather})
-            ? $self->{user_tasks}->[$_]->{gather} : $self->{gather};
+      for my $_i (0 .. @{ $self->{user_tasks} } - 1) {
+         $_gather[$_i] = (defined $self->{user_tasks}->[$_i]->{gather})
+            ? $self->{user_tasks}->[$_i]->{gather} : $self->{gather};
 
-         $_is_c_ref[$_] = ( ref $_gather[$_] eq 'CODE' ) ? 1 : 0;
-         $_is_h_ref[$_] = ( ref $_gather[$_] eq 'HASH' ) ? 1 : 0;
+         $_is_c_ref[$_i] = ( ref $_gather[$_i] eq 'CODE' ) ? 1 : 0;
+         $_is_h_ref[$_i] = ( ref $_gather[$_i] eq 'HASH' ) ? 1 : 0;
 
-         $_is_q_ref[$_] = (
-            ref $_gather[$_] eq 'MCE::Queue' ||
-            ref $_gather[$_] eq 'Thread::Queue' ) ? 1 : 0;
+         $_is_q_ref[$_i] = (
+            ref $_gather[$_i] eq 'MCE::Queue' ||
+            ref $_gather[$_i] eq 'Thread::Queue' ) ? 1 : 0;
       }
    }
 
@@ -788,7 +788,9 @@ sub _output_loop {
    $_I_FLG  = (!$_I_SEP || $_I_SEP ne $LF) ? 1 : 0;
 
    ## Call module's loop_begin routine for modules plugged into MCE.
-   $_->($self, \$_DAU_R_SOCK) for (@{ $_plugin_loop_begin });
+   for my $_p (@{ $_plugin_loop_begin }) {
+      $_p->($self, \$_DAU_R_SOCK);
+   }
 
    ## Call on hash function. Exit loop when workers have completed.
    while (1) {
@@ -808,16 +810,18 @@ sub _output_loop {
    }
 
    ## Call module's loop_end routine for modules plugged into MCE.
-   $_->($self) for (@{ $_plugin_loop_end });
+   for my $_p (@{ $_plugin_loop_end }) {
+      $_p->($self);
+   }
 
    ## Call on_post_run callback.
    $_on_post_run->($self, $self->{_status}) if (defined $_on_post_run);
 
    ## Close opened sendto file handles.
-   for (keys %_sendto_fhs) {
-      close  $_sendto_fhs{$_};
-      undef  $_sendto_fhs{$_};
-      delete $_sendto_fhs{$_};
+   for my $_p (keys %_sendto_fhs) {
+      close  $_sendto_fhs{$_p};
+      undef  $_sendto_fhs{$_p};
+      delete $_sendto_fhs{$_p};
    }
 
    ## Restore the default handle. Close MCE STDOUT/STDERR handles.
