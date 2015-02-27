@@ -473,7 +473,9 @@ sub FIRSTKEY {                                    ## Hash FIRSTKEY
       read  $_DAU_W_SOCK, (my $_buf), $_len;
       flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
 
-      $_all->{ $_id }->{ $_ } = 1 foreach (@{ $_MCE->{thaw}($_buf) });
+      for my $_k (@{ $_MCE->{thaw}($_buf) }) {
+         $_all->{ $_id }->{ $_k } = 1;
+      }
    }
 
    my $_a = scalar keys %{ $_all->{ $_id } };

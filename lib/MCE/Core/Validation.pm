@@ -171,9 +171,9 @@ sub _validate_args_s {
       _croak("$_tag: (end) is not defined for sequence")
          unless (defined $_seq->{end});
 
-      for (qw(begin end step)) {
-         _croak("$_tag: ($_) is not valid for sequence")
-            if (defined $_seq->{$_} && !looks_like_number($_seq->{$_}));
+      for my $_p (qw(begin end step)) {
+         _croak("$_tag: ($_p) is not valid for sequence")
+            if (defined $_seq->{$_p} && !looks_like_number($_seq->{$_p}));
       }
 
       unless (defined $_seq->{step}) {
@@ -204,11 +204,12 @@ sub _validate_args_s {
       _croak("$_tag: (delay) is not valid for interval")
          if (!looks_like_number($_i->{delay}) || $_i->{delay} < 0);
 
-      for (qw(max_nodes node_id)) {
-         _croak("$_tag: ($_) is not valid for interval")
-            if (defined $_i->{$_} && (
-               !looks_like_number($_i->{$_}) || int($_i->{$_}) != $_i->{$_} ||
-               $_i->{$_} < 1
+      for my $_p (qw(max_nodes node_id)) {
+         _croak("$_tag: ($_p) is not valid for interval")
+            if (defined $_i->{$_p} && (
+               !looks_like_number($_i->{$_p}) ||
+               int($_i->{$_p}) != $_i->{$_p}  ||
+               $_i->{$_p} < 1
             ));
       }
       $_i->{max_nodes} = 1 unless (exists $_i->{max_nodes});

@@ -96,22 +96,22 @@ BEGIN {
    ## Create accessor functions.
    no strict 'refs'; no warnings 'redefine';
 
-   foreach my $_id (qw( chunk_size max_workers task_name tmp_dir user_args )) {
-      *{ $_id } = sub () {
+   for my $_p (qw( chunk_size max_workers task_name tmp_dir user_args )) {
+      *{ $_p } = sub () {
          my $x = shift; my $self = ref($x) ? $x : $MCE;
-         return $self->{$_id};
+         return $self->{$_p};
       };
    }
-   foreach my $_id (qw( chunk_id sess_dir task_id task_wid wid )) {
-      *{ $_id } = sub () {
+   for my $_p (qw( chunk_id sess_dir task_id task_wid wid )) {
+      *{ $_p } = sub () {
          my $x = shift; my $self = ref($x) ? $x : $MCE;
-         return $self->{"_$_id"};
+         return $self->{"_${_p}"};
       };
    }
-   foreach my $_id (qw( freeze thaw )) {
-      *{ $_id } = sub () {
+   for my $_p (qw( freeze thaw )) {
+      *{ $_p } = sub () {
          my $x = shift; my $self = ref($x) ? $x : $MCE;
-         return $self->{$_id}(@_);
+         return $self->{$_p}(@_);
       };
    }
 
@@ -270,8 +270,8 @@ MCE::Signal::_set_session_vars(\%_mce_sess_dir, \%_mce_spawned);
 
 sub _clean_sessions {
    my ($_mce_sid) = @_;
-   foreach (keys %_mce_spawned) {
-      delete $_mce_spawned{$_} unless ($_ eq $_mce_sid);
+   for my $_s (keys %_mce_spawned) {
+      delete $_mce_spawned{$_s} unless ($_s eq $_mce_sid);
    }
    return;
 }
@@ -279,7 +279,9 @@ sub _clean_sessions {
 sub _clear_session {
    my ($_mce_sid) = @_;
    delete $_mce_spawned{$_mce_sid};
-  (delete $_mce_spawned{$_})->shutdown(1) foreach (keys %_mce_spawned);
+   for my $_s (keys %_mce_spawned) {
+      (delete $_mce_spawned{$_s})->shutdown(1);
+   }
    return;
 }
 
@@ -314,9 +316,9 @@ sub _attach_plugin {
 
       return unless (ref $_ext_output_function eq 'HASH');
 
-      for (keys %{ $_ext_output_function }) {
-         $_plugin_function{$_} = $_ext_output_function->{$_}
-            unless (exists $_plugin_function{$_});
+      for my $_p (keys %{ $_ext_output_function }) {
+         $_plugin_function{$_p} = $_ext_output_function->{$_p}
+            unless (exists $_plugin_function{$_p});
       }
 
       push @_plugin_loop_begin, $_ext_output_loop_begin
@@ -374,9 +376,9 @@ sub new {
       return $MCE = \%self;
    }
 
-   for (keys %self) {
-      _croak("MCE::new: ($_) is not a valid constructor argument")
-         unless (exists $_valid_fields_new{$_});
+   for my $_p (keys %self) {
+      _croak("MCE::new: ($_p) is not a valid constructor argument")
+         unless (exists $_valid_fields_new{$_p});
    }
 
    if (defined $self{use_threads}) {
@@ -423,9 +425,9 @@ sub new {
          if ($self{user_tasks}->[0]->{init_relay});
 
       for my $_task (@{ $self{user_tasks} }) {
-         for (keys %{ $_task }) {
-            _croak("MCE::new: ($_) is not a valid task constructor argument")
-               unless (exists $_valid_fields_task{$_});
+         for my $_p (keys %{ $_task }) {
+            _croak("MCE::new: ($_p) is not a valid task constructor argument")
+               unless (exists $_valid_fields_task{$_p});
          }
          $_task->{max_workers} = $self{max_workers}
             unless (defined $_task->{max_workers});
@@ -592,11 +594,11 @@ sub spawn {
 
       $self->{_task}->[0] = { _total_workers => $_max_workers };
 
-      for (1 .. $_max_workers) {
-         keys(%{ $self->{_state}->[$_] }) = 5;
-         $self->{_state}->[$_] = {
+      for my $_i (1 .. $_max_workers) {
+         keys(%{ $self->{_state}->[$_i] }) = 5;
+         $self->{_state}->[$_i] = {
             _task => undef, _task_id => undef, _task_wid => undef,
-            _params => undef, _chn => $_ % $_data_channels + 1
+            _params => undef, _chn => $_i % $_data_channels + 1
          }
       }
    }
@@ -630,10 +632,10 @@ sub spawn {
          $self->{_task}->[$_task_id] = {
             _total_running => 0, _total_workers => $_task->{max_workers}
          };
-         for (1 .. $_task->{max_workers}) {
+         for my $_i (1 .. $_task->{max_workers}) {
             keys(%{ $self->{_state}->[++$_wid] }) = 5;
             $self->{_state}->[$_wid] = {
-               _task => $_task, _task_id => $_task_id, _task_wid => $_,
+               _task => $_task, _task_id => $_task_id, _task_wid => $_i,
                _params => undef, _chn => $_wid % $_data_channels + 1
             }
          }
@@ -1046,8 +1048,8 @@ sub run {
 
       $_frozen_nodata = $self->{freeze}(\%_params_nodata) if ($_has_user_tasks);
 
-      if ($_has_user_tasks) { for (1 .. @{ $self->{_state} } - 1) {
-         $_task0_wids{$_} = 1 unless ($self->{_state}->[$_]->{_task_id});
+      if ($_has_user_tasks) { for my $_i (1 .. @{ $self->{_state} } - 1) {
+         $_task0_wids{$_i} = 1 unless ($self->{_state}->[$_i]->{_task_id});
       }}
 
       ## Insert the first message into the queue if defined.
@@ -1057,8 +1059,8 @@ sub run {
       }
 
       ## Submit params data to workers.
-      for (1 .. $_total_workers) {
-         print {$_COM_R_SOCK} $_ . $LF;
+      for my $_i (1 .. $_total_workers) {
+         print {$_COM_R_SOCK} $_i . $LF;
          chomp($_wid = <$_COM_R_SOCK>);
 
          if (!$_has_user_tasks || exists $_task0_wids{$_wid}) {
@@ -1288,27 +1290,29 @@ sub shutdown {
    ## -------------------------------------------------------------------------
 
    ## Close sockets.
-   for (qw( _bsb_w_sock _bsb_r_sock _com_w_sock _com_r_sock _que_w_sock
-            _que_r_sock _dat_w_sock _dat_r_sock _rla_w_sock _rla_r_sock
-   )) {
-      if (defined $self->{$_}) {
-         if (ref $self->{$_} eq 'ARRAY') {
-            for my $_s (@{ $self->{$_} }) { CORE::shutdown $_s, 2; }
+   for my $_p (
+      qw( _bsb_w_sock _bsb_r_sock _com_w_sock _com_r_sock _que_w_sock
+          _que_r_sock _dat_w_sock _dat_r_sock _rla_w_sock _rla_r_sock )
+   ) {
+      if (defined $self->{$_p}) {
+         if (ref $self->{$_p} eq 'ARRAY') {
+            for my $_s (@{ $self->{$_p} }) { CORE::shutdown $_s, 2; }
          } else {
-            CORE::shutdown $self->{$_}, 2;
+            CORE::shutdown $self->{$_p}, 2;
          }
       }
    }
-   for (qw( _bsb_w_sock _bsb_r_sock _com_w_sock _com_r_sock _que_w_sock
-            _que_r_sock _dat_w_sock _dat_r_sock _rla_w_sock _rla_r_sock
-            _bse_w_sock _bse_r_sock
-   )) {
-      if (defined $self->{$_}) {
-         if (ref $self->{$_} eq 'ARRAY') {
-            for my $_s (@{ $self->{$_} }) { close $_s; }
-            undef $self->{$_};
+   for my $_p (
+      qw( _bsb_w_sock _bsb_r_sock _com_w_sock _com_r_sock _que_w_sock
+          _que_r_sock _dat_w_sock _dat_r_sock _rla_w_sock _rla_r_sock
+          _bse_w_sock _bse_r_sock )
+   ) {
+      if (defined $self->{$_p}) {
+         if (ref $self->{$_p} eq 'ARRAY') {
+            for my $_s (@{ $self->{$_p} }) { close $_s; }
+            undef $self->{$_p};
          } else {
-            close $self->{$_}; undef $self->{$_};
+            close $self->{$_p}; undef $self->{$_p};
          }
       }
    }
@@ -1926,19 +1930,18 @@ sub _sync_params {
 
    my $_requires_shutdown = 0;
 
-   for (qw( user_begin user_func user_end )) {
-      if (defined $_params_ref->{$_}) {
-         $self->{$_} = $_params_ref->{$_};
-         delete $_params_ref->{$_};
+   for my $_p (qw( user_begin user_func user_end )) {
+      if (defined $_params_ref->{$_p}) {
+         $self->{$_p} = delete $_params_ref->{$_p};
          $_requires_shutdown = 1;
       }
    }
 
-   for (keys %{ $_params_ref }) {
-      _croak("MCE::_sync_params: ($_) is not a valid params argument")
-         unless (exists $_params_allowed_args{$_});
+   for my $_p (keys %{ $_params_ref }) {
+      _croak("MCE::_sync_params: ($_p) is not a valid params argument")
+         unless (exists $_params_allowed_args{$_p});
 
-      $self->{$_} = $_params_ref->{$_};
+      $self->{$_p} = $_params_ref->{$_p};
    }
 
    return ($self->{_spawned}) ? $_requires_shutdown : 0;
@@ -1982,10 +1985,10 @@ sub _dispatch_thread {
 
    if (defined $_thr) {
       ## Store into an available slot, otherwise append to arrays.
-      if (defined $_params) { for (0 .. @{ $self->{_tids} } - 1) {
-         unless (defined $self->{_tids}->[$_]) {
-            $self->{_thrs}->[$_] = \$_thr;
-            $self->{_tids}->[$_] = $_thr->tid();
+      if (defined $_params) { for my $_i (0 .. @{ $self->{_tids} } - 1) {
+         unless (defined $self->{_tids}->[$_i]) {
+            $self->{_thrs}->[$_i] = \$_thr;
+            $self->{_tids}->[$_i] = $_thr->tid();
             return;
          }
       }}
@@ -2029,9 +2032,9 @@ sub _dispatch_child {
 
    if (defined $_pid) {
       ## Store into an available slot, otherwise append to array.
-      if (defined $_params) { for (0 .. @{ $self->{_pids} } - 1) {
-         unless (defined $self->{_pids}->[$_]) {
-            $self->{_pids}->[$_] = $_pid;
+      if (defined $_params) { for my $_i (0 .. @{ $self->{_pids} } - 1) {
+         unless (defined $self->{_pids}->[$_i]) {
+            $self->{_pids}->[$_i] = $_pid;
             return;
          }
       }}

@@ -372,10 +372,10 @@ sub _worker_do {
    my $_task_name  = $self->{task_name};
 
    ## Do not override params if defined in user_tasks during instantiation.
-   for (qw(bounds_only chunk_size interval sequence user_args)) {
-      if (defined $_params_ref->{"_$_"}) {
-         $self->{$_} = $_params_ref->{"_$_"}
-            unless (defined $self->{_task}->{$_});
+   for my $_p (qw(bounds_only chunk_size interval sequence user_args)) {
+      if (defined $_params_ref->{"_${_p}"}) {
+         $self->{$_p} = $_params_ref->{"_${_p}"}
+            unless (defined $self->{_task}->{$_p});
       }
    }
 
@@ -667,7 +667,9 @@ sub _worker_main {
    MCE::_clean_sessions($_mce_sid);
 
    ## Call module's worker_init routine for modules plugged into MCE.
-   $_->($self) for (@{ $_plugin_worker_init });
+   for my $_p (@{ $_plugin_worker_init }) {
+      $_p->($self);
+   }
 
    _do_send_init($self);
 

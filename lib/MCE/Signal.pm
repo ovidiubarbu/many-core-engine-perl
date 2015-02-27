@@ -281,7 +281,7 @@ sub sys_cmd {
             if (defined $tmp_dir && $tmp_dir ne '' && -d $tmp_dir) {
 
                if (defined $_mce_sess_dir_ref) {
-                  foreach my $_sess_dir (keys %{ $_mce_sess_dir_ref }) {
+                  for my $_sess_dir (keys %{ $_mce_sess_dir_ref }) {
                      File::Path::rmtree($_sess_dir);
                      delete $_mce_sess_dir_ref->{$_sess_dir};
                   }
@@ -381,7 +381,7 @@ sub _shutdown_mce {
       my $_tid = ($has_threads) ? threads->tid() : '';
       $_tid = '' unless defined $_tid;
 
-      foreach my $_mce_sid (keys %{ $_mce_spawned_ref }) {
+      for my $_mce_sid (keys %{ $_mce_spawned_ref }) {
          if ($_mce_spawned_ref->{$_mce_sid}->wid()) {
             $_mce_spawned_ref->{$_mce_sid}->exit($_exit_status);
          }

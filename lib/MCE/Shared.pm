@@ -75,7 +75,7 @@ sub share (@) {
    MCE::_croak('mce_share: method cannot be called by the worker process')
       if (MCE->wid);
 
-   foreach my $_ref (@_) {
+   for my $_ref (@_) {
       my $_ref_type = reftype($_ref);
 
       if ($_ref_type eq 'SCALAR') {
@@ -164,8 +164,8 @@ This document describes MCE::Shared version 1.600
    };
 
    say "scalar : $cnt";
-   say " array : $_" foreach (@a1);
-   say "  hash : $_ => $h1{$_}" foreach (sort keys %h1);
+   say " array : $_" for (@a1);
+   say "  hash : $_ => $h1{$_}" for (sort keys %h1);
 
    -- Output
 
