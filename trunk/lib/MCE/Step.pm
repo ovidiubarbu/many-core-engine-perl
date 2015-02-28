@@ -123,7 +123,7 @@ sub _task_end {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Methods for MCE; step, step_to, step_to_p, and await.
+## Methods for MCE; step, enq, enqp, await.
 ##
 ###############################################################################
 
@@ -140,7 +140,11 @@ sub _task_end {
       my $_task_id = $self->{_task_id};
 
       if ($_task_id < $_last_task_id) {
-         $_queue[$_task_id]->enqueue($self->freeze([ @_ ]));
+         if (scalar @_ > 1 || ref $_[0] || !defined $_[0]) {
+            $_queue[$_task_id]->enqueue($self->freeze([ @_ ]).'1');
+         } else {
+            $_queue[$_task_id]->enqueue($_[0].'0');
+         }
       }
       else {
          _croak('MCE::step: method cannot be called by the last task');
@@ -149,67 +153,95 @@ sub _task_end {
       return;
    }
 
-   sub MCE::step_to {
+   ############################################################################
 
-      my $x = shift; my $self = ref($x) ? $x : $_MCE; my $_task = shift;
+   sub MCE::enq {
 
-      _croak('MCE::step_to: method cannot be called by the manager process')
+      my $x = shift; my $self = ref($x) ? $x : $_MCE; my $_name = shift;
+
+      _croak('MCE::enq: method cannot be called by the manager process')
          unless ($self->{_wid});
-      _croak('MCE::step_to: (task argument) is not specified or valid')
-         if (!defined $_task || !exists $_lkup{$_task});
-      _croak('MCE::step_to: stepping backwards is not allowed')
-         if ($_lkup{$_task} <= $self->{_task_id});
+      _croak('MCE::enq: (task_name) is not specified or valid')
+         if (!defined $_name || !exists $_lkup{$_name});
+      _croak('MCE::enq: stepping to same task or backwards is not allowed')
+         if ($_lkup{$_name} <= $self->{_task_id});
 
-      my $_task_id = $_lkup{$_task} - 1;
+      my $_task_id = $_lkup{$_name} - 1;
 
       if ($_task_id < $_last_task_id) {
-         $_queue[$_task_id]->enqueue($self->freeze([ @_ ]));
+         if (scalar @_ > 1) {
+            my @_items = map {
+               (ref $_ || !defined $_) ? $self->freeze([ $_ ]).'1' : $_.'0';
+            } @_;
+            $_queue[$_task_id]->enqueue(@_items);
+         }
+         elsif (!defined $_[0] || ref $_[0]) {
+            $_queue[$_task_id]->enqueue($self->freeze([ @_ ]).'1');
+         }
+         else {
+            $_queue[$_task_id]->enqueue($_[0].'0');
+         }
       }
       else {
-         _croak('MCE::step_to: method cannot be called by the last task');
+         _croak('MCE::enq: method cannot be called by the last task');
       }
 
       return;
    }
 
-   sub MCE::step_to_p {
+   ############################################################################
+
+   sub MCE::enqp {
 
       my $x = shift; my $self = ref($x) ? $x : $_MCE;
-      my ($_task, $_p) = (shift, shift);
+      my ($_name, $_p) = (shift, shift);
 
-      _croak('MCE::step_to_p: method cannot be called by the manager process')
+      _croak('MCE::enqp: method cannot be called by the manager process')
          unless ($self->{_wid});
-      _croak('MCE::step_to_p: (task argument) is not specified or valid')
-         if (!defined $_task || !exists $_lkup{$_task});
-      _croak('MCE::step_to_p: stepping backwards is not allowed')
-         if ($_lkup{$_task} <= $self->{_task_id});
-      _croak('MCE::step_to_p: (priority) is not an integer')
+      _croak('MCE::enqp: (task_name) is not specified or valid')
+         if (!defined $_name || !exists $_lkup{$_name});
+      _croak('MCE::enqp: stepping to same task or backwards is not allowed')
+         if ($_lkup{$_name} <= $self->{_task_id});
+      _croak('MCE::enqp: (priority) is not an integer')
          if (!looks_like_number($_p) || int($_p) != $_p);
 
-      my $_task_id = $_lkup{$_task} - 1;
+      my $_task_id = $_lkup{$_name} - 1;
 
       if ($_task_id < $_last_task_id) {
-         $_queue[$_task_id]->enqueuep($_p, $self->freeze([ @_ ]));
+         if (scalar @_ > 1) {
+            my @_items = map {
+               (ref $_ || !defined $_) ? $self->freeze([ $_ ]).'1' : $_.'0';
+            } @_;
+            $_queue[$_task_id]->enqueuep($_p, @_items);
+         }
+         elsif (!defined $_[0] || ref $_[0]) {
+            $_queue[$_task_id]->enqueuep($_p, $self->freeze([ @_ ]).'1');
+         }
+         else {
+            $_queue[$_task_id]->enqueuep($_p, $_[0].'0');
+         }
       }
       else {
-         _croak('MCE::step_to_p: method cannot be called by the last task');
+         _croak('MCE::enqp: method cannot be called by the last task');
       }
 
       return;
    }
+
+   ############################################################################
 
    sub MCE::await {
 
-      my $x = shift; my $self = ref($x) ? $x : $_MCE; my $_task = shift;
+      my $x = shift; my $self = ref($x) ? $x : $_MCE; my $_name = shift;
 
       _croak('MCE::await: method cannot be called by the manager process')
          unless ($self->{_wid});
-      _croak('MCE::await: (task argument) is not specified or valid')
-         if (!defined $_task || !exists $_lkup{$_task});
-      _croak('MCE::await: awaiting backwards is not allowed')
-         if ($_lkup{$_task} <= $self->{_task_id});
+      _croak('MCE::await: (task_name) is not specified or valid')
+         if (!defined $_name || !exists $_lkup{$_name});
+      _croak('MCE::await: awaiting from same task or backwards is not allowed')
+         if ($_lkup{$_name} <= $self->{_task_id});
 
-      my $_task_id = $_lkup{$_task} - 1;  my $_t = shift || 0;
+      my $_task_id = $_lkup{$_name} - 1;  my $_t = shift || 0;
 
       _croak('MCE::await: (threshold) is not an integer')
          if (!looks_like_number($_t) || int($_t) != $_t);
@@ -591,10 +623,13 @@ sub _gen_user_func {
    return sub {
       my ($_mce) = @_;
 
-      while (defined (my $_chunk = $_q_in->dequeue())) {
-         $_chunk  = $_mce->thaw($_chunk);
-         local $_ = $_chunk->[0];
-         $_c_ref->($_mce, @{ $_chunk });
+      while (defined (local $_ = $_q_in->dequeue())) {
+         if (chop $_) {
+            my $_args = $_mce->thaw($_);  $_ = $_args->[0];
+            $_c_ref->($_mce, @{ $_args });
+         } else {
+            $_c_ref->($_mce, $_);
+         }
       }
 
       return;

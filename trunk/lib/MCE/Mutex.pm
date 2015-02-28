@@ -46,8 +46,6 @@ sub new {
 
    @_ = (); local $!;
 
-   return if (defined $MCE::MCE && $MCE::MCE->{_wid});
-
    my $_mutex = {}; bless($_mutex, ref($_class) || $_class);
 
    socketpair( $_mutex->{_r_sock}, $_mutex->{_w_sock},
