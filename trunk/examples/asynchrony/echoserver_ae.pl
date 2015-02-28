@@ -45,7 +45,7 @@ my $mce_task = sub {
       my ($disconnect, $next_id, $hdl);
 
       ## The ->add helper method does fetch, store, and fetch in one
-      ## trip. Thus, $mce->synchronize is not necessary.
+      ## trip. Thus, $mutex->synchronize is not necessary.
       $next_id = $next_obj->add(1); # same as $next_id = $next += 1
 
       $disconnect = sub {

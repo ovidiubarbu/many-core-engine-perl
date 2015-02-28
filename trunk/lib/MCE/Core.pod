@@ -1198,7 +1198,7 @@ Returns the value for max_workers used by MCE.
 
 Returns the Process ID. Threads have thread ID attached to the value.
 
-   my $pid = $mce->pid;   ## Non-threads 16180 ; Threads 16180.2
+   my $pid = $mce->pid;   ## 16180 (pid) ; 16180.2 (pid.tid)
    my $pid = MCE->pid;
 
 =head2 $mce->sess_dir ( void )
@@ -1949,25 +1949,6 @@ MCE->sync with MCE->do or output serialization methods inside a loop.
                          ## prevent MCE from stalling.
       }
    }
-
-=head2 $mce->synchronize ( sub { ... }, @_ )
-
-Obtains a lock, runs the code block, and releases the lock after the block
-completes. This requires MCE::Mutex or MCE::Shared or threads. Otherwise,
-croaks with error.
-
-   use MCE::Flow;
-   use MCE::Mutex;
-
-   mce_flow sub {
-      my ($mce) = @_;
-      my ($wid) = MCE->wid;
-
-      MCE->synchronize( sub {
-         ## access shared resource
-         MCE->say($wid); sleep 1;
-      });
-   };
 
 =head2 $mce->yield ( void )
 

@@ -46,7 +46,7 @@ my $mce_task = sub {
          my ($stream) = @_;
 
          ## The ->add helper method does fetch, store, and fetch in one
-         ## trip. Thus, $mce->synchronize is not necessary.
+         ## trip. Thus, $mutex->synchronize is not necessary.
          my $next_id = $next_obj->add(1); # same as $next_id = $next += 1
 
          $stream->configure(

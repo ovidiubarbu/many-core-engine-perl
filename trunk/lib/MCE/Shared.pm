@@ -136,6 +136,8 @@ This document describes MCE::Shared version 1.600
    mce_share \ my @a1;
    mce_share \ my %h1;
 
+   my $m1 = MCE::Mutex->new;
+
    mce_flow {
       max_workers => 4
    },
@@ -146,7 +148,7 @@ This document describes MCE::Shared version 1.600
       ## Locking is required when many workers update the same element.
       ## This requires 2 trips to the manager process (fetch and store).
 
-      MCE->synchronize( sub {
+      $m1->synchronize( sub {
          $cnt += 1;
       });
 

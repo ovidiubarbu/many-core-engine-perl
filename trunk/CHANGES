@@ -1,7 +1,7 @@
 
 Revision history for MCE
 
-1.60x Fri Feb 27 22:00:00 EST 2015
+1.60x Sat Feb 28 17:30:00 EST 2015
 
   [TODO; before releasing MCE 1.601]
 
@@ -55,8 +55,8 @@ Revision history for MCE
     Added test scripts; 07_shared_array.t / hash / scalar.
 
   * Added ->enq, ->enqp, and ->await methods to MCE::Step.
-  * Added ->pid and ->synchronize methods to MCE.
   * Added ->await method to MCE::Queue.
+  * Added ->pid method to Core API.
 
 1.600 Sat Jan 31 20:00:00 EST 2015
 

@@ -43,7 +43,7 @@ my $mce_task = sub {
       },
       ClientConnected => sub {
          ## The ->add helper method does fetch, store, and fetch in one
-         ## trip. Thus, $mce->synchronize is not necessary.
+         ## trip. Thus, $mutex->synchronize is not necessary.
          $_[HEAP]{next_id} = $next_obj->add(1); # same as $next_id = $next += 1
          POE::Kernel->delay( ping => 5 );
       },
