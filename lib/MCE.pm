@@ -396,7 +396,7 @@ sub new {
    }
 
    if (defined $MCE::Shared::_HDLR) {
-      $self{_mutex} = $MCE::Shared::_HDLR->{_mutex};
+      $self{_mutex} = \$MCE::Shared::_HDLR->{_mutex};
    }
    else {
       if ($self{use_threads} && !defined $forks::VERSION) {
