@@ -2,7 +2,7 @@
 ###############################################################################
 ##
 ## Monitor script contributed by George Bouras (Greece 02/2015).
-## A demonstration for MCE->step_to(...) in MCE 1.601.
+## A demonstration for MCE->enq(...) in MCE 1.601.
 ##
 ###############################################################################
 
@@ -62,11 +62,10 @@ MCE::Step::finish;
 
 sub Scheduler
 {
-   my $mce_shedule = shift;
-   my $chunk_ref   = shift;
-   my $chunk_id    = shift;
-   my $worker_id   = $mce_shedule->wid;
-   my $seconds     = $chunk_ref->[0];
+   my ($mce, $chunk_ref, $chunk_id) = @_;
+
+   my $worker_id = $mce->wid;
+   my $seconds   = $chunk_ref->[0];
    my @WorkLoad;
    my $work_ref;
 
@@ -74,19 +73,19 @@ sub Scheduler
    for (1 .. 10) {
       foreach my $mon (@{ $Schedules{$seconds} }) {
 
-         MCE->print(
+         $mce->print(
             "interval $seconds sec, starting monitors : " .
             "@{ $Schedules{$seconds} }"
          );
 
-         foreach my $srv (@{ $Monitors{$mon} }) {
-            MCE->step_to($mon, $srv);
-         }
+         ## send work to monitor task
+         $mce->enq($mon, @{ $Monitors{$mon} });
 
+         ## wait until time elapse
          sleep $seconds;
 
-         ## Wait until processing has completed for submitted work
-         MCE->await($mon, 10);  # blocks until 10 or less remaining
+         ## continue waiting if not completed
+         $mce->await($mon, 0);
       }
    }
 
@@ -95,10 +94,10 @@ sub Scheduler
 
 sub Monitor
 {
-   my $mce_monitor = shift;
-   my $server      = shift;
-   my $monitor     = $mce_monitor->task_name;
-   my $worker_id   = $mce_monitor->wid;
+   my ($mce, $server) = @_;
+
+   my $monitor   = $mce->task_name;
+   my $worker_id = $mce->wid;
 
    MCE->print("monitor=$monitor , server=$server");
 

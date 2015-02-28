@@ -395,11 +395,16 @@ sub new {
       $self{use_threads} = ($_has_threads) ? 1 : 0;
    }
 
-   if ($self{use_threads} && !defined $forks::VERSION) {
-      $self{_mutex} = 1; threads::shared::share($self{_mutex});
+   if (defined $MCE::Shared::_HDLR) {
+      $self{_mutex} = $MCE::Shared::_HDLR->{_mutex};
    }
-   elsif (defined $MCE::Mutex::VERSION) {
-      $self{_mutex} = MCE::Mutex->new;
+   else {
+      if ($self{use_threads} && !defined $forks::VERSION) {
+         $self{_mutex} = 1; threads::shared::share($self{_mutex});
+      }
+      elsif (defined $MCE::Mutex::VERSION) {
+         $self{_mutex} = MCE::Mutex->new;
+      }
    }
 
    $self{flush_file}   ||= 0;
