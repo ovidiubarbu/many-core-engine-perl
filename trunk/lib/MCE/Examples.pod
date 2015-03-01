@@ -92,8 +92,8 @@ The rest are organized into various sub directories.
         echoserver_ioa.pl, echoserver_mojo.pl, echoserver_poe.pl,
         Parallel concurrency, asynchrony, and shared data.
 
-   asynchrony/netping.pl
-        Report back failed pings to standard output.
+   asynchrony/fastping_ae.pl
+        Report failed IP addresses to standard output.
 
    biofasta/fasta_aidx.pl, fasta_rdr*.pl
         Parallel demonstration for Bioinformatics.

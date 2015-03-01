@@ -41,7 +41,7 @@ examples/asynchrony/echoserver_ae.pl
 examples/asynchrony/echoserver_ioa.pl
 examples/asynchrony/echoserver_mojo.pl
 examples/asynchrony/echoserver_poe.pl
-examples/asynchrony/netping.pl
+examples/asynchrony/fastping_ae.pl
 examples/biofasta/README
 examples/biofasta/fasta_aidx.pl
 examples/biofasta/fasta_rdr1.pl

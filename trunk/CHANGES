@@ -1,7 +1,7 @@
 
 Revision history for MCE
 
-1.60x Sat Feb 28 17:30:00 EST 2015
+1.60x Sat Feb 28 19:30:00 EST 2015
 
   [TODO; before releasing MCE 1.601]
 
@@ -50,6 +50,7 @@ Revision history for MCE
     echoserver_ioa.pl, echoserver_mojo.pl, and echoserver_poe.pl.
 
   * More examples; shared_mce.pl, shared_thr.pl, and step_mon.pl.
+  * Replaced netping.pl with fastping_ae.pl supporting IPv4 and IPv6.
 
   * Added MCE::Shared, MCE::Shared::Array / Hash / Scalar.
     Added test scripts; 07_shared_array.t / hash / scalar.
