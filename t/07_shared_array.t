@@ -7,10 +7,13 @@ use Test::More tests => 14;
 use MCE::Flow max_workers => 1;
 use MCE::Shared;
 
-my @a1 = (10, '', '');
-my ($e1, $e2, $d1, $s1, $s2, $s3);
-
-mce_share \@a1, \$e1, \$e2, \$d1, \$s1, \$s2, \$s3;
+mce_share my @a1 => (10, '', '');
+mce_share my $e1;
+mce_share my $e2;
+mce_share my $d1;
+mce_share my $s1;
+mce_share my $s2;
+mce_share my $s3;
 
 ###############################################################################
 

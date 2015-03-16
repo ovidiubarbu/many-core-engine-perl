@@ -16,19 +16,17 @@ use warnings;
 
 ## no critic (TestingAndDebugging::ProhibitNoStrict)
 
-our $VERSION = '1.600';
+our $VERSION = '1.699';
 
 ## Items below are folded into MCE.
 
 package MCE;
 
-use bytes;
-
-## Warnings are disabled to minimize bits of noise when user or OS signals
-## the script to exit. e.g. MCE_script.pl < infile | head
-
 no warnings 'threads';
+no warnings 'recursion';
 no warnings 'uninitialized';
+
+use bytes;
 
 ###############################################################################
 ## ----------------------------------------------------------------------------

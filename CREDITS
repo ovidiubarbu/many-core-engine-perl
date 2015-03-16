@@ -18,7 +18,10 @@ alphabetical order by last name.
   For reporting sockets failing under the Windows environment due to a
   period of inactivity. An example is when workers execute an external
   command taking beyond 4 minutes to complete. On returning, the sockets
-  have gone stale with a CPU core going 100% at this point.
+  have gone stale with a CPU core going 100% at that point.
+
+  The MCE 1.601 release is attributed to the many use cases I received
+  from George.
 
 # Cantrell, David (DrHyde on perlmonks.org)
 

@@ -7,10 +7,12 @@ use Test::More tests => 9;
 use MCE::Flow max_workers => 1;
 use MCE::Shared;
 
-my %h1 = (k1 => 10, k2 => '', k3 => '');
-my ($keys, $e1, $e2, $d1, $s1);
-
-mce_share \%h1, \$keys, \$e1, \$e2, \$d1, \$s1;
+mce_share my %h1 => (k1 => 10, k2 => '', k3 => '');
+mce_share my $keys;
+mce_share my $e1;
+mce_share my $e2;
+mce_share my $d1;
+mce_share my $s1;
 
 ###############################################################################
 

@@ -1,5 +1,5 @@
 Name:           perl-MCE
-Version:        1.600
+Version:        1.699
 Release:        1%{?dist}
 Summary:        Many-Core Engine for Perl providing parallel processing capabilities
 License:        GPL+ or Artistic
@@ -62,5 +62,5 @@ rm -rf %{buildroot}
 %{_mandir}/man3/*
 
 %changelog
-* Sat Jan 31 2015 Mario Roy 1.600-1
-- 1.600 Release.
+* Sun Mar 15 2015 Mario Roy 1.699-1
+- 1.699 Release.
