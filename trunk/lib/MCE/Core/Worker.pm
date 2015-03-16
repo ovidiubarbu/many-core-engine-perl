@@ -35,11 +35,9 @@ use bytes;
 
 {
    my (
-      $_dest, $_len, $_tag, $_task_id, $_user_func, $_value, $_want_id,
-
+      $_dest, $_len, $_task_id, $_user_func, $_value, $_want_id, $_tag,
       $_DAT_LOCK, $_DAT_W_SOCK, $_DAU_W_SOCK, $_lock_chn, $_chn,
-      $_GAT_LOCK, $_GAT_W_SOCK, $_GAU_W_SOCK, $_lock_ghn, $_ghn,
-      $_flock_ex, $_flock_un, $_glock_ex, $_glock_un
+      $_GAT_LOCK, $_GAT_W_SOCK, $_GAU_W_SOCK, $_lock_ghn, $_ghn
    );
 
    ## Create array structure containing various send functions.
@@ -51,11 +49,11 @@ use bytes;
       local $\ = undef if (defined $\);
 
       if (length ${ $_[0] }) {
-         $_flock_ex->($_DAT_LOCK) if ($_lock_chn);
+         $_DAT_LOCK->lock() if ($_lock_chn);
          print {$_DAT_W_SOCK} OUTPUT_F_SND . $LF . $_chn . $LF;
          print {$_DAU_W_SOCK} $_value . $LF . length(${ $_[0] }) . $LF;
          print {$_DAU_W_SOCK} ${ $_[0] };
-         $_flock_un->($_DAT_LOCK) if ($_lock_chn);
+         $_DAT_LOCK->unlock() if ($_lock_chn);
       }
 
       return;
@@ -67,11 +65,11 @@ use bytes;
       local $\ = undef if (defined $\);
 
       if (length ${ $_[0] }) {
-         $_flock_ex->($_DAT_LOCK) if ($_lock_chn);
+         $_DAT_LOCK->lock() if ($_lock_chn);
          print {$_DAT_W_SOCK} OUTPUT_D_SND . $LF . $_chn . $LF;
          print {$_DAU_W_SOCK} $_value . $LF . length(${ $_[0] }) . $LF;
          print {$_DAU_W_SOCK} ${ $_[0] };
-         $_flock_un->($_DAT_LOCK) if ($_lock_chn);
+         $_DAT_LOCK->unlock() if ($_lock_chn);
       }
 
       return;
@@ -82,11 +80,11 @@ use bytes;
       local $\ = undef if (defined $\);
 
       if (length ${ $_[0] }) {
-         $_flock_ex->($_DAT_LOCK) if ($_lock_chn);
+         $_DAT_LOCK->lock() if ($_lock_chn);
          print {$_DAT_W_SOCK} OUTPUT_O_SND . $LF . $_chn . $LF;
          print {$_DAU_W_SOCK} length(${ $_[0] }) . $LF;
          print {$_DAU_W_SOCK} ${ $_[0] };
-         $_flock_un->($_DAT_LOCK) if ($_lock_chn);
+         $_DAT_LOCK->unlock() if ($_lock_chn);
       }
 
       return;
@@ -97,11 +95,11 @@ use bytes;
       local $\ = undef if (defined $\);
 
       if (length ${ $_[0] }) {
-         $_flock_ex->($_DAT_LOCK) if ($_lock_chn);
+         $_DAT_LOCK->lock() if ($_lock_chn);
          print {$_DAT_W_SOCK} OUTPUT_E_SND . $LF . $_chn . $LF;
          print {$_DAU_W_SOCK} length(${ $_[0] }) . $LF;
          print {$_DAU_W_SOCK} ${ $_[0] };
-         $_flock_un->($_DAT_LOCK) if ($_lock_chn);
+         $_DAT_LOCK->unlock() if ($_lock_chn);
       }
 
       return;
@@ -129,7 +127,7 @@ use bytes;
             $_buf = $self->{freeze}($_aref);
             $_len = length $_buf; local $\ = undef if (defined $\);
 
-            $_flock_ex->($_DAT_LOCK) if ($_lock_chn);
+            $_DAT_LOCK->lock() if ($_lock_chn);
             print {$_DAT_W_SOCK} $_tag . $LF . $_chn . $LF;
             print {$_DAU_W_SOCK} $_want_id . $LF . $_value . $LF . $_len . $LF;
             print {$_DAU_W_SOCK} $_buf;
@@ -139,7 +137,7 @@ use bytes;
             $_tag = OUTPUT_S_CBK;
             $_len = length $_aref->[0]; local $\ = undef if (defined $\);
 
-            $_flock_ex->($_DAT_LOCK) if ($_lock_chn);
+            $_DAT_LOCK->lock() if ($_lock_chn);
             print {$_DAT_W_SOCK} $_tag . $LF . $_chn . $LF;
             print {$_DAU_W_SOCK} $_want_id . $LF . $_value . $LF . $_len . $LF;
             print {$_DAU_W_SOCK} $_aref->[0];
@@ -149,7 +147,7 @@ use bytes;
          $_tag = OUTPUT_N_CBK;
          local $\ = undef if (defined $\);
 
-         $_flock_ex->($_DAT_LOCK) if ($_lock_chn);
+         $_DAT_LOCK->lock() if ($_lock_chn);
          print {$_DAT_W_SOCK} $_tag . $LF . $_chn . $LF;
          print {$_DAU_W_SOCK} $_want_id . $LF . $_value . $LF;
       }
@@ -157,7 +155,7 @@ use bytes;
       ## Crossover: Receive return value
 
       if ($_want_id == WANTS_UNDEF) {
-         $_flock_un->($_DAT_LOCK) if ($_lock_chn);
+         $_DAT_LOCK->unlock() if ($_lock_chn);
          return;
       }
       elsif ($_want_id == WANTS_ARRAY) {
@@ -165,7 +163,7 @@ use bytes;
          chomp($_len = <$_DAU_W_SOCK>);
 
          read($_DAU_W_SOCK, $_buf, $_len || 0);
-         $_flock_un->($_DAT_LOCK) if ($_lock_chn);
+         $_DAT_LOCK->unlock() if ($_lock_chn);
 
          return @{ $self->{thaw}($_buf) };
       }
@@ -176,13 +174,13 @@ use bytes;
 
          if ($_len >= 0) {
             read($_DAU_W_SOCK, $_buf, $_len || 0);
-            $_flock_un->($_DAT_LOCK) if ($_lock_chn);
+            $_DAT_LOCK->unlock() if ($_lock_chn);
 
             return $_buf if ($_want_id == WANTS_SCALAR);
             return $self->{thaw}($_buf);
          }
          else {
-            $_flock_un->($_DAT_LOCK) if ($_lock_chn);
+            $_DAT_LOCK->unlock() if ($_lock_chn);
             return;
          }
       }
@@ -211,11 +209,11 @@ use bytes;
          if (defined $_aref->[0]) {
             $_len = length $_aref->[0]; local $\ = undef if (defined $\);
 
-            $_glock_ex->($_GAT_LOCK) if ($_lock_ghn);
+            $_GAT_LOCK->lock() if ($_lock_ghn);
             print {$_GAT_W_SOCK} $_tag . $LF . $_ghn . $LF;
             print {$_GAU_W_SOCK} $_task_id . $LF . $_len . $LF;
             print {$_GAU_W_SOCK} $_aref->[0];
-            $_glock_un->($_GAT_LOCK) if ($_lock_ghn);
+            $_GAT_LOCK->unlock() if ($_lock_ghn);
 
             return;
          }
@@ -227,11 +225,11 @@ use bytes;
 
       local $\ = undef if (defined $\);
 
-      $_glock_ex->($_GAT_LOCK) if ($_lock_ghn);
+      $_GAT_LOCK->lock() if ($_lock_ghn);
       print {$_GAT_W_SOCK} $_tag . $LF . $_ghn . $LF;
       print {$_GAU_W_SOCK} $_task_id . $LF . $_len . $LF;
       print {$_GAU_W_SOCK} $_buf if (length $_buf);
-      $_glock_un->($_GAT_LOCK) if ($_lock_ghn);
+      $_GAT_LOCK->unlock() if ($_lock_ghn);
 
       return;
    }
@@ -310,20 +308,11 @@ use bytes;
       $_GAU_W_SOCK = $self->{_dat_w_sock}->[$_ghn];
       $_lock_ghn   = $self->{_lock_chn};
 
-      if ($_lock_ghn) {
-         $_glock_ex = $_GAT_LOCK->can('lock');
-         $_glock_un = $_GAT_LOCK->can('unlock');
-      }
-
       if (!defined $MCE::Shared::_HDLR ||
             refaddr($self) == refaddr($MCE::Shared::_HDLR)) {
 
-         ( $_lock_chn, $_chn, $_DAT_LOCK, $_DAT_W_SOCK, $_DAU_W_SOCK,
-           $_flock_ex, $_flock_un
-         ) = (
-           $_lock_ghn, $_ghn, $_GAT_LOCK, $_GAT_W_SOCK, $_GAU_W_SOCK,
-           $_glock_ex, $_glock_un
-         );
+         ( $_lock_chn, $_chn, $_DAT_LOCK, $_DAT_W_SOCK, $_DAU_W_SOCK ) =
+         ( $_lock_ghn, $_ghn, $_GAT_LOCK, $_GAT_W_SOCK, $_GAU_W_SOCK );
       }
       else {
          $_chn = $self->{_wid} % $MCE::Shared::_HDLR->{_data_channels} + 1;
@@ -332,9 +321,6 @@ use bytes;
          $_DAT_W_SOCK = $MCE::Shared::_HDLR->{_dat_w_sock}->[0];
          $_DAU_W_SOCK = $MCE::Shared::_HDLR->{_dat_w_sock}->[$_chn];
          $_lock_chn   = 1;
-
-         $_flock_ex   = $_DAT_LOCK->can('lock');
-         $_flock_un   = $_DAT_LOCK->can('unlock');
       }
 
       local ($!, $@);
@@ -352,10 +338,9 @@ use bytes;
       die 'Private method called' unless (caller)[0]->isa( ref $self );
 
       $_dest = $_len = $_task_id = $_user_func = $_value = $_want_id = undef;
-
       $_DAT_LOCK = $_DAT_W_SOCK = $_DAU_W_SOCK = $_lock_chn = $_chn = undef;
       $_GAT_LOCK = $_GAT_W_SOCK = $_GAU_W_SOCK = $_lock_ghn = $_ghn = undef;
-      $_flock_ex = $_flock_un   = $_glock_ex   = $_glock_un = $_tag = undef;
+      $_tag = undef;
 
       return;
    }
