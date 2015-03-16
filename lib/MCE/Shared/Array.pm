@@ -488,7 +488,7 @@ sub _untie2 {
 ###############################################################################
 
 my ($_MCE, $_DAT_LOCK, $_DAT_W_SOCK, $_DAU_W_SOCK, $_chn, $_lock_chn);
-my ($_flock_ex, $_flock_un, $_len, $_ret, $_tag, $_wa);
+my ($_len, $_ret, $_tag, $_wa);
 
 sub _mce_w_init {
 
@@ -509,11 +509,6 @@ sub _mce_w_init {
       $_DAT_LOCK = $_MCE->{'_cmutex_'.$_chn};
    }
 
-   if ($_lock_chn) {
-      $_flock_ex = $_DAT_LOCK->can('lock');
-      $_flock_un = $_DAT_LOCK->can('unlock');
-   }
-
    $_DAT_W_SOCK  = $_MCE->{_dat_w_sock}->[0];
    $_DAU_W_SOCK  = $_MCE->{_dat_w_sock}->[$_chn];
 
@@ -525,7 +520,7 @@ my $_do_op = sub {
    $_wa = (!defined wantarray) ? WA_UNDEF : WA_SCALAR;
    local $\ = undef if (defined $\);
 
-   $_flock_ex->($_DAT_LOCK) if ($_lock_chn);
+   $_DAT_LOCK->lock() if ($_lock_chn);
 
    print {$_DAT_W_SOCK} $_[0] . $LF . $_chn . $LF;
    print {$_DAU_W_SOCK} $_[1] . $LF . $_wa . $LF .
@@ -537,7 +532,7 @@ my $_do_op = sub {
       read $_DAU_W_SOCK, $_buf, $_len;
    }
 
-   $_flock_un->($_DAT_LOCK) if ($_lock_chn);
+   $_DAT_LOCK->unlock() if ($_lock_chn);
 
    return $_buf;
 };
@@ -555,10 +550,10 @@ my $_do_push = sub {
 
    local $\ = undef if (defined $\);
 
-   $_flock_ex->($_DAT_LOCK) if ($_lock_chn);
+   $_DAT_LOCK->lock() if ($_lock_chn);
    print {$_DAT_W_SOCK} $_tag . $LF . $_chn . $LF;
    print {$_DAU_W_SOCK} $_buf;
-   $_flock_un->($_DAT_LOCK) if ($_lock_chn);
+   $_DAT_LOCK->unlock() if ($_lock_chn);
 
    return;
 };
@@ -569,12 +564,12 @@ my $_do_ret = sub {
    chomp($_len = <$_DAU_W_SOCK>);
 
    if ($_len < 0) {
-      $_flock_un->($_DAT_LOCK) if ($_lock_chn);
+      $_DAT_LOCK->unlock() if ($_lock_chn);
       return undef;
    }
 
    read $_DAU_W_SOCK, (my $_buf), $_len;
-   $_flock_un->($_DAT_LOCK) if ($_lock_chn);
+   $_DAT_LOCK->unlock() if ($_lock_chn);
 
    return (chop $_buf) ? $_MCE->{thaw}($_buf) : $_buf;
 };
@@ -660,12 +655,12 @@ sub FETCHSIZE {                                   ## Array FETCHSIZE
       local $\ = undef if (defined $\);
       local $/ = $LF if (!$/ || $/ ne $LF);
 
-      $_flock_ex->($_DAT_LOCK) if ($_lock_chn);
+      $_DAT_LOCK->lock() if ($_lock_chn);
       print {$_DAT_W_SOCK} SHR_A_FSZ . $LF . $_chn . $LF;
       print {$_DAU_W_SOCK} $_id . $LF;
 
       chomp($_ret = <$_DAU_W_SOCK>);
-      $_flock_un->($_DAT_LOCK) if ($_lock_chn);
+      $_DAT_LOCK->unlock() if ($_lock_chn);
 
       return $_ret;
    }
@@ -680,10 +675,10 @@ sub STORESIZE {                                   ## Array STORESIZE
    else {
       local $\ = undef if (defined $\);
 
-      $_flock_ex->($_DAT_LOCK) if ($_lock_chn);
+      $_DAT_LOCK->lock() if ($_lock_chn);
       print {$_DAT_W_SOCK} SHR_A_SSZ . $LF . $_chn . $LF;
       print {$_DAU_W_SOCK} $_id . $LF . $_[1] . $LF;
-      $_flock_un->($_DAT_LOCK) if ($_lock_chn);
+      $_DAT_LOCK->unlock() if ($_lock_chn);
 
       return;
    }
@@ -720,10 +715,10 @@ sub STORE {                                       ## Array STORE
 
       local $\ = undef if (defined $\);
 
-      $_flock_ex->($_DAT_LOCK) if ($_lock_chn);
+      $_DAT_LOCK->lock() if ($_lock_chn);
       print {$_DAT_W_SOCK} SHR_A_STO . $LF . $_chn . $LF;
       print {$_DAU_W_SOCK} $_buf;
-      $_flock_un->($_DAT_LOCK) if ($_lock_chn);
+      $_DAT_LOCK->unlock() if ($_lock_chn);
 
       return;
    }
@@ -738,7 +733,7 @@ sub FETCH {                                       ## Array FETCH
    else {
       local $\ = undef if (defined $\);
 
-      $_flock_ex->($_DAT_LOCK) if ($_lock_chn);
+      $_DAT_LOCK->lock() if ($_lock_chn);
       print {$_DAT_W_SOCK} SHR_A_FCH . $LF . $_chn . $LF;
       print {$_DAU_W_SOCK} $_id . $LF . $_[1] . $LF;
 
@@ -760,10 +755,10 @@ sub CLEAR {                                       ## Array CLEAR
    else {
       local $\ = undef if (defined $\);
 
-      $_flock_ex->($_DAT_LOCK) if ($_lock_chn);
+      $_DAT_LOCK->lock() if ($_lock_chn);
       print {$_DAT_W_SOCK} SHR_A_CLR . $LF . $_chn . $LF;
       print {$_DAU_W_SOCK} $_id . $LF;
-      $_flock_un->($_DAT_LOCK) if ($_lock_chn);
+      $_DAT_LOCK->unlock() if ($_lock_chn);
 
       return;
    }
@@ -778,7 +773,7 @@ sub POP {                                         ## Array POP
    else {
       local $\ = undef if (defined $\);
 
-      $_flock_ex->($_DAT_LOCK) if ($_lock_chn);
+      $_DAT_LOCK->lock() if ($_lock_chn);
       print {$_DAT_W_SOCK} SHR_A_POP . $LF . $_chn . $LF;
       print {$_DAU_W_SOCK} $_id . $LF;
 
@@ -810,7 +805,7 @@ sub SHIFT {                                       ## Array SHIFT
    else {
       local $\ = undef if (defined $\);
 
-      $_flock_ex->($_DAT_LOCK) if ($_lock_chn);
+      $_DAT_LOCK->lock() if ($_lock_chn);
       print {$_DAT_W_SOCK} SHR_A_SFT . $LF . $_chn . $LF;
       print {$_DAU_W_SOCK} $_id . $LF;
 
@@ -843,12 +838,12 @@ sub EXISTS {                                      ## Array EXISTS
       local $\ = undef if (defined $\);
       local $/ = $LF if (!$/ || $/ ne $LF);
 
-      $_flock_ex->($_DAT_LOCK) if ($_lock_chn);
+      $_DAT_LOCK->lock() if ($_lock_chn);
       print {$_DAT_W_SOCK} SHR_A_EXI . $LF . $_chn . $LF;
       print {$_DAU_W_SOCK} $_id . $LF . $_[1] . $LF;
 
       chomp($_ret = <$_DAU_W_SOCK>);
-      $_flock_un->($_DAT_LOCK) if ($_lock_chn);
+      $_DAT_LOCK->unlock() if ($_lock_chn);
 
       return $_ret;
    }
@@ -885,12 +880,12 @@ sub DELETE {                                      ## Array DELETE
       $_wa = (!defined wantarray) ? WA_UNDEF : WA_SCALAR;
       local $\ = undef if (defined $\);
 
-      $_flock_ex->($_DAT_LOCK) if ($_lock_chn);
+      $_DAT_LOCK->lock() if ($_lock_chn);
       print {$_DAT_W_SOCK} SHR_A_DEL . $LF . $_chn . $LF;
       print {$_DAU_W_SOCK} $_id . $LF . $_wa . $LF . $_[1] . $LF;
 
       unless ($_wa) {
-         $_flock_un->($_DAT_LOCK) if ($_lock_chn);
+         $_DAT_LOCK->unlock() if ($_lock_chn);
       } else {
          $_do_ret->();
       }
@@ -914,19 +909,19 @@ sub SPLICE {                                      ## Array SPLICE
       my $_tmp = $_MCE->{freeze}(\@_);
       my $_buf = $_id . $LF . $_wa . $LF . length($_tmp) . $LF . $_tmp;
 
-      $_flock_ex->($_DAT_LOCK) if ($_lock_chn);
+      $_DAT_LOCK->lock() if ($_lock_chn);
       print {$_DAT_W_SOCK} SHR_A_SPL . $LF . $_chn . $LF;
       print {$_DAU_W_SOCK} $_buf;
 
       unless ($_wa) {
-         $_flock_un->($_DAT_LOCK) if ($_lock_chn);
+         $_DAT_LOCK->unlock() if ($_lock_chn);
       }
       elsif ($_wa == 1) {
          local $/ = $LF if (!$/ || $/ ne $LF);
          chomp($_len = <$_DAU_W_SOCK>);
 
          read $_DAU_W_SOCK, (my $_buf), $_len;
-         $_flock_un->($_DAT_LOCK) if ($_lock_chn);
+         $_DAT_LOCK->unlock() if ($_lock_chn);
 
          chop $_buf; return @{ $_MCE->{thaw}($_buf) };
       }
