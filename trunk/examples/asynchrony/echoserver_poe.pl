@@ -15,7 +15,7 @@ use MCE::Flow;
 use MCE::Shared;
 
 my $ncpu = MCE::Util::get_ncpu;
-my $next = 0; mce_share \$next; # shared counter (increments by one)
+mce_share my $next => 0;        # shared counter (increments by one)
 
 my $mce_opts = {
    user_begin => sub {

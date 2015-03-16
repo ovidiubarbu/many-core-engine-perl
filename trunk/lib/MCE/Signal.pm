@@ -15,7 +15,7 @@ use Time::HiRes qw( sleep time );
 use Fcntl qw( :flock O_RDONLY );
 use base qw( Exporter );
 
-our $VERSION = '1.600';
+our $VERSION = '1.699';
 
 our ($display_die_with_localtime, $display_warn_with_localtime);
 our ($has_threads, $main_proc_id, $prog_name, $tmp_dir);
@@ -42,7 +42,7 @@ sub _croak { $\ = undef; goto &Carp::croak; }
 sub _usage { return _croak "MCE::Signal error: ($_[0]) is not a valid option"; }
 sub _flag  { return 1; }
 
-my $_is_mswin32   = ($^O eq 'MSWin32') ? 1 : 0;
+my $_is_MSWin32   = ($^O eq 'MSWin32') ? 1 : 0;
 my $_keep_tmp_dir = 0;
 my $_no_sigmsg    = 0;
 my $_no_kill9     = 0;
@@ -85,7 +85,7 @@ sub import {
    my ($_tmp_dir_base, $_count); $_count = 0;
 
    if (exists $ENV{TEMP}) {
-      if ($_is_mswin32) {
+      if ($_is_MSWin32) {
          $_tmp_dir_base = $ENV{TEMP} . '/mce';
          mkdir $_tmp_dir_base unless (-d $_tmp_dir_base);
       }
@@ -138,7 +138,7 @@ $SIG{TERM} = \&stop_and_exit;                          ## UNIX SIG 15
 ## the reaping of its children, especially when running multiple MCEs
 ## simultaneously.
 ##
-$SIG{CHLD} = 'DEFAULT' unless ($_is_mswin32);
+$SIG{CHLD} = 'DEFAULT' unless ($_is_MSWin32);
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -182,10 +182,10 @@ sub sys_cmd {
 
    ## Kill the process group if command caught SIGINT or SIGQUIT.
 
-   kill('INT',  $main_proc_id, ($_is_mswin32 ? -$$ : -getpgrp))
+   kill('INT',  $main_proc_id, ($_is_MSWin32 ? -$$ : -getpgrp))
       if $_sig_no == 2;
 
-   kill('QUIT', $main_proc_id, ($_is_mswin32 ? -$$ : -getpgrp))
+   kill('QUIT', $main_proc_id, ($_is_MSWin32 ? -$$ : -getpgrp))
       if $_sig_no == 3;
 
    return $_exit_status;
@@ -267,7 +267,7 @@ sub sys_cmd {
                open my $_FH, '>', "$tmp_dir/killed"; close $_FH;
 
                ## Signal process group to terminate.
-               kill('INT', $_is_mswin32 ? -$$ : -getpgrp);
+               kill('INT', $_is_MSWin32 ? -$$ : -getpgrp);
 
                ## Pause a bit.
                if ($_sig_name ne 'PIPE') {
@@ -305,7 +305,7 @@ sub sys_cmd {
                   print {*STDERR} "\n";
                }
                if ($_no_kill9 == 1 || $_sig_name eq 'PIPE') {
-                  kill('INT', $_is_mswin32 ? -$$ : -getpgrp);
+                  kill('INT', $_is_MSWin32 ? -$$ : -getpgrp);
                } else {
                   kill('KILL', -$$, $main_proc_id);
                }
@@ -383,7 +383,9 @@ sub _shutdown_mce {
 
       for my $_mce_sid (keys %{ $_mce_spawned_ref }) {
          if ($_mce_spawned_ref->{$_mce_sid}->wid()) {
-            $_mce_spawned_ref->{$_mce_sid}->exit($_exit_status);
+
+            $_mce_spawned_ref->{$_mce_sid}->exit($_exit_status)
+               if ($_mce_spawned_ref->{$_mce_sid}->pid() == $$);
          }
          else {
             $_mce_spawned_ref->{$_mce_sid}->shutdown()
@@ -481,7 +483,7 @@ MCE::Signal - Temporary directory creation/cleanup and signal handling
 
 =head1 VERSION
 
-This document describes MCE::Signal version 1.600
+This document describes MCE::Signal version 1.699
 
 =head1 SYNOPSIS
 

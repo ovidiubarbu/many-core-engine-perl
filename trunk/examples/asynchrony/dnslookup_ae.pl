@@ -15,7 +15,7 @@ use Data::Dump 'pp';
 use MCE::Flow;
 use MCE::Shared;
 
-mce_share \ my %all_addrs; # shared hash
+mce_share my %all_addrs;   # shared hash
 
 my @hosts = qw( www.google.com www.facebook.com www.iana.org );
 
@@ -46,7 +46,7 @@ my $mce_task = sub {
             for my $record (@_) {
                push @{ $addrs{$host} }, $record->[4];
             }
-            $all_addrs{$host} = delete $addrs{$host};   # sent to manager
+            $all_addrs{$host} = delete $addrs{$host};   # send to manager
             $cv->end;
          });
       });

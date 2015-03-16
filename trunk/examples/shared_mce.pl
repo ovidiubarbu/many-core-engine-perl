@@ -4,7 +4,7 @@
 ## This script, similar to the forseq.pl example as far as usage goes, utilizes
 ## MCE::Shared to store results into a hash.
 ##
-##   mce_share \ my %ans;
+##   mce_share my %ans;
 ##
 ## usage: shared_mce.pl [ size ]
 ## usage: shared_mce.pl [ begin end [ step [ format ] ] ]
@@ -53,7 +53,7 @@ unless (defined $s_end) {
 
 MCE::Loop::init { chunk_size => 1, max_workers => 'auto' };
 
-mce_share \ my %results;
+mce_share my %results;
 
 my $start = time;
 

@@ -9,34 +9,32 @@ package MCE::Mutex;
 use strict;
 use warnings;
 
-use Socket qw( :crlf PF_UNIX PF_UNSPEC SOCK_STREAM );
+no warnings 'threads';
+no warnings 'recursion';
+no warnings 'uninitialized';
+
+use MCE::Util qw( $LF );
 use bytes;
 
-our $VERSION = '1.600';
+our $VERSION = '1.699';
 
 sub DESTROY {
 
-   my ($_mutex) = @_;
+   my ($_mutex, $_arg) = @_;
 
-   return if (defined $MCE::VERSION && !defined $MCE::MCE->{_wid});
-   return if (defined $MCE::MCE && $MCE::MCE->{_wid});
-
-   if (defined $_mutex->{_r_sock}) {
-      local ($!, $?);
-
-      CORE::shutdown $_mutex->{_w_sock}, 2;
-      CORE::shutdown $_mutex->{_r_sock}, 2;
-
-      close $_mutex->{_w_sock}; undef $_mutex->{_w_sock};
-      close $_mutex->{_r_sock}; undef $_mutex->{_r_sock};
+   if (!defined $_arg || $_arg ne 'shutdown') {
+      return if (defined $MCE::VERSION && !defined $MCE::MCE->{_wid});
+      return if (defined $MCE::MCE && $MCE::MCE->{_wid});
    }
+
+   MCE::Util::_destroy_sockets($_mutex, qw(_w_sock _r_sock));
 
    return;
 }
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## New instance instantiation.
+## Public methods.
 ##
 ###############################################################################
 
@@ -44,46 +42,22 @@ sub new {
 
    my ($_class, %_argv) = @_;
 
-   @_ = (); local $!;
+   @_ = ();
 
    my $_mutex = {}; bless($_mutex, ref($_class) || $_class);
 
-   socketpair( $_mutex->{_r_sock}, $_mutex->{_w_sock},
-      PF_UNIX, SOCK_STREAM, PF_UNSPEC ) or die "socketpair: $!\n";
-
-   binmode $_mutex->{_r_sock};
-   binmode $_mutex->{_w_sock};
-
-   my $_old_hndl = select $_mutex->{_r_sock}; $| = 1;
-                   select $_mutex->{_w_sock}; $| = 1;
-
-   select $_old_hndl;
+   MCE::Util::_make_socket_pair($_mutex, qw(_w_sock _r_sock));
 
    syswrite $_mutex->{_w_sock}, '0';
 
    return $_mutex;
 }
 
-###############################################################################
-## ----------------------------------------------------------------------------
-## Lock, unlock, and synchronize methods. Supports threads and processes.
-##
-###############################################################################
-
 sub lock {
 
-   my ($_mutex) = @_;
+ # my ($_mutex) = @_;
 
-   sysread $_mutex->{_r_sock}, my $_b, 1;
-
-   return;
-}
-
-sub unlock {
-
-   my ($_mutex) = @_;
-
-   syswrite $_mutex->{_w_sock}, '0';
+   sysread $_[0]->{_r_sock}, my $_b, 1;
 
    return;
 }
@@ -93,8 +67,28 @@ sub synchronize {
    my ($_mutex, $_code) = (shift, shift);
 
    if (ref $_code eq 'CODE') {
-      $_mutex->lock; $_code->(@_); $_mutex->unlock;
+      if (defined wantarray) {
+         sysread  $_mutex->{_r_sock}, my $_b, 1;
+         my @_a = $_code->(@_);
+         syswrite $_mutex->{_w_sock}, '0';
+
+         return wantarray ? @_a : $_a[0];
+      }
+      else {
+         sysread  $_mutex->{_r_sock}, my $_b, 1;
+         $_code->(@_);
+         syswrite $_mutex->{_w_sock}, '0';
+      }
    }
+
+   return;
+}
+
+sub unlock {
+
+ # my ($_mutex) = @_;
+
+   syswrite $_[0]->{_w_sock}, '0';
 
    return;
 }
@@ -115,7 +109,7 @@ MCE::Mutex - Simple semaphore for Many-Core Engine
 
 =head1 VERSION
 
-This document describes MCE::Mutex version 1.600
+This document describes MCE::Mutex version 1.699
 
 =head1 SYNOPSIS
 

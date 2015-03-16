@@ -18,7 +18,9 @@ use Scalar::Util qw( looks_like_number );
 use MCE;
 use MCE::Queue;
 
-our $VERSION = '1.600';
+our $VERSION  = '1.699';
+
+our @CARP_NOT = qw( MCE );
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -623,6 +625,11 @@ sub _gen_user_func {
    return sub {
       my ($_mce) = @_;
 
+      $_mce->{_next_jmp} = sub { goto _MCE_STEP__NEXT; };
+      $_mce->{_last_jmp} = sub { goto _MCE_STEP__LAST; };
+
+      _MCE_STEP__NEXT:
+
       while (defined (local $_ = $_q_in->dequeue())) {
          if (chop $_) {
             my $_args = $_mce->thaw($_);  $_ = $_args->[0];
@@ -631,6 +638,8 @@ sub _gen_user_func {
             $_c_ref->($_mce, $_);
          }
       }
+
+      _MCE_STEP__LAST:
 
       return;
    };
@@ -692,7 +701,7 @@ MCE::Step - Parallel step model for building creative steps
 
 =head1 VERSION
 
-This document describes MCE::Step version 1.600
+This document describes MCE::Step version 1.699
 
 =head1 DESCRIPTION
 

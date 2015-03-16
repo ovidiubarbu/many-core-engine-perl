@@ -15,7 +15,7 @@ use Data::Dump 'pp';
 use MCE::Flow;
 use MCE::Shared;
 
-mce_share \ my %all_addrs; # shared hash
+mce_share my %all_addrs;   # shared hash
 
 my @hosts = qw( www.google.com www.facebook.com www.iana.org );
 
@@ -40,7 +40,7 @@ my $mce_task = sub {
             my @results = @_; my @addrs = map {
                (getnameinfo $_->{addr}, NI_NUMERICHOST)[1]
             } @results;
-            $all_addrs{$host} = \@addrs;   # sent to manager
+            $all_addrs{$host} = \@addrs;   # send to manager
             return;
          }
       );

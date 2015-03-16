@@ -13,11 +13,16 @@ use warnings;
 
 ## no critic (Subroutines::ProhibitExplicitReturnUndef)
 
-use Scalar::Util qw( refaddr weaken );
-use Socket ':crlf'; use Fcntl ':flock';
+no warnings 'threads';
+no warnings 'recursion';
+no warnings 'uninitialized';
+
+use Scalar::Util qw( blessed refaddr reftype weaken );
 use bytes;
 
-our $VERSION = '1.600';
+our $VERSION  = '1.699';
+
+our @CARP_NOT = qw( MCE::Shared MCE );
 
 use constant {
    SHR_A_FSZ => 'A~FSZ',   ## FETCHSIZE
@@ -43,11 +48,14 @@ use constant {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Import and share routines.
+## Import routine.
 ##
 ###############################################################################
 
-my ($_all, $_loc, $_sid) = ({}, {}, 0); my $_loaded;
+my $_all = {};
+
+my $LF = "\012"; Internals::SvREADONLY($LF, 1);
+my $_loaded;
 
 sub import {
 
@@ -55,11 +63,10 @@ sub import {
 
    if (defined $MCE::VERSION) {
       _mce_m_init();
-   }
-   else {
+   } else {
       $\ = undef; require Carp;
       Carp::croak(
-         "MCE::Shared::Array cannot be used directly. Please consult the\n".
+         "MCE::Shared::Array cannot be used directly. Please see the\n".
          "MCE::Shared documentation for more information.\n\n"
       );
    }
@@ -67,18 +74,81 @@ sub import {
    return;
 }
 
+###############################################################################
+## ----------------------------------------------------------------------------
+## Private methods.
+##
+###############################################################################
+
+sub _share_w_init {
+
+   %{ $_all } = ();
+}
+
 sub _share {
 
-   ## Simply return if already shared.
-   my $_addr = refaddr($_[0]);
+   my ($_cloned, $_item) = (shift, shift);
+   my ($_id, $_copy) = (refaddr($_item), );
 
-   unless (exists $_loc->{ $_addr }) {
-      my $_id = ++$_sid;  @{ $_all->{ $_id } } = @{ $_[0] };
-      tie @{ $_[0] }, 'MCE::Shared::Array::Tie', \$_id;
-      $_loc->{ $_addr } = 1;
+   return $_item if (tied @{ $_item });
+
+   unless (exists $_all->{ $_id }) {
+      $_all->{ $_id } = $_copy = []; $_cloned->{ $_id } = $_copy;
+
+      if (scalar @_ > 0) {
+         push @{ $_copy }, map { MCE::Shared::_copy($_cloned, $_) } @_;
+         @_ = ();
+      } else {
+         push @{ $_copy }, map { MCE::Shared::_copy($_cloned, $_) } @{ $_item };
+      }
+
+      my $_class   = blessed($_item);
+      my $_rdonly1 = Internals::SvREADONLY(@{ $_item });
+      my $_rdonly2 = Internals::SvREADONLY(   $_item  );
+
+      if ($] >= 5.008003) {
+         Internals::SvREADONLY(@{ $_item }, 0) if $_rdonly1;
+         Internals::SvREADONLY(   $_item  , 0) if $_rdonly2;
+      }
+
+      @{ $_item } = ();
+
+      tie @{ $_item }, 'MCE::Shared::Array::Tie', \$_id;
+
+      ## Bless copy into the same class. Clone READONLY flag.
+      bless($_item, $_class) if $_class;
+
+      if ($] >= 5.008003) {
+         Internals::SvREADONLY(@{ $_item }, 1) if $_rdonly1;
+         Internals::SvREADONLY(   $_item  , 1) if $_rdonly2;
+      }
    }
 
-   return;
+   return $_item;
+}
+
+sub _share2 {
+
+   if ($_[0] eq 'HASH') {
+      MCE::Shared::Hash::_share({}, $_all->{ $_[1] }->[ $_[2] ]);
+   } elsif ($_[0] eq 'ARRAY') {
+      MCE::Shared::Array::_share({}, $_all->{ $_[1] }->[ $_[2] ]);
+   } elsif ($_[0] eq 'SCALAR' || $_[0] eq 'REF') {
+      MCE::Shared::Scalar::_share({}, $_all->{ $_[1] }->[ $_[2] ]);
+   } else {
+      MCE::Shared::_unsupported($_[0]);
+   }
+}
+
+sub _untie2 {
+
+   if ($_[0] eq 'HASH') {
+      untie %{ $_all->{ $_[1] }->[ $_[2] ] };
+   } elsif ($_[0] eq 'ARRAY') {
+      untie @{ $_all->{ $_[1] }->[ $_[2] ] };
+   } elsif ($_[0] eq 'SCALAR' || $_[0] eq 'REF') {
+      untie ${ $_all->{ $_[1] }->[ $_[2] ] };
+   }
 }
 
 ###############################################################################
@@ -186,12 +256,21 @@ sub _share {
          chomp($_key = <$_DAU_R_SOCK>);
          chomp($_len = <$_DAU_R_SOCK>);
 
+         if (my $_r = reftype($_all->{ $_id }->[ $_key ])) {
+            _untie2($_r, $_id, $_key);
+         }
+
          if ($_len > 0) {
             read $_DAU_R_SOCK, (my $_buf), $_len;
             $_all->{ $_id }->[ $_key ] =
                (chop $_buf) ? $_MCE->{thaw}($_buf) : $_buf;
-         } else {
+         }
+         else {
             $_all->{ $_id }->[ $_key ] = undef;
+         }
+
+         if (my $_r = reftype($_all->{ $_id }->[ $_key ])) {
+            _share2($_r, $_id, $_key);
          }
 
          return;
@@ -212,7 +291,14 @@ sub _share {
       SHR_A_CLR.$LF => sub {                      ## Array CLEAR
          $_DAU_R_SOCK = ${ $_DAU_R_SOCK_REF };
 
-         chomp($_id = <$_DAU_R_SOCK>);
+         my $_id; chomp($_id = <$_DAU_R_SOCK>);
+
+         for my $_k (0 .. @{ $_all->{ $_id } } - 1) {
+            if (my $_r = reftype($_all->{ $_id }->[ $_k ])) {
+               _untie2($_r, $_id, $_k);
+            }
+         }
+
          @{ $_all->{ $_id } } = ();
 
          return;
@@ -270,11 +356,33 @@ sub _share {
          chomp($_wa  = <$_DAU_R_SOCK>);
          chomp($_key = <$_DAU_R_SOCK>);
 
-         unless ($_wa) {
-            delete $_all->{ $_id }->[ $_key ];
-         } else {
+         if (my $_r = reftype($_all->{ $_id }->[ $_key ])) {
+            if ($_r eq 'HASH') {
+               my %_buf; %_buf = %{ $_all->{ $_id }->[ $_key ] } if ($_wa);
+               untie %{ $_all->{ $_id }->[ $_key ] };
+               delete $_all->{ $_id }->[ $_key ];
+               $_cb_ret->(\%_buf) if ($_wa);
+               return;
+            } elsif ($_r eq 'ARRAY') {
+               my @_buf; @_buf = @{ $_all->{ $_id }->[ $_key ] } if ($_wa);
+               untie @{ $_all->{ $_id }->[ $_key ] };
+               delete $_all->{ $_id }->[ $_key ];
+               $_cb_ret->(\@_buf) if ($_wa);
+               return;
+            } elsif ($_r eq 'SCALAR' || $_r eq 'REF') {
+               my $_buf; $_buf = ${ $_all->{ $_id }->[ $_key ] } if ($_wa);
+               untie ${ $_all->{ $_id }->[ $_key ] };
+               delete $_all->{ $_id }->[ $_key ];
+               $_cb_ret->(\$_buf) if ($_wa);
+               return;
+            }
+         }
+
+         if ($_wa) {
             my $_buf = delete $_all->{ $_id }->[ $_key ];
             $_cb_ret->($_buf);
+         } else {
+            delete $_all->{ $_id }->[ $_key ];
          }
 
          return;
@@ -312,21 +420,27 @@ sub _share {
       SHR_A_ADD.$LF => sub {                      ## Addition
          $_cb_op->( sub {
             read $_DAU_R_SOCK, (my $_buf), $_len;
-            $_all->{ $_id }->[ $_key ] += $_buf;
+            if (reftype($_all->{ $_id }) eq 'ARRAY') {
+               $_all->{ $_id }->[ $_key ] += $_buf;
+            }
          });
       },
 
       SHR_A_CAT.$LF => sub {                      ## Concatenation
          $_cb_op->( sub {
             read $_DAU_R_SOCK, (my $_buf), $_len;
-            $_all->{ $_id }->[ $_key ] .= $_buf;
+            if (reftype($_all->{ $_id }) eq 'ARRAY') {
+               $_all->{ $_id }->[ $_key ] .= $_buf;
+            }
          });
       },
 
       SHR_A_SUB.$LF => sub {                      ## Subtraction
          $_cb_op->( sub {
             read $_DAU_R_SOCK, (my $_buf), $_len;
-            $_all->{ $_id }->[ $_key ] -= $_buf;
+            if (reftype($_all->{ $_id }) eq 'ARRAY') {
+               $_all->{ $_id }->[ $_key ] -= $_buf;
+            }
          });
       },
 
@@ -351,7 +465,7 @@ sub _share {
    sub _mce_m_loop_end {
 
       $_MCE = $_DAU_R_SOCK_REF = $_DAU_R_SOCK = undef;
-      $_id = $_key = $_len = $_ret = $_wa = undef;
+      $_key = $_len = $_ret = $_wa = $_id = undef;
 
       return;
    }
@@ -374,34 +488,34 @@ sub _share {
 ###############################################################################
 
 my ($_MCE, $_DAT_LOCK, $_DAT_W_SOCK, $_DAU_W_SOCK, $_chn, $_lock_chn);
-my ($_id, $_len, $_ret, $_tag, $_wa);
+my ($_flock_ex, $_flock_un, $_len, $_ret, $_tag, $_wa);
 
 sub _mce_w_init {
 
    ($_MCE) = @_;
 
-   unless (defined $MCE::Shared::_HDLR &&
-         refaddr($_MCE) != refaddr($MCE::Shared::_HDLR)) {
+   if (!defined $MCE::Shared::_HDLR ||
+         refaddr($_MCE) == refaddr($MCE::Shared::_HDLR)) {
 
-      ($_chn, $_lock_chn) = ($_MCE->{_chn}, $_MCE->{_lock_chn});
-
+      ## MCE::Queue, MCE::Shared data managed by each manager process.
+     ($_chn, $_lock_chn) = ($_MCE->{_chn}, $_MCE->{_lock_chn});
       $_DAT_LOCK = $_MCE->{_dat_lock};
    }
    else {
-      ## running separate MCE instances simultaneously
-      ($_MCE, $_chn, $_lock_chn) = ($MCE::Shared::_HDLR, 1, 1);
+      ## Data is managed by the top MCE instance; shared_handler => 1.
+      $_chn = $_MCE->{_wid} % $MCE::Shared::_HDLR->{_data_channels} + 1;
 
-      unless (defined $MCE::Shared::_LOCK) {
-         my $_sess_dir = $_MCE->{_sess_dir};
-         open $MCE::Shared::_LOCK, '+>>:raw:stdio', "$_sess_dir/_dat.lock.1"
-            or die "(W) open error $_sess_dir/_dat.lock.1: $!\n";
-      }
-
-      $_DAT_LOCK = $MCE::Shared::_LOCK;
+     ($_MCE, $_lock_chn) = ($MCE::Shared::_HDLR, 1);
+      $_DAT_LOCK = $_MCE->{'_cmutex_'.$_chn};
    }
 
-   $_DAT_W_SOCK = $_MCE->{_dat_w_sock}->[0];
-   $_DAU_W_SOCK = $_MCE->{_dat_w_sock}->[$_chn];
+   if ($_lock_chn) {
+      $_flock_ex = $_DAT_LOCK->can('lock');
+      $_flock_un = $_DAT_LOCK->can('unlock');
+   }
+
+   $_DAT_W_SOCK  = $_MCE->{_dat_w_sock}->[0];
+   $_DAU_W_SOCK  = $_MCE->{_dat_w_sock}->[$_chn];
 
    return;
 }
@@ -411,7 +525,7 @@ my $_do_op = sub {
    $_wa = (!defined wantarray) ? WA_UNDEF : WA_SCALAR;
    local $\ = undef if (defined $\);
 
-   flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
+   $_flock_ex->($_DAT_LOCK) if ($_lock_chn);
 
    print {$_DAT_W_SOCK} $_[0] . $LF . $_chn . $LF;
    print {$_DAU_W_SOCK} $_[1] . $LF . $_wa . $LF .
@@ -420,17 +534,17 @@ my $_do_op = sub {
    my $_buf; if ($_wa) {
       local $/ = $LF if (!$/ || $/ ne $LF);
       chomp($_len = <$_DAU_W_SOCK>);
-      read  $_DAU_W_SOCK, $_buf, $_len;
+      read $_DAU_W_SOCK, $_buf, $_len;
    }
 
-   flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
+   $_flock_un->($_DAT_LOCK) if ($_lock_chn);
 
    return $_buf;
 };
 
 my $_do_push = sub {
 
-   my ($_buf, $_tmp);
+   my ($_buf, $_tmp); my $_id = shift;
 
    if (scalar @_ > 1 || ref $_[0] || !defined $_[0]) {
       $_tmp = $_MCE->{freeze}(\@_);
@@ -441,10 +555,10 @@ my $_do_push = sub {
 
    local $\ = undef if (defined $\);
 
-   flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
+   $_flock_ex->($_DAT_LOCK) if ($_lock_chn);
    print {$_DAT_W_SOCK} $_tag . $LF . $_chn . $LF;
    print {$_DAU_W_SOCK} $_buf;
-   flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
+   $_flock_un->($_DAT_LOCK) if ($_lock_chn);
 
    return;
 };
@@ -455,12 +569,12 @@ my $_do_ret = sub {
    chomp($_len = <$_DAU_W_SOCK>);
 
    if ($_len < 0) {
-      flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
+      $_flock_un->($_DAT_LOCK) if ($_lock_chn);
       return undef;
    }
 
-   read  $_DAU_W_SOCK, (my $_buf), $_len;
-   flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
+   read $_DAU_W_SOCK, (my $_buf), $_len;
+   $_flock_un->($_DAT_LOCK) if ($_lock_chn);
 
    return (chop $_buf) ? $_MCE->{thaw}($_buf) : $_buf;
 };
@@ -473,9 +587,14 @@ my $_do_ret = sub {
 
 package MCE::Shared::Array::Tie;
 
+no warnings 'threads';
+no warnings 'recursion';
+no warnings 'uninitialized';
+
 use Scalar::Util qw( looks_like_number reftype );
-use Socket ':crlf'; use Fcntl ':flock';
 use bytes;
+
+our @CARP_NOT = qw( MCE::Shared MCE );
 
 use constant {
    SHR_A_FSZ => 'A~FSZ',   ## FETCHSIZE
@@ -503,52 +622,85 @@ use constant {
 sub TIEARRAY { bless $_[1] => $_[0]; }
 sub EXTEND   { }
 
+sub UNTIE {
+   my $_id = ${ $_[0] };
+
+   if ($_MCE->{_wid}) {
+      MCE::_croak("Method (UNTIE) is not allowed by the worker process");
+   }
+
+   if ($_[1]) {
+      my $s = ($_[1] > 1) ? 's' : '';
+      Carp::croak("Untied attempted while $_[1] reference${s} still exist")
+         if (!defined($MCE::Shared::untie_warn));
+      Carp::carp("Untied attempted while $_[1] reference${s} still exist")
+         if ($MCE::Shared::untie_warn);
+   }
+
+   for my $_k (0 .. @{ $_all->{ $_id } } - 1) {
+      if (my $_r = reftype($_all->{ $_id }->[ $_k ])) {
+         MCE::Shared::Array::_untie2($_r, $_id, $_k);
+      }
+   }
+
+   delete $_all->{ $_id };
+
+   return;
+}
+
 ## ----------------------------------------------------------------------------
 
 sub FETCHSIZE {                                   ## Array FETCHSIZE
-   $_id = ${ $_[0] };
+   my $_id = ${ $_[0] };
 
-   unless ($MCE::MCE->{_wid}) {
+   unless ($_MCE->{_wid}) {
       scalar @{ $_all->{ $_id } };
    }
    else {
       local $\ = undef if (defined $\);
       local $/ = $LF if (!$/ || $/ ne $LF);
 
-      flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
+      $_flock_ex->($_DAT_LOCK) if ($_lock_chn);
       print {$_DAT_W_SOCK} SHR_A_FSZ . $LF . $_chn . $LF;
       print {$_DAU_W_SOCK} $_id . $LF;
 
       chomp($_ret = <$_DAU_W_SOCK>);
-      flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
+      $_flock_un->($_DAT_LOCK) if ($_lock_chn);
 
       return $_ret;
    }
 }
 
 sub STORESIZE {                                   ## Array STORESIZE
-   $_id = ${ $_[0] };
+   my $_id = ${ $_[0] };
 
-   unless ($MCE::MCE->{_wid}) {
+   unless ($_MCE->{_wid}) {
       $#{ $_all->{ $_id } } = $_[1] - 1;
    }
    else {
       local $\ = undef if (defined $\);
 
-      flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
+      $_flock_ex->($_DAT_LOCK) if ($_lock_chn);
       print {$_DAT_W_SOCK} SHR_A_SSZ . $LF . $_chn . $LF;
       print {$_DAU_W_SOCK} $_id . $LF . $_[1] . $LF;
-      flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
+      $_flock_un->($_DAT_LOCK) if ($_lock_chn);
 
       return;
    }
 }
 
 sub STORE {                                       ## Array STORE
-   $_id = ${ $_[0] };
+   my $_id = ${ $_[0] };
 
-   unless ($MCE::MCE->{_wid}) {
+   unless ($_MCE->{_wid}) {
+      if (my $_r = reftype($_all->{ $_id }->[ $_[1] ])) {
+         MCE::Shared::Array::_untie2($_r, $_id, $_[1]);
+      }
       $_all->{ $_id }->[ $_[1] ] = $_[2];
+
+      if (my $_r = reftype($_all->{ $_id }->[ $_[1] ])) {
+         MCE::Shared::Array::_share2($_r, $_id, $_[1]);
+      }
    }
    else {
       my ($_buf, $_tmp);
@@ -568,25 +720,25 @@ sub STORE {                                       ## Array STORE
 
       local $\ = undef if (defined $\);
 
-      flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
+      $_flock_ex->($_DAT_LOCK) if ($_lock_chn);
       print {$_DAT_W_SOCK} SHR_A_STO . $LF . $_chn . $LF;
       print {$_DAU_W_SOCK} $_buf;
-      flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
+      $_flock_un->($_DAT_LOCK) if ($_lock_chn);
 
       return;
    }
 }
 
 sub FETCH {                                       ## Array FETCH
-   $_id = ${ $_[0] };
+   my $_id = ${ $_[0] };
 
-   unless ($MCE::MCE->{_wid}) {
+   unless ($_MCE->{_wid}) {
       $_all->{ $_id }->[ $_[1] ];
    }
    else {
       local $\ = undef if (defined $\);
 
-      flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
+      $_flock_ex->($_DAT_LOCK) if ($_lock_chn);
       print {$_DAT_W_SOCK} SHR_A_FCH . $LF . $_chn . $LF;
       print {$_DAU_W_SOCK} $_id . $LF . $_[1] . $LF;
 
@@ -595,33 +747,38 @@ sub FETCH {                                       ## Array FETCH
 }
 
 sub CLEAR {                                       ## Array CLEAR
-   $_id = ${ $_[0] };
+   my $_id = ${ $_[0] };
 
-   unless ($MCE::MCE->{_wid}) {
+   unless ($_MCE->{_wid}) {
+      for my $_k (0 .. @{ $_all->{ $_id } } - 1) {
+         if (my $_r = reftype($_all->{ $_id }->[ $_k ])) {
+            MCE::Shared::Array::_untie2($_r, $_id, $_k);
+         }
+      }
       @{ $_all->{ $_id } } = ();
    }
    else {
       local $\ = undef if (defined $\);
 
-      flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
+      $_flock_ex->($_DAT_LOCK) if ($_lock_chn);
       print {$_DAT_W_SOCK} SHR_A_CLR . $LF . $_chn . $LF;
       print {$_DAU_W_SOCK} $_id . $LF;
-      flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
+      $_flock_un->($_DAT_LOCK) if ($_lock_chn);
 
       return;
    }
 }
 
 sub POP {                                         ## Array POP
-   $_id = ${ $_[0] };
+   my $_id = ${ $_[0] };
 
-   unless ($MCE::MCE->{_wid}) {
+   unless ($_MCE->{_wid}) {
       pop(@{ $_all->{ $_id } });
    }
    else {
       local $\ = undef if (defined $\);
 
-      flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
+      $_flock_ex->($_DAT_LOCK) if ($_lock_chn);
       print {$_DAT_W_SOCK} SHR_A_POP . $LF . $_chn . $LF;
       print {$_DAU_W_SOCK} $_id . $LF;
 
@@ -630,14 +787,14 @@ sub POP {                                         ## Array POP
 }
 
 sub PUSH {                                        ## Array PUSH
-   $_id = ${ (shift) };
+   my $_id = ${ (shift) };
 
-   unless ($MCE::MCE->{_wid}) {
+   unless ($_MCE->{_wid}) {
       push(@{ $_all->{ $_id } }, @_);
    }
    else {
       if (scalar @_) {
-         $_tag = SHR_A_PSH; $_do_push->(@_);
+         $_tag = SHR_A_PSH; $_do_push->($_id, @_);
       } else {
          Carp::carp('Useless use of push with no values');
       }
@@ -645,15 +802,15 @@ sub PUSH {                                        ## Array PUSH
 }
 
 sub SHIFT {                                       ## Array SHIFT
-   $_id = ${ $_[0] };
+   my $_id = ${ $_[0] };
 
-   unless ($MCE::MCE->{_wid}) {
+   unless ($_MCE->{_wid}) {
       shift(@{ $_all->{ $_id } });
    }
    else {
       local $\ = undef if (defined $\);
 
-      flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
+      $_flock_ex->($_DAT_LOCK) if ($_lock_chn);
       print {$_DAT_W_SOCK} SHR_A_SFT . $LF . $_chn . $LF;
       print {$_DAU_W_SOCK} $_id . $LF;
 
@@ -662,14 +819,14 @@ sub SHIFT {                                       ## Array SHIFT
 }
 
 sub UNSHIFT {                                     ## Array UNSHIFT
-   $_id = ${ (shift) };
+   my $_id = ${ (shift) };
 
-   unless ($MCE::MCE->{_wid}) {
+   unless ($_MCE->{_wid}) {
       unshift(@{ $_all->{ $_id } }, @_);
    }
    else {
       if (scalar @_) {
-         $_tag = SHR_A_UFT; $_do_push->(@_);
+         $_tag = SHR_A_UFT; $_do_push->($_id, @_);
       } else {
          Carp::carp('Useless use of unshift with no values');
       }
@@ -677,42 +834,63 @@ sub UNSHIFT {                                     ## Array UNSHIFT
 }
 
 sub EXISTS {                                      ## Array EXISTS
-   $_id = ${ $_[0] };
+   my $_id = ${ $_[0] };
 
-   unless ($MCE::MCE->{_wid}) {
+   unless ($_MCE->{_wid}) {
       exists $_all->{ $_id }->[ $_[1] ];
    }
    else {
       local $\ = undef if (defined $\);
       local $/ = $LF if (!$/ || $/ ne $LF);
 
-      flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
+      $_flock_ex->($_DAT_LOCK) if ($_lock_chn);
       print {$_DAT_W_SOCK} SHR_A_EXI . $LF . $_chn . $LF;
       print {$_DAU_W_SOCK} $_id . $LF . $_[1] . $LF;
 
       chomp($_ret = <$_DAU_W_SOCK>);
-      flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
+      $_flock_un->($_DAT_LOCK) if ($_lock_chn);
 
       return $_ret;
    }
 }
 
 sub DELETE {                                      ## Array DELETE
-   $_id = ${ $_[0] };
+   my $_id = ${ $_[0] };
 
-   unless ($MCE::MCE->{_wid}) {
-      delete $_all->{ $_id }->[ $_[1] ];
+   unless ($_MCE->{_wid}) {
+      my $_k = $_[1];
+
+      if (my $_r = reftype($_all->{ $_id }->[ $_k ])) {
+         if ($_r eq 'HASH') {
+            my %_buf = %{ $_all->{ $_id }->[ $_k ] };
+            untie %{ $_all->{ $_id }->[ $_k ] };
+            delete $_all->{ $_id }->[ $_k ];
+            return \%_buf;
+         } elsif ($_r eq 'ARRAY') {
+            my @_buf = @{ $_all->{ $_id }->[ $_k ] };
+            untie @{ $_all->{ $_id }->[ $_k ] };
+            delete $_all->{ $_id }->[ $_k ];
+            return \@_buf;
+         } elsif ($_r eq 'SCALAR' || $_r eq 'REF') {
+            my $_buf = ${ $_all->{ $_id }->[ $_k ] };
+            untie ${ $_all->{ $_id }->[ $_k ] };
+            delete $_all->{ $_id }->[ $_k ];
+            return \$_buf;
+         }
+      }
+
+      delete $_all->{ $_id }->[ $_k ];
    }
    else {
       $_wa = (!defined wantarray) ? WA_UNDEF : WA_SCALAR;
       local $\ = undef if (defined $\);
 
-      flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
+      $_flock_ex->($_DAT_LOCK) if ($_lock_chn);
       print {$_DAT_W_SOCK} SHR_A_DEL . $LF . $_chn . $LF;
       print {$_DAU_W_SOCK} $_id . $LF . $_wa . $LF . $_[1] . $LF;
 
       unless ($_wa) {
-         flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
+         $_flock_un->($_DAT_LOCK) if ($_lock_chn);
       } else {
          $_do_ret->();
       }
@@ -720,9 +898,9 @@ sub DELETE {                                      ## Array DELETE
 }
 
 sub SPLICE {                                      ## Array SPLICE
-   $_id = ${ (shift) };
+   my $_id = ${ (shift) };
 
-   unless ($MCE::MCE->{_wid}) {
+   unless ($_MCE->{_wid}) {
       my $_sz  = scalar @{ $_all->{ $_id } };
       my $_off = @_ ? shift : 0;
       $_off   += $_sz if $_off < 0;
@@ -736,19 +914,19 @@ sub SPLICE {                                      ## Array SPLICE
       my $_tmp = $_MCE->{freeze}(\@_);
       my $_buf = $_id . $LF . $_wa . $LF . length($_tmp) . $LF . $_tmp;
 
-      flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
+      $_flock_ex->($_DAT_LOCK) if ($_lock_chn);
       print {$_DAT_W_SOCK} SHR_A_SPL . $LF . $_chn . $LF;
       print {$_DAU_W_SOCK} $_buf;
 
       unless ($_wa) {
-         flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
+         $_flock_un->($_DAT_LOCK) if ($_lock_chn);
       }
       elsif ($_wa == 1) {
          local $/ = $LF if (!$/ || $/ ne $LF);
          chomp($_len = <$_DAU_W_SOCK>);
 
-         read  $_DAU_W_SOCK, (my $_buf), $_len;
-         flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
+         read $_DAU_W_SOCK, (my $_buf), $_len;
+         $_flock_un->($_DAT_LOCK) if ($_lock_chn);
 
          chop $_buf; return @{ $_MCE->{thaw}($_buf) };
       }
@@ -761,7 +939,7 @@ sub SPLICE {                                      ## Array SPLICE
 ## ----------------------------------------------------------------------------
 
 sub add {                                         ## Addition
-   $_id = ${ $_[0] };
+   my $_id = ${ $_[0] };
 
    MCE::_croak('Use of uninitialized key in array element')
       unless (defined $_[1]);
@@ -772,15 +950,17 @@ sub add {                                         ## Addition
    MCE::_croak("Argument \"$_[2]\" isn't numeric in addition (+)")
       unless (looks_like_number($_[2]));
 
-   unless ($MCE::MCE->{_wid}) {
-      $_all->{ $_id }->[ $_[1] ] += $_[2];
+   unless ($_MCE->{_wid}) {
+      if (reftype($_all->{ $_id }) eq 'ARRAY') {
+         $_all->{ $_id }->[ $_[1] ] += $_[2];
+      }
    } else {
       $_do_op->(SHR_A_ADD, $_id, $_[1], $_[2]);
    }
 }
 
 sub concat {                                      ## Concatenation
-   $_id = ${ $_[0] };
+   my $_id = ${ $_[0] };
 
    MCE::_croak('Use of uninitialized key in array element')
       unless (defined $_[1]);
@@ -789,15 +969,17 @@ sub concat {                                      ## Concatenation
    MCE::_croak("Argument \"$_[1]\" isn't numeric in array element")
       unless (looks_like_number($_[1]));
 
-   unless ($MCE::MCE->{_wid}) {
-      $_all->{ $_id }->[ $_[1] ] .= $_[2];
+   unless ($_MCE->{_wid}) {
+      if (reftype($_all->{ $_id }) eq 'ARRAY') {
+         $_all->{ $_id }->[ $_[1] ] .= $_[2];
+      }
    } else {
       $_do_op->(SHR_A_CAT, $_id, $_[1], $_[2]);
    }
 }
 
 sub subtract {                                    ## Substraction
-   $_id = ${ $_[0] };
+   my $_id = ${ $_[0] };
 
    MCE::_croak('Use of uninitialized key in array element')
       unless (defined $_[1]);
@@ -808,8 +990,10 @@ sub subtract {                                    ## Substraction
    MCE::_croak("Argument \"$_[2]\" isn't numeric in substraction (-)")
       unless (looks_like_number($_[2]));
 
-   unless ($MCE::MCE->{_wid}) {
-      $_all->{ $_id }->[ $_[1] ] -= $_[2];
+   unless ($_MCE->{_wid}) {
+      if (reftype($_all->{ $_id }) eq 'ARRAY') {
+         $_all->{ $_id }->[ $_[1] ] -= $_[2];
+      }
    } else {
       $_do_op->(SHR_A_SUB, $_id, $_[1], $_[2]);
    }

@@ -12,13 +12,15 @@ use warnings;
 ## no critic (Subroutines::ProhibitExplicitReturnUndef)
 ## no critic (TestingAndDebugging::ProhibitNoStrict)
 
-use Carp ();
-use Fcntl qw( :flock O_RDONLY );
-use Socket qw( :crlf PF_UNIX PF_UNSPEC SOCK_STREAM );
-use Scalar::Util qw( looks_like_number );
+no warnings 'threads';
+no warnings 'recursion';
+no warnings 'uninitialized';
+
+use Scalar::Util qw( looks_like_number refaddr );
+use MCE::Util qw( $LF );
 use bytes;
 
-our $VERSION = '1.600';
+our $VERSION = '1.699';
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -138,20 +140,15 @@ sub DESTROY {
 
    my ($_Q) = @_;
 
-   undef $_Q->{_datp}; undef $_Q->{_datq}; undef $_Q->{_heap};
    delete $_all->{ $_Q->{_id} } if (exists $_Q->{_id});
+   undef  $_Q->{_datp};
+   undef  $_Q->{_datq};
+   undef  $_Q->{_heap};
 
    return if (defined $MCE::VERSION && !defined $MCE::MCE->{_wid});
    return if (defined $MCE::MCE && $MCE::MCE->{_wid});
 
-   local ($!, $?);
-
-   for my $_p (qw( _aw_sock _ar_sock _qw_sock _qr_sock )) {
-      CORE::shutdown $_Q->{$_p}, 2 if (defined $_Q->{$_p});
-   }
-   for my $_p (qw( _aw_sock _ar_sock _qw_sock _qr_sock )) {
-      if (defined $_Q->{$_p}) { close $_Q->{$_p}; undef $_Q->{$_p}; }
-   }
+   MCE::Util::_destroy_sockets($_Q, qw(_aw_sock _ar_sock _qw_sock _qr_sock));
 
    return;
 }
@@ -221,8 +218,9 @@ sub new {
          $_Q->{_id} = ++$_qid; $_all->{$_qid} = $_Q;
          $_Q->{_dsem} = 0 if ($_Q->{_fast});
 
-         _create_socket_pair($_Q, '_qr_sock', '_qw_sock');
-         _create_socket_pair($_Q, '_ar_sock', '_aw_sock') if ($_Q->{_await});
+         MCE::Util::_make_socket_pair($_Q, qw(_qr_sock _qw_sock));
+         MCE::Util::_make_socket_pair($_Q, qw(_ar_sock _aw_sock))
+            if ($_Q->{_await});
 
          syswrite $_Q->{_qw_sock}, $LF
             if (exists $_argv{queue} && scalar @{ $_argv{queue} });
@@ -233,30 +231,6 @@ sub new {
    }
 
    return $_Q;
-}
-
-###############################################################################
-## ----------------------------------------------------------------------------
-## Create socket pair.
-##
-###############################################################################
-
-sub _create_socket_pair {
-
-   my ($_Q, $_r_sock, $_w_sock) = @_;
-
-   socketpair( $_Q->{ $_r_sock }, $_Q->{ $_w_sock },
-      PF_UNIX, SOCK_STREAM, PF_UNSPEC ) or die "socketpair: $!\n";
-
-   binmode $_Q->{ $_r_sock };
-   binmode $_Q->{ $_w_sock };
-
-   my $_old_hndl = select $_Q->{ $_r_sock };  $| = 1;
-                   select $_Q->{ $_w_sock };  $| = 1;
-
-   select $_old_hndl;
-
-   return;
 }
 
 ###############################################################################
@@ -554,12 +528,10 @@ sub _heap {
 sub _croak {
 
    unless (defined $MCE::VERSION) {
-      $\ = undef; goto &Carp::croak;
+      $\ = undef; require Carp; goto &Carp::croak;
    } else {
       goto &MCE::_croak;
    }
-
-   return;
 }
 
 ## Helper method for getting the reference to the underlying array.
@@ -569,6 +541,7 @@ sub _get_aref {
 
    my ($_Q, $_p) = @_;
 
+   return if (defined $MCE::VERSION && !defined $MCE::MCE->{_wid});
    return if (defined $MCE::MCE && $MCE::MCE->{_wid});
 
    if (defined $_p) {
@@ -1313,18 +1286,37 @@ sub _mce_m_insertp {
 ###############################################################################
 
 {
-   my ($_chn, $_lock_chn, $_len, $_next, $_pending, $_tag);
-   my ($_MCE, $_DAT_LOCK, $_DAT_W_SOCK, $_DAU_W_SOCK);
+   my (
+      $_MCE, $_DAT_LOCK, $_DAT_W_SOCK, $_DAU_W_SOCK, $_chn, $_lock_chn,
+      $_flock_ex, $_flock_un, $_len, $_next, $_pending, $_tag
+   );
 
    sub _mce_w_init {
 
       ($_MCE) = @_;
 
-      $_chn        = $_MCE->{_chn};
-      $_DAT_LOCK   = $_MCE->{_dat_lock};
-      $_DAT_W_SOCK = $_MCE->{_dat_w_sock}->[0];
-      $_DAU_W_SOCK = $_MCE->{_dat_w_sock}->[$_chn];
-      $_lock_chn   = $_MCE->{_lock_chn};
+      if (!defined $MCE::Shared::_HDLR ||
+            refaddr($_MCE) == refaddr($MCE::Shared::_HDLR)) {
+
+         ## MCE::Queue, MCE::Shared data managed by each manager process.
+        ($_chn, $_lock_chn) = ($_MCE->{_chn}, $_MCE->{_lock_chn});
+         $_DAT_LOCK = $_MCE->{_dat_lock};
+      }
+      else {
+         ## Data is managed by the top MCE instance; shared_handler => 1.
+         $_chn = $_MCE->{_wid} % $MCE::Shared::_HDLR->{_data_channels} + 1;
+
+        ($_MCE, $_lock_chn) = ($MCE::Shared::_HDLR, 1);
+         $_DAT_LOCK = $_MCE->{'_cmutex_'.$_chn};
+      }
+
+      if ($_lock_chn) {
+         $_flock_ex = $_DAT_LOCK->can('lock');
+         $_flock_un = $_DAT_LOCK->can('unlock');
+      }
+
+      $_DAT_W_SOCK  = $_MCE->{_dat_w_sock}->[0];
+      $_DAU_W_SOCK  = $_MCE->{_dat_w_sock}->[$_chn];
 
       for my $_p (keys %{ $_all }) {
          undef $_all->{$_p}->{_datp}; delete $_all->{$_p}->{_datp};
@@ -1368,10 +1360,10 @@ sub _mce_m_insertp {
 
       local $\ = undef if (defined $\);
 
-      flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
+      $_flock_ex->($_DAT_LOCK) if ($_lock_chn);
       print {$_DAT_W_SOCK} OUTPUT_W_QUE . $LF . $_chn . $LF;
       print {$_DAU_W_SOCK} $_Q->{_id} . $LF . $_t . $LF;
-      flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
+      $_flock_un->($_DAT_LOCK) if ($_lock_chn);
 
       sysread $_Q->{_ar_sock}, $_next, 1;  ## Block here
 
@@ -1391,12 +1383,12 @@ sub _mce_m_insertp {
          local $\ = undef if (defined $\);
          local $/ = $LF if (!$/ || $/ ne $LF);
 
-         flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
+         $_flock_ex->($_DAT_LOCK) if ($_lock_chn);
          print {$_DAT_W_SOCK} OUTPUT_C_QUE . $LF . $_chn . $LF;
          print {$_DAU_W_SOCK} $_Q->{_id} . $LF;
          <$_DAU_W_SOCK>;
 
-         flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
+         $_flock_un->($_DAT_LOCK) if ($_lock_chn);
       }
 
       return;
@@ -1428,10 +1420,10 @@ sub _mce_m_insertp {
 
       local $\ = undef if (defined $\);
 
-      flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
+      $_flock_ex->($_DAT_LOCK) if ($_lock_chn);
       print {$_DAT_W_SOCK} $_tag . $LF . $_chn . $LF;
       print {$_DAU_W_SOCK} $_buf;
-      flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
+      $_flock_un->($_DAT_LOCK) if ($_lock_chn);
 
       return;
    }
@@ -1463,10 +1455,10 @@ sub _mce_m_insertp {
 
       local $\ = undef if (defined $\);
 
-      flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
+      $_flock_ex->($_DAT_LOCK) if ($_lock_chn);
       print {$_DAT_W_SOCK} $_tag . $LF . $_chn . $LF;
       print {$_DAU_W_SOCK} $_buf;
-      flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
+      $_flock_un->($_DAT_LOCK) if ($_lock_chn);
 
       return;
    }
@@ -1492,19 +1484,19 @@ sub _mce_m_insertp {
 
          sysread $_Q->{_qr_sock}, $_next, 1;  ## Block here
 
-         flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
+         $_flock_ex->($_DAT_LOCK) if ($_lock_chn);
          print {$_DAT_W_SOCK} OUTPUT_D_QUE . $LF . $_chn . $LF;
          print {$_DAU_W_SOCK} $_Q->{_id} . $LF . $_cnt . $LF;
 
          chomp($_len = <$_DAU_W_SOCK>);
 
          if ($_len < 0) {
-            flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
+            $_flock_un->($_DAT_LOCK) if ($_lock_chn);
             return undef;   # Do not change this to return;
          }
 
-         read  $_DAU_W_SOCK, $_buf, $_len;
-         flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
+         read $_DAU_W_SOCK, $_buf, $_len;
+         $_flock_un->($_DAT_LOCK) if ($_lock_chn);
       }
 
       if ($_cnt == 1) {
@@ -1536,19 +1528,19 @@ sub _mce_m_insertp {
          local $\ = undef if (defined $\);
          local $/ = $LF if (!$/ || $/ ne $LF);
 
-         flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
+         $_flock_ex->($_DAT_LOCK) if ($_lock_chn);
          print {$_DAT_W_SOCK} OUTPUT_D_QUN . $LF . $_chn . $LF;
          print {$_DAU_W_SOCK} $_Q->{_id} . $LF . $_cnt . $LF;
 
          chomp($_len = <$_DAU_W_SOCK>);
 
          if ($_len < 0) {
-            flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
+            $_flock_un->($_DAT_LOCK) if ($_lock_chn);
             return undef;   # Do not change this to return;
          }
 
-         read  $_DAU_W_SOCK, $_buf, $_len;
-         flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
+         read $_DAU_W_SOCK, $_buf, $_len;
+         $_flock_un->($_DAT_LOCK) if ($_lock_chn);
       }
 
       if ($_cnt == 1) {
@@ -1569,12 +1561,12 @@ sub _mce_m_insertp {
       local $\ = undef if (defined $\);
       local $/ = $LF if (!$/ || $/ ne $LF);
 
-      flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
+      $_flock_ex->($_DAT_LOCK) if ($_lock_chn);
       print {$_DAT_W_SOCK} OUTPUT_N_QUE . $LF . $_chn . $LF;
       print {$_DAU_W_SOCK} $_Q->{_id} . $LF;
 
       chomp($_pending = <$_DAU_W_SOCK>);
-      flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
+      $_flock_un->($_DAT_LOCK) if ($_lock_chn);
 
       return $_pending;
    }
@@ -1600,10 +1592,10 @@ sub _mce_m_insertp {
 
       local $\ = undef if (defined $\);
 
-      flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
+      $_flock_ex->($_DAT_LOCK) if ($_lock_chn);
       print {$_DAT_W_SOCK} OUTPUT_I_QUE . $LF . $_chn . $LF;
       print {$_DAU_W_SOCK} $_buf;
-      flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
+      $_flock_un->($_DAT_LOCK) if ($_lock_chn);
 
       return;
    }
@@ -1631,10 +1623,10 @@ sub _mce_m_insertp {
 
       local $\ = undef if (defined $\);
 
-      flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
+      $_flock_ex->($_DAT_LOCK) if ($_lock_chn);
       print {$_DAT_W_SOCK} OUTPUT_I_QUP . $LF . $_chn . $LF;
       print {$_DAU_W_SOCK} $_buf;
-      flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
+      $_flock_un->($_DAT_LOCK) if ($_lock_chn);
 
       return;
    }
@@ -1654,19 +1646,19 @@ sub _mce_m_insertp {
          local $\ = undef if (defined $\);
          local $/ = $LF if (!$/ || $/ ne $LF);
 
-         flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
+         $_flock_ex->($_DAT_LOCK) if ($_lock_chn);
          print {$_DAT_W_SOCK} OUTPUT_P_QUE . $LF . $_chn . $LF;
          print {$_DAU_W_SOCK} $_Q->{_id} . $LF . $_i . $LF;
 
          chomp($_len = <$_DAU_W_SOCK>);
 
          if ($_len < 0) {
-            flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
+            $_flock_un->($_DAT_LOCK) if ($_lock_chn);
             return undef;   # Do not change this to return;
          }
 
-         read  $_DAU_W_SOCK, $_buf, $_len;
-         flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
+         read $_DAU_W_SOCK, $_buf, $_len;
+         $_flock_un->($_DAT_LOCK) if ($_lock_chn);
       }
 
       return (chop $_buf) ? $_MCE->{thaw}($_buf) : $_buf;
@@ -1687,19 +1679,19 @@ sub _mce_m_insertp {
          local $\ = undef if (defined $\);
          local $/ = $LF if (!$/ || $/ ne $LF);
 
-         flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
+         $_flock_ex->($_DAT_LOCK) if ($_lock_chn);
          print {$_DAT_W_SOCK} OUTPUT_P_QUP . $LF . $_chn . $LF;
          print {$_DAU_W_SOCK} $_Q->{_id} . $LF . $_p . $LF . $_i . $LF;
 
          chomp($_len = <$_DAU_W_SOCK>);
 
          if ($_len < 0) {
-            flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
+            $_flock_un->($_DAT_LOCK) if ($_lock_chn);
             return undef;   # Do not change this to return;
          }
 
-         read  $_DAU_W_SOCK, $_buf, $_len;
-         flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
+         read $_DAU_W_SOCK, $_buf, $_len;
+         $_flock_un->($_DAT_LOCK) if ($_lock_chn);
       }
 
       return (chop $_buf) ? $_MCE->{thaw}($_buf) : $_buf;
@@ -1718,19 +1710,19 @@ sub _mce_m_insertp {
          local $\ = undef if (defined $\);
          local $/ = $LF if (!$/ || $/ ne $LF);
 
-         flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
+         $_flock_ex->($_DAT_LOCK) if ($_lock_chn);
          print {$_DAT_W_SOCK} OUTPUT_P_QUH . $LF . $_chn . $LF;
          print {$_DAU_W_SOCK} $_Q->{_id} . $LF . $_i . $LF;
 
          chomp($_len = <$_DAU_W_SOCK>);
 
          if ($_len < 0) {
-            flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
+            $_flock_un->($_DAT_LOCK) if ($_lock_chn);
             return undef;   # Do not change this to return;
          }
 
-         read  $_DAU_W_SOCK, $_buf, $_len;
-         flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
+         read $_DAU_W_SOCK, $_buf, $_len;
+         $_flock_un->($_DAT_LOCK) if ($_lock_chn);
       }
 
       return $_buf;
@@ -1748,14 +1740,14 @@ sub _mce_m_insertp {
          local $\ = undef if (defined $\);
          local $/ = $LF if (!$/ || $/ ne $LF);
 
-         flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
+         $_flock_ex->($_DAT_LOCK) if ($_lock_chn);
          print {$_DAT_W_SOCK} OUTPUT_H_QUE . $LF . $_chn . $LF;
          print {$_DAU_W_SOCK} $_Q->{_id} . $LF;
 
          chomp($_len = <$_DAU_W_SOCK>);
 
-         read  $_DAU_W_SOCK, $_buf, $_len;
-         flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
+         read $_DAU_W_SOCK, $_buf, $_len;
+         $_flock_un->($_DAT_LOCK) if ($_lock_chn);
       }
 
       return @{ $_MCE->{thaw}($_buf) };
@@ -1779,7 +1771,7 @@ MCE::Queue - Hybrid (normal and priority) queues for Many-Core Engine
 
 =head1 VERSION
 
-This document describes MCE::Queue version 1.600
+This document describes MCE::Queue version 1.699
 
 =head1 SYNOPSIS
 

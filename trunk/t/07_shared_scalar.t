@@ -7,9 +7,9 @@ use Test::More tests => 3;
 use MCE::Flow max_workers => 1;
 use MCE::Shared;
 
-my ($s1, $s2, $s3) = (10, '', '');
-
-mce_share \$s1, \$s2, \$s3;
+mce_share my $s1 => 10;
+mce_share my $s2 => '';
+mce_share my $s3 => '';
 
 ###############################################################################
 

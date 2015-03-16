@@ -4,7 +4,7 @@
 ## This script, similar to the forseq.pl example as far as usage goes, utilizes
 ## threads::shared to store results into a hash.
 ##
-##   mce_share \ my %ans;
+##   mce_share my %ans;
 ##
 ## usage: shared_thr.pl [ size ]
 ## usage: shared_thr.pl [ begin end [ step [ format ] ] ]

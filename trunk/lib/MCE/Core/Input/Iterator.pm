@@ -14,16 +14,14 @@ package MCE::Core::Input::Iterator;
 use strict;
 use warnings;
 
-our $VERSION = '1.600';
+our $VERSION = '1.699';
 
 ## Items below are folded into MCE.
 
 package MCE;
 
-## Warnings are disabled to minimize bits of noise when user or OS signals
-## the script to exit. e.g. MCE_script.pl < infile | head
-
 no warnings 'threads';
+no warnings 'recursion';
 no warnings 'uninitialized';
 
 ###############################################################################
@@ -72,12 +70,12 @@ sub _worker_user_iterator {
       {
          local $\ = undef if (defined $\); local $/ = $LF if ($_I_FLG);
 
-         flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
+         $_DAT_LOCK->lock() if ($_lock_chn);
          print {$_DAT_W_SOCK} OUTPUT_U_ITR . $LF . $_chn . $LF;
          chomp($_len = <$_DAU_W_SOCK>);
 
          if ($_len < 0) {
-            flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
+            $_DAT_LOCK->unlock() if ($_lock_chn);
             return;
          }
 
@@ -86,7 +84,7 @@ sub _worker_user_iterator {
          chomp($_chunk_id = <$_DAU_W_SOCK>);
          read $_DAU_W_SOCK, $_, $_len;
 
-         flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
+         $_DAT_LOCK->unlock() if ($_lock_chn);
       }
 
       ## Call user function.

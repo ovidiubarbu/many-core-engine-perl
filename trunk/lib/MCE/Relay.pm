@@ -11,9 +11,12 @@ use warnings;
 
 ## no critic (Subroutines::ProhibitSubroutinePrototypes)
 
-our $VERSION = '1.600';
+our $VERSION = '1.699';
 
-use Socket qw( :crlf );
+no warnings 'threads';
+no warnings 'recursion';
+no warnings 'uninitialized';
+
 use bytes;
 
 use constant {
@@ -26,6 +29,7 @@ use constant {
 ##
 ###############################################################################
 
+my $LF = "\012";  Internals::SvREADONLY($LF, 1);
 my $_loaded;
 
 sub import {
@@ -37,9 +41,10 @@ sub import {
    }
    else {
       $\ = undef; require Carp;
-      Carp::croak
+      Carp::croak(
          "MCE::Relay cannot be used directly. Please consult the MCE::Relay\n".
-         "documentation for more information.\n\n";
+         "documentation for more information.\n\n"
+      );
    }
 
    return;
@@ -149,14 +154,12 @@ sub import {
 
 package MCE;
 
-use Socket qw( :crlf );
-use bytes;
-
-## Warnings are disabled to minimize bits of noise when user or OS signals
-## the script to exit. e.g. MCE_script.pl < infile | head
-
 no warnings 'threads';
+no warnings 'recursion';
 no warnings 'uninitialized';
+
+use Scalar::Util qw( weaken );
+use bytes;
 
 no warnings 'redefine';
 
@@ -320,7 +323,7 @@ MCE::Relay - Extends Many-Core Engine with relay capabilities
 
 =head1 VERSION
 
-This document describes MCE::Relay version 1.600
+This document describes MCE::Relay version 1.699
 
 =head1 SYNOPSIS
 
