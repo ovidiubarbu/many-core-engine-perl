@@ -14,16 +14,14 @@ package MCE::Core::Validation;
 use strict;
 use warnings;
 
-our $VERSION = '1.600';
+our $VERSION = '1.601';
 
 ## Items below are folded into MCE.
 
 package MCE;
 
-## Warnings are disabled to minimize bits of noise when user or OS signals
-## the script to exit. e.g. MCE_script.pl < infile | head
-
 no warnings 'threads';
+no warnings 'recursion';
 no warnings 'uninitialized';
 
 ###############################################################################
@@ -152,12 +150,6 @@ sub _validate_args_s {
               $_ref ne 'ARRAY' && $_ref ne 'HASH' && $_ref ne 'CODE' );
    }
 
-   if (defined $_s->{init_relay}) {
-      my $_ref = ref $_s->{init_relay};
-      _croak("$_tag: (init_relay) is not valid")
-         if ($_ref ne '' && $_ref ne 'ARRAY' && $_ref ne 'HASH');
-   }
-
    if (defined $_s->{sequence}) {
       my $_seq = $_s->{sequence};
 
@@ -177,9 +169,9 @@ sub _validate_args_s {
       _croak("$_tag: (end) is not defined for sequence")
          unless (defined $_seq->{end});
 
-      for (qw(begin end step)) {
-         _croak("$_tag: ($_) is not valid for sequence")
-            if (defined $_seq->{$_} && !looks_like_number($_seq->{$_}));
+      for my $_p (qw(begin end step)) {
+         _croak("$_tag: ($_p) is not valid for sequence")
+            if (defined $_seq->{$_p} && !looks_like_number($_seq->{$_p}));
       }
 
       unless (defined $_seq->{step}) {
@@ -210,11 +202,12 @@ sub _validate_args_s {
       _croak("$_tag: (delay) is not valid for interval")
          if (!looks_like_number($_i->{delay}) || $_i->{delay} < 0);
 
-      for (qw(max_nodes node_id)) {
-         _croak("$_tag: ($_) is not valid for interval")
-            if (defined $_i->{$_} && (
-               !looks_like_number($_i->{$_}) || int($_i->{$_}) != $_i->{$_} ||
-               $_i->{$_} < 1
+      for my $_p (qw(max_nodes node_id)) {
+         _croak("$_tag: ($_p) is not valid for interval")
+            if (defined $_i->{$_p} && (
+               !looks_like_number($_i->{$_p}) ||
+               int($_i->{$_p}) != $_i->{$_p}  ||
+               $_i->{$_p} < 1
             ));
       }
       $_i->{max_nodes} = 1 unless (exists $_i->{max_nodes});

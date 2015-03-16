@@ -167,6 +167,8 @@ my $mce = MCE->new(
       my ($mce, $chunk_ref, $chunk_id) = @_;
 
       if ($n_flag) {
+         ## Relays the total lines read.
+
          my $output = ''; my $line_count = ($$chunk_ref =~ tr/\n//);
          my $lines_read = MCE::relay { $_ += $line_count };
 
@@ -182,15 +184,14 @@ my $mce = MCE->new(
          ## write directly to STDOUT exclusively without any involvement
          ## from the manager process. The statements between relay_recv
          ## and relay run serially and most important orderly.
-         ##
-         ## (This is not recommended for sprintf above requiring extra
-         ## CPU time. Thus, better to run in parallel and send the
-         ## output to the manager process.)
+
+         ## STDERR/OUT flush automatically inside worker threads and
+         ## processes. Disable buffering on file handles otherwise.
 
          MCE->relay_recv;             ## my $val = MCE->relay_recv;
-                                      ## 0, relay below simply forwards
+                                      ## relay simply forwards 0 below
 
-         $| = 1; print $$chunk_ref;   ## exclusive access to STDOUT
+         print $$chunk_ref;           ## exclusive access to STDOUT
                                       ## important, flush immediately
 
          MCE->relay;

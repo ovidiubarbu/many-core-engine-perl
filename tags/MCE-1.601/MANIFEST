@@ -24,6 +24,7 @@ lib/MCE/Loop.pm
 lib/MCE/Map.pm
 lib/MCE/Mutex.pm
 lib/MCE/Queue.pm
+lib/MCE/Relay.pm
 lib/MCE/Signal.pm
 lib/MCE/Step.pm
 lib/MCE/Stream.pm
@@ -66,7 +67,6 @@ examples/matmult/strassen_49_f.pl
 examples/matmult/strassen_49_t.pl
 examples/matmult/strassen_perl.pl
 examples/mutex.pl
-examples/ping.pl
 examples/pipe1.pl
 examples/pipe2.pl
 examples/relay.pl

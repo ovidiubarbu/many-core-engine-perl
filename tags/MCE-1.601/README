@@ -3,7 +3,7 @@
  # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * #
 ###############################################################################
 
-This document describes MCE version 1.600.
+This document describes MCE version 1.601.
 
  Many-Core Engine (MCE) for Perl helps enable a new level of performance by
  maximizing all available cores. MCE spawns a pool of workers and therefore
@@ -75,7 +75,10 @@ INSTALLATION
 
  To install this module type the following:
 
-    perl Makefile.PL
+    MCE_INSTALL_TOOLS=1 perl Makefile.PL   (e.g. bin/mce_grep)
+
+    (or) perl Makefile.PL
+
     make
     make test
     make install

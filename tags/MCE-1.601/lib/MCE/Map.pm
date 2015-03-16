@@ -17,7 +17,9 @@ use Scalar::Util qw( looks_like_number );
 
 use MCE;
 
-our $VERSION = '1.600';
+our $VERSION  = '1.601';
+
+our @CARP_NOT = qw( MCE );
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -61,12 +63,12 @@ sub import {
          $MCE::TMP_DIR = $MCE::MCE->{tmp_dir} = shift;
          my $_e1 = 'is not a directory or does not exist';
          my $_e2 = 'is not writeable';
-         _croak("$_tag::import: ($MCE::TMP_DIR) $_e1") unless -d $MCE::TMP_DIR;
-         _croak("$_tag::import: ($MCE::TMP_DIR) $_e2") unless -w $MCE::TMP_DIR;
+         _croak($_tag."::import: ($MCE::TMP_DIR) $_e1") unless -d $MCE::TMP_DIR;
+         _croak($_tag."::import: ($MCE::TMP_DIR) $_e2") unless -w $MCE::TMP_DIR;
          next;
       }
 
-      _croak("$_tag::import: ($_argument) is not a valid module argument");
+      _croak($_tag."::import: ($_argument) is not a valid module argument");
    }
 
    $MAX_WORKERS = MCE::Util::_parse_max_workers($MAX_WORKERS);
@@ -339,15 +341,15 @@ sub run (&@) {
       );
 
       if (defined $_params) {
-         foreach (keys %{ $_params }) {
-            next if ($_ eq 'sequence_run');
-            next if ($_ eq 'input_data');
-            next if ($_ eq 'chunk_size');
+         for my $_p (keys %{ $_params }) {
+            next if ($_p eq 'sequence_run');
+            next if ($_p eq 'input_data');
+            next if ($_p eq 'chunk_size');
 
-            _croak("MCE::Map: ($_) is not a valid constructor argument")
-               unless (exists $MCE::_valid_fields_new{$_});
+            _croak("MCE::Map: ($_p) is not a valid constructor argument")
+               unless (exists $MCE::_valid_fields_new{$_p});
 
-            $_options{$_} = $_params->{$_};
+            $_options{$_p} = $_params->{$_p};
          }
       }
 
@@ -446,7 +448,7 @@ MCE::Map - Parallel map model similar to the native map function
 
 =head1 VERSION
 
-This document describes MCE::Map version 1.600
+This document describes MCE::Map version 1.601
 
 =head1 SYNOPSIS
 

@@ -1,6 +1,53 @@
 
 Revision history for MCE
 
+1.601 Sun Mar 15 21:00:00 EST 2015
+
+  [BUG FIXES]
+
+  * Updated Makefile.PL allowing installation of bin/mce_grep (RT#102040).
+    Running (MCE_INSTALL_TOOLS=1 perl Makefile.PL) installs bin/mce_grep.
+
+  * Ensure MCE instances spawned by workers have shutdown before leaving.
+  * An exiting forked non-MCE process will not cause the worker to exit.
+
+  * Fixed sockets not closing immediately in Cygwin and Windows.
+  * Fixed a pod error in MCE::Mutex.
+
+  * Fixed a rare condition where socket handles for MCE::Mutex and
+    MCE::Queue were closing pre-maturely when using threads.
+
+  * Fixed an undefined variable inside croak statements in MCE Models'
+    import subroutine.
+
+  * Fixed automatic shutdown due to loading threads and specifying
+    use_threads => 0 with workers persisting before exiting the script.
+
+  [ENHANCEMENTS]
+
+  * Moved relay methods, introduced in 1.600, from MCE to MCE::Relay.
+    The MCE init_relay option loads and enables MCE::Relay automatically.
+
+  * Captured metrics from Linux (previously OS X) for forchunk.pl,
+    foreach.pl, and forseq.pl. Updated Examples.pod.
+
+  * Default to 'auto' for max_workers in bin/mce_grep, examples/egrep.pl,
+    forchunk.pl, foreach.pl, forseq.pl, iterator.pl, and wc.pl.
+
+  * Moved _create_socket_pair from MCE to MCE::Util as _make_socket_pair.
+    Added _destroy_sockets. Updated MCE, Mutex, and Queue to use MCE::Util.
+
+  * Added a CARP_NOT line to MCE Models.
+  * Added support for ->next and ->last from any sub-tasks in MCE::Step.
+  * Reverted a small change applied in 1.600 to ->do and ->gather.
+  * The synchronize method in Mutex is wantarray aware.
+  * Updated POD header lines for method names; from =item to =head2.
+  * Workers now set STDERR and STDOUT to flush automatically.
+
+  [NEW FEATURES]
+
+  * Added ->pid method to MCE.
+
 1.600 Sat Jan 31 20:00:00 EST 2015
 
   [BUG FIXES]
