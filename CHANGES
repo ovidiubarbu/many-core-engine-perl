@@ -1,7 +1,7 @@
 
 Revision history for MCE
 
-1.699 Sun Mar 15 22:00:00 EST 2015
+1.699 Mon Mar 16 21:00:00 EST 2015
 
   [ TODO: before releasing MCE 1.700 ]
 
@@ -11,10 +11,10 @@ Revision history for MCE
 
   [ENHANCEMENTS]
 
-  * IPC locking is entirely driven by MCE::Mutex. Thus, zero file locking.
+  * Locking for IPC is handled by MCE::Mutex 100%. Thus, zero file locking.
     This reduces the number of file handles needed by MCE allowing for more
-    threads when running threads. Cygwin also benefits from not having to
-    do slow file locking when running more than 8 workers.
+    threads when running threads. Cygwin now runs better from not having
+    to do file locking.
 
   [NEW FEATURES]
 
@@ -31,7 +31,26 @@ Revision history for MCE
   * Added ->enq, ->enqp, and ->await methods to MCE::Step.
   * Added ->await method to MCE::Queue.
 
+1.602 Mon Mar 16 20:00:00 EST 2015
+
+  This completes all the backported fixes found during development of 1.699.
+
+  [BUG FIXES]
+
+  * Updated die handler inside MCE::Core::Worker and MCE::Signal (RT#102802)
+    Bug reported by Dmitry Karasik.
+
+  [ENHANCEMENTS]
+
+  * MCE child processes call CORE::exit during exiting; previously CORE::kill.
+  * Improved IPC stability on Windows and Cygwin.
+
+  * Multiple calls to mutex->lock by the same process or thread is now safe.
+    The mutex will remain locked until mutex->unlock is called.
+
 1.601 Sun Mar 15 21:00:00 EST 2015
+
+  This release is attributed to the many use cases sent by George Bouras.
 
   [BUG FIXES]
 
