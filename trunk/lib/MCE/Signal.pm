@@ -409,9 +409,9 @@ sub _die_handler {
 
    shift @_ if (defined $_[0] && $_[0] eq 'MCE::Signal');
 
-   if (!defined $^S || $^S) {                             ## Perl state
-      my $_lmsg = Carp::longmess();
-      if ($_lmsg =~ /^[^\n]+\n\teval /) {                 ## In eval?
+   if (!defined $^S || $^S) {                          ## Perl state
+      my  $_lm = Carp::longmess();                     ## Inside eval?
+      if ($_lm =~ /^[^\n]+\n\teval / || $_lm =~ /\n\teval [^\n]+\n\tTry/) {
          CORE::die(@_);
       }
    }
@@ -584,14 +584,6 @@ L<MCE|MCE>
 =head1 AUTHOR
 
 Mario E. Roy, S<E<lt>marioeroy AT gmail DOT comE<gt>>
-
-=head1 LICENSE
-
-This program is free software; you can redistribute it and/or modify it
-under the terms of either: the GNU General Public License as published
-by the Free Software Foundation; or the Artistic License.
-
-See L<http://dev.perl.org/licenses/> for more information.
 
 =cut
 

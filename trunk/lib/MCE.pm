@@ -483,7 +483,7 @@ sub spawn {
    return $self if ($self->{_spawned});
 
    lock $_MCE_LOCK if ($_has_threads);            ## Obtain MCE lock.
-   lock $_WIN_LOCK if ($_is_MSWin32);
+   lock $_WIN_LOCK if ($_is_winenv);
 
    my $_die_handler  = $SIG{__DIE__};  $SIG{__DIE__}  = \&_die;
    my $_warn_handler = $SIG{__WARN__}; $SIG{__WARN__} = \&_warn;
@@ -641,8 +641,6 @@ sub spawn {
    $SIG{__WARN__} = $_warn_handler;
 
    $MCE = $self unless (defined $MCE::Shared::_HDLR);
-
-   sleep 0.005 if ($_is_winenv);
 
    return $self;
 }
@@ -1019,8 +1017,8 @@ sub run {
       );
 
       local $\ = undef; local $/ = $LF;              ## Obtain MCE or RUN lock.
-      lock $_MCE_LOCK if ($_has_threads &&  $_is_MSWin32);
-      lock $_RUN_LOCK if ($_has_threads && !$_is_MSWin32);
+      lock $_MCE_LOCK if ($_has_threads &&  $_is_winenv);
+      lock $_RUN_LOCK if ($_has_threads && !$_is_winenv);
 
       my ($_frozen_nodata, $_wid, %_task0_wids);
       my $_BSE_W_SOCK    = $self->{_bse_w_sock};
@@ -1256,9 +1254,9 @@ sub shutdown {
       print {$_COM_R_SOCK} '_exit' . $LF; <$_COM_R_SOCK>;
    }
 
-   $_COM_R_SOCK = undef;
-
    sleep 0.005 if ($_is_winenv);
+
+   $_COM_R_SOCK = undef;
 
    MCE::Util::_destroy_sockets( $self, qw(
       _bse_w_sock _bse_r_sock _bsb_w_sock _bsb_r_sock _com_w_sock
@@ -1304,10 +1302,6 @@ sub shutdown {
 
    $self->{_total_running} = $self->{_total_exited} = 0;
    $self->{_total_workers} = 0;
-
-   if (($self->{_mce_tid} ne '' && $self->{_mce_tid} ne '0') || $_is_winenv) {
-      sleep $_is_winenv ? 0.082 : 0.008;
-   }
 
    return;
 }
@@ -1451,7 +1445,7 @@ sub exit {
    _croak('MCE::exit: method cannot be called by the manager process')
       unless ($self->{_wid});
 
-   delete $_mce_spawned{ $self->{_mce_sid} };
+   _clear_session( $self->{_mce_sid} );
 
    my $_chn        = $self->{_chn};
    my $_DAT_LOCK   = $self->{_dat_lock};
@@ -1497,10 +1491,7 @@ sub exit {
 
    threads->exit($_exit_status) if ($_has_threads && threads->can('exit'));
 
-   CORE::kill(9, $$) unless $_is_winenv;
    CORE::exit($_exit_status);
-
-   return;
 }
 
 ## Worker immediately exits the chunking loop.
@@ -1853,7 +1844,7 @@ sub _worker_wrap {
    }
 
    ## Begin worker.
-   _worker_main(@_args, \@_plugin_worker_init, $_has_threads, $_is_MSWin32);
+   _worker_main(@_args, \@_plugin_worker_init, $_has_threads, $_is_winenv);
 
    sleep 0.005 if ($_is_winenv);
 
@@ -1866,10 +1857,7 @@ sub _worker_wrap {
       threads->exit(0) if ($_is_thread && threads->can('exit'));
    }
 
-   CORE::kill(9, $$) unless $_is_winenv;
    CORE::exit(0);
-
-   return;
 }
 
 ###############################################################################
