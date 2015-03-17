@@ -21,7 +21,7 @@ use Scalar::Util qw( looks_like_number );
 use MCE::Util qw( $LF );
 use bytes;
 
-our $VERSION = '1.601';
+our $VERSION = '1.602';
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -95,7 +95,6 @@ use constant {
 
    MAX_DQ_DEPTH => 192,               ## Maximum dequeue notifications allowed
 
-   OUTPUT_W_QUE => 'W~QUE',           ## Await from the queue
    OUTPUT_C_QUE => 'C~QUE',           ## Clear the queue
 
    OUTPUT_A_QUE => 'A~QUE',           ## Enqueue into queue (array)
@@ -628,7 +627,7 @@ sub _heap_insert_high {
 
 {
    my ($_MCE, $_DAU_R_SOCK_REF, $_DAU_R_SOCK, $_cnt, $_i, $_id);
-   my ($_len, $_p, $_t, $_Q, $_pending);
+   my ($_len, $_p, $_Q, $_pending);
 
    my %_output_function = (
 
@@ -1669,7 +1668,7 @@ MCE::Queue - Hybrid (normal and priority) queues for Many-Core Engine
 
 =head1 VERSION
 
-This document describes MCE::Queue version 1.601
+This document describes MCE::Queue version 1.602
 
 =head1 SYNOPSIS
 
@@ -2054,14 +2053,6 @@ L<MCE|MCE>
 =head1 AUTHOR
 
 Mario E. Roy, S<E<lt>marioeroy AT gmail DOT comE<gt>>
-
-=head1 LICENSE
-
-This program is free software; you can redistribute it and/or modify it
-under the terms of either: the GNU General Public License as published
-by the Free Software Foundation; or the Artistic License.
-
-See L<http://dev.perl.org/licenses/> for more information.
 
 =cut
 

@@ -15,7 +15,7 @@ use Time::HiRes qw( sleep time );
 use Fcntl qw( :flock O_RDONLY );
 use base qw( Exporter );
 
-our $VERSION = '1.601';
+our $VERSION = '1.602';
 
 our ($display_die_with_localtime, $display_warn_with_localtime);
 our ($has_threads, $main_proc_id, $prog_name, $tmp_dir);
@@ -409,9 +409,9 @@ sub _die_handler {
 
    shift @_ if (defined $_[0] && $_[0] eq 'MCE::Signal');
 
-   if (!defined $^S || $^S) {                             ## Perl state
-      my $_lmsg = Carp::longmess();
-      if ($_lmsg =~ /^[^\n]+\n\teval /) {                 ## In eval?
+   if (!defined $^S || $^S) {                          ## Perl state
+      my  $_lm = Carp::longmess();                     ## Inside eval?
+      if ($_lm =~ /^[^\n]+\n\teval / || $_lm =~ /\n\teval [^\n]+\n\tTry/) {
          CORE::die(@_);
       }
    }
@@ -483,7 +483,7 @@ MCE::Signal - Temporary directory creation/cleanup and signal handling
 
 =head1 VERSION
 
-This document describes MCE::Signal version 1.601
+This document describes MCE::Signal version 1.602
 
 =head1 SYNOPSIS
 
@@ -584,14 +584,6 @@ L<MCE|MCE>
 =head1 AUTHOR
 
 Mario E. Roy, S<E<lt>marioeroy AT gmail DOT comE<gt>>
-
-=head1 LICENSE
-
-This program is free software; you can redistribute it and/or modify it
-under the terms of either: the GNU General Public License as published
-by the Free Software Foundation; or the Artistic License.
-
-See L<http://dev.perl.org/licenses/> for more information.
 
 =cut
 

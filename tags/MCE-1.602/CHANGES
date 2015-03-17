@@ -1,7 +1,26 @@
 
 Revision history for MCE
 
+1.602 Mon Mar 16 20:00:00 EST 2015
+
+  This completes all the backported fixes found during development of 1.699.
+
+  [BUG FIXES]
+
+  * Updated die handler inside MCE::Core::Worker and MCE::Signal (RT#102802)
+    Bug reported by Dmitry Karasik.
+
+  [ENHANCEMENTS]
+
+  * MCE child processes call CORE::exit during exiting; previously CORE::kill.
+  * Improved IPC stability on Windows and Cygwin.
+
+  * Multiple calls to mutex->lock by the same process or thread is now safe.
+    The mutex will remain locked until mutex->unlock is called.
+
 1.601 Sun Mar 15 21:00:00 EST 2015
+
+  This release is attributed to the many use cases sent by George Bouras.
 
   [BUG FIXES]
 

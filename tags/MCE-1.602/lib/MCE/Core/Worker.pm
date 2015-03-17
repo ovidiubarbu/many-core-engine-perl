@@ -14,7 +14,7 @@ package MCE::Core::Worker;
 use strict;
 use warnings;
 
-our $VERSION = '1.601';
+our $VERSION = '1.602';
 
 ## Items below are folded into MCE.
 
@@ -321,7 +321,6 @@ use bytes;
       die 'Private method called' unless (caller)[0]->isa( ref $self );
 
       $_dest = $_len = $_task_id = $_user_func = $_value = $_want_id = undef;
-
       $_DAT_LOCK = $_DAT_W_SOCK = $_DAU_W_SOCK = $_lock_chn = $_chn = undef;
       $_tag = undef;
 
@@ -587,7 +586,7 @@ sub _worker_loop {
 sub _worker_main {
 
    my ( $self, $_wid, $_task, $_task_id, $_task_wid, $_params,
-        $_plugin_worker_init, $_has_threads, $_is_MSWin32 ) = @_;
+        $_plugin_worker_init, $_has_threads, $_is_winenv ) = @_;
 
    @_ = ();
 
@@ -602,8 +601,8 @@ sub _worker_main {
    ## Define DIE handler.
    local $SIG{__DIE__} = sub {
       if (!defined $^S || $^S) {                          ## Perl state
-         my $_lmsg = Carp::longmess();
-         if ($_lmsg =~ /^[^\n]+\n\teval /) {              ## In eval?
+         my  $_lm = Carp::longmess();                     ## Inside eval?
+         if ($_lm =~ /^[^\n]+\n\teval / || $_lm =~ /\n\teval [^\n]+\n\tTry/) {
             CORE::die(@_);
          }
       }
@@ -689,7 +688,7 @@ sub _worker_main {
    if (defined $_params) {
       sleep 0.002; _worker_do($self, $_params); undef $_params;
    } else {
-      lock $MCE::_WIN_LOCK if ($_is_MSWin32);
+      lock $MCE::_WIN_LOCK if ($_is_winenv);
    }
 
    ## Enter worker loop. Clear worker session after running.

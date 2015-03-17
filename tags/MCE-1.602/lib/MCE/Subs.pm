@@ -15,7 +15,7 @@ use warnings;
 use MCE;
 use MCE::Relay;
 
-our $VERSION = '1.601';
+our $VERSION = '1.602';
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -202,7 +202,7 @@ MCE::Subs - Exports functions mapped directly to MCE methods
 
 =head1 VERSION
 
-This document describes MCE::Subs version 1.601
+This document describes MCE::Subs version 1.602
 
 =head1 SYNOPSIS
 
@@ -388,14 +388,6 @@ L<MCE|MCE>
 =head1 AUTHOR
 
 Mario E. Roy, S<E<lt>marioeroy AT gmail DOT comE<gt>>
-
-=head1 LICENSE
-
-This program is free software; you can redistribute it and/or modify it
-under the terms of either: the GNU General Public License as published
-by the Free Software Foundation; or the Artistic License.
-
-See L<http://dev.perl.org/licenses/> for more information.
 
 =cut
 
