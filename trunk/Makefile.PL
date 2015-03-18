@@ -71,6 +71,10 @@ WriteMakefile(
                'file'    => 'lib/MCE.pm',
                'version' => '1.699'
             },
+            'MCE::Candy' => {
+               'file'    => 'lib/MCE/Candy.pm',
+               'version' => '1.699'
+            },
             'MCE::Core::Input::Generator' => {
                'file'    => 'lib/MCE/Core/Input/Generator.pm',
                'version' => '1.699'

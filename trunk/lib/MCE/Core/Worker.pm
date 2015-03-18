@@ -604,7 +604,7 @@ sub _worker_loop {
 sub _worker_main {
 
    my ( $self, $_wid, $_task, $_task_id, $_task_wid, $_params,
-        $_plugin_worker_init, $_has_threads, $_is_winenv ) = @_;
+        $_plugin_worker_init, $_is_winenv ) = @_;
 
    @_ = ();
 
@@ -618,9 +618,18 @@ sub _worker_main {
 
    ## Define DIE handler.
    local $SIG{__DIE__} = sub {
-      if (!defined $^S || $^S) {                          ## Perl state
-         my  $_lm = Carp::longmess();                     ## Inside eval?
-         if ($_lm =~ /^[^\n]+\n\teval / || $_lm =~ /\n\teval [^\n]+\n\tTry/) {
+      if (!defined $^S || $^S) {
+         if ( ($INC{'threads.pm'} && threads->tid() != 0) ||
+               $ENV{'PERL_IPERL_RUNNING'}
+         ) {
+            # thread env or running inside IPerl, check stack trace
+            my  $_t = Carp::longmess();
+            if ($_t =~ /^[^\n]+\n\teval / || $_t =~ /\n\teval [^\n]+\n\tTry/) {
+               CORE::die(@_);
+            }
+         }
+         else {
+            # normal env, trust $^S
             CORE::die(@_);
          }
       }
@@ -634,7 +643,7 @@ sub _worker_main {
    my $_use_threads = (defined $_task->{use_threads})
       ? $_task->{use_threads} : $self->{use_threads};
 
-   if ($_has_threads && $_use_threads) {
+   if ($INC{'threads.pm'} && $_use_threads) {
       $self->{_exit_pid} = 'TID_' . threads->tid();
    } else {
       $self->{_exit_pid} = 'PID_' . $$;

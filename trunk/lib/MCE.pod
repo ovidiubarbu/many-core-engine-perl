@@ -40,9 +40,13 @@ Utility functions for Many-Core Engine.
 
 =head1 MCE EXTRAS
 
-There are 5 add-on modules.
+There are 6 add-on modules.
 
 =over 3
+
+=item L<MCE::Candy|MCE::Candy>
+
+A collection of sugar methods for Many-Core Engine.
 
 =item L<MCE::Mutex|MCE::Mutex>
 
@@ -58,7 +62,7 @@ threads.
 =item L<MCE::Relay|MCE::Relay>
 
 Enables workers to receive and pass on information orderly with zero
-involvement from the manager process while running.
+involvement by the manager process while running.
 
 =item L<MCE::Shared|MCE::Shared>
 
@@ -142,9 +146,7 @@ Mario E. Roy, S<E<lt>marioeroy AT gmail DOT comE<gt>>
 
 Copyright (C) 2012-2015 by Mario E. Roy
 
-This program is free software; you can redistribute it and/or modify it
-under the terms of either: the GNU General Public License as published
-by the Free Software Foundation; or the Artistic License.
+MCE is released under the same license as Perl.
 
 See L<http://dev.perl.org/licenses/> for more information.
 

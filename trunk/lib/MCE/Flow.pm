@@ -930,7 +930,7 @@ Input data can be defined using a list.
 =item mce_flow_f sub { code }, file
 
 The fastest of these is the /path/to/file. Workers communicate the next offset
-position among themselves without any interaction from the manager process.
+position among themselves with zero interaction by the manager process.
 
    mce_flow_f sub { $_ }, "/path/to/file";
    mce_flow_f sub { $_ }, $file_handle;

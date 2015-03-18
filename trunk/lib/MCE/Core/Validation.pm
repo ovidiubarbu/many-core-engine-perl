@@ -36,8 +36,6 @@ sub _validate_args {
 
    @_ = ();
 
-   die 'Private method called' unless (caller)[0]->isa( ref $_s );
-
    my $_tag = 'MCE::_validate_args';
 
    if (defined $_s->{input_data} && ref $_s->{input_data} eq '') {
@@ -106,8 +104,6 @@ sub _validate_args_s {
    my $self = $_[0]; my $_s = $_[1] || $self;
 
    @_ = ();
-
-   die 'Private method called' unless (caller)[0]->isa( ref $self );
 
    my $_tag = 'MCE::_validate_args_s';
 
@@ -229,8 +225,6 @@ sub _validate_runstate {
    my $self = $_[0]; my $_tag = $_[1];
 
    @_ = ();
-
-   die 'Private method called' unless (caller)[0]->isa( ref $self );
 
    _croak("$_tag: method cannot be called by the worker process")
       if ($self->{_wid});
