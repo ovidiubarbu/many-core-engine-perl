@@ -433,7 +433,7 @@ sub _mce_w_init {
       $_chn = $_MCE->{_wid} % $MCE::Shared::_HDLR->{_data_channels} + 1;
 
      ($_MCE, $_lock_chn) = ($MCE::Shared::_HDLR, 1);
-      $_DAT_LOCK = $_MCE->{'_cmutex_'.$_chn};
+      $_DAT_LOCK = $_MCE->{'_mutex_'.$_chn};
    }
 
    $_DAT_W_SOCK  = $_MCE->{_dat_w_sock}->[0];

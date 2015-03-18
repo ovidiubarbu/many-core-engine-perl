@@ -1,7 +1,7 @@
 
 Revision history for MCE
 
-1.699 Tue Mar 17 22:00:00 EST 2015
+1.699 Wed Mar 18 22:00:00 EST 2015
 
   [ TODO: before releasing MCE 1.700 ]
 
@@ -11,10 +11,15 @@ Revision history for MCE
 
   [ENHANCEMENTS]
 
-  * Locking for IPC is handled by MCE::Mutex 100%. Thus, zero file locking.
-    This reduces the number of file handles needed by MCE allowing for more
-    threads when running threads. Cygwin now runs better from not having
-    to do file locking.
+  * Locking for IPC is now handled by MCE::Mutex. Gone is file locking.
+    This allows for more threads per process due to lesser consumption on
+    file handles. This solves the slow file locking behavior seen in
+    Cygwin, especially when running with many workers.
+
+  * The MCE::Flow and MCE::Step Models can take an anonymous array for
+    specifying use_threads uniquely for each sub-task. Mixing threads and
+    processes is allowed across the board with this release. MCE on Cygwin
+    has finally reached 100% parity with MCE on a UNIX OS.
 
   [NEW FEATURES]
 

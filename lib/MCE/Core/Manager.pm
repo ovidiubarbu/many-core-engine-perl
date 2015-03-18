@@ -73,8 +73,6 @@ sub _output_loop {
 
    @_ = ();
 
-   die 'Private method called' unless (caller)[0]->isa( ref $self );
-
    my (
       $_aborted, $_eof_flag, $_syn_flag, %_sendto_fhs, $_want_id,
       $_callback, $_chunk_id, $_chunk_size, $_fd, $_file, $_flush_file,

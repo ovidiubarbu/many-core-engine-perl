@@ -30,7 +30,7 @@ our @CARP_NOT = qw( MCE );
 my $MAX_WORKERS = 'auto';
 my $CHUNK_SIZE  = 'auto';
 
-my ($_params, @_prev_c, @_prev_n, @_prev_w, @_user_tasks);
+my ($_params, @_prev_c, @_prev_n, @_prev_t, @_prev_w, @_user_tasks);
 my ($_MCE, $_loaded); my $_tag = 'MCE::Flow';
 
 sub import {
@@ -124,7 +124,9 @@ sub finish () {
       MCE::_save_state; $_MCE->shutdown(); MCE::_restore_state;
    }
 
-   @_user_tasks = (); @_prev_w = (); @_prev_n = (); @_prev_c = ();
+   @_prev_c = (); @_prev_n = (); @_prev_t = (); @_prev_w = ();
+
+   @_user_tasks = ();
 
    return;
 }
@@ -268,27 +270,32 @@ sub run (@) {
 
    ## -------------------------------------------------------------------------
 
-   my (@_code, @_name, @_wrks); my $_init_mce = 0; my $_pos = 0;
+   my (@_code, @_name, @_thrs, @_wrks); my $_init_mce = 0; my $_pos = 0;
 
    while (ref $_[0] eq 'CODE') {
       push @_code, $_[0];
 
       push @_name, (defined $_params && ref $_params->{task_name} eq 'ARRAY')
          ? $_params->{task_name}->[$_pos] : undef;
+      push @_thrs, (defined $_params && ref $_params->{use_threads} eq 'ARRAY')
+         ? $_params->{use_threads}->[$_pos] : undef;
       push @_wrks, (defined $_params && ref $_params->{max_workers} eq 'ARRAY')
          ? $_params->{max_workers}->[$_pos] : undef;
 
-      $_init_mce = 1
-         if (!defined $_prev_c[$_pos] || $_prev_c[$_pos] != $_code[$_pos]);
+      if (!defined $_prev_c[$_pos] || $_prev_c[$_pos] != $_code[$_pos]) {
+         $_init_mce = 1;
+      }
 
       {
          no warnings;
          $_init_mce = 1 if ($_prev_n[$_pos] ne $_name[$_pos]);
+         $_init_mce = 1 if ($_prev_t[$_pos] ne $_thrs[$_pos]);
          $_init_mce = 1 if ($_prev_w[$_pos] ne $_wrks[$_pos]);
       }
 
       $_prev_c[$_pos] = $_code[$_pos];
       $_prev_n[$_pos] = $_name[$_pos];
+      $_prev_t[$_pos] = $_thrs[$_pos];
       $_prev_w[$_pos] = $_wrks[$_pos];
 
       shift; $_pos++;
@@ -297,6 +304,7 @@ sub run (@) {
    if (defined $_prev_c[$_pos]) {
       pop @_prev_c for ($_pos .. @_prev_c - 1);
       pop @_prev_n for ($_pos .. @_prev_n - 1);
+      pop @_prev_t for ($_pos .. @_prev_t - 1);
       pop @_prev_w for ($_pos .. @_prev_w - 1);
 
       $_init_mce = 1;
@@ -344,22 +352,24 @@ sub run (@) {
 
    if ($_init_mce) {
       $_MCE->shutdown() if (defined $_MCE);
-      _gen_user_tasks(\@_code, \@_name, \@_wrks);
+      _gen_user_tasks(\@_code, \@_name, \@_thrs, \@_wrks);
 
       my %_options = (
          max_workers => $_max_workers, task_name => $_tag,
-         user_tasks => \@_user_tasks,
+         user_tasks  => \@_user_tasks,
       );
 
       if (defined $_params) {
          local $_; my $_p = $_params;
 
          for (keys %{ $_p }) {
-            next if ($_ eq 'sequence_run');
             next if ($_ eq 'max_workers' && ref $_p->{max_workers} eq 'ARRAY');
-            next if ($_ eq 'task_name' && ref $_p->{task_name} eq 'ARRAY');
-            next if ($_ eq 'input_data');
+            next if ($_ eq 'task_name'   && ref $_p->{task_name}   eq 'ARRAY');
+            next if ($_ eq 'use_threads' && ref $_p->{use_threads} eq 'ARRAY');
+
             next if ($_ eq 'chunk_size');
+            next if ($_ eq 'input_data');
+            next if ($_ eq 'sequence_run');
 
             _croak("MCE::Flow: ($_) is not a valid constructor argument")
                unless (exists $MCE::_valid_fields_new{$_});
@@ -439,13 +449,14 @@ sub _croak {
 
 sub _gen_user_tasks {
 
-   my ($_code_ref, $_name_ref, $_wrks_ref) = @_;
+   my ($_code_ref, $_name_ref, $_thrs_ref, $_wrks_ref) = @_;
 
    @_user_tasks = ();
 
    for (my $_i = 0; $_i < @{ $_code_ref }; $_i++) {
       push @_user_tasks, {
          task_name   => $_name_ref->[$_i],
+         use_threads => $_thrs_ref->[$_i],
          max_workers => $_wrks_ref->[$_i],
          user_func   => $_code_ref->[$_i]
       }
@@ -601,8 +612,8 @@ between sub-tasks. Thus, the least overhead.
    }
 
 In summary, MCE::Flow builds out a MCE instance behind the scene and starts
-running. Both task_name and max_workers (not shown) can take an anonymous
-array for specifying the values uniquely for each sub-task.
+running. The task_name (shown), max_workers, and use_threads options can take
+an anonymous array for specifying the values uniquely for each sub-task.
 
    my @a;
 
@@ -850,18 +861,20 @@ both gather and bounds_only options may be specified when calling init
 =back
 
 Like with MCE::Flow::init above, MCE options may be specified using an
-anonymous hash for the first argument. Notice how both max_workers and
-task_name can take an anonymous array for setting values uniquely
-for each code block.
+anonymous hash for the first argument. Notice how task_name, max_workers,
+and use_threads can take an anonymous array for setting uniquely for
+each code block.
 
 Unlike MCE::Stream which processes from right-to-left, MCE::Flow begins
 with the first code block, thus processing from left-to-right.
 
+   use threads;
    use MCE::Flow;
 
    my @a = mce_flow {
       task_name   => [ 'a', 'b', 'c' ],
       max_workers => [  3,   4,   2, ],
+      use_threads => [  1,   0,   0, ],
 
       user_end => sub {
          my ($mce, $task_id, $task_name) = @_;
