@@ -17,7 +17,7 @@ use Scalar::Util qw( looks_like_number );
 
 use MCE;
 
-our $VERSION  = '1.602';
+our $VERSION  = '1.603';
 
 our @CARP_NOT = qw( MCE );
 
@@ -485,7 +485,7 @@ MCE::Flow - Parallel flow model for building creative applications
 
 =head1 VERSION
 
-This document describes MCE::Flow version 1.602
+This document describes MCE::Flow version 1.603
 
 =head1 DESCRIPTION
 
@@ -930,7 +930,7 @@ Input data can be defined using a list.
 =item mce_flow_f sub { code }, file
 
 The fastest of these is the /path/to/file. Workers communicate the next offset
-position among themselves without any interaction from the manager process.
+position among themselves with zero interaction by the manager process.
 
    mce_flow_f sub { $_ }, "/path/to/file";
    mce_flow_f sub { $_ }, $file_handle;

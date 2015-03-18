@@ -16,7 +16,7 @@ use warnings;
 
 ## no critic (TestingAndDebugging::ProhibitNoStrict)
 
-our $VERSION = '1.602';
+our $VERSION = '1.603';
 
 ## Items below are folded into MCE.
 

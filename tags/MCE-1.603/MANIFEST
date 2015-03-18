@@ -8,6 +8,7 @@ README
 bin/mce_grep
 lib/MCE.pm
 lib/MCE.pod
+lib/MCE/Candy.pm
 lib/MCE/Core.pod
 lib/MCE/Core/Input/Generator.pm
 lib/MCE/Core/Input/Handle.pm

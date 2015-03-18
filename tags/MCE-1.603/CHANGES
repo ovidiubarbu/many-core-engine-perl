@@ -1,13 +1,27 @@
 
 Revision history for MCE
 
+1.603 Tue Mar 17 21:00:00 EST 2015
+
+  [ENHANCEMENTS]
+
+  * A safer solution by Dmitry Karasik for the die handler in MCE::Signal
+    and MCE::Core::Worker.
+
+  * Moved ->forchunk, ->foreach, and ->forseq sugar methods to MCE::Candy.
+    Stubs exist in MCE. Thus, no breakage to existing apps.
+
+  * Removed the link to MCE::Shared on the main page. I decided to backport
+    all the fixes into 1.6. The MCE::Shared link was missed and requires
+    the upcoming 1.7 release.
+
 1.602 Mon Mar 16 20:00:00 EST 2015
 
   This completes all the backported fixes found during development of 1.699.
 
   [BUG FIXES]
 
-  * Updated die handler inside MCE::Core::Worker and MCE::Signal (RT#102802)
+  * Updated die handler in MCE::Core::Worker and MCE::Signal (RT#102802)
     Bug reported by Dmitry Karasik.
 
   [ENHANCEMENTS]
