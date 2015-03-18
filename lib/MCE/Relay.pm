@@ -365,7 +365,7 @@ This document describes MCE::Relay version 1.699
 =head1 DESCRIPTION
 
 This module enables workers to receive and pass on information orderly with
-zero involvement from the manager process while running. The module is loaded
+zero involvement by the manager process while running. The module is loaded
 automatically when init_relay is specified.
 
 All workers must participate when relaying data. Calling relay more than once

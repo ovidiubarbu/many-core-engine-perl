@@ -193,10 +193,7 @@ sub import {
    }
 
    ## Automatically spawn threads when threads is present, otherwise processes.
-   unless (defined $_has_threads) {
-      $_has_threads = (defined $threads::VERSION) ? 1 : 0;
-      $MCE::Signal::has_threads = $_has_threads;
-   }
+   $_has_threads = ($INC{'threads.pm'}) ? 1 : 0;
 
    ## Preload essential modules.
    require MCE::Core::Validation;
@@ -334,14 +331,8 @@ sub _attach_plugin {
 ## Functions for saving and restoring $MCE. This is mainly helpful for
 ## modules using MCE. e.g. MCE::Map.
 
-sub _save_state {
-   $_prev_mce = $MCE;
-   return;
-}
-sub _restore_state {
-   $MCE = $_prev_mce; $_prev_mce = undef;
-   return;
-}
+sub _restore_state { $MCE = $_prev_mce; $_prev_mce = undef; return; }
+sub _save_state    { $_prev_mce = $MCE; return; }
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -459,7 +450,7 @@ sub new {
    $self{_lock_chn} = ($_total_workers > DATA_CHANNELS)
       ? 1 : 0;
 
-   $MCE = \%self unless (defined $MCE::Shared::_HDLR);
+   $MCE = \%self if ($MCE->{_wid} == 0);
 
    return \%self;
 }
@@ -483,7 +474,7 @@ sub spawn {
    return $self if ($self->{_spawned});
 
    lock $_MCE_LOCK if ($_has_threads);            ## Obtain MCE lock.
-   lock $_WIN_LOCK if ($_is_winenv);
+   lock $_WIN_LOCK if ($_has_threads && $_is_winenv);
 
    my $_die_handler  = $SIG{__DIE__};  $SIG{__DIE__}  = \&_die;
    my $_warn_handler = $SIG{__WARN__}; $SIG{__WARN__} = \&_warn;
@@ -640,106 +631,30 @@ sub spawn {
    $SIG{__DIE__}  = $_die_handler;
    $SIG{__WARN__} = $_warn_handler;
 
-   $MCE = $self unless (defined $MCE::Shared::_HDLR);
+   $MCE = $self if ($MCE->{_wid} == 0);
 
    return $self;
 }
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Forchunk, foreach, and forseq methods.
+## Forchunk, foreach, and forseq sugar methods.
 ##
 ###############################################################################
 
 sub forchunk {
-
-   my $x = shift; my $self = ref($x) ? $x : $MCE;
-   my $_input_data = $_[0];
-
-   _validate_runstate($self, 'MCE::forchunk');
-
-   my ($_user_func, $_params_ref);
-
-   if (ref $_[1] eq 'HASH') {
-      $_user_func = $_[2]; $_params_ref = $_[1];
-   } else {
-      $_user_func = $_[1]; $_params_ref = {};
-   }
-
-   @_ = ();
-
-   _croak('MCE::forchunk: (input_data) is not specified')
-      unless (defined $_input_data);
-   _croak('MCE::forchunk: (code_block) is not specified')
-      unless (defined $_user_func);
-
-   $_params_ref->{input_data} = $_input_data;
-   $_params_ref->{user_func}  = $_user_func;
-
-   $self->run(1, $_params_ref);
-
-   return $self;
+   require MCE::Candy unless (defined $MCE::Candy::VERSION);
+   return  MCE::Candy::forchunk(@_);
 }
 
 sub foreach {
-
-   my $x = shift; my $self = ref($x) ? $x : $MCE;
-   my $_input_data = $_[0];
-
-   _validate_runstate($self, 'MCE::foreach');
-
-   my ($_user_func, $_params_ref);
-
-   if (ref $_[1] eq 'HASH') {
-      $_user_func = $_[2]; $_params_ref = $_[1];
-   } else {
-      $_user_func = $_[1]; $_params_ref = {};
-   }
-
-   @_ = ();
-
-   _croak('MCE::foreach: (input_data) is not specified')
-      unless (defined $_input_data);
-   _croak('MCE::foreach: (code_block) is not specified')
-      unless (defined $_user_func);
-
-   $_params_ref->{chunk_size} = 1;
-   $_params_ref->{input_data} = $_input_data;
-   $_params_ref->{user_func}  = $_user_func;
-
-   $self->run(1, $_params_ref);
-
-   return $self;
+   require MCE::Candy unless (defined $MCE::Candy::VERSION);
+   return  MCE::Candy::foreach(@_);
 }
 
 sub forseq {
-
-   my $x = shift; my $self = ref($x) ? $x : $MCE;
-   my $_sequence = $_[0];
-
-   _validate_runstate($self, 'MCE::forseq');
-
-   my ($_user_func, $_params_ref);
-
-   if (ref $_[1] eq 'HASH') {
-      $_user_func = $_[2]; $_params_ref = $_[1];
-   } else {
-      $_user_func = $_[1]; $_params_ref = {};
-   }
-
-   @_ = ();
-
-   _croak('MCE::forseq: (sequence) is not specified')
-      unless (defined $_sequence);
-   _croak('MCE::forseq: (code_block) is not specified')
-      unless (defined $_user_func);
-
-   $_params_ref->{sequence}   = $_sequence;
-   $_params_ref->{user_func}  = $_user_func;
-
-   $self->run(1, $_params_ref);
-
-   return $self;
+   require MCE::Candy unless (defined $MCE::Candy::VERSION);
+   return  MCE::Candy::forseq(@_);
 }
 
 ###############################################################################
@@ -902,7 +817,7 @@ sub run {
    local $SIG{__DIE__}  = \&_die;
    local $SIG{__WARN__} = \&_warn;
 
-   $MCE = $self unless (defined $MCE::Shared::_HDLR);
+   $MCE = $self if ($MCE->{_wid} == 0);
 
    my ($_input_data, $_input_file, $_input_glob, $_seq);
    my ($_abort_msg, $_first_msg, $_run_mode, $_single_dim);
@@ -1489,7 +1404,9 @@ sub exit {
    ## Exit thread/child process.
    $SIG{__DIE__} = $SIG{__WARN__} = sub { };
 
-   threads->exit($_exit_status) if ($_has_threads && threads->can('exit'));
+   if ($_has_threads && threads->can('exit')) {
+      threads->exit($_exit_status);
+   }
 
    CORE::exit($_exit_status);
 }
@@ -1717,13 +1634,11 @@ sub say {
 sub relay_final { }
 
 sub relay_recv {
-
    _croak('MCE::relay: (init_relay) is not specified')
       unless (defined $MCE->{init_relay});
 }
 
 sub relay (;&) {
-
    _croak('MCE::relay: (init_relay) is not specified')
       unless (defined $MCE->{init_relay});
 }
@@ -1734,10 +1649,9 @@ sub relay (;&) {
 ##
 ###############################################################################
 
-sub _NOOP { }
-
 sub _die  { return MCE::Signal->_die_handler(@_); }
 sub _warn { return MCE::Signal->_warn_handler(@_); }
+sub _NOOP { }
 
 sub _croak {
 
@@ -1831,7 +1745,7 @@ sub _worker_wrap {
 
    my @_args = @_; my $_is_thread = shift @_args; $MCE = $_args[0];
 
-   ## To avoid leaking (Scalars leaked: N) messages (fixed in Perl 5.12.x).
+   ## To avoid (Scalars leaked: N) messages; fixed in Perl 5.12.x
    @_ = ();
 
    ## Init worker.
@@ -1844,17 +1758,15 @@ sub _worker_wrap {
    }
 
    ## Begin worker.
-   _worker_main(@_args, \@_plugin_worker_init, $_has_threads, $_is_winenv);
+   _worker_main(@_args, \@_plugin_worker_init, $_is_winenv);
 
    sleep 0.005 if ($_is_winenv);
 
    ## Exit thread/child process.
    $SIG{__DIE__} = $SIG{__WARN__} = sub { };
 
-   if ($_is_winenv) {
-      threads->exit(0) if ($_has_threads && threads->can('exit'));
-   } else {
-      threads->exit(0) if ($_is_thread && threads->can('exit'));
+   if ($_has_threads && threads->can('exit')) {
+      threads->exit(0);
    }
 
    CORE::exit(0);

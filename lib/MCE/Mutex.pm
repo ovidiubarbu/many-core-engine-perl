@@ -21,7 +21,7 @@ our $VERSION = '1.699';
 sub DESTROY {
 
    my ($_mutex, $_arg) = @_;
-   my $_id = threads->can('tid') ? $$ .'.'. threads->tid() : $$;
+   my $_id = ($INC{'threads.pm'}) ? $$ .'.'. threads->tid() : $$;
 
    $_mutex->unlock() if ($_mutex->{ $_id });
 
@@ -54,7 +54,7 @@ sub new {
 
 sub lock {
 
-   my $_id = threads->can('tid') ? $$ .'.'. threads->tid() : $$;
+   my $_id = ($INC{'threads.pm'}) ? $$ .'.'. threads->tid() : $$;
 
    unless ($_[0]->{ $_id }) {
       sysread($_[0]->{_r_sock}, my $_b, 1);
@@ -66,7 +66,7 @@ sub lock {
 
 sub unlock {
 
-   my $_id = threads->can('tid') ? $$ .'.'. threads->tid() : $$;
+   my $_id = ($INC{'threads.pm'}) ? $$ .'.'. threads->tid() : $$;
 
    if ($_[0]->{ $_id }) {
       syswrite($_[0]->{_w_sock}, '0');

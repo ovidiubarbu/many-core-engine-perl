@@ -18,7 +18,7 @@ use base qw( Exporter );
 our $VERSION = '1.699';
 
 our ($display_die_with_localtime, $display_warn_with_localtime);
-our ($has_threads, $main_proc_id, $prog_name, $tmp_dir);
+our ($main_proc_id, $prog_name, $tmp_dir);
 
 BEGIN {
    $main_proc_id =  $$;
@@ -357,7 +357,7 @@ sub sys_cmd {
          sleep 0.065 for (1..6);
       }
 
-      if ($has_threads && threads->can('exit')) {
+      if ($INC{'threads.pm'} && threads->can('exit')) {
          threads->exit($_exit_status);
       }
 
@@ -378,8 +378,8 @@ sub _shutdown_mce {
    my $_exit_status = $_[0] || $?;
 
    if (defined $_mce_spawned_ref) {
-      my $_tid = ($has_threads) ? threads->tid() : '';
-      $_tid = '' unless defined $_tid;
+      my $_tid = ($INC{'threads.pm'}) ? threads->tid() : '';
+         $_tid = '' unless defined $_tid;
 
       for my $_mce_sid (keys %{ $_mce_spawned_ref }) {
          if ($_mce_spawned_ref->{$_mce_sid}->wid()) {
@@ -409,9 +409,18 @@ sub _die_handler {
 
    shift @_ if (defined $_[0] && $_[0] eq 'MCE::Signal');
 
-   if (!defined $^S || $^S) {                          ## Perl state
-      my  $_lm = Carp::longmess();                     ## Inside eval?
-      if ($_lm =~ /^[^\n]+\n\teval / || $_lm =~ /\n\teval [^\n]+\n\tTry/) {
+   if (!defined $^S || $^S) {
+      if ( ($INC{'threads.pm'} && threads->tid() != 0) ||
+            $ENV{'PERL_IPERL_RUNNING'}
+      ) {
+         # thread env or running inside IPerl, check stack trace
+         my  $_t = Carp::longmess();
+         if ($_t =~ /^[^\n]+\n\teval / || $_t =~ /\n\teval [^\n]+\n\tTry/) {
+            CORE::die(@_);
+         }
+      }
+      else {
+         # normal env, trust $^S
          CORE::die(@_);
       }
    }
