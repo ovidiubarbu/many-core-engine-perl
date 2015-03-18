@@ -298,8 +298,6 @@ use bytes;
 
       my ($self) = @_;
 
-      die 'Private method called' unless (caller)[0]->isa( ref $self );
-
       $_task_id = $self->{_task_id};
 
       $_ghn        = $self->{_chn};
@@ -317,7 +315,7 @@ use bytes;
       else {
          $_chn = $self->{_wid} % $MCE::Shared::_HDLR->{_data_channels} + 1;
 
-         $_DAT_LOCK   = $MCE::Shared::_HDLR->{'_cmutex_'.$_chn};
+         $_DAT_LOCK   = $MCE::Shared::_HDLR->{'_mutex_'.$_chn};
          $_DAT_W_SOCK = $MCE::Shared::_HDLR->{_dat_w_sock}->[0];
          $_DAU_W_SOCK = $MCE::Shared::_HDLR->{_dat_w_sock}->[$_chn];
          $_lock_chn   = 1;
@@ -334,8 +332,6 @@ use bytes;
    sub _do_send_clear {
 
       my ($self) = @_;
-
-      die 'Private method called' unless (caller)[0]->isa( ref $self );
 
       $_dest = $_len = $_task_id = $_user_func = $_value = $_want_id = undef;
       $_DAT_LOCK = $_DAT_W_SOCK = $_DAU_W_SOCK = $_lock_chn = $_chn = undef;
@@ -378,8 +374,6 @@ sub _worker_do {
    my ($self, $_params_ref) = @_;
 
    @_ = ();
-
-   die 'Private method called' unless (caller)[0]->isa( ref $self );
 
    ## Set options.
    $self->{_abort_msg}  = $_params_ref->{_abort_msg};
@@ -511,8 +505,6 @@ sub _worker_loop {
 
    @_ = ();
 
-   die 'Private method called' unless (caller)[0]->isa( ref $self );
-
    my ($_response, $_len, $_buf, $_params_ref);
 
    my $_COM_LOCK   = $self->{_com_lock};
@@ -608,9 +600,6 @@ sub _worker_main {
 
    @_ = ();
 
-   ## Commented out -- fails with the 'forks' module under FreeBSD.
-   ## die 'Private method called' unless (caller)[0]->isa( ref $self );
-
    if (exists $self->{input_data}) {
       my $_ref = ref $self->{input_data};
       delete $self->{input_data} if ($_ref && $_ref ne 'SCALAR');
@@ -689,8 +678,8 @@ sub _worker_main {
    }
 
    ## Choose locks for DATA channels.
-   $self->{_com_lock} = $self->{'_cmutex_0'};
-   $self->{_dat_lock} = $self->{'_cmutex_'.$_chn};
+   $self->{_com_lock} = $self->{'_mutex_0'};
+   $self->{_dat_lock} = $self->{'_mutex_'.$_chn};
 
    ## Delete attributes no longer required after being spawned.
    delete @{ $self }{ qw(

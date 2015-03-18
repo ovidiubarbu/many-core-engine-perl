@@ -36,8 +36,6 @@ sub _worker_request_chunk {
 
    @_ = ();
 
-   die 'Private method called' unless (caller)[0]->isa( ref $self );
-
    _croak('MCE::_worker_request_chunk: (user_func) is not specified')
       unless (defined $self->{user_func});
 

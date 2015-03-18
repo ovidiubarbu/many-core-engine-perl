@@ -37,8 +37,6 @@ sub _worker_sequence_generator {
 
    @_ = ();
 
-   die 'Private method called' unless (caller)[0]->isa( ref $self );
-
    _croak('MCE::_worker_sequence_generator: (user_func) is not specified')
       unless (defined $self->{user_func});
 
