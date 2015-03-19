@@ -6,7 +6,6 @@ Revision history for MCE
   [ TODO: before releasing MCE 1.700 ]
 
   * Document ->enq, ->enqp, and ->await methods in MCE::Step.
-  * Document ->await method in MCE::Queue.
   * Complete MCE::Shared documentation.
 
   [ENHANCEMENTS]
