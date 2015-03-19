@@ -1900,33 +1900,39 @@ Hence, MCE is not required to use MCE::Queue.
 
 =head1 API DOCUMENTATION
 
-=head2 MCE::Queue->new ( [ queue => \@array, fast => 1, await => 1 ] )
+=head2 MCE::Queue->new ( [ queue => \@array, await => 1, fast => 1 ] )
 
-This creates a new queue. Available options are queue, porder, type, fast, and
-gather. The gather option is mainly for running with MCE and wanting to pass
-item(s) to a callback function for appending to the queue.
-
-The 'fast' option speeds up ->dequeue ops and not enabled by default. It is
-beneficial for queues not calling ->clear or ->dequeue_nb and not altering the
-optional count value while running; e.g. ->dequeue($count). Basically, do not
-enable 'fast' if varying $count dynamically.
+This creates a new queue. Available options are (queue, porder, type, await,
+fast, and gather).
 
    use MCE;
    use MCE::Queue;
 
    my $q1 = MCE::Queue->new();
-   my $q2 = MCE::Queue->new( queue => [ 0, 1, 2 ] );
+   my $q2 = MCE::Queue->new( queue  => [ 0, 1, 2 ] );
 
    my $q3 = MCE::Queue->new( porder => $MCE::Queue::HIGHEST );
    my $q4 = MCE::Queue->new( porder => $MCE::Queue::LOWEST  );
 
-   my $q5 = MCE::Queue->new( type => $MCE::Queue::FIFO );
-   my $q6 = MCE::Queue->new( type => $MCE::Queue::LIFO );
+   my $q5 = MCE::Queue->new( type   => $MCE::Queue::FIFO );
+   my $q6 = MCE::Queue->new( type   => $MCE::Queue::LIFO );
 
-   my $q7 = MCE::Queue->new( fast => 1 );
+   my $q7 = MCE::Queue->new( await  => 1 );
+   my $q8 = MCE::Queue->new( fast   => 1 );
 
-Multiple queues may point to the same callback function. The first argument
-for the callback is the queue object.
+The 'await' option, when enabled, allows workers to block (semaphore-like)
+until the number of items pending is equal or less than a threshold value.
+The $q->await method is described below.
+
+The 'fast' option speeds up dequeues and is not enabled by default. It is
+beneficial for queues not calling (->clear or ->dequeue_nb) and not altering
+the optional count value while running; e.g. ->dequeue($count). Basically,
+do not enable 'fast' if varying the count dynamically.
+
+The 'gather' option is mainly for running with MCE and wanting to pass item(s)
+to a callback function for appending to the queue. Multiple queues may point to
+the same callback function. The callback receives the queue object as the first
+argument and items after it.
 
    sub _append {
       my ($q, @items) = @_;
@@ -1939,9 +1945,9 @@ for the callback is the queue object.
    ## Items are diverted to the callback function, not the queue.
    $q7->enqueue( 'apple', 'orange' );
 
-The gather option allows one to store items temporarily while ensuring output
-order. Although a queue object is not required, this is simply a demonstration
-of the gather option in the context of a queue.
+Specifying the 'gather' option allows one to store items temporarily while
+ensuring output order. Although a queue object is not required, this is
+simply a demonstration of the gather option in the context of a queue.
 
    use MCE;
    use MCE::Queue;
@@ -1976,6 +1982,49 @@ of the gather option in the context of a queue.
    $mce->run;
 
    print "@squares\n";
+
+=head2 $q->await ( [ $pending_threshold ] )
+
+The await method is beneficial when wanting to throttle worker(s) appending
+to the queue. Perhaps, consumers are running a bit behind and wanting to keep
+tabs on memory consumption. Below, the number of items pending will never go
+above 20.
+
+   use Time::HiRes qw( sleep );
+
+   use MCE::Flow;
+   use MCE::Queue;
+
+   my $q = MCE::Queue->new( await => 1, fast => 1 );
+   my ( $producers, $consumers ) = ( 1, 8 );
+
+   mce_flow {
+      task_name   => [ 'producer', 'consumer' ],
+      max_workers => [ $producers, $consumers ],
+   },
+   sub {
+      ## producer
+      for my $item ( 1 .. 100 ) {
+         $q->enqueue($item);
+
+         ## blocks until the # of items pending reaches <= 10
+         if ($item % 10 == 0) {
+            MCE->say( 'pending: '.$q->pending() );
+            $q->await(10);
+         }
+      }
+
+      ## notify consumers no more work
+      $q->enqueue( (undef) x $consumers );
+
+   },
+   sub {
+      ## consumers
+      while (defined (my $next = $q->dequeue())) {
+         MCE->say( MCE->task_wid().': '.$next );
+         sleep 0.100;
+      }
+   };
 
 =head2 $q->clear ( void )
 
