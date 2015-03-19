@@ -445,10 +445,11 @@ sub new {
 
    $self{_data_channels} = ($_total_workers < DATA_CHANNELS)
       ? $_total_workers : DATA_CHANNELS;
+
    $self{_last_sref} = (ref $self{input_data} eq 'SCALAR')
       ? refaddr($self{input_data}) : 0;
-   $self{_lock_chn} = ($_total_workers > DATA_CHANNELS)
-      ? 1 : 0;
+
+   $self{_lock_chn} = 1;
 
    $MCE = \%self if ($MCE->{_wid} == 0);
 

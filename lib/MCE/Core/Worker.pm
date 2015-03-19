@@ -666,17 +666,6 @@ sub _worker_main {
    $self->{_task}     = $_task;
    $self->{_wid}      = $_wid;
 
-   ## Unset the need for channel locking if only worker on the channel.
-   if (!defined $MCE::Shared::_HDLR ||
-         refaddr($self) != refaddr($MCE::Shared::_HDLR)) {
-
-      if ($self->{_init_total_workers} < DATA_CHANNELS * 2) {
-         if ($_wid > $self->{_init_total_workers} % DATA_CHANNELS) {
-            $self->{_lock_chn} = 0 if ($_wid <= DATA_CHANNELS);
-         }
-      }
-   }
-
    ## Choose locks for DATA channels.
    $self->{_com_lock} = $self->{'_mutex_0'};
    $self->{_dat_lock} = $self->{'_mutex_'.$_chn};
