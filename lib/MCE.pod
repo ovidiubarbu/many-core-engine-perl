@@ -40,13 +40,9 @@ Utility functions for Many-Core Engine.
 
 =head1 MCE EXTRAS
 
-There are 6 add-on modules.
+There are 4 add-on modules.
 
 =over 3
-
-=item L<MCE::Candy|MCE::Candy>
-
-A collection of sugar methods for Many-Core Engine.
 
 =item L<MCE::Mutex|MCE::Mutex>
 
@@ -68,18 +64,13 @@ involvement by the manager process while running.
 
 MCE extension for sharing data structures supporting threads and processes.
 
-=item L<MCE::Subs|MCE::Subs>
-
-Exports functions mapped directly to MCE methods; e.g. mce_wid. The module
-allows 3 options; :manager, :worker, and :getter.
-
 =back
 
 =head1 MCE MODELS
 
-MCE 1.5 includes 6 models. The models take Many-Core Engine to a new level
-for ease of use. Two options (chunk_size and max_workers) are configured
-automatically as well as spawning and shutdown.
+The models take Many-Core Engine to a new level for ease of use. Two options
+(chunk_size and max_workers) are configured automatically as well as spawning
+and shutdown.
 
 =over 3
 
@@ -118,15 +109,25 @@ to syntax from MCE::Map and MCE::Grep.
 
 =back
 
-=head1 EXAMPLES
+=head1 MISCELLANEOUS
 
-A placeholder for the examples included with the distribution.
+Miscellaneous additions included with the distribution.
 
 =over 3
 
+=item L<MCE::Candy|MCE::Candy>
+
+A collection of sugar methods for Many-Core Engine.
+
 =item L<MCE::Examples|MCE::Examples>
 
-Describes various demonstrations for MCE including a Monte Carlo simulation.
+A placeholder for the examples included with the distribution. Describes
+various demonstrations for MCE including a Monte Carlo simulation.
+
+=item L<MCE::Subs|MCE::Subs>
+
+Exports functions mapped directly to MCE methods; e.g. mce_wid. The module
+allows 3 options; :manager, :worker, and :getter.
 
 =back
 
