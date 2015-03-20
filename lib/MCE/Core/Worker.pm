@@ -36,8 +36,8 @@ use bytes;
 {
    my (
       $_dest, $_len, $_task_id, $_user_func, $_value, $_want_id, $_tag,
-      $_DAT_LOCK, $_DAT_W_SOCK, $_DAU_W_SOCK, $_lock_chn, $_chn,
-      $_GAT_LOCK, $_GAT_W_SOCK, $_GAU_W_SOCK, $_lock_ghn, $_ghn
+      $_DAT_LOCK, $_DAT_W_SOCK, $_DAU_W_SOCK, $_chn, $_dat_ex, $_dat_un,
+      $_GAT_LOCK, $_GAT_W_SOCK, $_GAU_W_SOCK, $_ghn, $_gat_ex, $_gat_un
    );
 
    ## Create array structure containing various send functions.
@@ -49,11 +49,11 @@ use bytes;
       local $\ = undef if (defined $\);
 
       if (length ${ $_[0] }) {
-         $_DAT_LOCK->lock() if ($_lock_chn);
+         $_dat_ex->();
          print {$_DAT_W_SOCK} OUTPUT_F_SND . $LF . $_chn . $LF;
          print {$_DAU_W_SOCK} $_value . $LF . length(${ $_[0] }) . $LF;
          print {$_DAU_W_SOCK} ${ $_[0] };
-         $_DAT_LOCK->unlock() if ($_lock_chn);
+         $_dat_un->();
       }
 
       return;
@@ -65,11 +65,11 @@ use bytes;
       local $\ = undef if (defined $\);
 
       if (length ${ $_[0] }) {
-         $_DAT_LOCK->lock() if ($_lock_chn);
+         $_dat_ex->();
          print {$_DAT_W_SOCK} OUTPUT_D_SND . $LF . $_chn . $LF;
          print {$_DAU_W_SOCK} $_value . $LF . length(${ $_[0] }) . $LF;
          print {$_DAU_W_SOCK} ${ $_[0] };
-         $_DAT_LOCK->unlock() if ($_lock_chn);
+         $_dat_un->();
       }
 
       return;
@@ -80,11 +80,11 @@ use bytes;
       local $\ = undef if (defined $\);
 
       if (length ${ $_[0] }) {
-         $_DAT_LOCK->lock() if ($_lock_chn);
+         $_dat_ex->();
          print {$_DAT_W_SOCK} OUTPUT_O_SND . $LF . $_chn . $LF;
          print {$_DAU_W_SOCK} length(${ $_[0] }) . $LF;
          print {$_DAU_W_SOCK} ${ $_[0] };
-         $_DAT_LOCK->unlock() if ($_lock_chn);
+         $_dat_un->();
       }
 
       return;
@@ -95,11 +95,11 @@ use bytes;
       local $\ = undef if (defined $\);
 
       if (length ${ $_[0] }) {
-         $_DAT_LOCK->lock() if ($_lock_chn);
+         $_dat_ex->();
          print {$_DAT_W_SOCK} OUTPUT_E_SND . $LF . $_chn . $LF;
          print {$_DAU_W_SOCK} length(${ $_[0] }) . $LF;
          print {$_DAU_W_SOCK} ${ $_[0] };
-         $_DAT_LOCK->unlock() if ($_lock_chn);
+         $_dat_un->();
       }
 
       return;
@@ -127,7 +127,7 @@ use bytes;
             $_buf = $self->{freeze}($_aref);
             $_len = length $_buf; local $\ = undef if (defined $\);
 
-            $_DAT_LOCK->lock() if ($_lock_chn);
+            $_dat_ex->();
             print {$_DAT_W_SOCK} $_tag . $LF . $_chn . $LF;
             print {$_DAU_W_SOCK} $_want_id . $LF . $_value . $LF . $_len . $LF;
             print {$_DAU_W_SOCK} $_buf;
@@ -137,7 +137,7 @@ use bytes;
             $_tag = OUTPUT_S_CBK;
             $_len = length $_aref->[0]; local $\ = undef if (defined $\);
 
-            $_DAT_LOCK->lock() if ($_lock_chn);
+            $_dat_ex->();
             print {$_DAT_W_SOCK} $_tag . $LF . $_chn . $LF;
             print {$_DAU_W_SOCK} $_want_id . $LF . $_value . $LF . $_len . $LF;
             print {$_DAU_W_SOCK} $_aref->[0];
@@ -147,7 +147,7 @@ use bytes;
          $_tag = OUTPUT_N_CBK;
          local $\ = undef if (defined $\);
 
-         $_DAT_LOCK->lock() if ($_lock_chn);
+         $_dat_ex->();
          print {$_DAT_W_SOCK} $_tag . $LF . $_chn . $LF;
          print {$_DAU_W_SOCK} $_want_id . $LF . $_value . $LF;
       }
@@ -155,7 +155,7 @@ use bytes;
       ## Crossover: Receive return value
 
       if ($_want_id == WANTS_UNDEF) {
-         $_DAT_LOCK->unlock() if ($_lock_chn);
+         $_dat_un->();
          return;
       }
       elsif ($_want_id == WANTS_ARRAY) {
@@ -163,7 +163,7 @@ use bytes;
          chomp($_len = <$_DAU_W_SOCK>);
 
          read($_DAU_W_SOCK, $_buf, $_len || 0);
-         $_DAT_LOCK->unlock() if ($_lock_chn);
+         $_dat_un->();
 
          return @{ $self->{thaw}($_buf) };
       }
@@ -174,13 +174,13 @@ use bytes;
 
          if ($_len >= 0) {
             read($_DAU_W_SOCK, $_buf, $_len || 0);
-            $_DAT_LOCK->unlock() if ($_lock_chn);
+            $_dat_un->();
 
             return $_buf if ($_want_id == WANTS_SCALAR);
             return $self->{thaw}($_buf);
          }
          else {
-            $_DAT_LOCK->unlock() if ($_lock_chn);
+            $_dat_un->();
             return;
          }
       }
@@ -209,11 +209,11 @@ use bytes;
          if (defined $_aref->[0]) {
             $_len = length $_aref->[0]; local $\ = undef if (defined $\);
 
-            $_GAT_LOCK->lock() if ($_lock_ghn);
+            $_gat_ex->();
             print {$_GAT_W_SOCK} $_tag . $LF . $_ghn . $LF;
             print {$_GAU_W_SOCK} $_task_id . $LF . $_len . $LF;
             print {$_GAU_W_SOCK} $_aref->[0];
-            $_GAT_LOCK->unlock() if ($_lock_ghn);
+            $_gat_un->();
 
             return;
          }
@@ -225,11 +225,11 @@ use bytes;
 
       local $\ = undef if (defined $\);
 
-      $_GAT_LOCK->lock() if ($_lock_ghn);
+      $_gat_ex->();
       print {$_GAT_W_SOCK} $_tag . $LF . $_ghn . $LF;
       print {$_GAU_W_SOCK} $_task_id . $LF . $_len . $LF;
       print {$_GAU_W_SOCK} $_buf if (length $_buf);
-      $_GAT_LOCK->unlock() if ($_lock_ghn);
+      $_gat_un->();
 
       return;
    }
@@ -304,13 +304,17 @@ use bytes;
       $_GAT_LOCK   = $self->{_dat_lock};
       $_GAT_W_SOCK = $self->{_dat_w_sock}->[0];
       $_GAU_W_SOCK = $self->{_dat_w_sock}->[$_ghn];
-      $_lock_ghn   = $self->{_lock_chn};
+
+      $_gat_ex = sub { sysread(  $_GAT_LOCK->{_r_sock}, my $_b, 1 ) };
+      $_gat_un = sub { syswrite( $_GAT_LOCK->{_w_sock}, '0' ) };
 
       if (!defined $MCE::Shared::_HDLR ||
             refaddr($self) == refaddr($MCE::Shared::_HDLR)) {
 
-         ( $_lock_chn, $_chn, $_DAT_LOCK, $_DAT_W_SOCK, $_DAU_W_SOCK ) =
-         ( $_lock_ghn, $_ghn, $_GAT_LOCK, $_GAT_W_SOCK, $_GAU_W_SOCK );
+         ( $_chn, $_DAT_LOCK, $_DAT_W_SOCK, $_DAU_W_SOCK ) =
+         ( $_ghn, $_GAT_LOCK, $_GAT_W_SOCK, $_GAU_W_SOCK );
+
+         ( $_dat_ex, $_dat_un ) = ( $_gat_ex, $_gat_un );
       }
       else {
          $_chn = $self->{_wid} % $MCE::Shared::_HDLR->{_data_channels} + 1;
@@ -318,7 +322,9 @@ use bytes;
          $_DAT_LOCK   = $MCE::Shared::_HDLR->{'_mutex_'.$_chn};
          $_DAT_W_SOCK = $MCE::Shared::_HDLR->{_dat_w_sock}->[0];
          $_DAU_W_SOCK = $MCE::Shared::_HDLR->{_dat_w_sock}->[$_chn];
-         $_lock_chn   = 1;
+
+         $_dat_ex = sub { sysread(  $_DAT_LOCK->{_r_sock}, my $_b, 1 ) };
+         $_dat_un = sub { syswrite( $_DAT_LOCK->{_w_sock}, '0' ) };
       }
 
       local ($!, $@);
@@ -334,9 +340,9 @@ use bytes;
       my ($self) = @_;
 
       $_dest = $_len = $_task_id = $_user_func = $_value = $_want_id = undef;
-      $_DAT_LOCK = $_DAT_W_SOCK = $_DAU_W_SOCK = $_lock_chn = $_chn = undef;
-      $_GAT_LOCK = $_GAT_W_SOCK = $_GAU_W_SOCK = $_lock_ghn = $_ghn = undef;
-      $_tag = undef;
+      $_dat_ex = $_dat_un = $_gat_ex = $_gat_un = $_tag = undef;
+      $_DAT_LOCK = $_DAT_W_SOCK = $_DAU_W_SOCK = $_chn = undef;
+      $_GAT_LOCK = $_GAT_W_SOCK = $_GAU_W_SOCK = $_ghn = undef;
 
       return;
    }
@@ -390,7 +396,6 @@ sub _worker_do {
    my $_DAT_LOCK   = $self->{_dat_lock};
    my $_DAT_W_SOCK = $self->{_dat_w_sock}->[0];
    my $_DAU_W_SOCK = $self->{_dat_w_sock}->[$_chn];
-   my $_lock_chn   = $self->{_lock_chn};
    my $_run_mode   = $self->{_run_mode};
    my $_task_id    = $self->{_task_id};
    my $_task_name  = $self->{task_name};
@@ -478,7 +483,7 @@ sub _worker_do {
    ## Notify the main process a worker has completed.
    local $\ = undef if (defined $\);
 
-   $_DAT_LOCK->lock() if ($_lock_chn);
+   $_DAT_LOCK->lock();
 
    if (exists $self->{_rla_return}) {
       print {$_DAT_W_SOCK} OUTPUT_W_RLA . $LF . $_chn . $LF;
@@ -488,7 +493,7 @@ sub _worker_do {
    print {$_DAT_W_SOCK} OUTPUT_W_DNE . $LF . $_chn . $LF;
    print {$_DAU_W_SOCK} $_task_id . $LF;
 
-   $_DAT_LOCK->unlock() if ($_lock_chn);
+   $_DAT_LOCK->unlock();
 
    return;
 }

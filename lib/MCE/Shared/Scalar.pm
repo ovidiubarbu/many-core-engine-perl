@@ -303,7 +303,7 @@ sub _untie2 {
 ##
 ###############################################################################
 
-my ($_MCE, $_DAT_LOCK, $_DAT_W_SOCK, $_DAU_W_SOCK, $_chn, $_lock_chn);
+my ($_MCE, $_DAT_LOCK, $_DAT_W_SOCK, $_DAU_W_SOCK, $_chn, $_dat_ex, $_dat_un);
 my ($_len, $_wa);
 
 sub _mce_w_init {
@@ -314,19 +314,21 @@ sub _mce_w_init {
          refaddr($_MCE) == refaddr($MCE::Shared::_HDLR)) {
 
       ## MCE::Queue, MCE::Shared data managed by each manager process.
-     ($_chn, $_lock_chn) = ($_MCE->{_chn}, $_MCE->{_lock_chn});
-      $_DAT_LOCK = $_MCE->{_dat_lock};
+      $_chn = $_MCE->{_chn}; $_DAT_LOCK = $_MCE->{_dat_lock};
    }
    else {
       ## Data is managed by the top MCE instance; shared_handler => 1.
       $_chn = $_MCE->{_wid} % $MCE::Shared::_HDLR->{_data_channels} + 1;
 
-     ($_MCE, $_lock_chn) = ($MCE::Shared::_HDLR, 1);
+      $_MCE = $MCE::Shared::_HDLR;
       $_DAT_LOCK = $_MCE->{'_mutex_'.$_chn};
    }
 
-   $_DAT_W_SOCK  = $_MCE->{_dat_w_sock}->[0];
-   $_DAU_W_SOCK  = $_MCE->{_dat_w_sock}->[$_chn];
+   $_dat_ex = sub { sysread(  $_DAT_LOCK->{_r_sock}, my $_b, 1 ) };
+   $_dat_un = sub { syswrite( $_DAT_LOCK->{_w_sock}, '0' ) };
+
+   $_DAT_W_SOCK = $_MCE->{_dat_w_sock}->[0];
+   $_DAU_W_SOCK = $_MCE->{_dat_w_sock}->[$_chn];
 
    return;
 }
@@ -336,7 +338,7 @@ my $_do_op = sub {
    $_wa = (!defined wantarray) ? WA_UNDEF : WA_SCALAR;
    local $\ = undef if (defined $\);
 
-   $_DAT_LOCK->lock() if ($_lock_chn);
+   $_dat_ex->();
    print {$_DAT_W_SOCK} $_[0] . $LF . $_chn . $LF;
    print {$_DAU_W_SOCK} $_[1] . $LF . $_wa . $LF . length($_[2]) . $LF . $_[2];
 
@@ -346,7 +348,7 @@ my $_do_op = sub {
       read $_DAU_W_SOCK, $_buf, $_len;
    }
 
-   $_DAT_LOCK->unlock() if ($_lock_chn);
+   $_dat_un->();
 
    return $_buf;
 };
@@ -435,10 +437,10 @@ sub STORE {                                       ## Scalar STORE
 
       local $\ = undef if (defined $\);
 
-      $_DAT_LOCK->lock() if ($_lock_chn);
+      $_dat_ex->();
       print {$_DAT_W_SOCK} SHR_S_STO . $LF . $_chn . $LF;
       print {$_DAU_W_SOCK} $_buf;
-      $_DAT_LOCK->unlock() if ($_lock_chn);
+      $_dat_un->();
 
       return;
    }
@@ -454,19 +456,19 @@ sub FETCH {                                       ## Scalar FETCH
       local $\ = undef if (defined $\);
       local $/ = $LF if (!$/ || $/ ne $LF);
 
-      $_DAT_LOCK->lock() if ($_lock_chn);
+      $_dat_ex->();
       print {$_DAT_W_SOCK} SHR_S_FCH . $LF . $_chn . $LF;
       print {$_DAU_W_SOCK} $_id . $LF;
 
       chomp($_len = <$_DAU_W_SOCK>);
 
       if ($_len < 0) {
-         $_DAT_LOCK->unlock() if ($_lock_chn);
+         $_dat_un->();
          return undef;
       }
 
       read $_DAU_W_SOCK, (my $_buf), $_len;
-      $_DAT_LOCK->unlock() if ($_lock_chn);
+      $_dat_un->();
 
       return (chop $_buf) ? $_MCE->{thaw}($_buf) : $_buf;
    }

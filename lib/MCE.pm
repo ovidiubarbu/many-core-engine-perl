@@ -74,7 +74,7 @@ BEGIN {
    ##
    ## _bsb_r_sock _bsb_w_sock _bse_r_sock _bse_w_sock _com_r_sock _com_w_sock
    ## _dat_r_sock _dat_w_sock _que_r_sock _que_w_sock _rla_r_sock _rla_w_sock
-   ## _data_channels _lock_chn _mutex_n
+   ## _data_channels _mutex_n
 
    %_valid_fields_new = map { $_ => 1 } qw(
       max_workers tmp_dir use_threads user_tasks task_end task_name freeze thaw
@@ -449,8 +449,6 @@ sub new {
    $self{_last_sref} = (ref $self{input_data} eq 'SCALAR')
       ? refaddr($self{input_data}) : 0;
 
-   $self{_lock_chn} = 1;
-
    $MCE = \%self if ($MCE->{_wid} == 0);
 
    return \%self;
@@ -482,13 +480,12 @@ sub spawn {
 
    if (defined $MCE::Shared::VERSION) {
       if (!defined $MCE::Shared::_HDLR) {
-         $MCE::Shared::_HDLR = $self; $self->{_lock_chn} = 1;
+         $MCE::Shared::_HDLR = $self;
       }
       elsif (refaddr($self) != refaddr($MCE::Shared::_HDLR)) {
          _croak("Sharing (parallel MCE instances) is not supported on MSWin32")
             if ($_is_MSWin32);
-         $self->{_data_channels} = $self->{_lock_chn} = 1
-            if ($self->{_data_channels} > 1);
+         $self->{_data_channels} = 1 if ($self->{_data_channels} > 1);
       }
    }
 
@@ -530,10 +527,8 @@ sub spawn {
    ## Obtain lock. Create locks for data channels.
    $self->{_mutex_0} = MCE::Mutex->new;
 
-   if ($self->{_lock_chn}) {
-      for my $_i (1 .. $_data_channels) {
-         $self->{'_mutex_'.$_i} = MCE::Mutex->new;
-      }
+   for my $_i (1 .. $_data_channels) {
+      $self->{'_mutex_'.$_i} = MCE::Mutex->new;
    }
 
    $self->{_mutex_0}->lock();
@@ -1156,7 +1151,6 @@ sub shutdown {
    my $_mce_sid        = $self->{_mce_sid};
    my $_sess_dir       = $self->{_sess_dir};
    my $_total_workers  = $self->{_total_workers};
-   my $_lock_chn       = $self->{_lock_chn};
 
    ## Delete entry.
    delete $_mce_spawned{$_mce_sid};
@@ -1251,23 +1245,22 @@ sub sync {
    my $_DAT_W_SOCK = $self->{_dat_w_sock}->[0];
    my $_BSB_R_SOCK = $self->{_bsb_r_sock};
    my $_BSE_R_SOCK = $self->{_bse_r_sock};
-   my $_lock_chn   = $self->{_lock_chn};
    my $_buffer;
 
    local $\ = undef if (defined $\); local $/ = $LF if (!$/ || $/ ne $LF);
 
    ## Notify the manager process (begin).
-   $_DAT_LOCK->lock() if ($_lock_chn);
+   $_DAT_LOCK->lock();
    print {$_DAT_W_SOCK} OUTPUT_B_SYN . $LF . $_chn . $LF;
-   $_DAT_LOCK->unlock() if ($_lock_chn);
+   $_DAT_LOCK->unlock();
 
    ## Wait here until all workers (task_id 0) have synced.
    sysread $_BSB_R_SOCK, $_buffer, 1;
 
    ## Notify the manager process (end).
-   $_DAT_LOCK->lock() if ($_lock_chn);
+   $_DAT_LOCK->lock();
    print {$_DAT_W_SOCK} OUTPUT_E_SYN . $LF . $_chn . $LF;
-   $_DAT_LOCK->unlock() if ($_lock_chn);
+   $_DAT_LOCK->unlock();
 
    ## Wait here until all workers (task_id 0) have un-synced.
    sysread $_BSE_R_SOCK, $_buffer, 1;
@@ -1314,7 +1307,6 @@ sub abort {
    my $_QUE_R_SOCK = $self->{_que_r_sock};
    my $_QUE_W_SOCK = $self->{_que_w_sock};
    my $_abort_msg  = $self->{_abort_msg};
-   my $_lock_chn   = $self->{_lock_chn};
 
    if (defined $_abort_msg) {
       local $\ = undef;
@@ -1330,7 +1322,7 @@ sub abort {
          my $_DAT_W_SOCK = $self->{_dat_w_sock}->[0];
          my $_DAU_W_SOCK = $self->{_dat_w_sock}->[$_chn];
 
-         $_DAT_LOCK->lock() if ($_lock_chn);
+         $_DAT_LOCK->lock();
 
          if (exists $self->{_rla_return}) {
             print {$_DAT_W_SOCK} OUTPUT_W_RLA . $LF . $_chn . $LF;
@@ -1339,7 +1331,7 @@ sub abort {
 
          print {$_DAT_W_SOCK} OUTPUT_W_ABT . $LF . $_chn . $LF;
 
-         $_DAT_LOCK->unlock() if ($_lock_chn);
+         $_DAT_LOCK->unlock();
       }
    }
 
@@ -1367,7 +1359,6 @@ sub exit {
    my $_DAT_LOCK   = $self->{_dat_lock};
    my $_DAT_W_SOCK = $self->{_dat_w_sock}->[0];
    my $_DAU_W_SOCK = $self->{_dat_w_sock}->[$_chn];
-   my $_lock_chn   = $self->{_lock_chn};
    my $_task_id    = $self->{_task_id};
    my $_sess_dir   = $self->{_sess_dir};
 
@@ -1383,7 +1374,7 @@ sub exit {
          or die "(W) open error $_sess_dir/_dat.lock.e: $!\n";
 
       flock $_DAE_LOCK, LOCK_EX;
-      $_DAT_LOCK->lock() if ($_lock_chn);
+      $_DAT_LOCK->lock();
 
       if (exists $self->{_rla_return}) {
          print {$_DAT_W_SOCK} OUTPUT_W_RLA . $LF . $_chn . $LF;
@@ -1396,7 +1387,7 @@ sub exit {
          $_exit_status . $LF . $_exit_id . $LF . $_len . $LF . $_exit_msg
       ;
 
-      $_DAT_LOCK->unlock() if ($_lock_chn);
+      $_DAT_LOCK->unlock();
       flock $_DAE_LOCK, LOCK_UN;
 
       close $_DAE_LOCK; undef $_DAE_LOCK;
