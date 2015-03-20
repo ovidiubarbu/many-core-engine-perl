@@ -17,7 +17,7 @@ use MCE::Shared::Hash;
 use MCE::Shared::Array;
 use MCE::Shared::Scalar;
 
-use Scalar::Util qw( looks_like_number refaddr reftype );
+use Scalar::Util qw( refaddr reftype );
 use bytes;
 
 our @CARP_NOT = qw(
@@ -34,19 +34,17 @@ our $VERSION = '1.699';
 $MCE::Shared::clone_warn = undef;
 $MCE::Shared::untie_warn = undef;
 
+## Set by MCE
+
+$MCE::Shared::_HDLR = undef;
+
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Import routine.
+## Import and share routines.
 ##
 ###############################################################################
 
-my  $_MAX_LOCKS = 8; Internals::SvREADONLY($_MAX_LOCKS, 1);
-our $_HDLR; # Set by MCE
-
-my ($_t_flag, $_m_flag, $_numlocks) = (0, 0, 1);
-my  @_t_lock = map { 0 } (0 .. $_MAX_LOCKS - 1);
-my  @_m_lock = map { 0 } (0 .. $_MAX_LOCKS - 1);
-my  $_loaded;
+my $_loaded;
 
 sub import {
 
@@ -61,128 +59,16 @@ sub import {
       );
    }
 
-   while (my $_a = shift) {
-      my $_arg = lc $_a;
-
-      if ( $_arg eq 'locktype' ) {
-         my $_v = shift;
-
-         if    ( $_v =~ /^mutex$/   ) { ($_m_flag, $_t_flag) = (1, 0); }
-         elsif ( $_v =~ /^threads$/ ) { ($_m_flag, $_t_flag) = (0, 1); }
-         elsif ( $_v =~ /^none$/    ) { ($_m_flag, $_t_flag) = (0, 0); }
-         else  {
-            Carp::croak($_tag.": ($_v) is not valid for locktype");
-         }
-
-         if ($_t_flag && !defined $threads::shared::VERSION) {
-            ($_m_flag, $_t_flag) = (1, 0);
-         }
-
-         next;
-      }
-      elsif ( $_arg eq 'numlocks' ) {
-         $_numlocks = shift; my $_m = $_MAX_LOCKS + 1;
-
-         Carp::croak($_tag.": (numlocks) must be an integer between 0 and $_m")
-            if ( !defined $_numlocks || !looks_like_number($_numlocks) ||
-                 $_numlocks < 1 || $_numlocks > $_MAX_LOCKS ||
-                 $_numlocks != int($_numlocks) );
-
-         next;
-      }
-
-      Carp::croak($_tag.": ($_a) is not a valid module argument");
-   }
-
-   if ($_t_flag) {
-      for my $_i (0 .. $_numlocks - 1) {
-         $_t_lock[$_i] = 1; threads::shared::share($_t_lock[$_i]);
-      }
-   }
-   elsif ($_m_flag) {
-      for my $_i (0 .. $_numlocks - 1) {
-         $_m_lock[$_i] = MCE::Mutex->new();
-      }
-   }
-
    no strict 'refs'; no warnings 'redefine';
 
-   *{ caller().'::mce_lock'  } = \&mce_lock;
-   *{ caller().'::mce_lockn' } = \&mce_lockn;
-   *{ caller().'::mce_share' } = \&mce_share;
+   *{ caller().'::mce_share' } = \&share;
 
    return;
 }
 
-###############################################################################
-## ----------------------------------------------------------------------------
-## Lock routines.
-##
-###############################################################################
+sub share (\[$@%]@) {
 
-sub mce_lock (&@) {
-
-   my $_code = shift;
-
-   if (ref $_code eq 'CODE') {
-      if (defined wantarray) {
-         my @_a;
-
-         lock $_t_lock[0]         if ($_t_lock[0]);
-         $_m_lock[0]->lock()      if ($_m_lock[0]);
-         @_a = $_code->(@_);
-         $_m_lock[0]->unlock()    if ($_m_lock[0]);
-
-         return wantarray ? @_a : $_a[0];
-      }
-      else {
-         lock $_t_lock[0]         if ($_t_lock[0]);
-         $_m_lock[0]->lock()      if ($_m_lock[0]);
-         $_code->(@_);
-         $_m_lock[0]->unlock()    if ($_m_lock[0]);
-      }
-   }
-
-   return;
-}
-
-sub mce_lockn ($&@) {
-
-   my ($_n, $_code) = (shift, shift);
-
-   if (ref $_code eq 'CODE') {
-      $_n = $_n % $_numlocks;
-
-      if (defined wantarray) {
-         my @_a;
-
-         lock $_t_lock[$_n]       if ($_t_lock[$_n]);
-         $_m_lock[$_n]->lock()    if ($_m_lock[$_n]);
-         @_a = $_code->(@_);
-         $_m_lock[$_n]->unlock()  if ($_m_lock[$_n]);
-
-         return wantarray ? @_a : $_a[0];
-      }
-      else {
-         lock $_t_lock[$_n]       if ($_t_lock[$_n]);
-         $_m_lock[$_n]->lock()    if ($_m_lock[$_n]);
-         $_code->(@_);
-         $_m_lock[$_n]->unlock()  if ($_m_lock[$_n]);
-      }
-   }
-
-   return;
-}
-
-###############################################################################
-## ----------------------------------------------------------------------------
-## Share routine.
-##
-###############################################################################
-
-sub mce_share (\[$@%]@) {
-
-   MCE::_croak('Method (mce_share) is not allowed by the worker process')
+   MCE::_croak('Method (share) is not allowed by the worker process')
       if (MCE->wid);
 
    my $_item; my $_ref_type = reftype($_[0]);
@@ -374,8 +260,6 @@ This document describes MCE::Shared version 1.699
 =head1 DESCRIPTION
 
 This module provides data sharing for MCE supporting threads and processes.
-
-TODO
 
 =head1 ACKNOWNLEDGEMENTS
 
