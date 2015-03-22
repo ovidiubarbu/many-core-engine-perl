@@ -357,8 +357,10 @@ sub new {
    $self{task_name}   ||= 'MCE';
 
    if (exists $self{_module_instance}) {
+      $self{_init_total_workers} = $self{max_workers};
       $self{_chunk_id} = $self{_task_wid} = $self{_wrk_status} = 0;
       $self{_spawned}  = $self{_task_id}  = $self{_wid} = 0;
+      $self{_data_channels} = 1;
 
       return \%self;
    }

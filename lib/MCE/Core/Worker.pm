@@ -656,9 +656,9 @@ sub _worker_main {
    $self->{user_end}    = $_task->{user_end}    if ($_task->{user_end});
 
    ## Init runtime vars. Obtain handle to lock files.
-   my ($_COM_LOCK, $_chn);
    my $_mce_sid  = $self->{_mce_sid};
    my $_sess_dir = $self->{_sess_dir};
+   my $_chn;
 
    if (defined $_params && exists $_params->{_chn}) {
       $_chn = $self->{_chn} = delete $_params->{_chn};

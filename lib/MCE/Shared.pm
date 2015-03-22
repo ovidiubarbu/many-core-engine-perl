@@ -49,13 +49,12 @@ my $_loaded;
 sub import {
 
    my $_class = shift; return if ($_loaded++);
-   my $_tag   = 'MCE::Shared::import';
 
    unless (defined $MCE::VERSION) {
       $\ = undef; require Carp;
       Carp::croak(
-         "MCE::Shared requires MCE. Please see the MCE::Shared\n".
-         "documentation for more information.\n\n"
+         "MCE::Shared requires MCE. Please see the MCE::Shared documentation\n".
+         "for more information.\n\n"
       );
    }
 
