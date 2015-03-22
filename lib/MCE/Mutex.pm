@@ -16,12 +16,12 @@ no warnings 'uninitialized';
 use MCE::Util qw( $LF );
 use bytes;
 
-our $VERSION = '1.603';
+our $VERSION = '1.604';
 
 sub DESTROY {
 
    my ($_mutex, $_arg) = @_;
-   my $_id = ($INC{'threads.pm'}) ? $$ .'.'. threads->tid() : $$;
+   my $_id = $INC{'threads.pm'} ? $$ .'.'. threads->tid() : $$;
 
    $_mutex->unlock() if ($_mutex->{ $_id });
 
@@ -47,6 +47,7 @@ sub new {
    my $_mutex = {}; bless($_mutex, ref($_class) || $_class);
 
    MCE::Util::_make_socket_pair($_mutex, qw(_w_sock _r_sock));
+
    syswrite($_mutex->{_w_sock}, '0');
 
    return $_mutex;
@@ -54,11 +55,12 @@ sub new {
 
 sub lock {
 
-   my $_id = ($INC{'threads.pm'}) ? $$ .'.'. threads->tid() : $$;
+   my $_mutex = shift;
+   my $_id    = $INC{'threads.pm'} ? $$ .'.'. threads->tid() : $$;
 
-   unless ($_[0]->{ $_id }) {
-      sysread($_[0]->{_r_sock}, my $_b, 1);
-      $_[0]->{ $_id } = 1;
+   unless ($_mutex->{ $_id }) {
+      sysread($_mutex->{_r_sock}, my $_b, 1);
+      $_mutex->{ $_id } = 1;
    }
 
    return;
@@ -66,11 +68,12 @@ sub lock {
 
 sub unlock {
 
-   my $_id = ($INC{'threads.pm'}) ? $$ .'.'. threads->tid() : $$;
+   my $_mutex = shift;
+   my $_id    = $INC{'threads.pm'} ? $$ .'.'. threads->tid() : $$;
 
-   if ($_[0]->{ $_id }) {
-      syswrite($_[0]->{_w_sock}, '0');
-      $_[0]->{ $_id } = 0;
+   if ($_mutex->{ $_id }) {
+      syswrite($_mutex->{_w_sock}, '0');
+      $_mutex->{ $_id } = 0;
    }
 
    return;
@@ -112,7 +115,7 @@ MCE::Mutex - Simple semaphore for Many-Core Engine
 
 =head1 VERSION
 
-This document describes MCE::Mutex version 1.603
+This document describes MCE::Mutex version 1.604
 
 =head1 SYNOPSIS
 

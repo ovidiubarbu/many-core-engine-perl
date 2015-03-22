@@ -15,7 +15,7 @@ use warnings;
 use MCE;
 use MCE::Relay;
 
-our $VERSION = '1.603';
+our $VERSION = '1.604';
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -202,7 +202,7 @@ MCE::Subs - Exports functions mapped directly to MCE methods
 
 =head1 VERSION
 
-This document describes MCE::Subs version 1.603
+This document describes MCE::Subs version 1.604
 
 =head1 SYNOPSIS
 

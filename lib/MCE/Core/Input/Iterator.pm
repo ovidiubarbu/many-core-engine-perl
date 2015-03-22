@@ -14,7 +14,7 @@ package MCE::Core::Input::Iterator;
 use strict;
 use warnings;
 
-our $VERSION = '1.603';
+our $VERSION = '1.604';
 
 ## Items below are folded into MCE.
 
@@ -35,8 +35,6 @@ sub _worker_user_iterator {
    my ($self) = @_;
 
    @_ = ();
-
-   die 'Private method called' unless (caller)[0]->isa( ref $self );
 
    _croak('MCE::_worker_user_iterator: (user_func) is not specified')
       unless (defined $self->{user_func});

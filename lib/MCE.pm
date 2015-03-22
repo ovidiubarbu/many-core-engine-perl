@@ -47,7 +47,7 @@ use MCE::Util qw( $LF );
 use MCE::Signal;
 use bytes;
 
-our $VERSION = '1.603';
+our $VERSION = '1.604';
 
 our ($MCE, $_que_read_size, $_que_template, %_valid_fields_new);
 my  ($_prev_mce, %_params_allowed_args, %_valid_fields_task);
@@ -357,8 +357,10 @@ sub new {
    $self{task_name}   ||= 'MCE';
 
    if (exists $self{_module_instance}) {
+      $self{_init_total_workers} = $self{max_workers};
       $self{_chunk_id} = $self{_task_wid} = $self{_wrk_status} = 0;
       $self{_spawned}  = $self{_task_id}  = $self{_wid} = 0;
+      $self{_data_channels} = 1;
 
       return \%self;
    }
@@ -637,7 +639,7 @@ sub spawn {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Forchunk, foreach, and forseq sugar methods.
+## "for" sugar methods, process method, and relay stubs for MCE::Relay.
 ##
 ###############################################################################
 
@@ -655,12 +657,6 @@ sub forseq {
    require MCE::Candy unless (defined $MCE::Candy::VERSION);
    return  MCE::Candy::forseq(@_);
 }
-
-###############################################################################
-## ----------------------------------------------------------------------------
-## Process method.
-##
-###############################################################################
 
 sub process {
 
@@ -691,6 +687,18 @@ sub process {
    $self->run(0, $_params_ref);
 
    return $self;
+}
+
+sub relay_final { }
+
+sub relay_recv {
+   _croak('MCE::relay: (init_relay) is not specified')
+      unless (defined $MCE->{init_relay});
+}
+
+sub relay (;&) {
+   _croak('MCE::relay: (init_relay) is not specified')
+      unless (defined $MCE->{init_relay});
 }
 
 ###############################################################################
@@ -1219,7 +1227,7 @@ sub shutdown {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Barrier sync method.
+## Barrier sync and yield methods.
 ##
 ###############################################################################
 
@@ -1263,12 +1271,6 @@ sub sync {
 
    return;
 }
-
-###############################################################################
-## ----------------------------------------------------------------------------
-## Yield method.
-##
-###############################################################################
 
 sub yield {
 
@@ -1630,24 +1632,6 @@ sub say {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Relay stubs. The actual methods reside inside MCE::Relay.
-##
-###############################################################################
-
-sub relay_final { }
-
-sub relay_recv {
-   _croak('MCE::relay: (init_relay) is not specified')
-      unless (defined $MCE->{init_relay});
-}
-
-sub relay (;&) {
-   _croak('MCE::relay: (init_relay) is not specified')
-      unless (defined $MCE->{init_relay});
-}
-
-###############################################################################
-## ----------------------------------------------------------------------------
 ## Private methods.
 ##
 ###############################################################################
@@ -1679,12 +1663,6 @@ sub _get_max_workers {
    return $self->{max_workers};
 }
 
-###############################################################################
-## ----------------------------------------------------------------------------
-## Sync methods.
-##
-###############################################################################
-
 sub _sync_buffer_to_array {
 
    my ($_buffer_ref, $_array_ref, $_chop_str) = @_;
@@ -1715,8 +1693,6 @@ sub _sync_params {
 
    my ($self, $_params_ref) = @_;
 
-   die 'Private method called' unless (caller)[0]->isa( ref $self );
-
    my $_requires_shutdown = 0;
 
    if (defined $_params_ref->{init_relay} && !defined $self->{init_relay}) {
@@ -1740,11 +1716,11 @@ sub _sync_params {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Worker process -- Wrap.
+## Dispatch methods.
 ##
 ###############################################################################
 
-sub _worker_wrap {
+sub _dispatch {
 
    my @_args = @_; my $_is_thread = shift @_args; $MCE = $_args[0];
 
@@ -1769,21 +1745,13 @@ sub _worker_wrap {
    CORE::exit(0);
 }
 
-###############################################################################
-## ----------------------------------------------------------------------------
-## Dispatch thread.
-##
-###############################################################################
-
 sub _dispatch_thread {
 
    my ($self, $_wid, $_task, $_task_id, $_task_wid, $_params) = @_;
 
    @_ = (); local $_;
 
-   die 'Private method called' unless (caller)[0]->isa( ref $self );
-
-   my $_thr = threads->create( \&_worker_wrap,
+   my $_thr = threads->create( \&_dispatch,
       1, $self, $_wid, $_task, $_task_id, $_task_wid, $_params
    );
 
@@ -1813,19 +1781,11 @@ sub _dispatch_thread {
    return;
 }
 
-###############################################################################
-## ----------------------------------------------------------------------------
-## Dispatch child.
-##
-###############################################################################
-
 sub _dispatch_child {
 
    my ($self, $_wid, $_task, $_task_id, $_task_wid, $_params) = @_;
 
    @_ = (); local $_;
-
-   die 'Private method called' unless (caller)[0]->isa( ref $self );
 
    my $_pid = fork();
 
@@ -1833,7 +1793,7 @@ sub _dispatch_child {
       unless (defined $_pid);
 
    unless ($_pid) {
-      _worker_wrap(0, $self, $_wid, $_task, $_task_id, $_task_wid, $_params);
+      _dispatch(0, $self, $_wid, $_task, $_task_id, $_task_wid, $_params);
    }
 
    if (defined $_pid) {
