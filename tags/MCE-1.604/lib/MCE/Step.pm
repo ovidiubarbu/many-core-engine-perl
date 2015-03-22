@@ -18,7 +18,7 @@ use Scalar::Util qw( looks_like_number );
 use MCE;
 use MCE::Queue;
 
-our $VERSION  = '1.603';
+our $VERSION  = '1.604';
 
 our @CARP_NOT = qw( MCE );
 
@@ -589,7 +589,7 @@ MCE::Step - Parallel step model for building creative steps
 
 =head1 VERSION
 
-This document describes MCE::Step version 1.603
+This document describes MCE::Step version 1.604
 
 =head1 DESCRIPTION
 

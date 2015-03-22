@@ -14,7 +14,7 @@ package MCE::Core::Worker;
 use strict;
 use warnings;
 
-our $VERSION = '1.603';
+our $VERSION = '1.604';
 
 ## Items below are folded into MCE.
 
@@ -297,8 +297,6 @@ use bytes;
 
       my ($self) = @_;
 
-      die 'Private method called' unless (caller)[0]->isa( ref $self );
-
       $_chn        = $self->{_chn};
       $_DAT_LOCK   = $self->{_dat_lock};
       $_DAT_W_SOCK = $self->{_dat_w_sock}->[0];
@@ -317,8 +315,6 @@ use bytes;
    sub _do_send_clear {
 
       my ($self) = @_;
-
-      die 'Private method called' unless (caller)[0]->isa( ref $self );
 
       $_dest = $_len = $_task_id = $_user_func = $_value = $_want_id = undef;
       $_DAT_LOCK = $_DAT_W_SOCK = $_DAU_W_SOCK = $_lock_chn = $_chn = undef;
@@ -360,8 +356,6 @@ sub _worker_do {
    my ($self, $_params_ref) = @_;
 
    @_ = ();
-
-   die 'Private method called' unless (caller)[0]->isa( ref $self );
 
    ## Set options.
    $self->{_abort_msg}  = $_params_ref->{_abort_msg};
@@ -493,8 +487,6 @@ sub _worker_loop {
 
    @_ = ();
 
-   die 'Private method called' unless (caller)[0]->isa( ref $self );
-
    my ($_response, $_len, $_buf, $_params_ref);
 
    my $_COM_LOCK   = $self->{_com_lock};
@@ -589,9 +581,6 @@ sub _worker_main {
         $_plugin_worker_init, $_is_winenv ) = @_;
 
    @_ = ();
-
-   ## Commented out -- fails with the 'forks' module under FreeBSD.
-   ## die 'Private method called' unless (caller)[0]->isa( ref $self );
 
    if (exists $self->{input_data}) {
       my $_ref = ref $self->{input_data};
