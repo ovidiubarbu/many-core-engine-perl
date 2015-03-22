@@ -16,7 +16,7 @@ use warnings;
 
 ## no critic (TestingAndDebugging::ProhibitNoStrict)
 
-our $VERSION = '1.699';
+our $VERSION = '1.603';
 
 ## Items below are folded into MCE.
 
@@ -72,6 +72,8 @@ sub _output_loop {
         $_plugin_loop_begin, $_plugin_loop_end ) = @_;
 
    @_ = ();
+
+   die 'Private method called' unless (caller)[0]->isa( ref $self );
 
    my (
       $_aborted, $_eof_flag, $_syn_flag, %_sendto_fhs, $_want_id,

@@ -15,7 +15,7 @@ package MCE::Core::Input::Generator;
 use strict;
 use warnings;
 
-our $VERSION = '1.699';
+our $VERSION = '1.603';
 
 ## Items below are folded into MCE.
 
@@ -36,6 +36,8 @@ sub _worker_sequence_generator {
    my ($self) = @_;
 
    @_ = ();
+
+   die 'Private method called' unless (caller)[0]->isa( ref $self );
 
    _croak('MCE::_worker_sequence_generator: (user_func) is not specified')
       unless (defined $self->{user_func});

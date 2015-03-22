@@ -14,7 +14,7 @@ package MCE::Core::Worker;
 use strict;
 use warnings;
 
-our $VERSION = '1.699';
+our $VERSION = '1.603';
 
 ## Items below are folded into MCE.
 
@@ -35,9 +35,8 @@ use bytes;
 
 {
    my (
-      $_dest, $_len, $_task_id, $_user_func, $_value, $_want_id, $_tag,
-      $_DAT_LOCK, $_DAT_W_SOCK, $_DAU_W_SOCK, $_chn, $_dat_ex, $_dat_un,
-      $_GAT_LOCK, $_GAT_W_SOCK, $_GAU_W_SOCK, $_ghn, $_gat_ex, $_gat_un
+      $_dest, $_len, $_tag, $_task_id, $_user_func, $_value, $_want_id,
+      $_DAT_LOCK, $_DAT_W_SOCK, $_DAU_W_SOCK, $_lock_chn, $_chn
    );
 
    ## Create array structure containing various send functions.
@@ -49,11 +48,11 @@ use bytes;
       local $\ = undef if (defined $\);
 
       if (length ${ $_[0] }) {
-         $_dat_ex->();
+         flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
          print {$_DAT_W_SOCK} OUTPUT_F_SND . $LF . $_chn . $LF;
          print {$_DAU_W_SOCK} $_value . $LF . length(${ $_[0] }) . $LF;
          print {$_DAU_W_SOCK} ${ $_[0] };
-         $_dat_un->();
+         flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
       }
 
       return;
@@ -65,11 +64,11 @@ use bytes;
       local $\ = undef if (defined $\);
 
       if (length ${ $_[0] }) {
-         $_dat_ex->();
+         flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
          print {$_DAT_W_SOCK} OUTPUT_D_SND . $LF . $_chn . $LF;
          print {$_DAU_W_SOCK} $_value . $LF . length(${ $_[0] }) . $LF;
          print {$_DAU_W_SOCK} ${ $_[0] };
-         $_dat_un->();
+         flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
       }
 
       return;
@@ -80,11 +79,11 @@ use bytes;
       local $\ = undef if (defined $\);
 
       if (length ${ $_[0] }) {
-         $_dat_ex->();
+         flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
          print {$_DAT_W_SOCK} OUTPUT_O_SND . $LF . $_chn . $LF;
          print {$_DAU_W_SOCK} length(${ $_[0] }) . $LF;
          print {$_DAU_W_SOCK} ${ $_[0] };
-         $_dat_un->();
+         flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
       }
 
       return;
@@ -95,11 +94,11 @@ use bytes;
       local $\ = undef if (defined $\);
 
       if (length ${ $_[0] }) {
-         $_dat_ex->();
+         flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
          print {$_DAT_W_SOCK} OUTPUT_E_SND . $LF . $_chn . $LF;
          print {$_DAU_W_SOCK} length(${ $_[0] }) . $LF;
          print {$_DAU_W_SOCK} ${ $_[0] };
-         $_dat_un->();
+         flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
       }
 
       return;
@@ -127,7 +126,7 @@ use bytes;
             $_buf = $self->{freeze}($_aref);
             $_len = length $_buf; local $\ = undef if (defined $\);
 
-            $_dat_ex->();
+            flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
             print {$_DAT_W_SOCK} $_tag . $LF . $_chn . $LF;
             print {$_DAU_W_SOCK} $_want_id . $LF . $_value . $LF . $_len . $LF;
             print {$_DAU_W_SOCK} $_buf;
@@ -137,7 +136,7 @@ use bytes;
             $_tag = OUTPUT_S_CBK;
             $_len = length $_aref->[0]; local $\ = undef if (defined $\);
 
-            $_dat_ex->();
+            flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
             print {$_DAT_W_SOCK} $_tag . $LF . $_chn . $LF;
             print {$_DAU_W_SOCK} $_want_id . $LF . $_value . $LF . $_len . $LF;
             print {$_DAU_W_SOCK} $_aref->[0];
@@ -147,7 +146,7 @@ use bytes;
          $_tag = OUTPUT_N_CBK;
          local $\ = undef if (defined $\);
 
-         $_dat_ex->();
+         flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
          print {$_DAT_W_SOCK} $_tag . $LF . $_chn . $LF;
          print {$_DAU_W_SOCK} $_want_id . $LF . $_value . $LF;
       }
@@ -155,7 +154,7 @@ use bytes;
       ## Crossover: Receive return value
 
       if ($_want_id == WANTS_UNDEF) {
-         $_dat_un->();
+         flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
          return;
       }
       elsif ($_want_id == WANTS_ARRAY) {
@@ -163,7 +162,7 @@ use bytes;
          chomp($_len = <$_DAU_W_SOCK>);
 
          read($_DAU_W_SOCK, $_buf, $_len || 0);
-         $_dat_un->();
+         flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
 
          return @{ $self->{thaw}($_buf) };
       }
@@ -174,13 +173,13 @@ use bytes;
 
          if ($_len >= 0) {
             read($_DAU_W_SOCK, $_buf, $_len || 0);
-            $_dat_un->();
+            flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
 
             return $_buf if ($_want_id == WANTS_SCALAR);
             return $self->{thaw}($_buf);
          }
          else {
-            $_dat_un->();
+            flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
             return;
          }
       }
@@ -209,11 +208,11 @@ use bytes;
          if (defined $_aref->[0]) {
             $_len = length $_aref->[0]; local $\ = undef if (defined $\);
 
-            $_gat_ex->();
-            print {$_GAT_W_SOCK} $_tag . $LF . $_ghn . $LF;
-            print {$_GAU_W_SOCK} $_task_id . $LF . $_len . $LF;
-            print {$_GAU_W_SOCK} $_aref->[0];
-            $_gat_un->();
+            flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
+            print {$_DAT_W_SOCK} $_tag . $LF . $_chn . $LF;
+            print {$_DAU_W_SOCK} $_task_id . $LF . $_len . $LF;
+            print {$_DAU_W_SOCK} $_aref->[0];
+            flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
 
             return;
          }
@@ -225,11 +224,11 @@ use bytes;
 
       local $\ = undef if (defined $\);
 
-      $_gat_ex->();
-      print {$_GAT_W_SOCK} $_tag . $LF . $_ghn . $LF;
-      print {$_GAU_W_SOCK} $_task_id . $LF . $_len . $LF;
-      print {$_GAU_W_SOCK} $_buf if (length $_buf);
-      $_gat_un->();
+      flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
+      print {$_DAT_W_SOCK} $_tag . $LF . $_chn . $LF;
+      print {$_DAU_W_SOCK} $_task_id . $LF . $_len . $LF;
+      print {$_DAU_W_SOCK} $_buf if (length $_buf);
+      flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
 
       return;
    }
@@ -298,34 +297,14 @@ use bytes;
 
       my ($self) = @_;
 
-      $_task_id = $self->{_task_id};
+      die 'Private method called' unless (caller)[0]->isa( ref $self );
 
-      $_ghn        = $self->{_chn};
-      $_GAT_LOCK   = $self->{_dat_lock};
-      $_GAT_W_SOCK = $self->{_dat_w_sock}->[0];
-      $_GAU_W_SOCK = $self->{_dat_w_sock}->[$_ghn];
-
-      $_gat_ex = sub { sysread(  $_GAT_LOCK->{_r_sock}, my $_b, 1 ) };
-      $_gat_un = sub { syswrite( $_GAT_LOCK->{_w_sock}, '0' ) };
-
-      if (!defined $MCE::Shared::_HDLR ||
-            refaddr($self) == refaddr($MCE::Shared::_HDLR)) {
-
-         ( $_chn, $_DAT_LOCK, $_DAT_W_SOCK, $_DAU_W_SOCK ) =
-         ( $_ghn, $_GAT_LOCK, $_GAT_W_SOCK, $_GAU_W_SOCK );
-
-         ( $_dat_ex, $_dat_un ) = ( $_gat_ex, $_gat_un );
-      }
-      else {
-         $_chn = $self->{_wid} % $MCE::Shared::_HDLR->{_data_channels} + 1;
-
-         $_DAT_LOCK   = $MCE::Shared::_HDLR->{'_mutex_'.$_chn};
-         $_DAT_W_SOCK = $MCE::Shared::_HDLR->{_dat_w_sock}->[0];
-         $_DAU_W_SOCK = $MCE::Shared::_HDLR->{_dat_w_sock}->[$_chn];
-
-         $_dat_ex = sub { sysread(  $_DAT_LOCK->{_r_sock}, my $_b, 1 ) };
-         $_dat_un = sub { syswrite( $_DAT_LOCK->{_w_sock}, '0' ) };
-      }
+      $_chn        = $self->{_chn};
+      $_DAT_LOCK   = $self->{_dat_lock};
+      $_DAT_W_SOCK = $self->{_dat_w_sock}->[0];
+      $_DAU_W_SOCK = $self->{_dat_w_sock}->[$_chn];
+      $_lock_chn   = $self->{_lock_chn};
+      $_task_id    = $self->{_task_id};
 
       local ($!, $@);
 
@@ -339,10 +318,11 @@ use bytes;
 
       my ($self) = @_;
 
+      die 'Private method called' unless (caller)[0]->isa( ref $self );
+
       $_dest = $_len = $_task_id = $_user_func = $_value = $_want_id = undef;
-      $_dat_ex = $_dat_un = $_gat_ex = $_gat_un = $_tag = undef;
-      $_DAT_LOCK = $_DAT_W_SOCK = $_DAU_W_SOCK = $_chn = undef;
-      $_GAT_LOCK = $_GAT_W_SOCK = $_GAU_W_SOCK = $_ghn = undef;
+      $_DAT_LOCK = $_DAT_W_SOCK = $_DAU_W_SOCK = $_lock_chn = $_chn = undef;
+      $_tag = undef;
 
       return;
    }
@@ -381,6 +361,8 @@ sub _worker_do {
 
    @_ = ();
 
+   die 'Private method called' unless (caller)[0]->isa( ref $self );
+
    ## Set options.
    $self->{_abort_msg}  = $_params_ref->{_abort_msg};
    $self->{_run_mode}   = $_params_ref->{_run_mode};
@@ -396,6 +378,7 @@ sub _worker_do {
    my $_DAT_LOCK   = $self->{_dat_lock};
    my $_DAT_W_SOCK = $self->{_dat_w_sock}->[0];
    my $_DAU_W_SOCK = $self->{_dat_w_sock}->[$_chn];
+   my $_lock_chn   = $self->{_lock_chn};
    my $_run_mode   = $self->{_run_mode};
    my $_task_id    = $self->{_task_id};
    my $_task_name  = $self->{task_name};
@@ -483,7 +466,7 @@ sub _worker_do {
    ## Notify the main process a worker has completed.
    local $\ = undef if (defined $\);
 
-   $_DAT_LOCK->lock();
+   flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
 
    if (exists $self->{_rla_return}) {
       print {$_DAT_W_SOCK} OUTPUT_W_RLA . $LF . $_chn . $LF;
@@ -493,7 +476,7 @@ sub _worker_do {
    print {$_DAT_W_SOCK} OUTPUT_W_DNE . $LF . $_chn . $LF;
    print {$_DAU_W_SOCK} $_task_id . $LF;
 
-   $_DAT_LOCK->unlock();
+   flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
 
    return;
 }
@@ -510,6 +493,8 @@ sub _worker_loop {
 
    @_ = ();
 
+   die 'Private method called' unless (caller)[0]->isa( ref $self );
+
    my ($_response, $_len, $_buf, $_params_ref);
 
    my $_COM_LOCK   = $self->{_com_lock};
@@ -521,7 +506,7 @@ sub _worker_loop {
 
       {
          local $\ = undef; local $/ = $LF;
-         $_COM_LOCK->lock();
+         flock $_COM_LOCK, LOCK_EX;
 
          ## Wait until next job request.
          $_response = <$_COM_W_SOCK>;
@@ -539,7 +524,7 @@ sub _worker_loop {
             read $_COM_W_SOCK, $_buf, $_len;
 
             print {$_COM_W_SOCK} $_wid . $LF;
-            $_COM_LOCK->unlock();
+            flock $_COM_LOCK, LOCK_UN;
 
             $self->{user_data} = $self->{thaw}($_buf);
             undef $_buf;
@@ -553,7 +538,7 @@ sub _worker_loop {
          else {
             ## Return to caller if instructed to exit.
             if ($_response eq '_exit') {
-               $_COM_LOCK->unlock();
+               flock $_COM_LOCK, LOCK_UN;
                return;
             }
 
@@ -562,7 +547,7 @@ sub _worker_loop {
             read $_COM_W_SOCK, $_buf, $_len;
 
             print {$_COM_W_SOCK} $_wid . $LF;
-            $_COM_LOCK->unlock();
+            flock $_COM_LOCK, LOCK_UN;
 
             $_params_ref = $self->{thaw}($_buf);
             undef $_buf;
@@ -587,7 +572,7 @@ sub _worker_loop {
    ## Notify the main process a worker has ended. The following is executed
    ## when an invalid reply was received above (not likely to occur).
 
-   $_COM_LOCK->unlock();
+   flock $_COM_LOCK, LOCK_UN;
 
    die "worker $self->{_wid} has ended prematurely";
 }
@@ -604,6 +589,9 @@ sub _worker_main {
         $_plugin_worker_init, $_is_winenv ) = @_;
 
    @_ = ();
+
+   ## Commented out -- fails with the 'forks' module under FreeBSD.
+   ## die 'Private method called' unless (caller)[0]->isa( ref $self );
 
    if (exists $self->{input_data}) {
       my $_ref = ref $self->{input_data};
@@ -656,7 +644,7 @@ sub _worker_main {
    $self->{user_end}    = $_task->{user_end}    if ($_task->{user_end});
 
    ## Init runtime vars. Obtain handle to lock files.
-   my ($_COM_LOCK, $_chn);
+   my ($_COM_LOCK, $_DAT_LOCK, $_chn);
    my $_mce_sid  = $self->{_mce_sid};
    my $_sess_dir = $self->{_sess_dir};
 
@@ -671,9 +659,24 @@ sub _worker_main {
    $self->{_task}     = $_task;
    $self->{_wid}      = $_wid;
 
+   ## Unset the need for channel locking if only worker on the channel.
+   if ($self->{_init_total_workers} < DATA_CHANNELS * 2) {
+      if ($_wid > $self->{_init_total_workers} % DATA_CHANNELS) {
+         $self->{_lock_chn} = 0 if ($_wid <= DATA_CHANNELS);
+      }
+   }
+
    ## Choose locks for DATA channels.
-   $self->{_com_lock} = $self->{'_mutex_0'};
-   $self->{_dat_lock} = $self->{'_mutex_'.$_chn};
+   if ($self->{_lock_chn}) {
+      open $_DAT_LOCK, '+>>:raw:stdio', "$_sess_dir/_dat.lock.$_chn"
+         or die "(W) open error $_sess_dir/_dat.lock.$_chn: $!\n";
+   }
+
+   open $_COM_LOCK, '+>>:raw:stdio', "$_sess_dir/_com.lock"
+      or die "(W) open error $_sess_dir/_com.lock: $!\n";
+
+   $self->{_dat_lock} = $_DAT_LOCK;
+   $self->{_com_lock} = $_COM_LOCK;
 
    ## Delete attributes no longer required after being spawned.
    delete @{ $self }{ qw(
@@ -706,9 +709,17 @@ sub _worker_main {
    MCE::_clear_session($_mce_sid);
 
    ## Wait until MCE completes exit notification.
+   $SIG{__DIE__} = $SIG{__WARN__} = sub { };
+
    local $@; eval {
       sysread $self->{_bse_r_sock}, (my $_c), 1;
    };
+
+   if ($self->{_lock_chn}) {
+      close $_DAT_LOCK; undef $_DAT_LOCK;
+   }
+
+   close $_COM_LOCK; undef $_COM_LOCK;
 
    return;
 }

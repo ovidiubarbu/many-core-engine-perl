@@ -14,7 +14,7 @@ package MCE::Core::Input::Handle;
 use strict;
 use warnings;
 
-our $VERSION = '1.699';
+our $VERSION = '1.603';
 
 ## Items below are folded into MCE.
 
@@ -40,6 +40,8 @@ sub _worker_read_handle {
    my ($self, $_proc_type, $_input_data) = @_;
 
    @_ = ();
+
+   die 'Private method called' unless (caller)[0]->isa( ref $self );
 
    _croak('MCE::_worker_read_handle: (user_func) is not specified')
       unless (defined $self->{user_func});

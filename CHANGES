@@ -1,40 +1,6 @@
 
 Revision history for MCE
 
-1.699 Fri Mar 20 14:00:00 EST 2015
-
-  [ TODO: before releasing MCE 1.700 ]
-
-  * Document ->enq, ->enqp, and ->await methods in MCE::Step.
-  * Complete MCE::Shared documentation.
-
-  [ENHANCEMENTS]
-
-  * Locking for IPC is now handled by MCE::Mutex. Gone is file locking.
-    This allows for more threads per process due to lesser consumption on
-    file handles. This solves the slow file locking behavior seen in
-    Cygwin, especially when running with many workers.
-
-  * The MCE::Flow and MCE::Step Models can take an anonymous array for
-    specifying use_threads uniquely for each sub-task. Mixing threads and
-    processes is allowed across the board with this release. MCE on Cygwin
-    has finally reached 100% parity with MCE on a UNIX OS.
-
-  [NEW FEATURES]
-
-  * MCE::Shared, MCE::Shared::Array, MCE::Shared::Hash, MCE::Shared::Scalar.
-    Test scripts: 07_shared_[ array | hash | scalar ].t
-
-  * Added examples/asynchrony demonstrating parallel concurrency, asynchrony,
-    and shared data; dnslookup_ae.pl, dnslookup_ioa.pl, echoserver_ae.pl,
-    echoserver_ioa.pl, echoserver_mojo.pl, and echoserver_poe.pl.
-
-  * Replaced netping.pl with fastping_ae.pl supporting IPv4 and IPv6.
-  * Added examples: shared_mce.pl, shared_thr.pl, and step_mon.pl.
-
-  * Added ->enq, ->enqp, and ->await methods to MCE::Step.
-  * Added ->await method to MCE::Queue.
-
 1.603 Tue Mar 17 21:00:00 EST 2015
 
   [ENHANCEMENTS]

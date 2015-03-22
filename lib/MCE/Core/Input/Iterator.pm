@@ -14,7 +14,7 @@ package MCE::Core::Input::Iterator;
 use strict;
 use warnings;
 
-our $VERSION = '1.699';
+our $VERSION = '1.603';
 
 ## Items below are folded into MCE.
 
@@ -36,6 +36,8 @@ sub _worker_user_iterator {
 
    @_ = ();
 
+   die 'Private method called' unless (caller)[0]->isa( ref $self );
+
    _croak('MCE::_worker_user_iterator: (user_func) is not specified')
       unless (defined $self->{user_func});
 
@@ -43,12 +45,10 @@ sub _worker_user_iterator {
    my $_DAT_LOCK    = $self->{_dat_lock};
    my $_DAT_W_SOCK  = $self->{_dat_w_sock}->[0];
    my $_DAU_W_SOCK  = $self->{_dat_w_sock}->[$_chn];
+   my $_lock_chn    = $self->{_lock_chn};
    my $_chunk_size  = $self->{chunk_size};
    my $_I_FLG       = (!$/ || $/ ne $LF);
    my $_wuf         = $self->{_wuf};
-
-   my $_dat_ex = sub { sysread(  $_DAT_LOCK->{_r_sock}, my $_b, 1 ) };
-   my $_dat_un = sub { syswrite( $_DAT_LOCK->{_w_sock}, '0' ) };
 
    my ($_chunk_id, $_len, $_is_ref);
 
@@ -70,12 +70,12 @@ sub _worker_user_iterator {
       {
          local $\ = undef if (defined $\); local $/ = $LF if ($_I_FLG);
 
-         $_dat_ex->();
+         flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
          print {$_DAT_W_SOCK} OUTPUT_U_ITR . $LF . $_chn . $LF;
          chomp($_len = <$_DAU_W_SOCK>);
 
          if ($_len < 0) {
-            $_dat_un->();
+            flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
             return;
          }
 
@@ -84,7 +84,7 @@ sub _worker_user_iterator {
          chomp($_chunk_id = <$_DAU_W_SOCK>);
          read $_DAU_W_SOCK, $_, $_len;
 
-         $_dat_un->();
+         flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
       }
 
       ## Call user function.

@@ -18,7 +18,7 @@ use Scalar::Util qw( looks_like_number );
 use MCE;
 use MCE::Queue;
 
-our $VERSION  = '1.699';
+our $VERSION  = '1.603';
 
 our @CARP_NOT = qw( MCE );
 
@@ -32,8 +32,8 @@ my $MAX_WORKERS = 'auto';
 my $CHUNK_SIZE  = 'auto';
 my $FAST        = 0;
 
-my ($_params, @_prev_c, @_prev_n, @_prev_t, @_prev_w, @_user_tasks, @_queue);
-my ($_MCE, $_loaded, $_last_task_id, %_lkup); my $_tag = 'MCE::Step';
+my ($_params, @_prev_c, @_prev_n, @_prev_w, @_user_tasks, @_queue);
+my ($_MCE, $_loaded, $_last_task_id); my $_tag = 'MCE::Step';
 
 sub import {
 
@@ -105,6 +105,7 @@ END {
 ###############################################################################
 ## ----------------------------------------------------------------------------
 ## The task end callback for when a task completes.
+## Also, the step method for MCE is defined here.
 ##
 ###############################################################################
 
@@ -122,12 +123,6 @@ sub _task_end {
 
    return;
 }
-
-###############################################################################
-## ----------------------------------------------------------------------------
-## Methods for MCE; step, enq, enqp, await.
-##
-###############################################################################
 
 {
    no warnings 'redefine';
@@ -154,109 +149,6 @@ sub _task_end {
 
       return;
    }
-
-   ############################################################################
-
-   sub MCE::enq {
-
-      my $x = shift; my $self = ref($x) ? $x : $_MCE; my $_name = shift;
-
-      _croak('MCE::enq: method cannot be called by the manager process')
-         unless ($self->{_wid});
-      _croak('MCE::enq: (task_name) is not specified or valid')
-         if (!defined $_name || !exists $_lkup{$_name});
-      _croak('MCE::enq: stepping to same task or backwards is not allowed')
-         if ($_lkup{$_name} <= $self->{_task_id});
-
-      my $_task_id = $_lkup{$_name} - 1;
-
-      if ($_task_id < $_last_task_id) {
-         if (scalar @_ > 1) {
-            my @_items = map {
-               (ref $_ || !defined $_) ? $self->freeze([ $_ ]).'1' : $_.'0';
-            } @_;
-            $_queue[$_task_id]->enqueue(@_items);
-         }
-         elsif (!defined $_[0] || ref $_[0]) {
-            $_queue[$_task_id]->enqueue($self->freeze([ @_ ]).'1');
-         }
-         else {
-            $_queue[$_task_id]->enqueue($_[0].'0');
-         }
-      }
-      else {
-         _croak('MCE::enq: method cannot be called by the last task');
-      }
-
-      return;
-   }
-
-   ############################################################################
-
-   sub MCE::enqp {
-
-      my $x = shift; my $self = ref($x) ? $x : $_MCE;
-      my ($_name, $_p) = (shift, shift);
-
-      _croak('MCE::enqp: method cannot be called by the manager process')
-         unless ($self->{_wid});
-      _croak('MCE::enqp: (task_name) is not specified or valid')
-         if (!defined $_name || !exists $_lkup{$_name});
-      _croak('MCE::enqp: stepping to same task or backwards is not allowed')
-         if ($_lkup{$_name} <= $self->{_task_id});
-      _croak('MCE::enqp: (priority) is not an integer')
-         if (!looks_like_number($_p) || int($_p) != $_p);
-
-      my $_task_id = $_lkup{$_name} - 1;
-
-      if ($_task_id < $_last_task_id) {
-         if (scalar @_ > 1) {
-            my @_items = map {
-               (ref $_ || !defined $_) ? $self->freeze([ $_ ]).'1' : $_.'0';
-            } @_;
-            $_queue[$_task_id]->enqueuep($_p, @_items);
-         }
-         elsif (!defined $_[0] || ref $_[0]) {
-            $_queue[$_task_id]->enqueuep($_p, $self->freeze([ @_ ]).'1');
-         }
-         else {
-            $_queue[$_task_id]->enqueuep($_p, $_[0].'0');
-         }
-      }
-      else {
-         _croak('MCE::enqp: method cannot be called by the last task');
-      }
-
-      return;
-   }
-
-   ############################################################################
-
-   sub MCE::await {
-
-      my $x = shift; my $self = ref($x) ? $x : $_MCE; my $_name = shift;
-
-      _croak('MCE::await: method cannot be called by the manager process')
-         unless ($self->{_wid});
-      _croak('MCE::await: (task_name) is not specified or valid')
-         if (!defined $_name || !exists $_lkup{$_name});
-      _croak('MCE::await: awaiting from same task or backwards is not allowed')
-         if ($_lkup{$_name} <= $self->{_task_id});
-
-      my $_task_id = $_lkup{$_name} - 1;  my $_t = shift || 0;
-
-      _croak('MCE::await: (threshold) is not an integer')
-         if (!looks_like_number($_t) || int($_t) != $_t);
-
-      if ($_task_id < $_last_task_id) {
-         $_queue[$_task_id]->await($_t);
-      } else {
-         _croak('MCE::await: method cannot be called by the last task');
-      }
-
-      return;
-   }
-
 }
 
 ###############################################################################
@@ -288,11 +180,9 @@ sub finish () {
       MCE::_save_state; $_MCE->shutdown(); MCE::_restore_state;
    }
 
+   @_user_tasks = (); @_prev_w = (); @_prev_n = (); @_prev_c = ();
+
    $_->DESTROY() for (@_queue); @_queue = ();
-
-   @_prev_c = (); @_prev_n = (); @_prev_t = (); @_prev_w = ();
-
-   @_user_tasks = (); %_lkup = ();
 
    return;
 }
@@ -436,36 +326,27 @@ sub run (@) {
 
    ## -------------------------------------------------------------------------
 
-   my (@_code, @_name, @_thrs, @_wrks); my $_init_mce = 0; my $_pos = 0;
-
-   %_lkup = ();
+   my (@_code, @_name, @_wrks); my $_init_mce = 0; my $_pos = 0;
 
    while (ref $_[0] eq 'CODE') {
       push @_code, $_[0];
 
       push @_name, (defined $_params && ref $_params->{task_name} eq 'ARRAY')
          ? $_params->{task_name}->[$_pos] : undef;
-      push @_thrs, (defined $_params && ref $_params->{use_threads} eq 'ARRAY')
-         ? $_params->{use_threads}->[$_pos] : undef;
       push @_wrks, (defined $_params && ref $_params->{max_workers} eq 'ARRAY')
          ? $_params->{max_workers}->[$_pos] : undef;
 
-      $_lkup{ $_name[ $_pos ] } = $_pos if (defined $_name[ $_pos ]);
-
-      if (!defined $_prev_c[$_pos] || $_prev_c[$_pos] != $_code[$_pos]) {
-         $_init_mce = 1;
-      }
+      $_init_mce = 1
+         if (!defined $_prev_c[$_pos] || $_prev_c[$_pos] != $_code[$_pos]);
 
       {
          no warnings;
          $_init_mce = 1 if ($_prev_n[$_pos] ne $_name[$_pos]);
-         $_init_mce = 1 if ($_prev_t[$_pos] ne $_thrs[$_pos]);
          $_init_mce = 1 if ($_prev_w[$_pos] ne $_wrks[$_pos]);
       }
 
       $_prev_c[$_pos] = $_code[$_pos];
       $_prev_n[$_pos] = $_name[$_pos];
-      $_prev_t[$_pos] = $_thrs[$_pos];
       $_prev_w[$_pos] = $_wrks[$_pos];
 
       shift; $_pos++;
@@ -474,7 +355,6 @@ sub run (@) {
    if (defined $_prev_c[$_pos]) {
       pop @_prev_c for ($_pos .. @_prev_c - 1);
       pop @_prev_n for ($_pos .. @_prev_n - 1);
-      pop @_prev_t for ($_pos .. @_prev_t - 1);
       pop @_prev_w for ($_pos .. @_prev_w - 1);
 
       $_init_mce = 1;
@@ -525,28 +405,26 @@ sub run (@) {
 
       pop( @_queue )->DESTROY for (@_code .. @_queue);
 
-      push @_queue, MCE::Queue->new(fast => $FAST, await => 1)
+      push @_queue, MCE::Queue->new(fast => $FAST)
          for (@_queue .. @_code - 2);
 
-      _gen_user_tasks(\@_queue, \@_code, \@_name, \@_thrs, \@_wrks, $_chunk_size);
+      _gen_user_tasks(\@_queue, \@_code, \@_name, \@_wrks, $_chunk_size);
       $_last_task_id = @_code - 1;
 
       my %_options = (
          max_workers => $_max_workers, task_name => $_tag,
-         user_tasks  => \@_user_tasks, task_end  => \&_task_end,
+         user_tasks => \@_user_tasks, task_end => \&_task_end,
       );
 
       if (defined $_params) {
          local $_; my $_p = $_params;
 
          for (keys %{ $_p }) {
-            next if ($_ eq 'max_workers' && ref $_p->{max_workers} eq 'ARRAY');
-            next if ($_ eq 'task_name'   && ref $_p->{task_name}   eq 'ARRAY');
-            next if ($_ eq 'use_threads' && ref $_p->{use_threads} eq 'ARRAY');
-
-            next if ($_ eq 'chunk_size');
-            next if ($_ eq 'input_data');
             next if ($_ eq 'sequence_run');
+            next if ($_ eq 'max_workers' && ref $_p->{max_workers} eq 'ARRAY');
+            next if ($_ eq 'task_name' && ref $_p->{task_name} eq 'ARRAY');
+            next if ($_ eq 'input_data');
+            next if ($_ eq 'chunk_size');
             next if ($_ eq 'task_end');
 
             _croak("MCE::Step: ($_) is not a valid constructor argument")
@@ -657,15 +535,12 @@ sub _gen_user_func {
 
 sub _gen_user_tasks {
 
-   my (
-      $_queue_ref, $_code_ref, $_name_ref, $_thrs_ref, $_wrks_ref, $_chunk_size
-   ) = @_;
+   my ($_queue_ref, $_code_ref, $_name_ref, $_wrks_ref, $_chunk_size) = @_;
 
    @_user_tasks = ();
 
    push @_user_tasks, {
       task_name   => $_name_ref->[0],
-      use_threads => $_thrs_ref->[0],
       max_workers => $_wrks_ref->[0],
       user_func   => sub { $_code_ref->[0]->(@_); return; }
    };
@@ -673,7 +548,6 @@ sub _gen_user_tasks {
    for my $_pos (1 .. @{ $_code_ref } - 1) {
       push @_user_tasks, {
          task_name   => $_name_ref->[$_pos],
-         use_threads => $_thrs_ref->[$_pos],
          max_workers => $_wrks_ref->[$_pos],
          user_func   => _gen_user_func(
             $_queue_ref, $_code_ref, $_chunk_size, $_pos
@@ -715,7 +589,7 @@ MCE::Step - Parallel step model for building creative steps
 
 =head1 VERSION
 
-This document describes MCE::Step version 1.699
+This document describes MCE::Step version 1.603
 
 =head1 DESCRIPTION
 
@@ -783,8 +657,8 @@ into the next sub-task.
    }
 
 In summary, MCE::Step builds out a MCE instance behind the scene and starts
-running. The task_name (shown), max_workers, and use_threads options can take
-an anonymous array for specifying the values uniquely for each sub-task.
+running. Both task_name and max_workers (not shown) can take an anonymous
+array for specifying the values uniquely for each sub-task.
 
    my @a;
 
@@ -843,13 +717,11 @@ First, defining 3 sub-tasks.
    }
 
 Next, pass MCE options, using chunk_size 1, and run all 3 tasks in parallel.
-Notice how max_workers and use_threads can take an anonymous array, similarly
-to task_name.
+Notice how max_workers can take an anonymous array, similarly to task_name.
 
    my @arr = mce_step {
       task_name   => [ 'a', 'b', 'c' ],
       max_workers => [  2,   2,   2  ],
-      use_threads => [  0,   0,   0  ],
       chunk_size  => 1
 
    }, \&task_a, \&task_b, \&task_c, 1..10;
@@ -1047,9 +919,9 @@ both gather and bounds_only options may be specified when calling init
 =back
 
 Like with MCE::Step::init above, MCE options may be specified using an
-anonymous hash for the first argument. Notice how task_name, max_workers,
-and use_threads can take an anonymous array for setting uniquely for
-each code block.
+anonymous hash for the first argument. Notice how both max_workers and
+task_name can take an anonymous array for setting values uniquely
+for each code block.
 
 Unlike MCE::Stream which processes from right-to-left, MCE::Step begins
 with the first code block, thus processing from left-to-right.
@@ -1062,13 +934,11 @@ Removing both calls to MCE->step will cause the script to complete in just
 1 second. The reason is due to the 2nd and subsequent sub-tasks awaiting
 data from an internal queue. Workers terminate upon receiving an undef.
 
-   use threads;
    use MCE::Step;
 
    my @a = mce_step {
       task_name   => [ 'a', 'b', 'c' ],
       max_workers => [  3,   4,   2, ],
-      use_threads => [  1,   0,   0, ],
 
       user_end => sub {
          my ($mce, $task_id, $task_name) = @_;

@@ -16,11 +16,12 @@ no warnings 'threads';
 no warnings 'recursion';
 no warnings 'uninitialized';
 
-use Scalar::Util qw( looks_like_number refaddr );
+use Fcntl qw( :flock O_RDONLY );
+use Scalar::Util qw( looks_like_number );
 use MCE::Util qw( $LF );
 use bytes;
 
-our $VERSION = '1.699';
+our $VERSION = '1.603';
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
@@ -30,7 +31,7 @@ our $VERSION = '1.699';
 
 our ($HIGHEST, $LOWEST, $FIFO, $LIFO, $LILO, $FILO) = (1, 0, 1, 0, 1, 0);
 
-my ($AWAIT, $FAST, $PORDER, $TYPE) = (0, 0, $HIGHEST, $FIFO);
+my ($FAST, $PORDER, $TYPE) = (0, $HIGHEST, $FIFO);
 my $_loaded;
 
 sub import {
@@ -41,11 +42,6 @@ sub import {
    while (my $_argument = shift) {
       my $_arg = lc $_argument;
 
-      if ( $_arg eq 'await' ) {
-         _croak('MCE::Queue::import: (AWAIT) must be 1 or 0')
-            if (!defined $_[0] || ($_[0] ne '1' && $_[0] ne '0'));
-         $AWAIT = shift ; next;
-      }
       if ( $_arg eq 'fast' ) {
          _croak('MCE::Queue::import: (FAST) must be 1 or 0')
             if (!defined $_[0] || ($_[0] ne '1' && $_[0] ne '0'));
@@ -72,7 +68,6 @@ sub import {
       _mce_m_init();
    }
    else {
-      *{ 'MCE::Queue::await'      } = \&_await;
       *{ 'MCE::Queue::clear'      } = \&_clear;
       *{ 'MCE::Queue::enqueue'    } = \&_enqueue;
       *{ 'MCE::Queue::enqueuep'   } = \&_enqueuep;
@@ -100,7 +95,6 @@ use constant {
 
    MAX_DQ_DEPTH => 192,               ## Maximum dequeue notifications allowed
 
-   OUTPUT_W_QUE => 'W~QUE',           ## Await from the queue
    OUTPUT_C_QUE => 'C~QUE',           ## Clear the queue
 
    OUTPUT_A_QUE => 'A~QUE',           ## Enqueue into queue (array)
@@ -127,10 +121,9 @@ use constant {
 
 ## ** Attributes used internally and listed here.
 ## _qr_sock _qw_sock _datp _datq _heap _id _nb_flag _porder _type _standalone
-## _ar_sock _aw_sock _asem _tsem
 
 my %_valid_fields_new = map { $_ => 1 } qw(
-   await fast gather porder queue type
+   fast gather porder queue type
 );
 
 my $_all = {};
@@ -172,13 +165,10 @@ sub new {
          unless (exists $_valid_fields_new{$_p});
    }
 
-   $_Q->{_asem} =  0;  ## Semaphore count variable for the ->await method
    $_Q->{_datp} = {};  ## Priority data { p1 => [ ], p2 => [ ], pN => [ ] }
    $_Q->{_heap} = [];  ## Priority heap [ pN, p2, p1 ] ## in heap order
                        ## fyi, _datp will always dequeue before _datq
 
-   $_Q->{_await} = (exists $_argv{await} && defined $_argv{await})
-      ? $_argv{await} : $AWAIT;
    $_Q->{_fast} = (exists $_argv{fast} && defined $_argv{fast})
       ? $_argv{fast} : $FAST;
    $_Q->{_porder} = (exists $_argv{porder} && defined $_argv{porder})
@@ -188,8 +178,6 @@ sub new {
 
    ## -------------------------------------------------------------------------
 
-   _croak('MCE::Queue::new: (await) must be 1 or 0')
-      if ($_Q->{_await} ne '1' && $_Q->{_await} ne '0');
    _croak('MCE::Queue::new: (fast) must be 1 or 0')
       if ($_Q->{_fast} ne '1' && $_Q->{_fast} ne '0');
    _croak('MCE::Queue::new: (porder) must be 1 or 0')
@@ -219,8 +207,6 @@ sub new {
          $_Q->{_dsem} = 0 if ($_Q->{_fast});
 
          MCE::Util::_make_socket_pair($_Q, qw(_qr_sock _qw_sock));
-         MCE::Util::_make_socket_pair($_Q, qw(_ar_sock _aw_sock))
-            if ($_Q->{_await});
 
          syswrite $_Q->{_qw_sock}, $LF
             if (exists $_argv{queue} && scalar @{ $_argv{queue} });
@@ -235,14 +221,9 @@ sub new {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Await and clear methods.
+## Clear method.
 ##
 ###############################################################################
-
-sub _await {
-
-   return;
-}
 
 sub _clear {
 
@@ -646,28 +627,9 @@ sub _heap_insert_high {
 
 {
    my ($_MCE, $_DAU_R_SOCK_REF, $_DAU_R_SOCK, $_cnt, $_i, $_id);
-   my ($_len, $_p, $_t, $_Q, $_pending);
+   my ($_len, $_p, $_Q, $_pending);
 
    my %_output_function = (
-
-      OUTPUT_W_QUE.$LF => sub {                   ## Await from the queue
-
-         $_DAU_R_SOCK = ${ $_DAU_R_SOCK_REF };
-
-         chomp($_id = <$_DAU_R_SOCK>);
-         chomp($_t  = <$_DAU_R_SOCK>);
-
-         $_Q = $_all->{$_id};
-         $_Q->{_tsem} = $_t;
-
-         if ($_Q->_pending() <= $_t) {
-            syswrite $_Q->{_aw_sock}, $LF;
-         } else {
-            $_Q->{_asem} += 1;
-         }
-
-         return;
-      },
 
       OUTPUT_C_QUE.$LF => sub {                   ## Clear the queue
 
@@ -877,13 +839,6 @@ sub _heap_insert_high {
             }
          }
 
-         if ($_Q->{_await}) {
-            if ($_Q->{_asem} && $_Q->_pending() <= $_Q->{_tsem}) {
-               syswrite $_Q->{_aw_sock}, $LF for (1 .. $_Q->{_asem});
-               $_Q->{_asem} = 0;
-            }
-         }
-
          $_Q->{_nb_flag} = 0;
 
          return;
@@ -920,13 +875,6 @@ sub _heap_insert_high {
             } else {
                my $_buf = $_MCE->{freeze}(\@_items);
                print {$_DAU_R_SOCK} length($_buf) . $LF . $_buf;
-            }
-         }
-
-         if ($_Q->{_await}) {
-            if ($_Q->{_asem} && $_Q->_pending() <= $_Q->{_tsem}) {
-               syswrite $_Q->{_aw_sock}, $LF for (1 .. $_Q->{_asem});
-               $_Q->{_asem} = 0;
             }
          }
 
@@ -1109,7 +1057,6 @@ sub _heap_insert_high {
 
       no strict 'refs'; no warnings 'redefine';
 
-      *{ 'MCE::Queue::await'      } = \&_mce_m_await;
       *{ 'MCE::Queue::clear'      } = \&_mce_m_clear;
       *{ 'MCE::Queue::enqueue'    } = \&_mce_m_enqueue;
       *{ 'MCE::Queue::enqueuep'   } = \&_mce_m_enqueuep;
@@ -1134,11 +1081,6 @@ sub _heap_insert_high {
 ## Wrapper methods for the manager process.
 ##
 ###############################################################################
-
-sub _mce_m_await {
-
-   _croak('MCE::Queue::await: method cannot be called by the manager process');
-}
 
 sub _mce_m_clear {
 
@@ -1286,34 +1228,18 @@ sub _mce_m_insertp {
 ###############################################################################
 
 {
-   my (
-      $_MCE, $_DAT_LOCK, $_DAT_W_SOCK, $_DAU_W_SOCK, $_chn, $_dat_ex, $_dat_un,
-      $_len, $_next, $_pending, $_tag
-   );
+   my ($_chn, $_lock_chn, $_len, $_next, $_pending, $_tag);
+   my ($_MCE, $_DAT_LOCK, $_DAT_W_SOCK, $_DAU_W_SOCK);
 
    sub _mce_w_init {
 
       ($_MCE) = @_;
 
-      if (!defined $MCE::Shared::_HDLR ||
-            refaddr($_MCE) == refaddr($MCE::Shared::_HDLR)) {
-
-         ## MCE::Queue, MCE::Shared data managed by each manager process.
-         $_chn = $_MCE->{_chn}; $_DAT_LOCK = $_MCE->{_dat_lock};
-      }
-      else {
-         ## Data is managed by the top MCE instance; shared_handler => 1.
-         $_chn = $_MCE->{_wid} % $MCE::Shared::_HDLR->{_data_channels} + 1;
-
-         $_MCE = $MCE::Shared::_HDLR;
-         $_DAT_LOCK = $_MCE->{'_mutex_'.$_chn};
-      }
-
-      $_dat_ex = sub { sysread(  $_DAT_LOCK->{_r_sock}, my $_b, 1 ) };
-      $_dat_un = sub { syswrite( $_DAT_LOCK->{_w_sock}, '0' ) };
-
+      $_chn        = $_MCE->{_chn};
+      $_DAT_LOCK   = $_MCE->{_dat_lock};
       $_DAT_W_SOCK = $_MCE->{_dat_w_sock}->[0];
       $_DAU_W_SOCK = $_MCE->{_dat_w_sock}->[$_chn];
+      $_lock_chn   = $_MCE->{_lock_chn};
 
       for my $_p (keys %{ $_all }) {
          undef $_all->{$_p}->{_datp}; delete $_all->{$_p}->{_datp};
@@ -1323,7 +1249,6 @@ sub _mce_m_insertp {
 
       no strict 'refs'; no warnings 'redefine';
 
-      *{ 'MCE::Queue::await'      } = \&_mce_w_await;
       *{ 'MCE::Queue::clear'      } = \&_mce_w_clear;
       *{ 'MCE::Queue::enqueue'    } = \&_mce_w_enqueue;
       *{ 'MCE::Queue::enqueuep'   } = \&_mce_w_enqueuep;
@@ -1342,31 +1267,6 @@ sub _mce_m_insertp {
 
    ## -------------------------------------------------------------------------
 
-   sub _mce_w_await {
-
-      my $_Q = shift; my $_t = shift || 0;
-
-      return $_Q->_await() if (exists $_Q->{_standalone});
-
-      _croak('MCE::Queue::await: (await) is not enabled for this queue')
-         unless ($_Q->{_await});
-      _croak('MCE::Queue::await: (threshold) is not an integer')
-         if (!looks_like_number($_t) || int($_t) != $_t);
-
-      $_t = 0 if ($_t < 0);
-
-      local $\ = undef if (defined $\);
-
-      $_dat_ex->();
-      print {$_DAT_W_SOCK} OUTPUT_W_QUE . $LF . $_chn . $LF;
-      print {$_DAU_W_SOCK} $_Q->{_id} . $LF . $_t . $LF;
-      $_dat_un->();
-
-      sysread $_Q->{_ar_sock}, $_next, 1;  ## Block here
-
-      return;
-   }
-
    sub _mce_w_clear {
 
       my ($_Q) = @_;
@@ -1380,12 +1280,12 @@ sub _mce_m_insertp {
          local $\ = undef if (defined $\);
          local $/ = $LF if (!$/ || $/ ne $LF);
 
-         $_dat_ex->();
+         flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
          print {$_DAT_W_SOCK} OUTPUT_C_QUE . $LF . $_chn . $LF;
          print {$_DAU_W_SOCK} $_Q->{_id} . $LF;
          <$_DAU_W_SOCK>;
 
-         $_dat_un->();
+         flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
       }
 
       return;
@@ -1417,10 +1317,10 @@ sub _mce_m_insertp {
 
       local $\ = undef if (defined $\);
 
-      $_dat_ex->();
+      flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
       print {$_DAT_W_SOCK} $_tag . $LF . $_chn . $LF;
       print {$_DAU_W_SOCK} $_buf;
-      $_dat_un->();
+      flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
 
       return;
    }
@@ -1452,10 +1352,10 @@ sub _mce_m_insertp {
 
       local $\ = undef if (defined $\);
 
-      $_dat_ex->();
+      flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
       print {$_DAT_W_SOCK} $_tag . $LF . $_chn . $LF;
       print {$_DAU_W_SOCK} $_buf;
-      $_dat_un->();
+      flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
 
       return;
    }
@@ -1481,19 +1381,19 @@ sub _mce_m_insertp {
 
          sysread $_Q->{_qr_sock}, $_next, 1;  ## Block here
 
-         $_dat_ex->();
+         flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
          print {$_DAT_W_SOCK} OUTPUT_D_QUE . $LF . $_chn . $LF;
          print {$_DAU_W_SOCK} $_Q->{_id} . $LF . $_cnt . $LF;
 
          chomp($_len = <$_DAU_W_SOCK>);
 
          if ($_len < 0) {
-            $_dat_un->();
+            flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
             return undef;   # Do not change this to return;
          }
 
-         read $_DAU_W_SOCK, $_buf, $_len;
-         $_dat_un->();
+         read  $_DAU_W_SOCK, $_buf, $_len;
+         flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
       }
 
       if ($_cnt == 1) {
@@ -1525,19 +1425,19 @@ sub _mce_m_insertp {
          local $\ = undef if (defined $\);
          local $/ = $LF if (!$/ || $/ ne $LF);
 
-         $_dat_ex->();
+         flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
          print {$_DAT_W_SOCK} OUTPUT_D_QUN . $LF . $_chn . $LF;
          print {$_DAU_W_SOCK} $_Q->{_id} . $LF . $_cnt . $LF;
 
          chomp($_len = <$_DAU_W_SOCK>);
 
          if ($_len < 0) {
-            $_dat_un->();
+            flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
             return undef;   # Do not change this to return;
          }
 
-         read $_DAU_W_SOCK, $_buf, $_len;
-         $_dat_un->();
+         read  $_DAU_W_SOCK, $_buf, $_len;
+         flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
       }
 
       if ($_cnt == 1) {
@@ -1558,12 +1458,12 @@ sub _mce_m_insertp {
       local $\ = undef if (defined $\);
       local $/ = $LF if (!$/ || $/ ne $LF);
 
-      $_dat_ex->();
+      flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
       print {$_DAT_W_SOCK} OUTPUT_N_QUE . $LF . $_chn . $LF;
       print {$_DAU_W_SOCK} $_Q->{_id} . $LF;
 
       chomp($_pending = <$_DAU_W_SOCK>);
-      $_dat_un->();
+      flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
 
       return $_pending;
    }
@@ -1589,10 +1489,10 @@ sub _mce_m_insertp {
 
       local $\ = undef if (defined $\);
 
-      $_dat_ex->();
+      flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
       print {$_DAT_W_SOCK} OUTPUT_I_QUE . $LF . $_chn . $LF;
       print {$_DAU_W_SOCK} $_buf;
-      $_dat_un->();
+      flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
 
       return;
    }
@@ -1620,10 +1520,10 @@ sub _mce_m_insertp {
 
       local $\ = undef if (defined $\);
 
-      $_dat_ex->();
+      flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
       print {$_DAT_W_SOCK} OUTPUT_I_QUP . $LF . $_chn . $LF;
       print {$_DAU_W_SOCK} $_buf;
-      $_dat_un->();
+      flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
 
       return;
    }
@@ -1643,19 +1543,19 @@ sub _mce_m_insertp {
          local $\ = undef if (defined $\);
          local $/ = $LF if (!$/ || $/ ne $LF);
 
-         $_dat_ex->();
+         flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
          print {$_DAT_W_SOCK} OUTPUT_P_QUE . $LF . $_chn . $LF;
          print {$_DAU_W_SOCK} $_Q->{_id} . $LF . $_i . $LF;
 
          chomp($_len = <$_DAU_W_SOCK>);
 
          if ($_len < 0) {
-            $_dat_un->();
+            flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
             return undef;   # Do not change this to return;
          }
 
-         read $_DAU_W_SOCK, $_buf, $_len;
-         $_dat_un->();
+         read  $_DAU_W_SOCK, $_buf, $_len;
+         flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
       }
 
       return (chop $_buf) ? $_MCE->{thaw}($_buf) : $_buf;
@@ -1676,19 +1576,19 @@ sub _mce_m_insertp {
          local $\ = undef if (defined $\);
          local $/ = $LF if (!$/ || $/ ne $LF);
 
-         $_dat_ex->();
+         flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
          print {$_DAT_W_SOCK} OUTPUT_P_QUP . $LF . $_chn . $LF;
          print {$_DAU_W_SOCK} $_Q->{_id} . $LF . $_p . $LF . $_i . $LF;
 
          chomp($_len = <$_DAU_W_SOCK>);
 
          if ($_len < 0) {
-            $_dat_un->();
+            flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
             return undef;   # Do not change this to return;
          }
 
-         read $_DAU_W_SOCK, $_buf, $_len;
-         $_dat_un->();
+         read  $_DAU_W_SOCK, $_buf, $_len;
+         flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
       }
 
       return (chop $_buf) ? $_MCE->{thaw}($_buf) : $_buf;
@@ -1707,19 +1607,19 @@ sub _mce_m_insertp {
          local $\ = undef if (defined $\);
          local $/ = $LF if (!$/ || $/ ne $LF);
 
-         $_dat_ex->();
+         flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
          print {$_DAT_W_SOCK} OUTPUT_P_QUH . $LF . $_chn . $LF;
          print {$_DAU_W_SOCK} $_Q->{_id} . $LF . $_i . $LF;
 
          chomp($_len = <$_DAU_W_SOCK>);
 
          if ($_len < 0) {
-            $_dat_un->();
+            flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
             return undef;   # Do not change this to return;
          }
 
-         read $_DAU_W_SOCK, $_buf, $_len;
-         $_dat_un->();
+         read  $_DAU_W_SOCK, $_buf, $_len;
+         flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
       }
 
       return $_buf;
@@ -1737,14 +1637,14 @@ sub _mce_m_insertp {
          local $\ = undef if (defined $\);
          local $/ = $LF if (!$/ || $/ ne $LF);
 
-         $_dat_ex->();
+         flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
          print {$_DAT_W_SOCK} OUTPUT_H_QUE . $LF . $_chn . $LF;
          print {$_DAU_W_SOCK} $_Q->{_id} . $LF;
 
          chomp($_len = <$_DAU_W_SOCK>);
 
-         read $_DAU_W_SOCK, $_buf, $_len;
-         $_dat_un->();
+         read  $_DAU_W_SOCK, $_buf, $_len;
+         flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
       }
 
       return @{ $_MCE->{thaw}($_buf) };
@@ -1768,7 +1668,7 @@ MCE::Queue - Hybrid (normal and priority) queues for Many-Core Engine
 
 =head1 VERSION
 
-This document describes MCE::Queue version 1.699
+This document describes MCE::Queue version 1.603
 
 =head1 SYNOPSIS
 
@@ -1902,39 +1802,33 @@ Hence, MCE is not required to use MCE::Queue.
 
 =head1 API DOCUMENTATION
 
-=head2 MCE::Queue->new ( [ queue => \@array, await => 1, fast => 1 ] )
+=head2 MCE::Queue->new ( [ queue => \@array, fast => 1 ] )
 
-This creates a new queue. Available options are (queue, porder, type, await,
-fast, and gather).
+This creates a new queue. Available options are queue, porder, type, fast, and
+gather. The gather option is mainly for running with MCE and wanting to pass
+item(s) to a callback function for appending to the queue.
+
+The 'fast' option speeds up ->dequeue ops and not enabled by default. It is
+beneficial for queues not calling ->clear or ->dequeue_nb and not altering the
+optional count value while running; e.g. ->dequeue($count). Basically, do not
+enable 'fast' if varying $count dynamically.
 
    use MCE;
    use MCE::Queue;
 
    my $q1 = MCE::Queue->new();
-   my $q2 = MCE::Queue->new( queue  => [ 0, 1, 2 ] );
+   my $q2 = MCE::Queue->new( queue => [ 0, 1, 2 ] );
 
    my $q3 = MCE::Queue->new( porder => $MCE::Queue::HIGHEST );
    my $q4 = MCE::Queue->new( porder => $MCE::Queue::LOWEST  );
 
-   my $q5 = MCE::Queue->new( type   => $MCE::Queue::FIFO );
-   my $q6 = MCE::Queue->new( type   => $MCE::Queue::LIFO );
+   my $q5 = MCE::Queue->new( type => $MCE::Queue::FIFO );
+   my $q6 = MCE::Queue->new( type => $MCE::Queue::LIFO );
 
-   my $q7 = MCE::Queue->new( await  => 1 );
-   my $q8 = MCE::Queue->new( fast   => 1 );
+   my $q7 = MCE::Queue->new( fast => 1 );
 
-The 'await' option, when enabled, allows workers to block (semaphore-like)
-until the number of items pending is equal or less than a threshold value.
-The $q->await method is described below.
-
-The 'fast' option speeds up dequeues and is not enabled by default. It is
-beneficial for queues not calling (->clear or ->dequeue_nb) and not altering
-the optional count value while running; e.g. ->dequeue($count). Basically,
-do not enable 'fast' if varying the count dynamically.
-
-The 'gather' option is mainly for running with MCE and wanting to pass item(s)
-to a callback function for appending to the queue. Multiple queues may point to
-the same callback function. The callback receives the queue object as the first
-argument and items after it.
+Multiple queues may point to the same callback function. The first argument
+for the callback is the queue object.
 
    sub _append {
       my ($q, @items) = @_;
@@ -1947,9 +1841,9 @@ argument and items after it.
    ## Items are diverted to the callback function, not the queue.
    $q7->enqueue( 'apple', 'orange' );
 
-Specifying the 'gather' option allows one to store items temporarily while
-ensuring output order. Although a queue object is not required, this is
-simply a demonstration of the gather option in the context of a queue.
+The gather option allows one to store items temporarily while ensuring output
+order. Although a queue object is not required, this is simply a demonstration
+of the gather option in the context of a queue.
 
    use MCE;
    use MCE::Queue;
@@ -1984,49 +1878,6 @@ simply a demonstration of the gather option in the context of a queue.
    $mce->run;
 
    print "@squares\n";
-
-=head2 $q->await ( [ $pending_threshold ] )
-
-The await method is beneficial when wanting to throttle worker(s) appending
-to the queue. Perhaps, consumers are running a bit behind and wanting to keep
-tabs on memory consumption. Below, the number of items pending will never go
-above 20.
-
-   use Time::HiRes qw( sleep );
-
-   use MCE::Flow;
-   use MCE::Queue;
-
-   my $q = MCE::Queue->new( await => 1, fast => 1 );
-   my ( $producers, $consumers ) = ( 1, 8 );
-
-   mce_flow {
-      task_name   => [ 'producer', 'consumer' ],
-      max_workers => [ $producers, $consumers ],
-   },
-   sub {
-      ## producer
-      for my $item ( 1 .. 100 ) {
-         $q->enqueue($item);
-
-         ## blocks until the # of items pending reaches <= 10
-         if ($item % 10 == 0) {
-            MCE->say( 'pending: '.$q->pending() );
-            $q->await(10);
-         }
-      }
-
-      ## notify consumers no more work
-      $q->enqueue( (undef) x $consumers );
-
-   },
-   sub {
-      ## consumers
-      while (defined (my $next = $q->dequeue())) {
-         MCE->say( MCE->task_wid().': '.$next );
-         sleep 0.100;
-      }
-   };
 
 =head2 $q->clear ( void )
 

@@ -45,14 +45,13 @@ use Storable qw( );
 
 use MCE::Util qw( $LF );
 use MCE::Signal;
-use MCE::Mutex;
 use bytes;
 
-our $VERSION = '1.699';
+our $VERSION = '1.603';
 
 our ($MCE, $_que_read_size, $_que_template, %_valid_fields_new);
 my  ($_prev_mce, %_params_allowed_args, %_valid_fields_task);
-my  ($_is_MSWin32, $_is_winenv);
+my  ($_is_MSWin32, $_is_winenv, $_is_cygwin);
 
 BEGIN {
    ## Configure pack/unpack template for writing to and from the queue.
@@ -74,7 +73,7 @@ BEGIN {
    ##
    ## _bsb_r_sock _bsb_w_sock _bse_r_sock _bse_w_sock _com_r_sock _com_w_sock
    ## _dat_r_sock _dat_w_sock _que_r_sock _que_w_sock _rla_r_sock _rla_w_sock
-   ## _data_channels _mutex_n
+   ## _data_channels _lock_chn
 
    %_valid_fields_new = map { $_ => 1 } qw(
       max_workers tmp_dir use_threads user_tasks task_end task_name freeze thaw
@@ -95,8 +94,9 @@ BEGIN {
       RS use_slurpio use_threads parallel_io
    );
 
+   $_is_cygwin  = ($^O eq 'cygwin' ) ? 1 : 0;
    $_is_MSWin32 = ($^O eq 'MSWin32') ? 1 : 0;
-   $_is_winenv  = ($^O eq 'cygwin' || $_is_MSWin32) ? 1 : 0;
+   $_is_winenv  = ($_is_cygwin || $_is_MSWin32) ? 1 : 0;
 
    ## Create accessor functions.
    no strict 'refs'; no warnings 'redefine';
@@ -416,6 +416,21 @@ sub new {
 
          bless($_task, ref(\%self) || \%self);
       }
+
+      ## File locking fails under Cygwin between children and threads.
+      ## Must be all children or all threads, not intermixed.
+      if ($_is_cygwin) {
+         my (%_values, $_value);
+
+         for my $_task (@{ $self{user_tasks} }) {
+            $_value = (defined $_task->{use_threads})
+               ? $_task->{use_threads} : $self{use_threads};
+            $_values{$_value} = '';
+         }
+
+         _croak('MCE::new: (cannot mix) use_threads => 0/1 under Cygwin')
+            if (keys %_values > 1);
+      }
    }
 
    _validate_args(\%self);
@@ -445,9 +460,10 @@ sub new {
 
    $self{_data_channels} = ($_total_workers < DATA_CHANNELS)
       ? $_total_workers : DATA_CHANNELS;
-
    $self{_last_sref} = (ref $self{input_data} eq 'SCALAR')
       ? refaddr($self{input_data}) : 0;
+   $self{_lock_chn} = ($_total_workers > DATA_CHANNELS)
+      ? 1 : 0;
 
    $MCE = \%self if ($MCE->{_wid} == 0);
 
@@ -478,17 +494,6 @@ sub spawn {
    my $_die_handler  = $SIG{__DIE__};  $SIG{__DIE__}  = \&_die;
    my $_warn_handler = $SIG{__WARN__}; $SIG{__WARN__} = \&_warn;
 
-   if (defined $MCE::Shared::VERSION) {
-      if (!defined $MCE::Shared::_HDLR) {
-         $MCE::Shared::_HDLR = $self;
-      }
-      elsif (refaddr($self) != refaddr($MCE::Shared::_HDLR)) {
-         _croak("Sharing (parallel MCE instances) is not supported on MSWin32")
-            if ($_is_MSWin32);
-         $self->{_data_channels} = 1 if ($self->{_data_channels} > 1);
-      }
-   }
-
    ## Configure tid/sid for this instance here, not in the new method above.
    ## We want the actual thread id in which spawn was called under.
    unless ($self->{_mce_tid}) {
@@ -518,20 +523,17 @@ sub spawn {
       $_mce_sess_dir{$_sess_dir} = 1;
    }
 
+   ## Obtain lock.
+   open my $_COM_LOCK, '+>>:raw:stdio', "$_sess_dir/_com.lock"
+      or die "(M) open error $_sess_dir/_com.lock: $!\n";
+
+   flock $_COM_LOCK, LOCK_EX;
+
    ## -------------------------------------------------------------------------
 
    my $_data_channels = $self->{_data_channels};
    my $_max_workers   = _get_max_workers($self);
    my $_use_threads   = $self->{use_threads};
-
-   ## Obtain lock. Create locks for data channels.
-   $self->{_mutex_0} = MCE::Mutex->new;
-
-   for my $_i (1 .. $_data_channels) {
-      $self->{'_mutex_'.$_i} = MCE::Mutex->new;
-   }
-
-   $self->{_mutex_0}->lock();
 
    ## Create socket pairs for IPC.
    MCE::Util::_make_socket_pair($self, qw(_bsb_r_sock _bsb_w_sock));    # sync
@@ -618,11 +620,12 @@ sub spawn {
 
    ## -------------------------------------------------------------------------
 
+   $self->{_com_lock} = $_COM_LOCK;
    $self->{_send_cnt} = 0;
    $self->{_spawned}  = 1;
 
    ## Release lock.
-   $self->{_mutex_0}->unlock();
+   flock $_COM_LOCK, LOCK_UN;
 
    $SIG{__DIE__}  = $_die_handler;
    $SIG{__WARN__} = $_warn_handler;
@@ -634,7 +637,7 @@ sub spawn {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## "for" sugar methods, process method, and relay stubs for MCE::Relay.
+## Forchunk, foreach, and forseq sugar methods.
 ##
 ###############################################################################
 
@@ -652,6 +655,12 @@ sub forseq {
    require MCE::Candy unless (defined $MCE::Candy::VERSION);
    return  MCE::Candy::forseq(@_);
 }
+
+###############################################################################
+## ----------------------------------------------------------------------------
+## Process method.
+##
+###############################################################################
 
 sub process {
 
@@ -682,18 +691,6 @@ sub process {
    $self->run(0, $_params_ref);
 
    return $self;
-}
-
-sub relay_final { }
-
-sub relay_recv {
-   _croak('MCE::relay: (init_relay) is not specified')
-      unless (defined $MCE->{init_relay});
-}
-
-sub relay (;&) {
-   _croak('MCE::relay: (init_relay) is not specified')
-      unless (defined $MCE->{init_relay});
 }
 
 ###############################################################################
@@ -902,6 +899,7 @@ sub run {
 
    ## -------------------------------------------------------------------------
 
+   my $_COM_LOCK      = $self->{_com_lock};
    my $_bounds_only   = $self->{bounds_only};
    my $_interval      = $self->{interval};
    my $_sequence      = $self->{sequence};
@@ -978,7 +976,7 @@ sub run {
       }
 
       ## Obtain lock.
-      $self->{_mutex_0}->lock();
+      flock $_COM_LOCK, LOCK_EX;
 
       if (($self->{_mce_tid} ne '' && $self->{_mce_tid} ne '0') || $_is_winenv) {
          sleep $_is_winenv ? 0.005 : 0.002;
@@ -1027,7 +1025,7 @@ sub run {
       }
 
       ## Release lock.
-      $self->{_mutex_0}->unlock();
+      flock $_COM_LOCK, LOCK_UN;
    }
 
    $self->{_send_cnt} = 0;
@@ -1151,15 +1149,10 @@ sub shutdown {
    my $_mce_sid        = $self->{_mce_sid};
    my $_sess_dir       = $self->{_sess_dir};
    my $_total_workers  = $self->{_total_workers};
+   my $_lock_chn       = $self->{_lock_chn};
 
    ## Delete entry.
    delete $_mce_spawned{$_mce_sid};
-
-   if (defined $MCE::Shared::_HDLR &&
-         refaddr($self) == refaddr($MCE::Shared::_HDLR)) {
-
-      $MCE::Shared::_HDLR = undef;
-   }
 
    ## -------------------------------------------------------------------------
 
@@ -1194,16 +1187,18 @@ sub shutdown {
       }
    }
 
+   close $self->{_com_lock}; undef $self->{_com_lock};
+
    ## -------------------------------------------------------------------------
 
-   ## Destroy locks; remove session directory.
-   for my $_i (0 .. $_data_channels) {
-      if (defined $self->{'_mutex_'.$_i}) {
-         $self->{'_mutex_'.$_i}->DESTROY('shutdown');
-      }
-   }
+   ## Remove session directory.
    if (defined $_sess_dir) {
       unlink "$_sess_dir/_dat.lock.e" if (-e "$_sess_dir/_dat.lock.e");
+
+      if ($_lock_chn) {
+         unlink "$_sess_dir/_dat.lock.$_" for (1 .. $_data_channels);
+      }
+      unlink "$_sess_dir/_com.lock";
       rmdir  "$_sess_dir";
 
       delete $_mce_sess_dir{$_sess_dir};
@@ -1224,7 +1219,7 @@ sub shutdown {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Barrier sync and yield methods.
+## Barrier sync method.
 ##
 ###############################################################################
 
@@ -1245,28 +1240,35 @@ sub sync {
    my $_DAT_W_SOCK = $self->{_dat_w_sock}->[0];
    my $_BSB_R_SOCK = $self->{_bsb_r_sock};
    my $_BSE_R_SOCK = $self->{_bse_r_sock};
+   my $_lock_chn   = $self->{_lock_chn};
    my $_buffer;
 
    local $\ = undef if (defined $\); local $/ = $LF if (!$/ || $/ ne $LF);
 
    ## Notify the manager process (begin).
-   $_DAT_LOCK->lock();
+   flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
    print {$_DAT_W_SOCK} OUTPUT_B_SYN . $LF . $_chn . $LF;
-   $_DAT_LOCK->unlock();
+   flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
 
    ## Wait here until all workers (task_id 0) have synced.
    sysread $_BSB_R_SOCK, $_buffer, 1;
 
    ## Notify the manager process (end).
-   $_DAT_LOCK->lock();
+   flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
    print {$_DAT_W_SOCK} OUTPUT_E_SYN . $LF . $_chn . $LF;
-   $_DAT_LOCK->unlock();
+   flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
 
    ## Wait here until all workers (task_id 0) have un-synced.
    sysread $_BSE_R_SOCK, $_buffer, 1;
 
    return;
 }
+
+###############################################################################
+## ----------------------------------------------------------------------------
+## Yield method.
+##
+###############################################################################
 
 sub yield {
 
@@ -1307,6 +1309,7 @@ sub abort {
    my $_QUE_R_SOCK = $self->{_que_r_sock};
    my $_QUE_W_SOCK = $self->{_que_w_sock};
    my $_abort_msg  = $self->{_abort_msg};
+   my $_lock_chn   = $self->{_lock_chn};
 
    if (defined $_abort_msg) {
       local $\ = undef;
@@ -1322,7 +1325,7 @@ sub abort {
          my $_DAT_W_SOCK = $self->{_dat_w_sock}->[0];
          my $_DAU_W_SOCK = $self->{_dat_w_sock}->[$_chn];
 
-         $_DAT_LOCK->lock();
+         flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
 
          if (exists $self->{_rla_return}) {
             print {$_DAT_W_SOCK} OUTPUT_W_RLA . $LF . $_chn . $LF;
@@ -1331,7 +1334,7 @@ sub abort {
 
          print {$_DAT_W_SOCK} OUTPUT_W_ABT . $LF . $_chn . $LF;
 
-         $_DAT_LOCK->unlock();
+         flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
       }
    }
 
@@ -1356,9 +1359,11 @@ sub exit {
    _clear_session( $self->{_mce_sid} );
 
    my $_chn        = $self->{_chn};
+   my $_COM_LOCK   = $self->{_com_lock};
    my $_DAT_LOCK   = $self->{_dat_lock};
    my $_DAT_W_SOCK = $self->{_dat_w_sock}->[0];
    my $_DAU_W_SOCK = $self->{_dat_w_sock}->[$_chn];
+   my $_lock_chn   = $self->{_lock_chn};
    my $_task_id    = $self->{_task_id};
    my $_sess_dir   = $self->{_sess_dir};
 
@@ -1374,7 +1379,7 @@ sub exit {
          or die "(W) open error $_sess_dir/_dat.lock.e: $!\n";
 
       flock $_DAE_LOCK, LOCK_EX;
-      $_DAT_LOCK->lock();
+      flock $_DAT_LOCK, LOCK_EX if ($_lock_chn);
 
       if (exists $self->{_rla_return}) {
          print {$_DAT_W_SOCK} OUTPUT_W_RLA . $LF . $_chn . $LF;
@@ -1387,7 +1392,7 @@ sub exit {
          $_exit_status . $LF . $_exit_id . $LF . $_len . $LF . $_exit_msg
       ;
 
-      $_DAT_LOCK->unlock();
+      flock $_DAT_LOCK, LOCK_UN if ($_lock_chn);
       flock $_DAE_LOCK, LOCK_UN;
 
       close $_DAE_LOCK; undef $_DAE_LOCK;
@@ -1395,6 +1400,12 @@ sub exit {
 
    ## Exit thread/child process.
    $SIG{__DIE__} = $SIG{__WARN__} = sub { };
+
+   if ($_lock_chn) {
+      close $_DAT_LOCK; undef $_DAT_LOCK;
+   }
+
+   close $_COM_LOCK; undef $_COM_LOCK;
 
    if ($_has_threads && threads->can('exit')) {
       threads->exit($_exit_status);
@@ -1619,6 +1630,24 @@ sub say {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
+## Relay stubs. The actual methods reside inside MCE::Relay.
+##
+###############################################################################
+
+sub relay_final { }
+
+sub relay_recv {
+   _croak('MCE::relay: (init_relay) is not specified')
+      unless (defined $MCE->{init_relay});
+}
+
+sub relay (;&) {
+   _croak('MCE::relay: (init_relay) is not specified')
+      unless (defined $MCE->{init_relay});
+}
+
+###############################################################################
+## ----------------------------------------------------------------------------
 ## Private methods.
 ##
 ###############################################################################
@@ -1650,6 +1679,12 @@ sub _get_max_workers {
    return $self->{max_workers};
 }
 
+###############################################################################
+## ----------------------------------------------------------------------------
+## Sync methods.
+##
+###############################################################################
+
 sub _sync_buffer_to_array {
 
    my ($_buffer_ref, $_array_ref, $_chop_str) = @_;
@@ -1680,6 +1715,8 @@ sub _sync_params {
 
    my ($self, $_params_ref) = @_;
 
+   die 'Private method called' unless (caller)[0]->isa( ref $self );
+
    my $_requires_shutdown = 0;
 
    if (defined $_params_ref->{init_relay} && !defined $self->{init_relay}) {
@@ -1703,11 +1740,11 @@ sub _sync_params {
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Dispatch methods.
+## Worker process -- Wrap.
 ##
 ###############################################################################
 
-sub _dispatch {
+sub _worker_wrap {
 
    my @_args = @_; my $_is_thread = shift @_args; $MCE = $_args[0];
 
@@ -1716,12 +1753,6 @@ sub _dispatch {
 
    ## Init worker.
    $MCE->{_pid} = ($_is_thread) ? $$ .'.'. threads->tid() : $$;
-
-   if (defined $MCE::Shared::VERSION) {
-      MCE::Shared::Scalar::_share_w_init();
-      MCE::Shared::Array::_share_w_init();
-      MCE::Shared::Hash::_share_w_init();
-   }
 
    ## Begin worker.
    _worker_main(@_args, \@_plugin_worker_init, $_is_winenv);
@@ -1738,13 +1769,21 @@ sub _dispatch {
    CORE::exit(0);
 }
 
+###############################################################################
+## ----------------------------------------------------------------------------
+## Dispatch thread.
+##
+###############################################################################
+
 sub _dispatch_thread {
 
    my ($self, $_wid, $_task, $_task_id, $_task_wid, $_params) = @_;
 
    @_ = (); local $_;
 
-   my $_thr = threads->create( \&_dispatch,
+   die 'Private method called' unless (caller)[0]->isa( ref $self );
+
+   my $_thr = threads->create( \&_worker_wrap,
       1, $self, $_wid, $_task, $_task_id, $_task_wid, $_params
    );
 
@@ -1774,11 +1813,19 @@ sub _dispatch_thread {
    return;
 }
 
+###############################################################################
+## ----------------------------------------------------------------------------
+## Dispatch child.
+##
+###############################################################################
+
 sub _dispatch_child {
 
    my ($self, $_wid, $_task, $_task_id, $_task_wid, $_params) = @_;
 
    @_ = (); local $_;
+
+   die 'Private method called' unless (caller)[0]->isa( ref $self );
 
    my $_pid = fork();
 
@@ -1786,7 +1833,7 @@ sub _dispatch_child {
       unless (defined $_pid);
 
    unless ($_pid) {
-      _dispatch(0, $self, $_wid, $_task, $_task_id, $_task_wid, $_params);
+      _worker_wrap(0, $self, $_wid, $_task, $_task_id, $_task_wid, $_params);
    }
 
    if (defined $_pid) {
