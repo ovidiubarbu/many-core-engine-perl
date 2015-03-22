@@ -1,12 +1,13 @@
 
 Revision history for MCE
 
-1.699 Fri Mar 20 14:00:00 EST 2015
+1.699 Sat Mar 21 22:00:00 EST 2015
 
   [ TODO: before releasing MCE 1.700 ]
 
-  * Document ->enq, ->enqp, and ->await methods in MCE::Step.
-  * Complete MCE::Shared documentation.
+    Add MCE::Cookbook.pod.
+    Document ->enq, ->enqp, and ->await methods in MCE::Step.
+    Complete MCE::Shared documentation.
 
   [ENHANCEMENTS]
 
@@ -14,6 +15,11 @@ Revision history for MCE
     This allows for more threads per process due to lesser consumption on
     file handles. This solves the slow file locking behavior seen in
     Cygwin, especially when running with many workers.
+
+  * Non-MCE processes or threads spawned from any MCE worker may share data
+    between themselves and MCE. Queues from MCE::Queue are also supported
+    along with MCE->do, MCE->gather, MCE->print, MCE->printf, MCE->say,
+    and MCE->sendto. Examples are described in MCE::Cookbook.pod.
 
   * The MCE::Flow and MCE::Step Models can take an anonymous array for
     specifying use_threads uniquely for each sub-task. Mixing threads and
@@ -35,6 +41,20 @@ Revision history for MCE
   * Added ->enq, ->enqp, and ->await methods to MCE::Step.
   * Added ->await method to MCE::Queue.
 
+1.604 Sat Mar 21 21:00:00 EST 2015
+
+  This is the last release for the 1.6 branch.
+
+  [BUG FIXES]
+
+  * All bugs found during testing of the upcoming 1.7 release have been
+    backported to the 1.6 branch.
+
+  [NEW FEATURES]
+
+  * Added out_iter_array and out_iter_fh to MCE::Candy. These preserve output
+    order and cover the two general use cases.
+
 1.603 Tue Mar 17 21:00:00 EST 2015
 
   [ENHANCEMENTS]
@@ -50,8 +70,6 @@ Revision history for MCE
     the upcoming 1.7 release.
 
 1.602 Mon Mar 16 20:00:00 EST 2015
-
-  This completes all the backported fixes found during development of 1.699.
 
   [BUG FIXES]
 
@@ -107,7 +125,7 @@ Revision history for MCE
   * Added a CARP_NOT line to MCE Models.
   * Added support for ->next and ->last from any sub-tasks in MCE::Step.
   * Reverted a small change applied in 1.600 to ->do and ->gather.
-  * The synchronize method in Mutex is wantarray aware.
+  * The 'synchronize' method in Mutex is wantarray aware.
   * Updated POD header lines for method names; from =item to =head2.
   * Workers now set STDERR and STDOUT to flush automatically.
 

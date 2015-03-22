@@ -117,7 +117,8 @@ Miscellaneous additions included with the distribution.
 
 =item L<MCE::Candy|MCE::Candy>
 
-A collection of sugar methods for Many-Core Engine.
+Provides a collection of sugar methods and output iterators for preserving
+output order.
 
 =item L<MCE::Examples|MCE::Examples>
 
