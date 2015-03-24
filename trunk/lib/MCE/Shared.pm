@@ -225,14 +225,7 @@ This document describes MCE::Shared version 1.699
          $cnt += 1;
       });
 
-      ## One trip methods; ->add (+=), ->concat (.=), ->substract (-=).
-      ## Locking may be omitted if others do the same, not $cnt += 1.
-
-      tied($cnt)->add(1);    ## methods are assessable via the tied object
-                             ## my $obj = tied($cnt); $obj->add(4);
-
-      ## Locking is not necessary when updating unique elements between
-      ## workers.
+      ## Locking is not necessary when updating unique elements.
 
       $foo[ $wid - 1 ] = $pid;
       $bar{ $pid }     = $wid;

@@ -74,8 +74,8 @@ sub _output_loop {
    @_ = ();
 
    my (
-      $_aborted, $_eof_flag, $_syn_flag, %_sendto_fhs, $_want_id,
-      $_callback, $_chunk_id, $_chunk_size, $_fd, $_file, $_flush_file,
+      $_aborted, $_eof_flag, $_syn_flag, %_sendto_fhs, $_wa,
+      $_cb, $_chunk_id, $_chunk_size, $_fd, $_file, $_flush_file,
       @_is_c_ref, @_is_h_ref, @_is_q_ref, $_on_post_exit, $_on_post_run,
       $_has_user_tasks, $_sess_dir, $_task_id, $_user_error, $_user_output,
       $_input_size, $_offset_pos, $_single_dim, @_gather, $_cs_one_flag,
@@ -408,9 +408,9 @@ sub _output_loop {
       OUTPUT_A_CBK.$LF => sub {                   ## Callback w/ multiple args
          my ($_buf, $_data_ref);
 
-         chomp($_want_id  = <$_DAU_R_SOCK>);
-         chomp($_callback = <$_DAU_R_SOCK>);
-         chomp($_len      = <$_DAU_R_SOCK>);
+         chomp($_wa  = <$_DAU_R_SOCK>);
+         chomp($_cb  = <$_DAU_R_SOCK>);
+         chomp($_len = <$_DAU_R_SOCK>);
          read $_DAU_R_SOCK, $_buf, $_len;
 
          $_data_ref = $self->{thaw}($_buf); undef $_buf;
@@ -418,15 +418,18 @@ sub _output_loop {
          local $\ = $_O_SEP if ($_O_FLG); local $/ = $_I_SEP if ($_I_FLG);
          no strict 'refs';
 
-         if ($_want_id == WANTS_UNDEF) {
-            $_callback->(@{ $_data_ref });
+         if ($_wa == WANTS_UNDEF) {
+            $_cb eq '::'
+                  ? $MCE::Eval->(@{ $_data_ref }) : $_cb->(@{ $_data_ref });
          }
-         elsif ($_want_id == WANTS_ARRAY) {
-            my @_ret_a = $_callback->(@{ $_data_ref });
+         elsif ($_wa == WANTS_ARRAY) {
+            my @_ret_a = $_cb eq '::'
+                  ? $MCE::Eval->(@{ $_data_ref }) : $_cb->(@{ $_data_ref });
             $_cb_ret_a->(\@_ret_a);
          }
          else {
-            my  $_ret_s = $_callback->(@{ $_data_ref });
+            my $_ret_s = $_cb eq '::'
+                  ? $MCE::Eval->(@{ $_data_ref }) : $_cb->(@{ $_data_ref });
             ref $_ret_s ? $_cb_ret_r->($_ret_s) : $_cb_ret_s->($_ret_s);
          }
 
@@ -436,23 +439,23 @@ sub _output_loop {
       OUTPUT_S_CBK.$LF => sub {                   ## Callback w/ 1 scalar arg
          my $_buf;
 
-         chomp($_want_id  = <$_DAU_R_SOCK>);
-         chomp($_callback = <$_DAU_R_SOCK>);
-         chomp($_len      = <$_DAU_R_SOCK>);
+         chomp($_wa  = <$_DAU_R_SOCK>);
+         chomp($_cb  = <$_DAU_R_SOCK>);
+         chomp($_len = <$_DAU_R_SOCK>);
          read $_DAU_R_SOCK, $_buf, $_len;
 
          local $\ = $_O_SEP if ($_O_FLG); local $/ = $_I_SEP if ($_I_FLG);
          no strict 'refs';
 
-         if ($_want_id == WANTS_UNDEF) {
-            $_callback->($_buf);
+         if ($_wa == WANTS_UNDEF) {
+            $_cb eq '::' ? $MCE::Eval->($_buf) : $_cb->($_buf);
          }
-         elsif ($_want_id == WANTS_ARRAY) {
-            my @_ret_a = $_callback->($_buf);
+         elsif ($_wa == WANTS_ARRAY) {
+            my @_ret_a = $_cb eq '::' ? $MCE::Eval->($_buf) : $_cb->($_buf);
             $_cb_ret_a->(\@_ret_a);
          }
          else {
-            my  $_ret_s = $_callback->($_buf);
+            my  $_ret_s = $_cb eq '::' ? $MCE::Eval->($_buf) : $_cb->($_buf);
             ref $_ret_s ? $_cb_ret_r->($_ret_s) : $_cb_ret_s->($_ret_s);
          }
 
@@ -461,21 +464,21 @@ sub _output_loop {
 
       OUTPUT_N_CBK.$LF => sub {                   ## Callback w/ no args
 
-         chomp($_want_id  = <$_DAU_R_SOCK>);
-         chomp($_callback = <$_DAU_R_SOCK>);
+         chomp($_wa = <$_DAU_R_SOCK>);
+         chomp($_cb = <$_DAU_R_SOCK>);
 
          local $\ = $_O_SEP if ($_O_FLG); local $/ = $_I_SEP if ($_I_FLG);
          no strict 'refs';
 
-         if ($_want_id == WANTS_UNDEF) {
-            $_callback->();
+         if ($_wa == WANTS_UNDEF) {
+            $_cb->();
          }
-         elsif ($_want_id == WANTS_ARRAY) {
-            my @_ret_a = $_callback->();
+         elsif ($_wa == WANTS_ARRAY) {
+            my @_ret_a = $_cb->();
             $_cb_ret_a->(\@_ret_a);
          }
          else {
-            my  $_ret_s = $_callback->();
+            my  $_ret_s = $_cb->();
             ref $_ret_s ? $_cb_ret_r->($_ret_s) : $_cb_ret_s->($_ret_s);
          }
 

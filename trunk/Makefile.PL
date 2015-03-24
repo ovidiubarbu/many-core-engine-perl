@@ -24,6 +24,7 @@ WriteMakefile(
    PREREQ_PM => {
       'bytes'        => 0,
       'constant'     => 0,
+      'B::Deparse'   => 0,
       'Carp'         => 0,
       'Fcntl'        => 0,
       'File::Path'   => 0,

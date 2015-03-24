@@ -13,6 +13,7 @@ build_requires:
     Test::More:           0.45
 requires:
     bytes:         0
+    B::Deparse:    0
     Carp:          0
     constant:      0
     Fcntl:         0

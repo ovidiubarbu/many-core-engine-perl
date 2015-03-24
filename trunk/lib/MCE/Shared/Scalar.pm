@@ -17,7 +17,7 @@ no warnings 'threads';
 no warnings 'recursion';
 no warnings 'uninitialized';
 
-use Scalar::Util qw( blessed refaddr reftype weaken );
+use Scalar::Util qw( blessed refaddr reftype );
 use bytes;
 
 our $VERSION  = '1.699';
@@ -27,13 +27,6 @@ our @CARP_NOT = qw( MCE::Shared MCE );
 use constant {
    SHR_S_STO => 'S~STO',   ## STORE
    SHR_S_FCH => 'S~FCH',   ## FETCH
-
-   SHR_S_ADD => 'S~ADD',   ## Addition
-   SHR_S_CAT => 'S~CAT',   ## Concatenation
-   SHR_S_SUB => 'S~SUB',   ## Subtraction
-
-   WA_UNDEF  => 0,         ## Wants nothing
-   WA_SCALAR => 2,         ## Wants scalar
 };
 
 ###############################################################################
@@ -161,27 +154,7 @@ sub _untie2 {
 ###############################################################################
 
 {
-   my ($_MCE, $_DAU_R_SOCK_REF, $_DAU_R_SOCK, $_id, $_len, $_wa);
-
-   my $_cb_op = sub {
-
-      $_DAU_R_SOCK = ${ $_DAU_R_SOCK_REF };
-
-      chomp($_id  = <$_DAU_R_SOCK>);
-      chomp($_wa  = <$_DAU_R_SOCK>);
-      chomp($_len = <$_DAU_R_SOCK>);
-
-      weaken $_[0]; $_[0]->();
-
-      if ($_wa) {
-         print {$_DAU_R_SOCK} length(${ $_all->{ $_id } }) . $LF .
-            ${ $_all->{ $_id } };
-      }
-
-      return;
-   };
-
-   ## -------------------------------------------------------------------------
+   my ($_MCE, $_DAU_R_SOCK_REF, $_DAU_R_SOCK, $_id, $_len);
 
    my %_output_function = (
 
@@ -231,35 +204,6 @@ sub _untie2 {
          return;
       },
 
-      ## ----------------------------------------------------------------------
-
-      SHR_S_ADD.$LF => sub {                      ## Addition
-         $_cb_op->( sub {
-            read $_DAU_R_SOCK, (my $_buf), $_len;
-            if (reftype($_all->{ $_id }) eq 'SCALAR') {
-               ${ $_all->{ $_id } } += $_buf;
-            }
-         });
-      },
-
-      SHR_S_CAT.$LF => sub {                      ## Concatenation
-         $_cb_op->( sub {
-            read $_DAU_R_SOCK, (my $_buf), $_len;
-            if (reftype($_all->{ $_id }) eq 'SCALAR') {
-               ${ $_all->{ $_id } } .= $_buf;
-            }
-         });
-      },
-
-      SHR_S_SUB.$LF => sub {                      ## Subtraction
-         $_cb_op->( sub {
-            read $_DAU_R_SOCK, (my $_buf), $_len;
-            if (reftype($_all->{ $_id }) eq 'SCALAR') {
-               ${ $_all->{ $_id } } -= $_buf;
-            }
-         });
-      },
-
    );
 
    ## -------------------------------------------------------------------------
@@ -281,7 +225,7 @@ sub _untie2 {
    sub _mce_m_loop_end {
 
       $_MCE = $_DAU_R_SOCK_REF = $_DAU_R_SOCK = undef;
-      $_len = $_wa = $_id = undef;
+      $_len = $_id = undef;
 
       return;
    }
@@ -304,7 +248,7 @@ sub _untie2 {
 ###############################################################################
 
 my ($_MCE, $_DAT_LOCK, $_DAT_W_SOCK, $_DAU_W_SOCK, $_chn, $_dat_ex, $_dat_un);
-my ($_len, $_wa);
+my ($_len);
 
 sub _mce_w_init {
 
@@ -333,26 +277,6 @@ sub _mce_w_init {
    return;
 }
 
-my $_do_op = sub {
-
-   $_wa = (!defined wantarray) ? WA_UNDEF : WA_SCALAR;
-   local $\ = undef if (defined $\);
-
-   $_dat_ex->();
-   print {$_DAT_W_SOCK} $_[0] . $LF . $_chn . $LF;
-   print {$_DAU_W_SOCK} $_[1] . $LF . $_wa . $LF . length($_[2]) . $LF . $_[2];
-
-   my $_buf; if ($_wa) {
-      local $/ = $LF if (!$/ || $/ ne $LF);
-      chomp($_len = <$_DAU_W_SOCK>);
-      read $_DAU_W_SOCK, $_buf, $_len;
-   }
-
-   $_dat_un->();
-
-   return $_buf;
-};
-
 ###############################################################################
 ## ----------------------------------------------------------------------------
 ## Scalar tie package.
@@ -373,10 +297,6 @@ our @CARP_NOT = qw( MCE::Shared MCE );
 use constant {
    SHR_S_STO => 'S~STO',   ## STORE
    SHR_S_FCH => 'S~FCH',   ## FETCH
-
-   SHR_S_ADD => 'S~ADD',   ## Addition
-   SHR_S_CAT => 'S~CAT',   ## Concatenation
-   SHR_S_SUB => 'S~SUB',   ## Subtraction
 };
 
 sub TIESCALAR { bless $_[1] => $_[0]; }
@@ -471,57 +391,6 @@ sub FETCH {                                       ## Scalar FETCH
       $_dat_un->();
 
       return (chop $_buf) ? $_MCE->{thaw}($_buf) : $_buf;
-   }
-}
-
-## ----------------------------------------------------------------------------
-
-sub add {                                         ## Addition
-   my $_id = ${ $_[0] };
-
-   MCE::_croak('Use of uninitialized value in addition (+)')
-      unless (defined $_[1]);
-   MCE::_croak("Argument \"$_[1]\" isn't numeric in addition (+)")
-      unless (looks_like_number($_[1]));
-
-   unless ($_MCE->{_wid}) {
-      if (reftype($_all->{ $_id }) eq 'SCALAR') {
-         ${ $_all->{ $_id } } += $_[1];
-      }
-   } else {
-      $_do_op->(SHR_S_ADD, $_id, $_[1]);
-   }
-}
-
-sub concat {                                      ## Concatenation
-   my $_id = ${ $_[0] };
-
-   MCE::_croak('Use of uninitialized value in concatenation (.)')
-      unless (defined $_[1]);
-
-   unless ($_MCE->{_wid}) {
-      if (reftype($_all->{ $_id }) eq 'SCALAR') {
-         ${ $_all->{ $_id } } .= $_[1];
-      }
-   } else {
-      $_do_op->(SHR_S_CAT, $_id, $_[1]);
-   }
-}
-
-sub subtract {                                    ## Substraction
-   my $_id = ${ $_[0] };
-
-   MCE::_croak('Use of uninitialized value in substraction (-)')
-      unless (defined $_[1]);
-   MCE::_croak("Argument \"$_[1]\" isn't numeric in substraction (-)")
-      unless (looks_like_number($_[1]));
-
-   unless ($_MCE->{_wid}) {
-      if (reftype($_all->{ $_id }) eq 'SCALAR') {
-         ${ $_all->{ $_id } } -= $_[1];
-      }
-   } else {
-      $_do_op->(SHR_S_SUB, $_id, $_[1]);
    }
 }
 
