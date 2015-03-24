@@ -41,6 +41,7 @@ use Time::HiRes qw( sleep time );
 
 use Fcntl qw( :flock O_RDONLY );
 use Symbol qw( qualify_to_ref );
+use B::Deparse qw( );
 use Storable qw( );
 
 use MCE::Util qw( $LF );
@@ -52,7 +53,7 @@ our $VERSION = '1.699';
 
 our ($MCE, $_que_read_size, $_que_template, %_valid_fields_new);
 my  ($_prev_mce, %_params_allowed_args, %_valid_fields_task);
-my  ($_is_MSWin32, $_is_winenv);
+my  ($_deparse, $_is_MSWin32, $_is_winenv);
 
 BEGIN {
    ## Configure pack/unpack template for writing to and from the queue.
@@ -476,6 +477,10 @@ sub spawn {
 
    lock $_MCE_LOCK if ($_has_threads);            ## Obtain MCE lock.
    lock $_WIN_LOCK if ($_has_threads && $_is_winenv);
+
+   if (!defined $_deparse && ref $MCE::Eval eq 'CODE') {
+      $_deparse = B::Deparse->new('-sCi3');
+   }
 
    my $_die_handler  = $SIG{__DIE__};  $SIG{__DIE__}  = \&_die;
    my $_warn_handler = $SIG{__WARN__}; $SIG{__WARN__} = \&_warn;
@@ -1472,16 +1477,36 @@ sub status {
 sub do {
 
    my $x = shift; my $self = ref($x) ? $x : $MCE;
-   my $_callback = shift;
 
    _croak('MCE::do: method cannot be called by the manager process')
       unless ($self->{_wid});
-   _croak('MCE::do: (callback) is not specified')
-      unless (defined $_callback);
 
-   $_callback = "main::$_callback" if (index($_callback, ':') < 0);
+   if (ref $_[0] eq 'CODE') {
+      _croak('MCE::do: ($MCE::Eval) is not a code ref')
+         unless(ref $MCE::Eval eq 'CODE');
 
-   return _do_callback($self, $_callback, \@_);
+      my $_src = 'sub '. $_deparse->coderef2text( shift ) .'->( @_ )';
+         $_src =~ s/^\s*use warnings.*;\s//m;
+         $_src =~ s/^\s*use strict.*;\s//m;
+
+      return _do_callback($self, '::', [ $_src, @_ ]);
+   }
+   else {
+      _croak('MCE::do: (callback) is not specified')
+         unless (defined ( my $_func = shift ));
+
+      if (index($_func, ' ') >= 0 || $_func =~ /[\$\@\%]/) {
+         _croak('MCE::do: ($MCE::Eval) is not a code ref')
+            unless(ref $MCE::Eval eq 'CODE');
+
+         return _do_callback($self, '::', [ $_func, @_ ]);
+      }
+      elsif (index($_func, ':') < 0) {
+         $_func = "main::$_func";
+      }
+
+      return _do_callback($self, $_func, \@_);
+   }
 }
 
 ## Gather method.

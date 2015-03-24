@@ -1,13 +1,14 @@
 
 Revision history for MCE
 
-1.699 Sat Mar 21 22:00:00 EST 2015
+1.699 Tue Mar 24 18:30:00 EST 2015
 
   [ TODO: before releasing MCE 1.700 ]
 
-    Add MCE::Cookbook.pod.
-    Document ->enq, ->enqp, and ->await methods in MCE::Step.
     Complete MCE::Shared documentation.
+    Document ->do( sub { code_block } ) and ->do( qq( perl_text ) ).
+    Document ->enq, ->enqp, and ->await methods in MCE::Step.
+    Write MCE::Cookbook.pod.
 
   [ENHANCEMENTS]
 
@@ -35,6 +36,7 @@ Revision history for MCE
     and shared data; dnslookup_ae.pl, dnslookup_ioa.pl, echoserver_ae.pl,
     echoserver_ioa.pl, echoserver_mojo.pl, and echoserver_poe.pl.
 
+  * Added support for ->do( sub { code_block } ) and ->do( qq( perl_text ) ).
   * Replaced netping.pl with fastping_ae.pl supporting IPv4 and IPv6.
   * Added examples: shared_mce.pl, shared_thr.pl, and step_mon.pl.
 

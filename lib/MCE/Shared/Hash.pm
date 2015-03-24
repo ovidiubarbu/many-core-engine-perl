@@ -17,7 +17,7 @@ no warnings 'threads';
 no warnings 'recursion';
 no warnings 'uninitialized';
 
-use Scalar::Util qw( blessed refaddr reftype weaken );
+use Scalar::Util qw( blessed refaddr reftype );
 use bytes;
 
 our $VERSION  = '1.699';
@@ -32,13 +32,6 @@ use constant {
    SHR_H_DEL => 'H~DEL',   ## DELETE
    SHR_H_CLR => 'H~CLR',   ## CLEAR
    SHR_H_SCA => 'H~SCA',   ## SCALAR
-
-   SHR_H_ADD => 'H~ADD',   ## Addition
-   SHR_H_CAT => 'H~CAT',   ## Concatenation
-   SHR_H_SUB => 'H~SUB',   ## Subtraction
-
-   WA_UNDEF  => 0,         ## Wants nothing
-   WA_SCALAR => 2,         ## Wants scalar
 };
 
 ###############################################################################
@@ -158,27 +151,6 @@ sub _untie2 {
 
 {
    my ($_MCE, $_DAU_R_SOCK_REF, $_DAU_R_SOCK, $_id, $_key, $_len, $_ret, $_wa);
-
-   my $_cb_op = sub {
-
-      $_DAU_R_SOCK = ${ $_DAU_R_SOCK_REF };
-
-      chomp($_id  = <$_DAU_R_SOCK>);
-      chomp($_wa  = <$_DAU_R_SOCK>);
-      chomp($_len = <$_DAU_R_SOCK>);
-
-      read $_DAU_R_SOCK, $_key, $_len;
-      chomp($_len = <$_DAU_R_SOCK>);
-
-      weaken $_[0]; $_[0]->();
-
-      if ($_wa) {
-         print {$_DAU_R_SOCK} length($_all->{ $_id }->{ $_key }) . $LF .
-            $_all->{ $_id }->{ $_key };
-      }
-
-      return;
-   };
 
    my $_cb_ret = sub {
 
@@ -342,35 +314,6 @@ sub _untie2 {
          return;
       },
 
-      ## ----------------------------------------------------------------------
-
-      SHR_H_ADD.$LF => sub {                      ## Addition
-         $_cb_op->( sub {
-            read $_DAU_R_SOCK, (my $_buf), $_len;
-            if (reftype($_all->{ $_id }) eq 'HASH') {
-               $_all->{ $_id }->{ $_key } += $_buf;
-            }
-         });
-      },
-
-      SHR_H_CAT.$LF => sub {                      ## Concatenation
-         $_cb_op->( sub {
-            read $_DAU_R_SOCK, (my $_buf), $_len;
-            if (reftype($_all->{ $_id }) eq 'HASH') {
-               $_all->{ $_id }->{ $_key } .= $_buf;
-            }
-         });
-      },
-
-      SHR_H_SUB.$LF => sub {                      ## Subtraction
-         $_cb_op->( sub {
-            read $_DAU_R_SOCK, (my $_buf), $_len;
-            if (reftype($_all->{ $_id }) eq 'HASH') {
-               $_all->{ $_id }->{ $_key } -= $_buf;
-            }
-         });
-      },
-
    );
 
    ## -------------------------------------------------------------------------
@@ -444,28 +387,6 @@ sub _mce_w_init {
    return;
 }
 
-my $_do_op = sub {
-
-   $_wa = (!defined wantarray) ? WA_UNDEF : WA_SCALAR;
-   local $\ = undef if (defined $\);
-
-   $_dat_ex->();
-
-   print {$_DAT_W_SOCK} $_[0] . $LF . $_chn . $LF;
-   print {$_DAU_W_SOCK} $_[1] . $LF . $_wa . $LF .
-      length($_[2]) . $LF . $_[2] . length($_[3]) . $LF . $_[3];
-
-   my $_buf; if ($_wa) {
-      local $/ = $LF if (!$/ || $/ ne $LF);
-      chomp($_len = <$_DAU_W_SOCK>);
-      read $_DAU_W_SOCK, $_buf, $_len;
-   }
-
-   $_dat_un->();
-
-   return $_buf;
-};
-
 my $_do_ret = sub {
 
    local $/ = $LF if (!$/ || $/ ne $LF);
@@ -507,10 +428,6 @@ use constant {
    SHR_H_DEL => 'H~DEL',   ## DELETE
    SHR_H_CLR => 'H~CLR',   ## CLEAR
    SHR_H_SCA => 'H~SCA',   ## SCALAR
-
-   SHR_H_ADD => 'H~ADD',   ## Addition
-   SHR_H_CAT => 'H~CAT',   ## Concatenation
-   SHR_H_SUB => 'H~SUB',   ## Subtraction
 
    WA_UNDEF  => 0,         ## Wants nothing
    WA_SCALAR => 2,         ## Wants scalar
@@ -762,63 +679,6 @@ sub SCALAR {                                      ## Hash SCALAR
       $_dat_un->();
 
       return $_ret;
-   }
-}
-
-## ----------------------------------------------------------------------------
-
-sub add {                                         ## Addition
-   my $_id = ${ $_[0] };
-
-   MCE::_croak('Use of uninitialized key in hash element')
-      unless (defined $_[1]);
-   MCE::_croak('Use of uninitialized value in addition (+)')
-      unless (defined $_[2]);
-   MCE::_croak("Argument \"$_[2]\" isn't numeric in addition (+)")
-      unless (looks_like_number($_[2]));
-
-   unless ($_MCE->{_wid}) {
-      if (reftype($_all->{ $_id }) eq 'HASH') {
-         $_all->{ $_id }->{ $_[1] } += $_[2];
-      }
-   } else {
-      $_do_op->(SHR_H_ADD, $_id, $_[1], $_[2]);
-   }
-}
-
-sub concat {                                      ## Concatenation
-   my $_id = ${ $_[0] };
-
-   MCE::_croak('Use of uninitialized key in hash element')
-      unless (defined $_[1]);
-   MCE::_croak('Use of uninitialized value in concatenation (.)')
-      unless (defined $_[2]);
-
-   unless ($_MCE->{_wid}) {
-      if (reftype($_all->{ $_id }) eq 'HASH') {
-         $_all->{ $_id }->{ $_[1] } .= $_[2];
-      }
-   } else {
-      $_do_op->(SHR_H_CAT, $_id, $_[1], $_[2]);
-   }
-}
-
-sub subtract {                                    ## Substraction
-   my $_id = ${ $_[0] };
-
-   MCE::_croak('Use of uninitialized key in hash element')
-      unless (defined $_[1]);
-   MCE::_croak('Use of uninitialized value in substraction (-)')
-      unless (defined $_[2]);
-   MCE::_croak("Argument \"$_[2]\" isn't numeric in substraction (-)")
-      unless (looks_like_number($_[2]));
-
-   unless ($_MCE->{_wid}) {
-      if (reftype($_all->{ $_id }) eq 'HASH') {
-         $_all->{ $_id }->{ $_[1] } -= $_[2];
-      }
-   } else {
-      $_do_op->(SHR_H_SUB, $_id, $_[1], $_[2]);
    }
 }
 
