@@ -41,7 +41,6 @@ use Time::HiRes qw( sleep time );
 
 use Fcntl qw( :flock O_RDONLY );
 use Symbol qw( qualify_to_ref );
-use B::Deparse qw( );
 use Storable qw( );
 
 use MCE::Util qw( $LF );
@@ -53,7 +52,7 @@ our $VERSION = '1.699';
 
 our ($MCE, $_que_read_size, $_que_template, %_valid_fields_new);
 my  ($_prev_mce, %_params_allowed_args, %_valid_fields_task);
-my  ($_deparse, $_is_MSWin32, $_is_winenv);
+my  ($_is_MSWin32, $_is_winenv);
 
 $MCE::TOP_HDLR = undef;
 
@@ -479,10 +478,6 @@ sub spawn {
 
    lock $_MCE_LOCK if ($_has_threads);            ## Obtain MCE lock.
    lock $_WIN_LOCK if ($_has_threads && $_is_winenv);
-
-   if (!defined $_deparse && ref $MCE::Eval eq 'CODE') {
-      $_deparse = B::Deparse->new('-sCi3');
-   }
 
    my $_die_handler  = $SIG{__DIE__};  $SIG{__DIE__}  = \&_die;
    my $_warn_handler = $SIG{__WARN__}; $SIG{__WARN__} = \&_warn;
@@ -1480,14 +1475,7 @@ sub do {
       unless ($self->{_wid});
 
    if (ref $_[0] eq 'CODE') {
-      _croak('MCE::do: ($MCE::Eval) is not a code ref')
-         unless(ref $MCE::Eval eq 'CODE');
-
-      my $_src = 'sub '. $_deparse->coderef2text( shift ) .'->( @_ )';
-         $_src =~ s/^\s*use warnings.*;\s//m;
-         $_src =~ s/^\s*use strict.*;\s//m;
-
-      return _do_callback($self, '::', [ $_src, @_ ]);
+      _croak('MCE::do: (code ref) is not supported - Perl bug (RT#121883)');
    }
    else {
       _croak('MCE::do: (callback) is not specified')
