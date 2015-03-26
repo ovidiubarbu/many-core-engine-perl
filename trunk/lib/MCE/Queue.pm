@@ -148,7 +148,11 @@ sub DESTROY {
    return if (defined $MCE::VERSION && !defined $MCE::MCE->{_wid});
    return if (defined $MCE::MCE && $MCE::MCE->{_wid});
 
-   MCE::Util::_destroy_sockets($_Q, qw(_aw_sock _ar_sock _qw_sock _qr_sock));
+   if ($^O eq 'MSWin32') {
+      MCE::Util::_destroy_pipes($_Q, qw(_aw_sock _ar_sock _qw_sock _qr_sock));
+   } else {
+      MCE::Util::_destroy_sockets($_Q, qw(_aw_sock _ar_sock _qw_sock _qr_sock));
+   }
 
    return;
 }
@@ -218,9 +222,15 @@ sub new {
          $_Q->{_id} = ++$_qid; $_all->{$_qid} = $_Q;
          $_Q->{_dsem} = 0 if ($_Q->{_fast});
 
-         MCE::Util::_make_socket_pair($_Q, qw(_qr_sock _qw_sock));
-         MCE::Util::_make_socket_pair($_Q, qw(_ar_sock _aw_sock))
-            if ($_Q->{_await});
+         if ($^O eq 'MSWin32') {
+            MCE::Util::_make_pipe_pair($_Q, qw(_qr_sock _qw_sock));
+            MCE::Util::_make_pipe_pair($_Q, qw(_ar_sock _aw_sock))
+               if ($_Q->{_await});
+         } else {
+            MCE::Util::_make_socket_pair($_Q, qw(_qr_sock _qw_sock));
+            MCE::Util::_make_socket_pair($_Q, qw(_ar_sock _aw_sock))
+               if ($_Q->{_await});
+         }
 
          syswrite $_Q->{_qw_sock}, $LF
             if (exists $_argv{queue} && scalar @{ $_argv{queue} });

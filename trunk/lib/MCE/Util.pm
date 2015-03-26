@@ -126,6 +126,22 @@ sub get_ncpu {
 ##
 ###############################################################################
 
+sub _destroy_pipes {
+
+   my ($_obj, @_params) = @_;
+
+   local ($!, $?);
+
+   for my $_p (@_params) {
+      if (defined $_obj->{$_p}) {
+         close $_obj->{$_p};
+         undef $_obj->{$_p};
+      }
+   }
+
+   return;
+}
+
 sub _destroy_sockets {
 
    my ($_obj, @_params) = @_;
@@ -136,6 +152,7 @@ sub _destroy_sockets {
       if (defined $_obj->{$_p}) {
          if (ref $_obj->{$_p} eq 'ARRAY') {
             for my $_i (0 .. @{ $_obj->{$_p} } - 1) {
+               next unless (defined $_obj->{$_p}->[$_i]);
                ## an empty socket may not close immediately in Windows/Cygwin
                syswrite $_obj->{$_p}->[$_i], '0' if ($_is_winenv); # hack
                CORE::shutdown $_obj->{$_p}->[$_i], 2;
@@ -155,11 +172,30 @@ sub _destroy_sockets {
    return;
 }
 
+sub _make_pipe_pair {
+
+   my ($_obj, $_r_sock, $_w_sock) = @_;
+
+   local $!; my $_hndl;
+
+   pipe($_obj->{$_r_sock}, $_obj->{$_w_sock}) or die "pipe: $!\n";
+
+   binmode $_obj->{$_r_sock};
+   binmode $_obj->{$_w_sock};
+
+   $_hndl = select $_obj->{$_r_sock}; $| = 1; # autoflush
+            select $_obj->{$_w_sock}; $| = 1;
+
+   select $_hndl;
+
+   return;
+}
+
 sub _make_socket_pair {
 
    my ($_obj, $_r_sock, $_w_sock, $_i) = @_;
 
-   local $!; my $_old_hndl;
+   local $!; my $_hndl;
 
    if (defined $_i) {
       socketpair( $_obj->{$_r_sock}->[$_i], $_obj->{$_w_sock}->[$_i],
@@ -168,9 +204,8 @@ sub _make_socket_pair {
       binmode $_obj->{$_r_sock}->[$_i];
       binmode $_obj->{$_w_sock}->[$_i];
 
-      ## Autoflush handles.
-      $_old_hndl = select $_obj->{$_r_sock}->[$_i]; $| = 1;
-                   select $_obj->{$_w_sock}->[$_i]; $| = 1;
+      $_hndl = select $_obj->{$_r_sock}->[$_i]; $| = 1; # autoflush
+               select $_obj->{$_w_sock}->[$_i]; $| = 1;
    }
    else {
       socketpair( $_obj->{$_r_sock}, $_obj->{$_w_sock},
@@ -179,12 +214,11 @@ sub _make_socket_pair {
       binmode $_obj->{$_r_sock};
       binmode $_obj->{$_w_sock};
 
-      ## Autoflush handles.
-      $_old_hndl = select $_obj->{$_r_sock}; $| = 1;
-                   select $_obj->{$_w_sock}; $| = 1;
+      $_hndl = select $_obj->{$_r_sock}; $| = 1; # ditto
+               select $_obj->{$_w_sock}; $| = 1;
    }
 
-   select $_old_hndl;
+   select $_hndl;
 
    return;
 }
