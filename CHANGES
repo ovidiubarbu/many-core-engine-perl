@@ -1,7 +1,7 @@
 
 Revision history for MCE
 
-1.699 Tue Mar 24 18:30:00 EST 2015
+1.699 Wed Mar 25 20:00:00 EST 2015
 
   [ TODO: before releasing MCE 1.700 ]
 
@@ -11,6 +11,8 @@ Revision history for MCE
     Write MCE::Cookbook.pod.
 
   [ENHANCEMENTS]
+
+  * Improved support for multi-level MCE instances; workers spawning MCE.
 
   * Locking for IPC is now handled by MCE::Mutex. Gone is file locking.
     This allows for more threads per process due to lesser consumption on

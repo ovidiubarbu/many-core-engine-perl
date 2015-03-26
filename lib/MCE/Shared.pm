@@ -34,10 +34,6 @@ our $VERSION = '1.699';
 $MCE::Shared::clone_warn = undef;
 $MCE::Shared::untie_warn = undef;
 
-## Set by MCE
-
-$MCE::Shared::_HDLR = undef;
-
 ###############################################################################
 ## ----------------------------------------------------------------------------
 ## Import and share routines.

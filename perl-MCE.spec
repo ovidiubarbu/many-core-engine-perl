@@ -62,5 +62,5 @@ rm -rf %{buildroot}
 %{_mandir}/man3/*
 
 %changelog
-* Tue Mar 24 2015 Mario Roy 1.699-1
+* Wed Mar 25 2015 Mario Roy 1.699-1
 - 1.699 Release.

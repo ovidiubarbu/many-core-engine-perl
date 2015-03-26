@@ -322,10 +322,8 @@ sub _untie2 {
 
       ($_MCE, $_DAU_R_SOCK_REF) = @_;
 
-      if (defined $MCE::Shared::_HDLR &&
-            refaddr($_MCE) != refaddr($MCE::Shared::_HDLR)) {
-
-         $_MCE = $MCE::Shared::_HDLR;
+      if (defined $MCE::TOP_HDLR && refaddr($_MCE) != refaddr($MCE::TOP_HDLR)) {
+         $_MCE = $MCE::TOP_HDLR;
          $_DAU_R_SOCK_REF = \ $_MCE->{_dat_r_sock}->[1];
       }
 
@@ -364,17 +362,15 @@ sub _mce_w_init {
 
    ($_MCE) = @_;
 
-   if (!defined $MCE::Shared::_HDLR ||
-         refaddr($_MCE) == refaddr($MCE::Shared::_HDLR)) {
-
-      ## MCE::Queue, MCE::Shared data managed by each manager process.
+   if (!defined $MCE::TOP_HDLR || refaddr($_MCE) == refaddr($MCE::TOP_HDLR)) {
+      ## MCE::Queue, MCE::Shared data managed by the manager process.
       $_chn = $_MCE->{_chn}; $_DAT_LOCK = $_MCE->{_dat_lock};
    }
    else {
-      ## Data is managed by the top MCE instance; shared_handler => 1.
-      $_chn = $_MCE->{_wid} % $MCE::Shared::_HDLR->{_data_channels} + 1;
+      ## Data is managed by the top MCE instance.
+      $_chn = $_MCE->{_wid} % $MCE::TOP_HDLR->{_data_channels} + 1;
 
-      $_MCE = $MCE::Shared::_HDLR;
+      $_MCE = $MCE::TOP_HDLR;
       $_DAT_LOCK = $_MCE->{'_mutex_'.$_chn};
    }
 
