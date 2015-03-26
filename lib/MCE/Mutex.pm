@@ -55,7 +55,7 @@ sub new {
    my $_mutex = {}; bless($_mutex, ref($_class) || $_class);
 
    if ($^O ne 'MSWin32') {
-      MCE::Util::_make_socket_pair($_mutex, qw(_w_sock _r_sock));
+      MCE::Util::_make_socket_pair($_mutex, qw(_r_sock _w_sock));
    }
    else {
       pipe $_mutex->{_r_sock}, $_mutex->{_w_sock} or die "pipe: $!";
