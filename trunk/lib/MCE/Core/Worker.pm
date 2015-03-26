@@ -308,20 +308,20 @@ use bytes;
       $_gat_ex = sub { sysread(  $_GAT_LOCK->{_r_sock}, my $_b, 1 ) };
       $_gat_un = sub { syswrite( $_GAT_LOCK->{_w_sock}, '0' ) };
 
-      if (!defined $MCE::Shared::_HDLR ||
-            refaddr($self) == refaddr($MCE::Shared::_HDLR)) {
-
+      if (!defined $MCE::TOP_HDLR || refaddr($self) == refaddr($MCE::TOP_HDLR)) {
+         ## MCE::Queue, MCE::Shared data managed by the manager process.
          ( $_chn, $_DAT_LOCK, $_DAT_W_SOCK, $_DAU_W_SOCK ) =
          ( $_ghn, $_GAT_LOCK, $_GAT_W_SOCK, $_GAU_W_SOCK );
 
          ( $_dat_ex, $_dat_un ) = ( $_gat_ex, $_gat_un );
       }
       else {
-         $_chn = $self->{_wid} % $MCE::Shared::_HDLR->{_data_channels} + 1;
+         ## Data is managed by the top MCE instance.
+         $_chn = $self->{_wid} % $MCE::TOP_HDLR->{_data_channels} + 1;
 
-         $_DAT_LOCK   = $MCE::Shared::_HDLR->{'_mutex_'.$_chn};
-         $_DAT_W_SOCK = $MCE::Shared::_HDLR->{_dat_w_sock}->[0];
-         $_DAU_W_SOCK = $MCE::Shared::_HDLR->{_dat_w_sock}->[$_chn];
+         $_DAT_LOCK   = $MCE::TOP_HDLR->{'_mutex_'.$_chn};
+         $_DAT_W_SOCK = $MCE::TOP_HDLR->{_dat_w_sock}->[0];
+         $_DAU_W_SOCK = $MCE::TOP_HDLR->{_dat_w_sock}->[$_chn];
 
          $_dat_ex = sub { sysread(  $_DAT_LOCK->{_r_sock}, my $_b, 1 ) };
          $_dat_un = sub { syswrite( $_DAT_LOCK->{_w_sock}, '0' ) };

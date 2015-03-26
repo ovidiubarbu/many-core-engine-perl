@@ -55,6 +55,8 @@ our ($MCE, $_que_read_size, $_que_template, %_valid_fields_new);
 my  ($_prev_mce, %_params_allowed_args, %_valid_fields_task);
 my  ($_deparse, $_is_MSWin32, $_is_winenv);
 
+$MCE::TOP_HDLR = undef;
+
 BEGIN {
    ## Configure pack/unpack template for writing to and from the queue.
    ## Each entry contains 2 positive numbers: chunk_id & msg_id.
@@ -485,15 +487,13 @@ sub spawn {
    my $_die_handler  = $SIG{__DIE__};  $SIG{__DIE__}  = \&_die;
    my $_warn_handler = $SIG{__WARN__}; $SIG{__WARN__} = \&_warn;
 
-   if (defined $MCE::Shared::VERSION) {
-      if (!defined $MCE::Shared::_HDLR) {
-         $MCE::Shared::_HDLR = $self;
-      }
-      elsif (refaddr($self) != refaddr($MCE::Shared::_HDLR)) {
-         _croak("Sharing (parallel MCE instances) is not supported on MSWin32")
-            if ($_is_MSWin32);
-         $self->{_data_channels} = 1 if ($self->{_data_channels} > 1);
-      }
+   if (!defined $MCE::TOP_HDLR) {
+      $MCE::TOP_HDLR = $self;
+   }
+   elsif (refaddr($self) != refaddr($MCE::TOP_HDLR)) {
+      _croak("Sharing (parallel MCE instances) is not supported on MSWin32")
+         if ($_is_MSWin32);
+      $self->{_data_channels} = 1 if ($self->{_data_channels} > 1);
    }
 
    ## Configure tid/sid for this instance here, not in the new method above.
@@ -1162,10 +1162,8 @@ sub shutdown {
    ## Delete entry.
    delete $_mce_spawned{$_mce_sid};
 
-   if (defined $MCE::Shared::_HDLR &&
-         refaddr($self) == refaddr($MCE::Shared::_HDLR)) {
-
-      $MCE::Shared::_HDLR = undef;
+   if (defined $MCE::TOP_HDLR && refaddr($self) == refaddr($MCE::TOP_HDLR)) {
+      $MCE::TOP_HDLR = undef;
    }
 
    ## -------------------------------------------------------------------------
