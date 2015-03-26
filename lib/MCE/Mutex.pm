@@ -30,14 +30,10 @@ sub DESTROY {
       return if (defined $MCE::MCE && $MCE::MCE->{_wid});
    }
 
-   if ($^O ne 'MSWin32') {
+   if ($^O eq 'MSWin32') {
+      MCE::Util::_destroy_pipes($_mutex, qw(_w_sock _r_sock));
+   } else {
       MCE::Util::_destroy_sockets($_mutex, qw(_w_sock _r_sock));
-   }
-   else {
-      if (defined $_mutex->{_w_sock}) {
-         close $_mutex->{_w_sock}; undef $_mutex->{_w_sock};
-         close $_mutex->{_r_sock}; undef $_mutex->{_r_sock};
-      }
    }
 
    return;
@@ -54,14 +50,10 @@ sub new {
    my ($_class, %_argv) = @_;   @_ = ();
    my $_mutex = {}; bless($_mutex, ref($_class) || $_class);
 
-   if ($^O ne 'MSWin32') {
+   if ($^O eq 'MSWin32') {
+      MCE::Util::_make_pipe_pair($_mutex, qw(_r_sock _w_sock));
+   } else {
       MCE::Util::_make_socket_pair($_mutex, qw(_r_sock _w_sock));
-   }
-   else {
-      pipe $_mutex->{_r_sock}, $_mutex->{_w_sock} or die "pipe: $!";
-
-      binmode $_mutex->{_r_sock};
-      binmode $_mutex->{_w_sock};
    }
 
    syswrite($_mutex->{_w_sock}, '0');

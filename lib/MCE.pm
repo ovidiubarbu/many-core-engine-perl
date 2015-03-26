@@ -486,7 +486,7 @@ sub spawn {
       $MCE::TOP_HDLR = $self;
    }
    elsif (refaddr($self) != refaddr($MCE::TOP_HDLR)) {
-      _croak("Sharing (parallel MCE instances) is not supported on MSWin32")
+      _croak("Parallel MCE instances are not supported on MSWin32")
          if ($_is_MSWin32);
       $self->{_data_channels} = 1 if ($self->{_data_channels} > 1);
    }
@@ -526,7 +526,7 @@ sub spawn {
    my $_max_workers   = _get_max_workers($self);
    my $_use_threads   = $self->{use_threads};
 
-   ## Obtain lock. Create locks for data channels.
+   ## Create locks for data channels. Obtain lock afterwards.
    $self->{_mutex_0} = MCE::Mutex->new;
 
    for my $_i (1 .. $_data_channels) {
@@ -538,8 +538,9 @@ sub spawn {
    ## Create socket pairs for IPC.
    MCE::Util::_make_socket_pair($self, qw(_bsb_r_sock _bsb_w_sock));    # sync
    MCE::Util::_make_socket_pair($self, qw(_bse_r_sock _bse_w_sock));    # sync
+
    MCE::Util::_make_socket_pair($self, qw(_com_r_sock _com_w_sock));    # core
-   MCE::Util::_make_socket_pair($self, qw(_que_r_sock _que_w_sock));    # core
+   MCE::Util::_make_pipe_pair  ($self, qw(_que_r_sock _que_w_sock));    # core
    MCE::Util::_make_socket_pair($self, qw(_dat_r_sock _dat_w_sock), $_) # core
       for (0 .. $_data_channels);
 
@@ -1171,13 +1172,11 @@ sub shutdown {
    }
 
    sleep 0.005 if ($_is_winenv);
-
    $_COM_R_SOCK = undef;
 
-   MCE::Util::_destroy_sockets( $self, qw(
+   MCE::Util::_destroy_sockets($self, qw(
       _bse_w_sock _bse_r_sock _bsb_w_sock _bsb_r_sock _com_w_sock
-      _com_r_sock _que_w_sock _que_r_sock _dat_w_sock _dat_r_sock
-      _rla_w_sock _rla_r_sock
+      _com_r_sock _dat_w_sock _dat_r_sock _rla_w_sock _rla_r_sock
    ));
 
    ## Reap children and/or threads.
@@ -1194,9 +1193,11 @@ sub shutdown {
       }
    }
 
+   MCE::Util::_destroy_pipes($self, qw(_que_w_sock _que_r_sock));
+
    ## -------------------------------------------------------------------------
 
-   ## Destroy locks; remove session directory.
+   ## Destroy locks. Remove the session directory afterwards.
    for my $_i (0 .. $_data_channels) {
       if (defined $self->{'_mutex_'.$_i}) {
          $self->{'_mutex_'.$_i}->DESTROY('shutdown');
