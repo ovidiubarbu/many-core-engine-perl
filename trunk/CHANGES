@@ -1,7 +1,7 @@
 
 Revision history for MCE
 
-1.699 Wed Mar 25 20:00:00 EST 2015
+1.699 Wed Mar 25 21:00:00 EST 2015
 
   [ TODO: before releasing MCE 1.700 ]
 
@@ -28,6 +28,8 @@ Revision history for MCE
     specifying use_threads uniquely for each sub-task. Mixing threads and
     processes is allowed across the board with this release. MCE on Cygwin
     has finally reached 100% parity with MCE on a UNIX OS.
+
+  * Use pipe instead of socketpair in MCE::Mutex on MSWin32.
 
   [NEW FEATURES]
 
