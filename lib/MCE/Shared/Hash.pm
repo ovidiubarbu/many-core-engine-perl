@@ -2,8 +2,6 @@
 ## ----------------------------------------------------------------------------
 ## MCE::Shared::Hash - For sharing data structures between workers.
 ##
-## There is no public API.
-##
 ###############################################################################
 
 package MCE::Shared::Hash;
@@ -17,7 +15,7 @@ no warnings 'threads';
 no warnings 'recursion';
 no warnings 'uninitialized';
 
-use Scalar::Util qw( blessed refaddr reftype );
+use Scalar::Util qw( refaddr reftype );
 use bytes;
 
 our $VERSION  = '1.699';
@@ -40,7 +38,7 @@ use constant {
 ##
 ###############################################################################
 
-my $_all = {}; my $_cache = {};
+my $_all = {}; my $_lck = {}; my $_cache = {};
 
 my $LF = "\012"; Internals::SvREADONLY($LF, 1);
 my $_loaded;
@@ -50,8 +48,10 @@ sub import {
    my $_class = shift; return if ($_loaded++);
 
    if (defined $MCE::VERSION) {
+      require MCE::Mutex unless (defined $MCE::Mutex::VERSION);
       _mce_m_init();
-   } else {
+   }
+   else {
       $\ = undef; require Carp;
       Carp::croak(
          "MCE::Shared::Hash cannot be used directly. Please see the\n".
@@ -83,6 +83,11 @@ sub _share {
    unless (exists $_all->{ $_id }) {
       $_all->{ $_id } = $_copy = {}; $_cloned->{ $_id } = $_copy;
 
+      if ($_cloned->{locking}) {
+         $_lck->{ $_id } = MCE::Mutex->new();
+         delete $_cloned->{locking};
+      }
+
       if (scalar @_ > 0) {
          while (scalar @_) {
             my ($_key, $_value) = (shift, shift);
@@ -94,7 +99,6 @@ sub _share {
          }
       }
 
-      my $_class   = blessed($_item);
       my $_rdonly1 = Internals::SvREADONLY(%{ $_item });
       my $_rdonly2 = Internals::SvREADONLY(   $_item  );
 
@@ -103,12 +107,10 @@ sub _share {
          Internals::SvREADONLY(   $_item  , 0) if $_rdonly2;
       }
 
-      %{ $_item } = ();
+      %{ $_item } = (); tie %{ $_item }, 'MCE::Shared::Hash::Tie', \$_id;
 
-      tie %{ $_item }, 'MCE::Shared::Hash::Tie', \$_id;
-
-      ## Bless copy into the same class. Clone READONLY flag.
-      bless($_item, $_class) if $_class;
+      ## Bless item. Clone READONLY flag.
+      bless($_item, 'MCE::Shared::Hash::Tie');
 
       if ($] >= 5.008003) {
          Internals::SvREADONLY(%{ $_item }, 1) if $_rdonly1;
@@ -431,6 +433,26 @@ use constant {
 
 sub TIEHASH { bless $_[1] => $_[0]; }
 
+sub LOCK {
+   my $_id = ${ $_[0] };
+
+   if ($_MCE->{_wid} && exists $_lck->{ $_id }) {
+      $_lck->{ $_id }->lock();
+   }
+
+   return;
+}
+
+sub UNLOCK {
+   my $_id = ${ $_[0] };
+
+   if ($_MCE->{_wid} && exists $_lck->{ $_id }) {
+      $_lck->{ $_id }->unlock();
+   }
+
+   return;
+}
+
 sub UNTIE {
    my $_id = ${ $_[0] };
 
@@ -453,6 +475,10 @@ sub UNTIE {
    }
 
    delete $_all->{ $_id };
+
+   if (exists $_lck->{ $_id }) {
+      (delete $_lck->{ $_id })->DESTROY('shutdown');
+   }
 
    return;
 }
@@ -677,6 +703,31 @@ sub SCALAR {                                      ## Hash SCALAR
       return $_ret;
    }
 }
+
+###############################################################################
+## ----------------------------------------------------------------------------
+## Public Methods.
+##
+###############################################################################
+
+sub _get_self {
+   reftype($_[0]) eq 'HASH' ? tied %{ $_[0] } : $_[0];
+}
+
+sub lock      { _get_self( shift )->LOCK( @_ )     }
+sub unlock    { _get_self( shift )->UNLOCK( @_ )   }
+sub untie     { _get_self( shift )->UNTIE( @_ )    }
+
+sub put       { _get_self( shift )->STORE( @_ )    }
+sub get       { _get_self( shift )->FETCH( @_ )    }
+sub store     { _get_self( shift )->STORE( @_ )    }
+sub fetch     { _get_self( shift )->FETCH( @_ )    }
+sub first_key { _get_self( shift )->FIRSTKEY( @_ ) }
+sub next_key  { _get_self( shift )->NEXTKEY( @_ )  }
+sub exists    { _get_self( shift )->EXISTS( @_ )   }
+sub delete    { _get_self( shift )->DELETE( @_ )   }
+sub clear     { _get_self( shift )->CLEAR( @_ )    }
+sub length    { _get_self( shift )->SCALAR( @_ )   }
 
 1;
 
