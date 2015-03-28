@@ -1476,13 +1476,15 @@ sub do {
       unless ($self->{_wid});
 
    if (ref $_[0] eq 'CODE') {
-      _croak('MCE::do: (code ref) is not supported - Perl bug (RT#121883)');
+      _croak('MCE::do: (code ref) is not supported');
    }
    else {
       _croak('MCE::do: (callback) is not specified')
          unless (defined ( my $_func = shift ));
 
       if (index($_func, ' ') >= 0 || $_func =~ /[\$\@\%]/) {
+         _croak('MCE::do: ($MCE::Eval) is not defined')
+            unless(defined $MCE::Eval);
          _croak('MCE::do: ($MCE::Eval) is not a code ref')
             unless(ref $MCE::Eval eq 'CODE');
 

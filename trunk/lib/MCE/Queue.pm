@@ -167,7 +167,7 @@ sub new {
 
    my ($_class, %_argv) = @_;
 
-   @_ = (); local $!;
+   @_ = ();
 
    my $_Q = {}; bless($_Q, ref($_class) || $_class);
 
@@ -226,7 +226,8 @@ sub new {
             MCE::Util::_make_pipe_pair($_Q, qw(_qr_sock _qw_sock));
             MCE::Util::_make_pipe_pair($_Q, qw(_ar_sock _aw_sock))
                if ($_Q->{_await});
-         } else {
+         }
+         else {
             MCE::Util::_make_socket_pair($_Q, qw(_qr_sock _qw_sock));
             MCE::Util::_make_socket_pair($_Q, qw(_ar_sock _aw_sock))
                if ($_Q->{_await});

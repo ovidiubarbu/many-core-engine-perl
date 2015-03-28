@@ -36,7 +36,7 @@ $MCE::Shared::untie_warn = undef;
 
 ###############################################################################
 ## ----------------------------------------------------------------------------
-## Import and share routines.
+## Import and new routines.
 ##
 ###############################################################################
 
@@ -55,18 +55,56 @@ sub import {
    }
 
    no strict 'refs'; no warnings 'redefine';
-
    *{ caller().'::mce_share' } = \&share;
 
    return;
 }
+
+sub new {
+
+   my ($_class, %_argv) = @_;
+
+   MCE::_croak('Method (new) is not allowed by the worker process')
+      if (MCE->wid);
+
+   for my $_p (keys %_argv) {
+      Carp::croak("MCE::Shared::new: ($_p) is not a valid constructor argument")
+         if ($_p ne 'type' && $_p ne 'locking');
+   }
+
+   my $_type = defined $_argv{type} ? $_argv{type} || 'hash' : 'hash';
+   my $_shr;  $_type = lc $_type;
+
+   if ($_type eq 'hash') {
+      $_shr = MCE::Shared::Hash::_share(\%_argv, {});
+   }
+   elsif ($_type eq 'array') {
+      $_shr = MCE::Shared::Array::_share(\%_argv, []);
+   }
+   elsif ($_type eq 'scalar') {
+      my $_scalar_ref = \do { my $_scalar = undef };
+      $_shr = MCE::Shared::Scalar::_share(\%_argv, $_scalar_ref);
+      return tied(${ $_shr });
+   }
+   else {
+      Carp::croak("MCE::Shared::new: type ($_type) is not valid");
+   }
+
+   return $_shr;
+}
+
+###############################################################################
+## ----------------------------------------------------------------------------
+## Share routine.
+##
+###############################################################################
 
 sub share (\[$@%]@) {
 
    MCE::_croak('Method (share) is not allowed by the worker process')
       if (MCE->wid);
 
-   my $_item; my $_ref_type = reftype($_[0]);
+   my $_ref_type = reftype($_[0]);
 
    if ($_ref_type eq 'SCALAR' || $_ref_type eq 'REF') {
       Carp::croak('Too many arguments in scalar assignment')
@@ -74,7 +112,7 @@ sub share (\[$@%]@) {
 
       ## Scalar special handling to prevent double tie'ing $_[0] and $_[1].
       if (scalar @_ == 2 && (my $_r = reftype($_[1]))) {
-         my $_scalar_ref = $_[0];
+         my $_item; my $_scalar_ref = $_[0];
 
          if ($_r eq 'SCALAR' || $_r eq 'REF') {
             $_item = MCE::Shared::Scalar::_share({}, $_[1]);
@@ -91,32 +129,20 @@ sub share (\[$@%]@) {
 
       ## Scalar normal handling.
       else {
-         $_item = MCE::Shared::Scalar::_share({}, @_);
+         MCE::Shared::Scalar::_share({}, @_);
       }
    }
    elsif ($_ref_type eq 'ARRAY') {
-      $_item = MCE::Shared::Array::_share({}, @_);
+      MCE::Shared::Array::_share({}, @_);
    }
    elsif ($_ref_type eq 'HASH') {
       Carp::carp('Odd number of elements in hash assignment')
          if (scalar @_ > 1 && (scalar @_ - 1) % 2);
 
-      $_item = MCE::Shared::Hash::_share({}, @_);
+      MCE::Shared::Hash::_share({}, @_);
    }
    else {
       return _unsupported($_ref_type);
-   }
-
-   if (defined wantarray) {
-      $_ref_type = reftype($_item);
-
-      if ($_ref_type eq 'SCALAR' || $_ref_type eq 'REF') {
-         return tied(${ $_item });
-      } elsif ($_ref_type eq 'ARRAY') {
-         return tied(@{ $_item });
-      } elsif ($_ref_type eq 'HASH') {
-         return tied(%{ $_item });
-      }
    }
 
    return;

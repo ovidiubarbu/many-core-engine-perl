@@ -47,8 +47,8 @@ sub DESTROY {
 
 sub new {
 
-   my ($_class, %_argv) = @_;   @_ = ();
-   my $_mutex = {}; bless($_mutex, ref($_class) || $_class);
+   my ($_class) = @_; my $_mutex = {};
+   bless($_mutex, ref($_class) || $_class);
 
    if ($^O eq 'MSWin32') {
       MCE::Util::_make_pipe_pair($_mutex, qw(_r_sock _w_sock));
