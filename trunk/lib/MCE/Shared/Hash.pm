@@ -710,24 +710,20 @@ sub SCALAR {                                      ## Hash SCALAR
 ##
 ###############################################################################
 
-sub _get_self {
-   reftype($_[0]) eq 'HASH' ? tied %{ $_[0] } : $_[0];
-}
+sub lock      { (tied %{ (shift) })->LOCK( @_ )     }
+sub unlock    { (tied %{ (shift) })->UNLOCK( @_ )   }
+sub untie     { (tied %{ (shift) })->UNTIE( @_ )    }
 
-sub lock      { _get_self( shift )->LOCK( @_ )     }
-sub unlock    { _get_self( shift )->UNLOCK( @_ )   }
-sub untie     { _get_self( shift )->UNTIE( @_ )    }
-
-sub put       { _get_self( shift )->STORE( @_ )    }
-sub get       { _get_self( shift )->FETCH( @_ )    }
-sub store     { _get_self( shift )->STORE( @_ )    }
-sub fetch     { _get_self( shift )->FETCH( @_ )    }
-sub first_key { _get_self( shift )->FIRSTKEY( @_ ) }
-sub next_key  { _get_self( shift )->NEXTKEY( @_ )  }
-sub exists    { _get_self( shift )->EXISTS( @_ )   }
-sub delete    { _get_self( shift )->DELETE( @_ )   }
-sub clear     { _get_self( shift )->CLEAR( @_ )    }
-sub length    { _get_self( shift )->SCALAR( @_ )   }
+sub put       { (tied %{ (shift) })->STORE( @_ )    }
+sub get       { (tied %{ (shift) })->FETCH( @_ )    }
+sub store     { (tied %{ (shift) })->STORE( @_ )    }
+sub fetch     { (tied %{ (shift) })->FETCH( @_ )    }
+sub first_key { (tied %{ (shift) })->FIRSTKEY( @_ ) }
+sub next_key  { (tied %{ (shift) })->NEXTKEY( @_ )  }
+sub exists    { (tied %{ (shift) })->EXISTS( @_ )   }
+sub delete    { (tied %{ (shift) })->DELETE( @_ )   }
+sub clear     { (tied %{ (shift) })->CLEAR( @_ )    }
+sub length    { (tied %{ (shift) })->SCALAR( @_ )   }
 
 1;
 

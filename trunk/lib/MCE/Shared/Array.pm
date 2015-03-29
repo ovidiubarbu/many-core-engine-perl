@@ -880,30 +880,26 @@ sub SPLICE {                                      ## Array SPLICE
 ##
 ###############################################################################
 
-sub _get_self {
-   reftype($_[0]) eq 'HASH' ? tied @{ $_[0] } : $_[0];
-}
+sub lock    { (tied @{ (shift) })->LOCK( @_ )      }
+sub unlock  { (tied @{ (shift) })->UNLOCK( @_ )    }
+sub untie   { (tied @{ (shift) })->UNTIE( @_ )     }
 
-sub lock    { _get_self( shift )->LOCK( @_ )      }
-sub unlock  { _get_self( shift )->UNLOCK( @_ )    }
-sub untie   { _get_self( shift )->UNTIE( @_ )     }
-
-sub put     { _get_self( shift )->STORE( @_ )     }
-sub get     { _get_self( shift )->FETCH( @_ )     }
-sub store   { _get_self( shift )->STORE( @_ )     }
-sub fetch   { _get_self( shift )->FETCH( @_ )     }
-sub exists  { _get_self( shift )->EXISTS( @_ )    }
-sub delete  { _get_self( shift )->DELETE( @_ )    }
-sub clear   { _get_self( shift )->CLEAR( @_ )     }
-sub length  { _get_self( shift )->FETCHSIZE( @_ ) }
-sub pop     { _get_self( shift )->POP( @_ )       }
-sub push    { _get_self( shift )->PUSH( @_ )      }
-sub unshift { _get_self( shift )->UNSHIFT( @_ )   }
-sub splice  { _get_self( shift )->SPLICE( @_ )    }
+sub put     { (tied @{ (shift) })->STORE( @_ )     }
+sub get     { (tied @{ (shift) })->FETCH( @_ )     }
+sub store   { (tied @{ (shift) })->STORE( @_ )     }
+sub fetch   { (tied @{ (shift) })->FETCH( @_ )     }
+sub exists  { (tied @{ (shift) })->EXISTS( @_ )    }
+sub delete  { (tied @{ (shift) })->DELETE( @_ )    }
+sub clear   { (tied @{ (shift) })->CLEAR( @_ )     }
+sub length  { (tied @{ (shift) })->FETCHSIZE( @_ ) }
+sub pop     { (tied @{ (shift) })->POP( @_ )       }
+sub push    { (tied @{ (shift) })->PUSH( @_ )      }
+sub unshift { (tied @{ (shift) })->UNSHIFT( @_ )   }
+sub splice  { (tied @{ (shift) })->SPLICE( @_ )    }
 
 ## This must be last due to not qualifying other calls to shift as CORE::shift.
 
-sub shift { _get_self( CORE::shift )->SHIFT( @_ ) }
+sub shift { (tied @{ (CORE::shift) })->SHIFT( @_ ) }
 
 1;
 
