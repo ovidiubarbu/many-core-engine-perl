@@ -82,9 +82,8 @@ sub new {
       $_shr = MCE::Shared::Array::_share(\%_argv, []);
    }
    elsif ($_type eq 'scalar') {
-      my $_scalar_ref = \do { my $_scalar = undef };
+      my $_scalar_ref = \do { my $scalar = undef };
       $_shr = MCE::Shared::Scalar::_share(\%_argv, $_scalar_ref);
-      return tied(${ $_shr });
    }
    else {
       Carp::croak("MCE::Shared::new: type ($_type) is not valid");
