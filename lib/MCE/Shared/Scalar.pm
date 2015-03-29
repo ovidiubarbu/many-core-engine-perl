@@ -82,11 +82,11 @@ sub _share {
       }
 
       if (scalar @_ > 0) {
-         $_all->{ $_id } = \do{ my $_scalar = $_[0]; };
+         $_all->{ $_id } = \do{ my $scalar = $_[0]; };
       }
       else {
          if (reftype($_item) eq 'SCALAR') {
-            $_all->{ $_id } = \do{ my $_scalar = ${ $_item }; };
+            $_all->{ $_id } = \do{ my $scalar = ${ $_item }; };
          }
          else {
             ## Special handling for $x = \$x
@@ -94,7 +94,7 @@ sub _share {
                $_all->{ $_id } = \$_copy;
             } else {
                $_all->{ $_id } = \do{
-                  my $_scalar = MCE::Shared::_copy($_cloned, ${ $_item });
+                  my $scalar = MCE::Shared::_copy($_cloned, ${ $_item });
                };
             }
          }
@@ -421,18 +421,14 @@ sub FETCH {                                       ## Scalar FETCH
 ##
 ###############################################################################
 
-sub _get_self {
-   reftype($_[0]) eq 'HASH' ? tied ${ $_[0] } : $_[0];
-}
+sub lock   { (tied ${ (shift) })->LOCK( @_ )   }
+sub unlock { (tied ${ (shift) })->UNLOCK( @_ ) }
+sub untie  { (tied ${ (shift) })->UNTIE( @_ )  }
 
-sub lock   { _get_self( shift )->LOCK( @_ )   }
-sub unlock { _get_self( shift )->UNLOCK( @_ ) }
-sub untie  { _get_self( shift )->UNTIE( @_ )  }
-
-sub put    { _get_self( shift )->STORE( @_ )  }
-sub get    { _get_self( shift )->FETCH( @_ )  }
-sub store  { _get_self( shift )->STORE( @_ )  }
-sub fetch  { _get_self( shift )->FETCH( @_ )  }
+sub put    { (tied ${ (shift) })->STORE( @_ )  }
+sub get    { (tied ${ (shift) })->FETCH( @_ )  }
+sub store  { (tied ${ (shift) })->STORE( @_ )  }
+sub fetch  { (tied ${ (shift) })->FETCH( @_ )  }
 
 1;
 
