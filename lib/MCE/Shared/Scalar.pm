@@ -421,14 +421,18 @@ sub FETCH {                                       ## Scalar FETCH
 ##
 ###############################################################################
 
-sub lock   { (tied ${ (shift) })->LOCK( @_ )   }
-sub unlock { (tied ${ (shift) })->UNLOCK( @_ ) }
-sub untie  { (tied ${ (shift) })->UNTIE( @_ )  }
+sub _get_self {
+   tied ${ $_[0] } or $_[0];
+}
 
-sub put    { (tied ${ (shift) })->STORE( @_ )  }
-sub get    { (tied ${ (shift) })->FETCH( @_ )  }
-sub store  { (tied ${ (shift) })->STORE( @_ )  }
-sub fetch  { (tied ${ (shift) })->FETCH( @_ )  }
+sub lock   { _get_self( shift )->LOCK( @_ )   }
+sub unlock { _get_self( shift )->UNLOCK( @_ ) }
+sub untie  { _get_self( shift )->UNTIE( @_ )  }
+
+sub put    { _get_self( shift )->STORE( @_ )  }
+sub get    { _get_self( shift )->FETCH( @_ )  }
+sub store  { _get_self( shift )->STORE( @_ )  }
+sub fetch  { _get_self( shift )->FETCH( @_ )  }
 
 1;
 
