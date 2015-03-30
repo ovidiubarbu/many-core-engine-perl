@@ -186,6 +186,28 @@ sub _copy {
    return $_copy;
 }
 
+sub _on {
+
+   MCE::_croak('Method (->on) is not allowed by the worker process')
+      if (MCE->wid);
+
+   my $_id = ${ (shift) }; my ($_pcb, $_def, $_name, $_code, $_value) = @_;
+
+   @_ = ();
+
+   Carp::croak("MCE::Shared (->on): (name and/or code) are not defined")
+      if (!defined $_name || !defined $_code);
+   Carp::croak("MCE::Shared (->on): ($_name) is not supported")
+      if ($_name ne 'put' && $_name ne 'store');
+   Carp::croak("MCE::Shared (->on): (code) is not a CODE ref")
+      if (ref $_code ne 'CODE');
+
+   $_def->{ $_id } = (defined $_value) ? $_value : undef;
+   $_pcb->{ $_id } = $_code;
+
+   return;
+}
+
 sub _unsupported {
 
    Carp::croak('Unsupported ref type: ', $_[0])

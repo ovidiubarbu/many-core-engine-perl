@@ -43,7 +43,7 @@ use constant {
 ##
 ###############################################################################
 
-my $_all = {}; my $_lck = {};
+my $_all = {}; my $_lck = {}; my $_pcb = {}; my $_def = {};
 
 my $LF = "\012"; Internals::SvREADONLY($LF, 1);
 my $_loaded;
@@ -236,13 +236,31 @@ sub _untie2 {
             _untie2($_r, $_id, $_key);
          }
 
-         if ($_len > 0) {
-            read $_DAU_R_SOCK, (my $_buf), $_len;
-            $_all->{ $_id }->[ $_key ] =
-               (chop $_buf) ? $_MCE->{thaw}($_buf) : $_buf;
+         if (exists $_pcb->{ $_id }) {
+            if (!defined $_all->{ $_id }->[ $_key ]) {
+               $_all->{ $_id }->[ $_key ] = $_def->{ $_id };
+            }
+            local $_ = $_all->{ $_id };
+
+            if ($_len > 0) {
+               read $_DAU_R_SOCK, (my $_buf), $_len;
+               $_pcb->{ $_id }->(
+                  $_key, (chop $_buf) ? $_MCE->{thaw}($_buf) : $_buf
+               );
+            }
+            else {
+               $_pcb->{ $_id }->($_key, undef);
+            }
          }
          else {
-            $_all->{ $_id }->[ $_key ] = undef;
+            if ($_len > 0) {
+               read $_DAU_R_SOCK, (my $_buf), $_len;
+               $_all->{ $_id }->[ $_key ] =
+                  (chop $_buf) ? $_MCE->{thaw}($_buf) : $_buf;
+            }
+            else {
+               $_all->{ $_id }->[ $_key ] = undef;
+            }
          }
 
          if (my $_r = reftype($_all->{ $_id }->[ $_key ])) {
@@ -578,6 +596,8 @@ sub UNTIE {
    }
 
    delete $_all->{ $_id };
+   delete $_def->{ $_id };
+   delete $_pcb->{ $_id };
 
    if (exists $_lck->{ $_id }) {
       (delete $_lck->{ $_id })->DESTROY('shutdown');
@@ -634,7 +654,17 @@ sub STORE {                                       ## Array STORE
       if (my $_r = reftype($_all->{ $_id }->[ $_[1] ])) {
          MCE::Shared::Array::_untie2($_r, $_id, $_[1]);
       }
-      $_all->{ $_id }->[ $_[1] ] = $_[2];
+
+      if (exists $_pcb->{ $_id }) {
+         if (!defined $_all->{ $_id }->[ $_[1] ]) {
+            $_all->{ $_id }->[ $_[1] ] = $_def->{ $_id };
+         }
+         local $_ = $_all->{ $_id };
+         $_pcb->{ $_id }->($_[1], $_[2]);
+      }
+      else {
+         $_all->{ $_id }->[ $_[1] ] = $_[2];
+      }
 
       if (my $_r = reftype($_all->{ $_id }->[ $_[1] ])) {
          MCE::Shared::Array::_share2($_r, $_id, $_[1]);
@@ -880,30 +910,80 @@ sub SPLICE {                                      ## Array SPLICE
 ##
 ###############################################################################
 
-sub _get_self {
-   reftype($_[0]) eq 'ARRAY' ? tied @{ $_[0] } : $_[0];
+sub lock {
+   my $_o = reftype($_[0]) eq 'ARRAY' ? tied @{ (shift) } : shift;
+   LOCK($_o, @_);
+}
+sub unlock {
+   my $_o = reftype($_[0]) eq 'ARRAY' ? tied @{ (shift) } : shift;
+   UNLOCK($_o, @_);
+}
+sub untie {
+   my $_o = reftype($_[0]) eq 'ARRAY' ? tied @{ (shift) } : shift;
+   UNTIE($_o, @_);
+}
+sub on {
+   my $_o = reftype($_[0]) eq 'ARRAY' ? tied @{ (shift) } : shift;
+   MCE::Shared::_on($_o, $_pcb, $_def, @_);
 }
 
-sub lock    { _get_self( shift )->LOCK( @_ )      }
-sub unlock  { _get_self( shift )->UNLOCK( @_ )    }
-sub untie   { _get_self( shift )->UNTIE( @_ )     }
+##
 
-sub put     { _get_self( shift )->STORE( @_ )     }
-sub get     { _get_self( shift )->FETCH( @_ )     }
-sub store   { _get_self( shift )->STORE( @_ )     }
-sub fetch   { _get_self( shift )->FETCH( @_ )     }
-sub exists  { _get_self( shift )->EXISTS( @_ )    }
-sub delete  { _get_self( shift )->DELETE( @_ )    }
-sub clear   { _get_self( shift )->CLEAR( @_ )     }
-sub length  { _get_self( shift )->FETCHSIZE( @_ ) }
-sub pop     { _get_self( shift )->POP( @_ )       }
-sub push    { _get_self( shift )->PUSH( @_ )      }
-sub unshift { _get_self( shift )->UNSHIFT( @_ )   }
-sub splice  { _get_self( shift )->SPLICE( @_ )    }
+sub put {
+   my $_o = reftype($_[0]) eq 'ARRAY' ? tied @{ (shift) } : shift;
+   STORE($_o, @_);
+}
+sub get {
+   my $_o = reftype($_[0]) eq 'ARRAY' ? tied @{ (shift) } : shift;
+   FETCH($_o, @_);
+}
+sub store {
+   my $_o = reftype($_[0]) eq 'ARRAY' ? tied @{ (shift) } : shift;
+   STORE($_o, @_);
+}
+sub fetch {
+   my $_o = reftype($_[0]) eq 'ARRAY' ? tied @{ (shift) } : shift;
+   FETCH($_o, @_);
+}
+sub exists {
+   my $_o = reftype($_[0]) eq 'ARRAY' ? tied @{ (shift) } : shift;
+   EXISTS($_o, @_);
+}
+sub delete {
+   my $_o = reftype($_[0]) eq 'ARRAY' ? tied @{ (shift) } : shift;
+   DELETE($_o, @_);
+}
+sub clear {
+   my $_o = reftype($_[0]) eq 'ARRAY' ? tied @{ (shift) } : shift;
+   CLEAR($_o, @_);
+}
+sub length {
+   my $_o = reftype($_[0]) eq 'ARRAY' ? tied @{ (shift) } : shift;
+   FETCHSIZE($_o, @_);
+}
+sub pop {
+   my $_o = reftype($_[0]) eq 'ARRAY' ? tied @{ (shift) } : shift;
+   POP($_o, @_);
+}
+sub push {
+   my $_o = reftype($_[0]) eq 'ARRAY' ? tied @{ (shift) } : shift;
+   PUSH($_o, @_);
+}
+sub unshift {
+   my $_o = reftype($_[0]) eq 'ARRAY' ? tied @{ (shift) } : shift;
+   UNSHIFT($_o, @_);
+}
+sub splice {
+   my $_o = reftype($_[0]) eq 'ARRAY' ? tied @{ (shift) } : shift;
+   SPLICE($_o, @_);
+}
 
 ## This must be last due to not qualifying other calls to shift as CORE::shift.
 
-sub shift { _get_self( CORE::shift )->SHIFT( @_ ) }
+sub shift {
+   my $_o = reftype($_[0]) eq 'ARRAY' ? tied @{ (CORE::shift) } : CORE::shift;
+   SHIFT($_o, @_);
+}
 
 1;
 

@@ -33,7 +33,7 @@ use constant {
 ##
 ###############################################################################
 
-my $_all = {}; my $_lck = {};
+my $_all = {}; my $_lck = {}; my $_pcb = {}; my $_def = {};
 
 my $LF = "\012"; Internals::SvREADONLY($LF, 1);
 my $_loaded;
@@ -169,12 +169,31 @@ sub _untie2 {
             _untie2($_r, $_id);
          }
 
-         if ($_len > 0) {
-            read $_DAU_R_SOCK, (my $_buf), $_len;
-            ${ $_all->{ $_id } } = (chop $_buf) ? $_MCE->{thaw}($_buf) : $_buf;
+         if (exists $_pcb->{ $_id }) {
+            if (!defined ${ $_all->{ $_id } }) {
+               ${ $_all->{ $_id } } = $_def->{ $_id };
+            }
+            local $_ = $_all->{ $_id };
+
+            if ($_len > 0) {
+               read $_DAU_R_SOCK, (my $_buf), $_len;
+               $_pcb->{ $_id }->(
+                  (chop $_buf) ? $_MCE->{thaw}($_buf) : $_buf
+               );
+            }
+            else {
+               $_pcb->{ $_id }->(undef);
+            }
          }
          else {
-            ${ $_all->{ $_id } } = undef;
+            if ($_len > 0) {
+               read $_DAU_R_SOCK, (my $_buf), $_len;
+               ${ $_all->{ $_id } } =
+                  (chop $_buf) ? $_MCE->{thaw}($_buf) : $_buf;
+            }
+            else {
+               ${ $_all->{ $_id } } = undef;
+            }
          }
 
          if (my $_r = reftype(${ $_all->{ $_id } })) {
@@ -338,7 +357,10 @@ sub UNTIE {
    }
 
    undef ${ $_all->{ $_id } };
+
    delete $_all->{ $_id };
+   delete $_def->{ $_id };
+   delete $_pcb->{ $_id };
 
    if (exists $_lck->{ $_id }) {
       (delete $_lck->{ $_id })->DESTROY('shutdown');
@@ -356,7 +378,17 @@ sub STORE {                                       ## Scalar STORE
       if (my $_r = reftype(${ $_all->{ $_id } })) {
          MCE::Shared::Scalar::_untie2($_r, $_id);
       }
-      ${ $_all->{ $_id } } = $_[1];
+
+      if (exists $_pcb->{ $_id }) {
+         if (!defined ${ $_all->{ $_id } }) {
+            ${ $_all->{ $_id } } = $_def->{ $_id };
+         }
+         local $_ = $_all->{ $_id };
+         $_pcb->{ $_id }->($_[1]);
+      }
+      else {
+         ${ $_all->{ $_id } } = $_[1];
+      }
 
       if (my $_r = reftype(${ $_all->{ $_id } })) {
          MCE::Shared::Scalar::_share2($_r, $_id);
@@ -421,18 +453,41 @@ sub FETCH {                                       ## Scalar FETCH
 ##
 ###############################################################################
 
-sub _get_self {
-   tied ${ $_[0] } or $_[0];
+sub lock {
+   my $_o = tied ${ $_[0] } || $_[0];
+   shift; LOCK($_o, @_);
+}
+sub unlock {
+   my $_o = tied ${ $_[0] } || $_[0];
+   shift; UNLOCK($_o, @_);
+}
+sub untie {
+   my $_o = tied ${ $_[0] } || $_[0];
+   shift; UNTIE($_o, @_);
+}
+sub on {
+   my $_o = tied ${ $_[0] } || $_[0];
+   shift; MCE::Shared::_on($_o, $_pcb, $_def, @_);
 }
 
-sub lock   { _get_self( shift )->LOCK( @_ )   }
-sub unlock { _get_self( shift )->UNLOCK( @_ ) }
-sub untie  { _get_self( shift )->UNTIE( @_ )  }
+##
 
-sub put    { _get_self( shift )->STORE( @_ )  }
-sub get    { _get_self( shift )->FETCH( @_ )  }
-sub store  { _get_self( shift )->STORE( @_ )  }
-sub fetch  { _get_self( shift )->FETCH( @_ )  }
+sub put {
+   my $_o = tied ${ $_[0] } || $_[0];
+   shift; STORE($_o, @_);
+}
+sub get {
+   my $_o = tied ${ $_[0] } || $_[0];
+   shift; FETCH($_o, @_);
+}
+sub store {
+   my $_o = tied ${ $_[0] } || $_[0];
+   shift; STORE($_o, @_);
+}
+sub fetch {
+   my $_o = tied ${ $_[0] } || $_[0];
+   shift; FETCH($_o, @_);
+}
 
 1;
 
